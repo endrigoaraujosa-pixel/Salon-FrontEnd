@@ -93,15 +93,15 @@ export default function VendasDiretas() {
   };
 
   return (
-    <div className="p-6 lg:p-8 fade-in">
+    <div className="p-4 sm:p-6 lg:p-8 fade-in w-full overflow-x-hidden">
       <PageHeader overline="Balcão" title="Vendas Diretas" action={
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button data-testid="add-venda-btn" className="bg-[#84A59D] hover:bg-[#6F9189]">
+            <Button data-testid="add-venda-btn" className="bg-[#84A59D] hover:bg-[#6F9189] w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-1" /> Nova venda
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader><DialogTitle>Nova venda direta</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div>
@@ -119,7 +119,7 @@ export default function VendasDiretas() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label>Quantidade *</Label>
                   <Input data-testid="venda-qtd" type="number" min="1" step="0.01" value={form.quantidade} onChange={(e) => setForm({ ...form, quantidade: e.target.value })} />
@@ -158,8 +158,8 @@ export default function VendasDiretas() {
                 </div>
               )}
             </div>
-            <DialogFooter>
-              <Button data-testid="save-venda-btn" onClick={save} className="bg-[#84A59D] hover:bg-[#6F9189]">
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
+              <Button data-testid="save-venda-btn" onClick={save} className="bg-[#84A59D] hover:bg-[#6F9189] w-full">
                 Criar e ir para pagamento
               </Button>
             </DialogFooter>
@@ -170,48 +170,87 @@ export default function VendasDiretas() {
       {list.length === 0 ? (
         <EmptyState icon={ShoppingBag} title="Sem vendas" hint="Registre vendas de produtos no balcão." />
       ) : (
-        <div className="bg-white border border-zinc-200 rounded-xl overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500">
-              <tr>
-                <th className="px-4 py-3 text-left">Data</th>
-                <th className="px-4 py-3 text-left">Produto</th>
-                <th className="px-4 py-3 text-left">Qtd</th>
-                <th className="px-4 py-3 text-left">Vendedor</th>
-                <th className="px-4 py-3 text-left">Cliente</th>
-                <th className="px-4 py-3 text-right">Total</th>
-                <th className="px-4 py-3">Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {list.map((v) => (
-                <tr key={v.id} className="hover:bg-zinc-50/60">
-                  <td className="px-4 py-3">{fmtDT(v.data_venda)}</td>
-                  <td className="px-4 py-3 font-medium">{v.produto_nome}</td>
-                  <td className="px-4 py-3">{v.quantidade}</td>
-                  <td className="px-4 py-3">{v.colaborador_nome || "—"}</td>
-                  <td className="px-4 py-3">{v.cliente_nome || "—"}</td>
-                  <td className="px-4 py-3 text-right font-medium">{fmtBRL(v.valor_total)}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[v.status]}`}>
-                      {v.status === "pago" ? "Pago" : "Pendente"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right space-x-1">
+        <div className="space-y-4">
+          {/* Mobile Card List (Visible only on mobile) */}
+          <div className="space-y-3 sm:hidden">
+            {list.map((v) => (
+              <div key={v.id} className="bg-white border border-zinc-200 rounded-xl p-4 shadow-sm hover:shadow transition-shadow">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-zinc-400 font-medium">{fmtDT(v.data_venda)}</span>
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[v.status]}`}>
+                    {v.status === "pago" ? "Pago" : "Pendente"}
+                  </span>
+                </div>
+                <h4 className="font-display font-bold text-zinc-800 text-sm leading-snug">{v.produto_nome}</h4>
+                <div className="text-xs text-zinc-500 mt-2 space-y-1">
+                  <div>Qtd: <strong>{v.quantidade}</strong></div>
+                  <div>Vendedor: <strong>{v.colaborador_nome || "—"}</strong></div>
+                  <div>Cliente: <strong>{v.cliente_nome || "—"}</strong></div>
+                </div>
+                <div className="flex items-center justify-between border-t border-zinc-100 pt-3 mt-3">
+                  <div>
+                    <span className="text-[10px] text-zinc-400 uppercase tracking-wider block">Total</span>
+                    <span className="font-display font-bold text-[#3A4F4A] text-base">{fmtBRL(v.valor_total)}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
                     {v.status !== "pago" && (
-                      <Button size="sm" variant="ghost" onClick={() => nav(`/vendas-diretas/${v.id}/pagamento`)} data-testid={`pay-venda-${v.id}`}>
-                        <CreditCard className="w-4 h-4" />
+                      <Button size="sm" variant="outline" className="h-9 px-3 border-zinc-200 text-[#3A4F4A] hover:bg-[#EAF0EE]" onClick={() => nav(`/vendas-diretas/${v.id}/pagamento`)} data-testid={`pay-venda-mob-${v.id}`}>
+                        <CreditCard className="w-4 h-4 mr-1.5" /> Pagar
                       </Button>
                     )}
-                    <Button size="sm" variant="ghost" onClick={() => del(v.id)}>
-                      <Trash2 className="w-4 h-4 text-rose-500" />
+                    <Button size="sm" variant="ghost" className="h-9 w-9 text-rose-500 hover:bg-rose-50" onClick={() => del(v.id)}>
+                      <Trash2 className="w-4 h-4" />
                     </Button>
-                  </td>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table View (Visible on larger screens) */}
+          <div className="hidden sm:block bg-white border border-zinc-200 rounded-xl overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500">
+                <tr>
+                  <th className="px-4 py-3 text-left">Data</th>
+                  <th className="px-4 py-3 text-left">Produto</th>
+                  <th className="px-4 py-3 text-left">Qtd</th>
+                  <th className="px-4 py-3 text-left">Vendedor</th>
+                  <th className="px-4 py-3 text-left">Cliente</th>
+                  <th className="px-4 py-3 text-right">Total</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {list.map((v) => (
+                  <tr key={v.id} className="hover:bg-zinc-50/60">
+                    <td className="px-4 py-3">{fmtDT(v.data_venda)}</td>
+                    <td className="px-4 py-3 font-medium">{v.produto_nome}</td>
+                    <td className="px-4 py-3">{v.quantidade}</td>
+                    <td className="px-4 py-3">{v.colaborador_nome || "—"}</td>
+                    <td className="px-4 py-3">{v.cliente_nome || "—"}</td>
+                    <td className="px-4 py-3 text-right font-medium">{fmtBRL(v.valor_total)}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[v.status]}`}>
+                        {v.status === "pago" ? "Pago" : "Pendente"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right space-x-1">
+                      {v.status !== "pago" && (
+                        <Button size="sm" variant="ghost" onClick={() => nav(`/vendas-diretas/${v.id}/pagamento`)} data-testid={`pay-venda-${v.id}`}>
+                          <CreditCard className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" onClick={() => del(v.id)}>
+                        <Trash2 className="w-4 h-4 text-rose-500" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -224,9 +263,9 @@ export default function VendasDiretas() {
           <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
             Tem certeza que deseja excluir esta venda direta? O produto será retornado ao estoque e os pagamentos vinculados serão estornados. Esta ação não pode ser desfeita.
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>
-            <Button onClick={confirmDelete} className="bg-rose-500 hover:bg-rose-600 text-white">Confirmar Exclusão</Button>
+          <DialogFooter className="gap-2 flex flex-col sm:flex-row">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmDelete} className="bg-rose-500 hover:bg-rose-600 text-white w-full sm:w-auto">Confirmar Exclusão</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
