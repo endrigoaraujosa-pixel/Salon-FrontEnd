@@ -33,6 +33,7 @@ export default function VendaPagamento() {
   const [editFormOpen, setEditFormOpen] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
+  const [autoPayConfirmOpen, setAutoPayConfirmOpen] = useState(false);
 
   const load = () => http.get(`/vendas-diretas/${id}`).then((r) => setV(r.data));
   useEffect(() => { load(); }, [id]);
@@ -93,7 +94,7 @@ export default function VendaPagamento() {
     }
   };
 
-  const executePayment = async () => {
+  const executePayment = async (forceSaldo = false) => {
     for (const p of novos) {
       const valNum = Number(p.valor) || 0;
       if (valNum > saldo && p.forma_pagamento !== "dinheiro") {
@@ -106,8 +107,7 @@ export default function VendaPagamento() {
     
     if (validos.length === 0) {
       if (novos.length === 1) {
-        const labelForma = FORMAS.find(f => f.v === novos[0].forma_pagamento)?.l || novos[0].forma_pagamento;
-        if (window.confirm(`Deseja finalizar o pagamento total em ${labelForma.toUpperCase()}?`)) {
+        if (forceSaldo) {
           const valorAutomatico = String(saldo);
           const novosComSaldo = [{
             ...novos[0],
@@ -116,6 +116,7 @@ export default function VendaPagamento() {
           setNovos(novosComSaldo);
           validos = novosComSaldo;
         } else {
+          setAutoPayConfirmOpen(true);
           return;
         }
       } else {
@@ -387,6 +388,25 @@ export default function VendaPagamento() {
         description={pendingAction?.type === 'delete' ? "Informe usuário e senha do administrador/gerente com permissão para remover este pagamento" : "Digite sua senha para atualizar este pagamento"}
         requireCredentials={pendingAction?.type === 'delete'}
       />
+
+      {/* Dialog de confirmação de pagamento automático */}
+      <Dialog open={autoPayConfirmOpen} onOpenChange={setAutoPayConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar Pagamento Integral</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
+            Deseja finalizar o pagamento total de <b>{fmtBRL(saldo)}</b> em <b>{(FORMAS.find(f => f.v === novos[0]?.forma_pagamento)?.l || novos[0]?.forma_pagamento || "").toUpperCase()}</b>?
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setAutoPayConfirmOpen(false)}>Cancelar</Button>
+            <Button onClick={async () => {
+              setAutoPayConfirmOpen(false);
+              await executePayment(true);
+            }} className="bg-[#84A59D] hover:bg-[#6F9189] text-white">Confirmar Pagamento</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

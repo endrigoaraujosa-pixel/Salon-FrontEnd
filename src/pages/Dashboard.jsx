@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import http from "../api";
 import { Users, Calendar, DollarSign, TrendingUp, Package, ArrowUpRight } from "lucide-react";
+import { useAuth } from "../auth";
 
 const Stat = ({ icon: Icon, label, value, hint, tone = "default" }) => (
   <div className="bg-white border border-zinc-200 rounded-xl p-5 hover:shadow-sm transition-shadow" data-testid={`kpi-${label.toLowerCase().replace(/\s/g, '-')}`}>
@@ -21,6 +22,8 @@ const Stat = ({ icon: Icon, label, value, hint, tone = "default" }) => (
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [d, setD] = useState(null);
   
   useEffect(() => { 
@@ -51,11 +54,12 @@ export default function Dashboard() {
         <h1 className="font-display text-4xl font-semibold tracking-tight mt-1">Dashboard</h1>
       </header>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <Stat icon={DollarSign} label="Faturamento Mês" value={fmtBRL(d.faturamento_mes)} hint={`${d.atendimentos_mes || 0} atendimentos`} />
+      <div className={`grid grid-cols-2 ${isAdmin ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-4 mb-8`}>
+        {isAdmin && <Stat icon={DollarSign} label="Faturamento Mês" value={fmtBRL(d.faturamento_mes)} hint={`${d.atendimentos_mes || 0} atendimentos`} />}
         <Stat icon={Calendar} label="Agendamentos Hoje" value={d.agendamentos_hoje || 0} />
-        <Stat icon={TrendingUp} label="Ticket Médio" value={fmtBRL(d.ticket_medio)} />
-        <Stat icon={Users} label="Clientes" value={d.total_clientes || 0} hint={`${d.total_colaboradores || 0} profissionais`} />
+        {isAdmin && <Stat icon={TrendingUp} label="Ticket Médio" value={fmtBRL(d.ticket_medio)} />}
+        {!isAdmin && <Stat icon={TrendingUp} label="Atendimentos Mês" value={d.atendimentos_mes || 0} />}
+        <Stat icon={Users} label="Clientes" value={d.total_clientes || 0} hint={isAdmin ? `${d.total_colaboradores || 0} profissionais` : undefined} />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
@@ -74,8 +78,8 @@ export default function Dashboard() {
                     <span className="font-medium text-sm">{s.nome}</span>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-medium">{fmtBRL(s.total)}</div>
-                    <div className="text-xs text-zinc-400">{s.qtd}x</div>
+                    {isAdmin && <div className="text-sm font-medium">{fmtBRL(s.total)}</div>}
+                    <div className="text-xs text-zinc-400 font-medium">{s.qtd}x atendimentos</div>
                   </div>
                 </li>
               ))}

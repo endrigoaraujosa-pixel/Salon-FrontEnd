@@ -27,6 +27,8 @@ const CATEGORIAS = [
 export default function OutrasReceitas() {
   const [receitas, setReceitas] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({
     descricao: "",
@@ -68,17 +70,23 @@ export default function OutrasReceitas() {
       toast.error("Descrição obrigatória");
       return;
     }
-    if (!form.valor || Number(form.valor) <= 0) {
+    
+    // Sanitização e validação numérica para pt-BR (ex: "123,45" -> 123.45)
+    const valorS = String(form.valor || "").replace(",", ".");
+    const valorNum = parseFloat(valorS);
+    if (isNaN(valorNum) || valorNum <= 0) {
       toast.error("Valor deve ser maior que zero");
       return;
     }
 
+    const payload = { ...form, valor: valorNum };
+
     try {
       if (editingId) {
-        await http.put(`/outras-receitas/${editingId}`, form);
+        await http.put(`/outras-receitas/${editingId}`, payload);
         toast.success("Receita atualizada");
       } else {
-        await http.post("/outras-receitas", form);
+        await http.post("/outras-receitas", payload);
         toast.success("Receita criada");
       }
       setDialogOpen(false);
@@ -89,11 +97,18 @@ export default function OutrasReceitas() {
     }
   };
 
-  const deleteReceita = async (id) => {
-    if (!window.confirm("Tem certeza?")) return;
+  const deleteReceita = (id) => {
+    setDeletingId(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingId) return;
     try {
-      await http.delete(`/outras-receitas/${id}`);
+      await http.delete(`/outras-receitas/${deletingId}`);
       toast.success("Receita removida");
+      setDeleteConfirmOpen(false);
+      setDeletingId(null);
       load();
     } catch (e) {
       toast.error(e.response?.data?.detail || "Erro");
@@ -208,6 +223,22 @@ export default function OutrasReceitas() {
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
             <Button onClick={save} className="bg-[#84A59D] hover:bg-[#6F9189]">Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de confirmação de exclusão */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar exclusão</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
+            Tem certeza que deseja excluir esta receita? Esta ação não pode ser desfeita.
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmDelete} className="bg-rose-500 hover:bg-rose-600 text-white">Excluir</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

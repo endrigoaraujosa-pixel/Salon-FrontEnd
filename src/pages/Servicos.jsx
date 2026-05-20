@@ -18,6 +18,8 @@ export default function Servicos() {
   const [list, setList] = useState([]);
   const [produtos, setProdutos] = useState([]);
   const [open, setOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState(blank);
 
   const load = () => {
@@ -53,10 +55,22 @@ export default function Servicos() {
     }
   };
 
-  const del = async (id) => { 
-    if (!window.confirm("Excluir?")) return; 
-    await http.delete(`/servicos/${id}`); 
-    load(); 
+  const del = (id) => {
+    setDeletingId(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingId) return;
+    try {
+      await http.delete(`/servicos/${deletingId}`);
+      toast.success("Serviço removido");
+      setDeleteConfirmOpen(false);
+      setDeletingId(null);
+      load();
+    } catch (e) {
+      toast.error("Erro ao remover");
+    }
   };
 
   const edit = (s) => { 
@@ -216,6 +230,22 @@ export default function Servicos() {
           ))}
         </div>
       )}
+
+      {/* Dialog de confirmação de exclusão */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar exclusão</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
+            Tem certeza que deseja excluir este serviço? Esta ação não pode ser desfeita.
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmDelete} className="bg-rose-500 hover:bg-rose-600 text-white">Excluir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

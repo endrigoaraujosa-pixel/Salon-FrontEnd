@@ -17,6 +17,9 @@ export default function Usuarios() {
   const { user: me } = useAuth();
   const [list, setList] = useState([]);
   const [open, setOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [deletingEmail, setDeletingEmail] = useState("");
   const [form, setForm] = useState(blank);
 
   const load = () => http.get("/users").then((r) => setList(r.data)).catch((e) => toast.error(e.response?.data?.detail || "Erro ao carregar"));
@@ -56,11 +59,20 @@ export default function Usuarios() {
     }
   };
 
-  const del = async (id, email) => {
-    if (!window.confirm(`Excluir usuário ${email}?`)) return;
+  const del = (id, email) => {
+    setDeletingId(id);
+    setDeletingEmail(email);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingId) return;
     try { 
-      await http.delete(`/users/${id}`); 
-      toast.success("Removido"); 
+      await http.delete(`/users/${deletingId}`); 
+      toast.success("Removido com sucesso"); 
+      setDeleteConfirmOpen(false);
+      setDeletingId(null);
+      setDeletingEmail("");
       load(); 
     }
     catch (e) { 
@@ -163,6 +175,22 @@ export default function Usuarios() {
           </table>
         </div>
       )}
+
+      {/* Dialog de confirmação de exclusão */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar exclusão</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
+            Tem certeza que deseja excluir o usuário <b>{deletingEmail}</b>? Esta ação removerá permanentemente o acesso dele ao sistema.
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmDelete} className="bg-rose-500 hover:bg-rose-600 text-white">Excluir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

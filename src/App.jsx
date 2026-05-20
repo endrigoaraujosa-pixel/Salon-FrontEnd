@@ -30,6 +30,13 @@ const Protected = ({ children }) => {
   return children;
 };
 
+const AdminRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Carregando...</div>;
+  if (!user || user.role !== "admin") return <Navigate to="/" replace />;
+  return children;
+};
+
 function App() {
   return (
     <ThemeProvider>
@@ -49,12 +56,12 @@ function App() {
               <Route path="/agendamentos/:id/pagamento" element={<Pagamento />} />
               <Route path="/vendas-diretas" element={<VendasDiretas />} />
               <Route path="/vendas-diretas/:id/pagamento" element={<VendaPagamento />} />
-              <Route path="/despesas" element={<Despesas />} />
-              <Route path="/outras-receitas" element={<OutrasReceitas />} />
-              <Route path="/comissoes" element={<Comissoes />} />
-              <Route path="/relatorios" element={<Relatorios />} />
-              <Route path="/configuracoes/taxas-cartao" element={<ConfiguracoesTaxas />} />
-              <Route path="/usuarios" element={<Usuarios />} />
+              <Route path="/despesas" element={<AdminRoute><Despesas /></AdminRoute>} />
+              <Route path="/outras-receitas" element={<AdminRoute><OutrasReceitas /></AdminRoute>} />
+              <Route path="/comissoes" element={<AdminRoute><Comissoes /></AdminRoute>} />
+              <Route path="/relatorios" element={<AdminRoute><Relatorios /></AdminRoute>} />
+              <Route path="/configuracoes/taxas-cartao" element={<AdminRoute><ConfiguracoesTaxas /></AdminRoute>} />
+              <Route path="/usuarios" element={<AdminRoute><Usuarios /></AdminRoute>} />
             </Route>
           </Routes>
         </BrowserRouter>

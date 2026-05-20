@@ -14,6 +14,8 @@ const blank = { nome: "", cargo: "", telefone: "", comissao_principal: 40, comis
 export default function Colaboradores() {
   const [list, setList] = useState([]);
   const [open, setOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState(blank);
   const load = () => http.get("/colaboradores").then((r) => setList(r.data));
   useEffect(() => { load(); }, []);
@@ -25,7 +27,25 @@ export default function Colaboradores() {
       toast.success("Salvo"); setOpen(false); setForm(blank); load();
     } catch { toast.error("Erro ao salvar"); }
   };
-  const del = async (id) => { if (!window.confirm("Excluir?")) return; await http.delete(`/colaboradores/${id}`); load(); };
+  
+  const del = (id) => {
+    setDeletingId(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingId) return;
+    try {
+      await http.delete(`/colaboradores/${deletingId}`);
+      toast.success("Colaborador removido");
+      setDeleteConfirmOpen(false);
+      setDeletingId(null);
+      load();
+    } catch (e) {
+      toast.error("Erro ao remover");
+    }
+  };
+
   const edit = (c) => { setForm(c); setOpen(true); };
 
   return (
@@ -75,6 +95,22 @@ export default function Colaboradores() {
           ))}
         </div>
       )}
+
+      {/* Dialog de confirmação de exclusão */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar exclusão</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
+            Tem certeza que deseja excluir este colaborador? Esta ação não pode ser desfeita e pode afetar agendas.
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmDelete} className="bg-rose-500 hover:bg-rose-600 text-white">Excluir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

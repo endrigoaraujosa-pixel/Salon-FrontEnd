@@ -32,6 +32,8 @@ const CATEGORIAS = [
 export default function Despesas() {
   const [despesas, setDespesas] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [tab, setTab] = useState("fixo");
   const [form, setForm] = useState({
@@ -80,17 +82,26 @@ export default function Despesas() {
       toast.error("Descrição obrigatória");
       return;
     }
-    if (!form.valor || Number(form.valor) <= 0) {
+    
+    const valorStr = String(form.valor).replace(",", ".");
+    const valorNum = parseFloat(valorStr);
+    
+    if (isNaN(valorNum) || valorNum <= 0) {
       toast.error("Valor deve ser maior que zero");
       return;
     }
 
+    const payload = {
+      ...form,
+      valor: valorNum
+    };
+
     try {
       if (editingId) {
-        await http.put(`/despesas/${editingId}`, form);
+        await http.put(`/despesas/${editingId}`, payload);
         toast.success("Despesa atualizada");
       } else {
-        await http.post("/despesas", form);
+        await http.post("/despesas", payload);
         toast.success("Despesa criada");
       }
       setDialogOpen(false);
@@ -101,11 +112,18 @@ export default function Despesas() {
     }
   };
 
-  const deleteDespesa = async (id) => {
-    if (!window.confirm("Tem certeza?")) return;
+  const deleteDespesa = (id) => {
+    setDeletingId(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingId) return;
     try {
-      await http.delete(`/despesas/${id}`);
+      await http.delete(`/despesas/${deletingId}`);
       toast.success("Despesa removida");
+      setDeleteConfirmOpen(false);
+      setDeletingId(null);
       load();
     } catch (e) {
       toast.error(e.response?.data?.detail || "Erro");
@@ -113,8 +131,8 @@ export default function Despesas() {
   };
 
   const filteredDespesas = despesas.filter(d => d.tipo === tab);
-  const totalDespesas = filteredDespesas.reduce((sum, d) => sum + (d.valor || 0), 0);
-  const totalPago = filteredDespesas.filter(d => d.pago).reduce((sum, d) => sum + (d.valor || 0), 0);
+  const totalDespesas = filteredDespesas.reduce((sum, d) => sum + (Number(d.valor) || 0), 0);
+  const totalPago = filteredDespesas.filter(d => d.pago).reduce((sum, d) => sum + (Number(d.valor) || 0), 0);
   const totalAberto = totalDespesas - totalPago;
 
   return (
@@ -166,7 +184,7 @@ export default function Despesas() {
                 <tr key={d.id}>
                   <td className="px-4 py-3 font-medium text-zinc-700">{d.descricao}</td>
                   <td className="px-4 py-3 text-zinc-600">{d.categoria || "-"}</td>
-                  <td className="px-4 py-3 text-right font-display font-semibold">{fmtBRL(d.valor)}</td>
+                  <td className="px-4 py-3 text-right font-display font-semibold">{fmtBRL(Number(d.valor))}</td>
                   <td className="px-4 py-3 text-zinc-600">{fmtDT(d.data_vencimento)}</td>
                   <td className="px-4 py-3 text-center">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${d.pago ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
@@ -227,9 +245,10 @@ export default function Despesas() {
             </div>
             <div>
               <Label>Categoria</Label>
-              <Select value={form.categoria} onValueChange={(v) => setForm({ ...form, categoria: v })}>
+              <Select value={form.categoria || "Nenhuma"} onValueChange={(v) => setForm({ ...form, categoria: v === "Nenhuma" ? "" : v })}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="Nenhuma">Nenhuma</SelectItem>
                   {CATEGORIAS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -271,6 +290,22 @@ export default function Despesas() {
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
             <Button onClick={save} className="bg-[#84A59D] hover:bg-[#6F9189]">Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de confirmação de exclusão */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar exclusão</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
+            Tem certeza que deseja excluir esta despesa? Esta ação não pode ser desfeita.
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmDelete} className="bg-rose-500 hover:bg-rose-600 text-white">Excluir</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

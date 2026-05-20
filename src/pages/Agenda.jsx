@@ -58,6 +58,8 @@ export default function Agenda() {
   const [profsDialogOpen, setProfsDialogOpen] = useState(false);
   const [missingProfs, setMissingProfs] = useState([]);
   const [pendingAgendamento, setPendingAgendamento] = useState(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const nav = useNavigate();
 
   const [openNewClient, setOpenNewClient] = useState(false);
@@ -257,15 +259,22 @@ export default function Agenda() {
     }
   };
 
-  const del = async (id) => {
+  const del = (id) => {
     if (!me?.pode_excluir_agendamento) {
       toast.error("Você não tem permissão para excluir agendamentos.");
       return;
     }
-    if (!window.confirm("Excluir agendamento?")) return;
+    setDeletingId(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingId) return;
     try {
-      await http.delete(`/agendamentos/${id}`);
+      await http.delete(`/agendamentos/${deletingId}`);
       toast.success("Agendamento excluído");
+      setDeleteConfirmOpen(false);
+      setDeletingId(null);
       loadDay(data);
       loadMonth(monthCursor.y, monthCursor.m);
     } catch (e) {
@@ -930,6 +939,22 @@ export default function Agenda() {
             <Button onClick={confirmAndConclude} className="bg-[#84A59D] hover:bg-[#6F9189]">
               Confirmar e Concluir
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de confirmação de exclusão */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar exclusão de agendamento</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
+            Tem certeza que deseja excluir este agendamento? Esta ação removerá o agendamento permanentemente e estornará qualquer produto retornado ao estoque.
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmDelete} className="bg-rose-500 hover:bg-rose-600 text-white">Excluir</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

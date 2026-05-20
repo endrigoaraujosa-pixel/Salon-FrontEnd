@@ -24,6 +24,8 @@ export default function VendasDiretas() {
   const [colaboradores, setColaboradores] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [open, setOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState({ produto_id: "", quantidade: 1, colaborador_id: "", cliente_id: "" });
   const nav = useNavigate();
 
@@ -72,10 +74,22 @@ export default function VendasDiretas() {
     }
   };
 
-  const del = async (id) => {
-    if (!window.confirm("Excluir venda e devolver ao estoque?")) return;
-    await http.delete(`/vendas-diretas/${id}`);
-    load();
+  const del = (id) => {
+    setDeletingId(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingId) return;
+    try {
+      await http.delete(`/vendas-diretas/${deletingId}`);
+      toast.success("Venda excluída e produto retornado ao estoque");
+      setDeleteConfirmOpen(false);
+      setDeletingId(null);
+      load();
+    } catch (e) {
+      toast.error("Erro ao excluir venda");
+    }
   };
 
   return (
@@ -200,6 +214,22 @@ export default function VendasDiretas() {
           </table>
         </div>
       )}
+
+      {/* Dialog de confirmação de exclusão */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar exclusão de venda</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
+            Tem certeza que deseja excluir esta venda direta? O produto será retornado ao estoque e os pagamentos vinculados serão estornados. Esta ação não pode ser desfeita.
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmDelete} className="bg-rose-500 hover:bg-rose-600 text-white">Confirmar Exclusão</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
