@@ -123,3 +123,178 @@ h1, h2, h3, h4, h5, .font-display {
 .dark ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));
 }
+
+/* Custom Dark Theme Global Overrides for Maximum Legibility & Contrast */
+.dark .bg-white {
+  background-color: hsl(var(--card)) !important;
+}
+
+.dark .border-zinc-200 {
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .border-dashed {
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .divide-zinc-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .divide-zinc-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .bg-zinc-50 {
+  background-color: hsl(var(--muted)) !important;
+}
+
+.dark .hover\:bg-zinc-50\/60:hover {
+  background-color: hsl(var(--muted)) !important;
+}
+
+.dark .text-zinc-600 {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.dark .text-zinc-500 {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.dark .text-zinc-400 {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.dark .text-\[\#3A4F4A\] {
+  color: #EAF0EE !important;
+}
+
+.dark .bg-\[\#EAF0EE\] {
+  background-color: #3A4F4A !important;
+}
+
+.dark .text-zinc-700 {
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .bg-zinc-100 {
+  background-color: hsl(var(--muted)) !important;
+}
+
+.dark .text-zinc-800 {
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .hover\:shadow-md:hover {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3) !important;
+}
+
+/* Agenda page specific dark theme style overrides */
+.dark .agenda-card {
+  background-color: hsl(var(--card)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .agenda-time-duration {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.dark .agenda-services {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.dark .agenda-professionals {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.dark .agenda-price-value {
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .month-grid {
+  background-color: hsl(var(--card)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .month-day:hover {
+  background-color: hsl(var(--muted)) !important;
+}
+
+.dark .month-day-today {
+  background-color: #3A4F4A !important;
+  border-color: #84A59D !important;
+}
+
+.dark .weekday-header {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.dark .view-toggle {
+  background-color: hsl(var(--card)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .view-toggle-btn {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.dark .view-toggle-btn-active {
+  background-color: #3A4F4A !important;
+  color: #EAF0EE !important;
+}
+
+.dark .btn-outline {
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .btn-outline:hover {
+  background-color: hsl(var(--muted)) !important;
+}
+
+.dark .btn-ghost:hover {
+  background-color: hsl(var(--muted)) !important;
+}
+
+.dark .dialog-content {
+  background-color: hsl(var(--card)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .form-input, .dark .form-select {
+  border-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .services-list {
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .service-item:hover {
+  background-color: hsl(var(--muted)) !important;
+}
+
+.dark .service-duration {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.dark .total-box {
+  background-color: #3A4F4A !important;
+}
+
+.dark .total-label {
+  color: #EAF0EE !important;
+}
+
+.dark .total-value {
+  color: #EAF0EE !important;
+}
+
+.dark .empty-state {
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .empty-state-hint {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+

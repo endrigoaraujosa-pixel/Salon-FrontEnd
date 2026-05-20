@@ -6,12 +6,17 @@ import { Label } from "./ui/label";
 import { AlertCircle } from "lucide-react";
 import { toast } from "./ui/sonner";
 
-export default function PasswordConfirmDialog({ open, onOpenChange, onConfirm, title = "Confirmar ação", description = "Digite sua senha para continuar" }) {
+export default function PasswordConfirmDialog({ open, onOpenChange, onConfirm, title = "Confirmar ação", description = "Digite sua senha para continuar", requireCredentials = false }) {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async () => {
+    if (requireCredentials && !email.trim()) {
+      setError("Usuário/E-mail obrigatório");
+      return;
+    }
     if (!password.trim()) {
       setError("Senha obrigatória");
       return;
@@ -19,7 +24,12 @@ export default function PasswordConfirmDialog({ open, onOpenChange, onConfirm, t
     setLoading(true);
     setError("");
     try {
-      await onConfirm(password);
+      if (requireCredentials) {
+        await onConfirm(email, password);
+      } else {
+        await onConfirm(password);
+      }
+      setEmail("");
       setPassword("");
       onOpenChange(false);
     } catch (err) {
@@ -32,6 +42,7 @@ export default function PasswordConfirmDialog({ open, onOpenChange, onConfirm, t
 
   const handleOpenChange = (newOpen) => {
     if (!newOpen) {
+      setEmail("");
       setPassword("");
       setError("");
     }
@@ -46,6 +57,25 @@ export default function PasswordConfirmDialog({ open, onOpenChange, onConfirm, t
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-zinc-600">{description}</p>
+          
+          {requireCredentials && (
+            <div>
+              <Label htmlFor="email">Usuário (E-mail)</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setError("");
+                }}
+                placeholder="Ex: gerente@salon.com"
+                disabled={loading}
+                autoFocus
+              />
+            </div>
+          )}
+
           <div>
             <Label htmlFor="password">Senha</Label>
             <Input
@@ -59,7 +89,7 @@ export default function PasswordConfirmDialog({ open, onOpenChange, onConfirm, t
               onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
               placeholder="Digite sua senha"
               disabled={loading}
-              autoFocus
+              autoFocus={!requireCredentials}
             />
           </div>
           {error && (

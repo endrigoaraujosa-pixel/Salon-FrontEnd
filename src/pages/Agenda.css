@@ -239,12 +239,12 @@
 }
 
 .dialog-content {
-  max-width: 32rem;
-  width: 90%;
+  max-width: 48rem !important;
+  width: 95% !important;
   background-color: white;
   border-radius: 0.75rem;
-  padding: 1.5rem;
-  max-height: 80vh;
+  padding: 1.75rem;
+  max-height: 90vh;
   overflow-y: auto;
 }
 
@@ -258,9 +258,9 @@
 }
 
 .dialog-body {
-  max-height: 60vh;
+  max-height: 75vh;
   overflow-y: auto;
-  padding-right: 0.25rem;
+  padding-right: 0.5rem;
 }
 
 .dialog-footer {
@@ -303,7 +303,7 @@
   border: 1px solid #e4e4e7;
   border-radius: 0.5rem;
   padding: 0.5rem;
-  max-height: 10rem;
+  max-height: 25rem;
   overflow-y: auto;
 }
 

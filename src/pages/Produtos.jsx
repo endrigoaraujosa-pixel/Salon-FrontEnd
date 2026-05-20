@@ -76,7 +76,7 @@ export default function Produtos() {
       </Dialog>
 
       {list.length === 0 ? <EmptyState icon={Package} title="Nenhum produto" hint="Adicione produtos para controlar seu estoque." /> : (
-        <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+        <div className="bg-white border border-zinc-200 rounded-xl overflow-x-auto shadow-sm">
           <table className="w-full text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500">
               <tr>

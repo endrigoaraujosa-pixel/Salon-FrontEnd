@@ -33,7 +33,7 @@ export default function Despesas() {
   const [despesas, setDespesas] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [tab, setTab] = useState("fixas");
+  const [tab, setTab] = useState("fixo");
   const [form, setForm] = useState({
     descricao: "",
     valor: "",
@@ -123,12 +123,12 @@ export default function Despesas() {
 
       <Tabs value={tab} onValueChange={setTab} className="mb-6">
         <TabsList>
-          <TabsTrigger value="fixas">Despesas Fixas</TabsTrigger>
+          <TabsTrigger value="fixo">Despesas Fixas</TabsTrigger>
           <TabsTrigger value="variavel">Despesas Variáveis</TabsTrigger>
         </TabsList>
       </Tabs>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white border border-zinc-200 rounded-xl p-5">
           <div className="text-xs uppercase tracking-wider text-zinc-400">Total</div>
           <div className="font-display text-3xl font-semibold mt-1">{fmtBRL(totalDespesas)}</div>
@@ -143,11 +143,11 @@ export default function Despesas() {
         </div>
       </div>
 
-      <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
+      <div className="bg-white border border-zinc-200 rounded-xl overflow-x-auto">
         {filteredDespesas.length === 0 ? (
           <div className="p-12 text-center text-zinc-400">
             <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            Nenhuma despesa {tab === "fixas" ? "fixa" : "variável"}
+            Nenhuma despesa {tab === "fixo" ? "fixa" : "variável"}
           </div>
         ) : (
           <table className="w-full text-sm">

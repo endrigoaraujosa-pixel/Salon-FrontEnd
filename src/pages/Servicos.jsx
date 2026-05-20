@@ -30,11 +30,17 @@ export default function Servicos() {
   const save = async () => {
     if (!form.nome) return toast.error("Nome é obrigatório");
     try {
+      let pvs = form.produtos_vinculados;
+      if (typeof pvs === "string") {
+        try { pvs = JSON.parse(pvs); } catch { pvs = []; }
+      }
+      if (!Array.isArray(pvs)) pvs = [];
+
       const p = { 
         ...form, 
         valor: Number(form.valor), 
         duracao_minutos: Number(form.duracao_minutos),
-        produtos_vinculados: form.produtos_vinculados.map(pv => ({
+        produtos_vinculados: pvs.map(pv => ({
           produto_id: pv.produto_id,
           quantidade: Number(pv.quantidade)
         }))
@@ -54,32 +60,58 @@ export default function Servicos() {
   };
 
   const edit = (s) => { 
+    let pvs = s.produtos_vinculados;
+    if (typeof pvs === "string") {
+      try {
+        pvs = JSON.parse(pvs);
+      } catch (e) {
+        pvs = [];
+      }
+    }
     setForm({
       ...s,
-      produtos_vinculados: s.produtos_vinculados || []
+      produtos_vinculados: pvs || []
     }); 
     setOpen(true); 
   };
 
   const addProduto = (pid) => {
-    if (form.produtos_vinculados.some(p => p.produto_id === pid)) return toast.error("Produto já adicionado");
+    let pvs = form.produtos_vinculados;
+    if (typeof pvs === "string") {
+      try { pvs = JSON.parse(pvs); } catch { pvs = []; }
+    }
+    if (!Array.isArray(pvs)) pvs = [];
+
+    if (pvs.some(p => p.produto_id === pid)) return toast.error("Produto já adicionado");
     setForm({
       ...form,
-      produtos_vinculados: [...form.produtos_vinculados, { produto_id: pid, quantidade: 1 }]
+      produtos_vinculados: [...pvs, { produto_id: pid, quantidade: 1 }]
     });
   };
 
   const removeProduto = (pid) => {
+    let pvs = form.produtos_vinculados;
+    if (typeof pvs === "string") {
+      try { pvs = JSON.parse(pvs); } catch { pvs = []; }
+    }
+    if (!Array.isArray(pvs)) pvs = [];
+
     setForm({
       ...form,
-      produtos_vinculados: form.produtos_vinculados.filter(p => p.produto_id !== pid)
+      produtos_vinculados: pvs.filter(p => p.produto_id !== pid)
     });
   };
 
   const updateProdQtde = (pid, qtde) => {
+    let pvs = form.produtos_vinculados;
+    if (typeof pvs === "string") {
+      try { pvs = JSON.parse(pvs); } catch { pvs = []; }
+    }
+    if (!Array.isArray(pvs)) pvs = [];
+
     setForm({
       ...form,
-      produtos_vinculados: form.produtos_vinculados.map(p => p.produto_id === pid ? { ...p, quantidade: qtde } : p)
+      produtos_vinculados: pvs.map(p => p.produto_id === pid ? { ...p, quantidade: qtde } : p)
     });
   };
 
@@ -112,21 +144,35 @@ export default function Servicos() {
               </div>
               
               <div className="space-y-2">
-                {form.produtos_vinculados.map((pv) => {
-                  const p = produtos.find(x => x.id === pv.produto_id);
-                  return (
-                    <div key={pv.produto_id} className="flex items-center gap-3 p-2 bg-zinc-50 border rounded-lg">
-                      <Package className="w-4 h-4 text-zinc-400" />
-                      <div className="flex-1 text-sm font-medium">{p?.nome}</div>
-                      <div className="flex items-center gap-2">
-                        <Label className="text-xs">Qtde:</Label>
-                        <Input type="number" step="0.01" className="w-20 h-8 text-xs" value={pv.quantidade} onChange={(e) => updateProdQtde(pv.produto_id, e.target.value)} />
+                {(() => {
+                  let pvs = form.produtos_vinculados;
+                  if (typeof pvs === "string") {
+                    try { pvs = JSON.parse(pvs); } catch { pvs = []; }
+                  }
+                  if (!Array.isArray(pvs)) pvs = [];
+
+                  return pvs.map((pv) => {
+                    const p = produtos.find(x => x.id === pv.produto_id);
+                    return (
+                      <div key={pv.produto_id} className="flex items-center gap-3 p-2 bg-zinc-50 border rounded-lg">
+                        <Package className="w-4 h-4 text-zinc-400" />
+                        <div className="flex-1 text-sm font-medium">{p?.nome}</div>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs">Qtde:</Label>
+                          <Input type="number" step="0.01" className="w-20 h-8 text-xs" value={pv.quantidade} onChange={(e) => updateProdQtde(pv.produto_id, e.target.value)} />
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500" onClick={() => removeProduto(pv.produto_id)}><X className="w-4 h-4" /></Button>
                       </div>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500" onClick={() => removeProduto(pv.produto_id)}><X className="w-4 h-4" /></Button>
-                    </div>
-                  );
-                })}
-                {form.produtos_vinculados.length === 0 && (
+                    );
+                  });
+                })()}
+                {(() => {
+                  let pvs = form.produtos_vinculados;
+                  if (typeof pvs === "string") {
+                    try { pvs = JSON.parse(pvs); } catch { pvs = []; }
+                  }
+                  return !pvs || pvs.length === 0;
+                })() && (
                   <div className="text-center py-4 border-2 border-dashed rounded-lg text-zinc-400 text-sm">Nenhum produto vinculado</div>
                 )}
               </div>
@@ -147,14 +193,20 @@ export default function Servicos() {
                 <div className="text-xl font-display font-semibold text-[#3A4F4A]">{fmtBRL(s.valor)}</div>
               </div>
               <div className="flex items-center gap-1 mt-1 text-sm text-zinc-500"><Clock className="w-3 h-3" /> {s.duracao_minutos} min</div>
-              {s.produtos_vinculados?.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {s.produtos_vinculados.map((pv, i) => {
-                    const p = produtos.find(x => x.id === pv.produto_id);
-                    return <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"><Package className="w-3 h-3 mr-1" /> {p?.nome} ({pv.quantidade})</span>
-                  })}
-                </div>
-              )}
+              {(() => {
+                let pvs = s.produtos_vinculados;
+                if (typeof pvs === "string") {
+                  try { pvs = JSON.parse(pvs); } catch { pvs = []; }
+                }
+                return Array.isArray(pvs) && pvs.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {pvs.map((pv, i) => {
+                      const p = produtos.find(x => x.id === pv.produto_id);
+                      return <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"><Package className="w-3 h-3 mr-1" /> {p?.nome} ({pv.quantidade})</span>
+                    })}
+                  </div>
+                ) : null;
+              })()}
               {s.descricao && <p className="text-sm text-zinc-600 mt-3 line-clamp-2">{s.descricao}</p>}
               <div className="mt-4 pt-3 border-t border-zinc-100 flex gap-2">
                 <Button size="sm" variant="outline" onClick={() => edit(s)}><Edit2 className="w-3 h-3 mr-1" /> Editar</Button>

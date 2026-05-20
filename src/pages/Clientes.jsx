@@ -71,7 +71,7 @@ export default function Clientes() {
       {filtered.length === 0 ? (
         <EmptyState icon={Users} title="Nenhum cliente" hint="Cadastre seu primeiro cliente para começar." />
       ) : (
-        <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
+        <div className="bg-white border border-zinc-200 rounded-xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500">
               <tr><th className="px-4 py-3 text-left">Nome</th><th className="px-4 py-3 text-left">Telefone</th><th className="px-4 py-3 text-left">Email</th><th className="px-4 py-3"></th></tr>

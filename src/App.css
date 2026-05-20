@@ -1,1 +1,15 @@
 .App { min-height: 100vh; }
+
+/* Responsive Helper Rules for Salon Studio Layout */
+
+@media (min-width: 768px) {
+  .mobile-only-header {
+    display: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .desktop-only-sidebar {
+    display: none !important;
+  }
+}

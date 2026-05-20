@@ -11,7 +11,7 @@ import { UsersRound, Plus, Edit2, Trash2, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../auth";
 
-const blank = { name: "", email: "", senha: "", role: "funcionario", ativo: true };
+const blank = { name: "", email: "", senha: "", role: "funcionario", ativo: true, pode_alterar_concluido: false, pode_excluir_agendamento: false, pode_excluir_pagamento: false };
 
 export default function Usuarios() {
   const { user: me } = useAuth();
@@ -26,7 +26,15 @@ export default function Usuarios() {
     if (!form.name || !form.email) { toast.error("Nome e email obrigatórios"); return; }
     if (!form.id && !form.senha) { toast.error("Senha obrigatória"); return; }
     try {
-      const payload = { name: form.name, email: form.email, role: form.role, ativo: form.ativo };
+      const payload = { 
+        name: form.name, 
+        email: form.email, 
+        role: form.role, 
+        ativo: form.ativo,
+        pode_alterar_concluido: form.pode_alterar_concluido,
+        pode_excluir_agendamento: form.pode_excluir_agendamento,
+        pode_excluir_pagamento: form.pode_excluir_pagamento
+      };
       
       // Só enviar senha se foi preenchida
       if (form.senha && form.senha.trim()) {
@@ -101,6 +109,21 @@ export default function Usuarios() {
                 <Switch checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: v })} />
                 <Label>Ativo</Label>
               </div>
+              <div className="flex flex-col gap-2 bg-[#F8FBFB] dark:bg-[#1a2322] p-3 rounded-lg border border-[#E8EFEF] dark:border-[#2e3e3b] mt-2">
+                <div className="text-[11px] font-semibold text-[#3A4F4A] uppercase tracking-wider mb-1">Permissões Especiais</div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={form.pode_alterar_concluido} onCheckedChange={(v) => setForm({ ...form, pode_alterar_concluido: v })} />
+                  <Label className="text-xs">Pode alterar/pagar agendamentos concluídos</Label>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <Switch checked={form.pode_excluir_agendamento} onCheckedChange={(v) => setForm({ ...form, pode_excluir_agendamento: v })} />
+                  <Label className="text-xs">Pode excluir agendamentos</Label>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <Switch checked={form.pode_excluir_pagamento} onCheckedChange={(v) => setForm({ ...form, pode_excluir_pagamento: v })} />
+                  <Label className="text-xs">Permitir exclusão de pagamento</Label>
+                </div>
+              </div>
             </div>
             <DialogFooter>
               <Button data-testid="save-user-btn" onClick={save} className="bg-[#84A59D] hover:bg-[#6F9189]">Salvar</Button>
@@ -110,7 +133,7 @@ export default function Usuarios() {
       } />
 
       {list.length === 0 ? <EmptyState icon={UsersRound} title="Nenhum usuário" hint="Cadastre usuários para dar acesso ao sistema." /> : (
-        <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
+        <div className="bg-white border border-zinc-200 rounded-xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500">
               <tr><th className="px-4 py-3 text-left">Nome</th><th className="px-4 py-3 text-left">Email</th><th className="px-4 py-3 text-left">Perfil</th><th className="px-4 py-3 text-left">Status</th><th></th></tr>
