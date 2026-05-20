@@ -322,32 +322,48 @@ export default function Pagamento() {
   };
 
   return (
-    <div className="p-6 lg:p-8 fade-in max-w-4xl">
+    <div className="p-4 sm:p-6 lg:p-8 fade-in max-w-4xl w-full overflow-x-hidden">
       <Button variant="ghost" onClick={() => nav(-1)} className="mb-4"><ArrowLeft className="w-4 h-4 mr-1" /> Voltar</Button>
       <div className="text-xs uppercase tracking-wider text-zinc-400">Pagamento</div>
-      <h1 className="font-display text-4xl font-semibold tracking-tight mt-1 flex items-center gap-3">
+      <h1 className="font-display text-2xl sm:text-4xl font-semibold tracking-tight mt-1 flex flex-wrap items-center gap-2 sm:gap-3">
         {ag.cliente_nome}
         {ag.numero && (
-          <span className="text-sm font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] px-2.5 py-1 rounded-full">
+          <span className="text-xs sm:text-sm font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] px-2.5 py-1 rounded-full">
             Atendimento #{String(ag.numero).padStart(4, "0")}
           </span>
         )}
       </h1>
       <div className="text-sm text-zinc-500 mt-1">{fmtDT(ag.data_hora)} · <StatusBadge status={ag.status} /></div>
 
-      <div className="grid grid-cols-3 gap-4 my-6">
-        <div className="bg-white border border-zinc-200 rounded-xl p-5"><div className="text-xs uppercase tracking-wider text-zinc-400">Total</div><div className="font-display text-3xl font-semibold mt-1">{fmtBRL(ag.valor_total)}</div></div>
-        <div className="bg-white border border-zinc-200 rounded-xl p-5"><div className="text-xs uppercase tracking-wider text-zinc-400">Pago</div><div className="font-display text-3xl font-semibold mt-1 text-emerald-600">{fmtBRL(ag.total_pago)}</div></div>
-        <div className="bg-white border border-zinc-200 rounded-xl p-5"><div className="text-xs uppercase tracking-wider text-zinc-400">Saldo</div><div className={`font-display text-3xl font-semibold mt-1 ${saldo > 0.01 ? "text-amber-600" : "text-emerald-600"}`}>{fmtBRL(saldo)}</div></div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 my-6">
+        <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-5">
+          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400">Total</div>
+          <div className="font-display text-2xl sm:text-3xl font-semibold mt-1">{fmtBRL(ag.valor_total)}</div>
+        </div>
+        <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-5">
+          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400">Pago</div>
+          <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-emerald-600">{fmtBRL(ag.total_pago)}</div>
+        </div>
+        <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-5">
+          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400">Saldo</div>
+          <div className={`font-display text-2xl sm:text-3xl font-semibold mt-1 ${saldo > 0.01 ? "text-amber-600" : "text-emerald-600"}`}>{fmtBRL(saldo)}</div>
+        </div>
       </div>
 
-      <div className="bg-white border border-zinc-200 rounded-xl p-6 mb-6">
-        <h3 className="font-display text-lg font-medium mb-4">Registrar pagamento</h3>
-        <div className="space-y-3">
+      <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-6 mb-6">
+        <h3 className="font-display text-base sm:text-lg font-medium mb-4">Registrar pagamento</h3>
+        <div className="space-y-4">
           {novos.map((p, i) => (
-            <div key={i} className="grid grid-cols-12 gap-2 items-end">
+            <div key={i} className="border border-zinc-150 sm:border-0 rounded-xl p-4 sm:p-0 bg-zinc-50/50 sm:bg-transparent space-y-3 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end relative">
+              {novos.length > 1 && (
+                <div className="sm:hidden absolute top-2 right-2">
+                  <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:bg-rose-50" onClick={() => removeLine(i)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
               <div className="col-span-3">
-                <Label>Valor</Label>
+                <Label className="text-xs sm:text-sm">Valor</Label>
                 <Input 
                   data-testid={`pay-valor-${i}`} 
                   type="number" 
@@ -355,24 +371,32 @@ export default function Pagamento() {
                   value={p.valor} 
                   onChange={(e) => updateLine(i, "valor", e.target.value)}
                   placeholder={p.forma_pagamento === "dinheiro" && saldo > 0 ? `Troco se > ${fmtBRL(saldo)}` : "Digite o valor"}
+                  className="bg-white sm:bg-transparent mt-1"
                 />
               </div>
               <div className="col-span-4">
-                <Label>Forma</Label>
+                <Label className="text-xs sm:text-sm">Forma</Label>
                 <Select value={p.forma_pagamento} onValueChange={(v) => updateLine(i, "forma_pagamento", v)}>
-                  <SelectTrigger data-testid={`pay-forma-${i}`}><SelectValue /></SelectTrigger>
+                  <SelectTrigger data-testid={`pay-forma-${i}`} className="bg-white sm:bg-transparent mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>{FORMAS.map((f) => <SelectItem key={f.v} value={f.v}>{f.l}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="col-span-4">
-                <Label>Observação</Label>
+                <Label className="text-xs sm:text-sm">Observação</Label>
                 <Input 
                   value={p.observacao} 
                   onChange={(e) => updateLine(i, "observacao", e.target.value)}
                   placeholder={p.forma_pagamento === "dinheiro" && Number(p.valor) > saldo ? `Troco: ${fmtBRL(Number(p.valor) - saldo)}` : ""}
+                  className="bg-white sm:bg-transparent mt-1"
                 />
               </div>
-              <div className="col-span-1">{novos.length > 1 && <Button size="icon" variant="ghost" onClick={() => removeLine(i)}><Trash2 className="w-4 h-4 text-rose-500" /></Button>}</div>
+              <div className="hidden sm:block col-span-1 text-center">
+                {novos.length > 1 && (
+                  <Button size="icon" variant="ghost" onClick={() => removeLine(i)}>
+                    <Trash2 className="w-4 h-4 text-rose-500" />
+                  </Button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -389,23 +413,56 @@ export default function Pagamento() {
           </div>
         )}
         
-        <div className="flex items-center justify-between mt-4">
-          <Button variant="outline" size="sm" onClick={addLine}><Plus className="w-3 h-3 mr-1" /> Adicionar forma</Button>
-          <Button data-testid="pay-finish-btn" onClick={submit} className="bg-[#84A59D] hover:bg-[#6F9189]"><CheckCircle2 className="w-4 h-4 mr-1" /> Registrar e Finalizar</Button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6">
+          <Button variant="outline" size="sm" onClick={addLine} className="justify-center"><Plus className="w-3 h-3 mr-1" /> Adicionar forma</Button>
+          <Button data-testid="pay-finish-btn" onClick={submit} className="bg-[#84A59D] hover:bg-[#6F9189] justify-center"><CheckCircle2 className="w-4 h-4 mr-1" /> Registrar e Finalizar</Button>
         </div>
       </div>
 
-      <div className="bg-white border border-zinc-200 rounded-xl overflow-x-auto">
+      <div className="bg-white border border-zinc-200 rounded-xl">
         <div className="px-6 py-4 border-b border-zinc-100"><h3 className="font-display text-lg font-medium">Pagamentos anteriores</h3></div>
         {ag.pagamentos.length === 0 ? <div className="p-6 text-center text-sm text-zinc-400">Nenhum pagamento</div> : (
-          <table className="w-full text-sm">
-            <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500"><tr><th className="px-4 py-3 text-left">Data</th><th className="px-4 py-3 text-left">Forma</th><th className="px-4 py-3 text-right">Valor</th><th className="px-4 py-3 text-left">Observação</th><th className="px-4 py-3 text-right">Ações</th></tr></thead>
-            <tbody className="divide-y divide-zinc-100">
+          <>
+            {/* Mobile View */}
+            <div className="divide-y divide-zinc-100 sm:hidden">
               {ag.pagamentos.map((p) => (
-                <tr key={p.id}><td className="px-4 py-3 text-zinc-700">{fmtDT(p.data_hora)}</td><td className="px-4 py-3">{FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}</td><td className="px-4 py-3 text-right font-medium">{fmtBRL(p.valor)}</td><td className="px-4 py-3 text-sm text-zinc-600">{p.observacao}</td><td className="px-4 py-3 text-right space-x-2"><Button size="icon" variant="ghost" onClick={() => startEdit(p)}><Edit2 className="w-4 h-4 text-blue-500" /></Button><Button size="icon" variant="ghost" onClick={() => startDelete(p.id)}><Trash2 className="w-4 h-4 text-rose-500" /></Button></td></tr>
+                <div key={p.id} className="p-4 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-zinc-400">{fmtDT(p.data_hora)}</span>
+                    <span className="font-semibold text-[#3A4F4A]">{fmtBRL(p.valor)}</span>
+                  </div>
+                  <div className="text-sm font-medium text-zinc-800">
+                    {FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}
+                  </div>
+                  {p.observacao && (
+                    <div className="text-xs text-zinc-500 italic bg-zinc-50 p-2 rounded-lg mt-1">
+                      "{p.observacao}"
+                    </div>
+                  )}
+                  <div className="flex items-center justify-end gap-2 border-t border-zinc-50 pt-2 mt-1">
+                    <Button size="sm" variant="outline" className="h-8 border-zinc-200 text-blue-600 hover:bg-blue-50" onClick={() => startEdit(p)}>
+                      <Edit2 className="w-3.5 h-3.5 mr-1" /> Editar
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-8 border-zinc-200 text-rose-600 hover:bg-rose-50" onClick={() => startDelete(p.id)}>
+                      <Trash2 className="w-3.5 h-3.5 mr-1" /> Excluir
+                    </Button>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+
+            {/* Desktop View */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500"><tr><th className="px-4 py-3 text-left">Data</th><th className="px-4 py-3 text-left">Forma</th><th className="px-4 py-3 text-right">Valor</th><th className="px-4 py-3 text-left">Observação</th><th className="px-4 py-3 text-right">Ações</th></tr></thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {ag.pagamentos.map((p) => (
+                    <tr key={p.id}><td className="px-4 py-3 text-zinc-700">{fmtDT(p.data_hora)}</td><td className="px-4 py-3">{FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}</td><td className="px-4 py-3 text-right font-medium">{fmtBRL(p.valor)}</td><td className="px-4 py-3 text-sm text-zinc-600">{p.observacao}</td><td className="px-4 py-3 text-right space-x-2"><Button size="icon" variant="ghost" onClick={() => startEdit(p)}><Edit2 className="w-4 h-4 text-blue-500" /></Button><Button size="icon" variant="ghost" onClick={() => startDelete(p.id)}><Trash2 className="w-4 h-4 text-rose-500" /></Button></td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

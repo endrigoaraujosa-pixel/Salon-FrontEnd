@@ -475,13 +475,15 @@ export default function Agenda() {
   }, 0) || 0;
 
   return (
-    <div className="agenda-container">
+    <div className="agenda-container w-full overflow-x-hidden">
       <PageHeader title="Agenda" />
-      <div className="view-toggle mb-4">
-        <button className={`view-toggle-btn ${view === "dia" ? "view-toggle-btn-active" : ""}`} onClick={() => setView("dia")}>Dia</button>
-        <button className={`view-toggle-btn ${view === "timeline" ? "view-toggle-btn-active" : ""}`} onClick={() => setView("timeline")}>Timeline</button>
-        <button className={`view-toggle-btn ${view === "calendario" ? "view-toggle-btn-active" : ""}`} onClick={() => setView("calendario")}>Calendário</button>
-        <button className="btn-primary ml-auto" onClick={openNew}><Plus className="w-4 h-4 mr-2" /> Novo</button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <div className="view-toggle w-full sm:w-auto">
+          <button className={`view-toggle-btn flex-1 sm:flex-none ${view === "dia" ? "view-toggle-btn-active" : ""}`} onClick={() => setView("dia")}>Dia</button>
+          <button className={`view-toggle-btn flex-1 sm:flex-none ${view === "timeline" ? "view-toggle-btn-active" : ""}`} onClick={() => setView("timeline")}>Timeline</button>
+          <button className={`view-toggle-btn flex-1 sm:flex-none ${view === "calendario" ? "view-toggle-btn-active" : ""}`} onClick={() => setView("calendario")}>Calendário</button>
+        </div>
+        <button className="btn-primary w-full sm:w-auto justify-center" onClick={openNew}><Plus className="w-4 h-4 mr-2" /> Novo Agendamento</button>
       </div>
 
       {view === "dia" ? (
