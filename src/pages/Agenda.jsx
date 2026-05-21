@@ -16,7 +16,7 @@ import { useAuth } from "../auth";
 import "./Agenda.css";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const fmtHour = (s) => new Date(s).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+const fmtHour = (s) => new Date(s).toLocaleTimeString("pt-BR", { timeZone: "America/Recife", hour: "2-digit", minute: "2-digit" });
 
 const toDateInput = (d) => {
   const year = d.getFullYear();
@@ -76,10 +76,10 @@ export default function Agenda() {
       const res = await http.post("/clientes", clientForm);
       const newClient = res.data;
       toast.success("Cliente cadastrado com sucesso!");
-      
+
       const r = await http.get("/clientes");
       setClientes(r.data || []);
-      
+
       setForm(f => ({ ...f, cliente_id: newClient.id }));
       setOpenNewClient(false);
     } catch (e) {
@@ -293,7 +293,7 @@ export default function Agenda() {
       try {
         const agendamentoResponse = await http.get(`/agendamentos/${id}`);
         const agendData = agendamentoResponse.data;
-        
+
         // Validar se todos os serviços possuem profissional
         const semProfs = (agendData.itens || []).filter(item => !item.colaborador_id || item.colaborador_id === "none");
         if (semProfs.length > 0) {
@@ -904,8 +904,8 @@ export default function Agenda() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs text-zinc-500">Profissional Principal</Label>
-                      <Select 
-                        value={item.colaborador_id} 
+                      <Select
+                        value={item.colaborador_id}
                         onValueChange={(v) => setMissingProfs(missingProfs.map((x, idx) => idx === i ? { ...x, colaborador_id: v } : x))}
                       >
                         <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
@@ -918,8 +918,8 @@ export default function Agenda() {
                     </div>
                     <div>
                       <Label className="text-xs text-zinc-500">Auxiliar (Opcional)</Label>
-                      <Select 
-                        value={item.auxiliar_id || "none"} 
+                      <Select
+                        value={item.auxiliar_id || "none"}
                         onValueChange={(v) => setMissingProfs(missingProfs.map((x, idx) => idx === i ? { ...x, auxiliar_id: v === "none" ? null : v } : x))}
                       >
                         <SelectTrigger className="bg-white"><SelectValue placeholder="Nenhum" /></SelectTrigger>
