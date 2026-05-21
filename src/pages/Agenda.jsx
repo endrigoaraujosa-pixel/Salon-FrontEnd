@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import AgendaTimeline from "../components/AgendaTimeline";
 import { useAuth } from "../auth";
+import SearchableSelect from "../components/SearchableSelect";
 import "./Agenda.css";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -48,6 +49,9 @@ export default function Agenda() {
   const [clientes, setClientes] = useState([]);
   const [servicos, setServicos] = useState([]);
   const [colaboradores, setColaboradores] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [selectedAddCategory, setSelectedAddCategory] = useState("all");
+  const [serviceSearch, setServiceSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(null);
   const [openSenha, setOpenSenha] = useState(false);
@@ -60,6 +64,7 @@ export default function Agenda() {
   const [pendingAgendamento, setPendingAgendamento] = useState(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [pastDateConfirmOpen, setPastDateConfirmOpen] = useState(false);
   const nav = useNavigate();
 
   const [openNewClient, setOpenNewClient] = useState(false);
@@ -218,6 +223,7 @@ export default function Agenda() {
       http.get("/clientes").then((r) => setClientes(r.data || [])),
       http.get("/servicos").then((r) => setServicos(r.data || [])),
       http.get("/colaboradores").then((r) => setColaboradores(r.data || [])),
+      http.get("/categorias").then((r) => setCategorias(r.data || [])),
     ]);
   }, []);
 
@@ -228,6 +234,24 @@ export default function Agenda() {
   useEffect(() => {
     loadMonth(monthCursor.y, monthCursor.m);
   }, [monthCursor]);
+
+  const doSave = async () => {
+    try {
+      if (form.id) {
+        await http.put(`/agendamentos/${form.id}`, form);
+        toast.success("Agendamento atualizado");
+      } else {
+        await http.post("/agendamentos", form);
+        toast.success("Agendamento criado");
+      }
+      setOpen(false);
+      setForm(null);
+      loadDay(data);
+      loadMonth(monthCursor.y, monthCursor.m);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Erro ao salvar agendamento");
+    }
+  };
 
   const save = async () => {
     if (!form.cliente_id) {
@@ -242,21 +266,23 @@ export default function Agenda() {
       toast.error("Adicione pelo menos um serviço");
       return;
     }
-    try {
-      if (form.id) {
-        await http.put(`/agendamentos/${form.id}`, form);
-        toast.success("Agendamento atualizado");
-      } else {
-        await http.post("/agendamentos", form);
-        toast.success("Agendamento criado");
+    for (const item of form.itens_selecionados) {
+      if (item.colaborador_id && item.auxiliar_id && item.colaborador_id === item.auxiliar_id) {
+        const s = servicos.find(x => x.id === item.servico_id);
+        toast.error(`O colaborador principal e o auxiliar não podem ser a mesma pessoa. (Serviço: ${s?.nome || ""})`);
+        return;
       }
-      setOpen(false);
-      setForm(null);
-      loadDay(data);
-      loadMonth(monthCursor.y, monthCursor.m);
-    } catch (e) {
-      toast.error(e.response.data.detail || "Erro ao salvar agendamento");
     }
+
+    // Verificar se a data é no passado (tolerância de 5 minutos)
+    const dataAgendamento = new Date(form.data_hora);
+    const agora = new Date();
+    if (dataAgendamento < new Date(agora.getTime() - 5 * 60000)) {
+      setPastDateConfirmOpen(true);
+      return;
+    }
+
+    await doSave();
   };
 
   const del = (id) => {
@@ -341,6 +367,10 @@ export default function Agenda() {
     for (let p of missingProfs) {
       if (!p.colaborador_id || p.colaborador_id === "none") {
         toast.error(`Selecione o profissional principal para o serviço: ${p.nome}`);
+        return;
+      }
+      if (p.auxiliar_id && p.auxiliar_id !== "none" && p.colaborador_id === p.auxiliar_id) {
+        toast.error(`O colaborador principal e o auxiliar não podem ser a mesma pessoa. (Serviço: ${p.nome})`);
         return;
       }
     }
@@ -592,12 +622,21 @@ export default function Agenda() {
                 <div className="form-group">
                   <Label className="form-label">Cliente *</Label>
                   <div className="flex gap-2">
-                    <Select value={form.cliente_id} onValueChange={(v) => setForm({ ...form, cliente_id: v })}>
-                      <SelectTrigger data-testid="ag-cliente" className="flex-1"><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
-                      <SelectContent>
-                        {clientes.filter(c => c.id && c.id.trim()).map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      placeholder="Selecione um cliente"
+                      searchPlaceholder="Pesquisar cliente pelo nome..."
+                      triggerTestId="ag-cliente"
+                      className="flex-1"
+                      options={clientes
+                        .filter(c => c.id && c.id.trim())
+                        .map(c => ({
+                          value: c.id,
+                          label: c.telefone ? `${c.nome} — ${c.telefone}` : c.nome
+                        }))
+                      }
+                      value={form.cliente_id}
+                      onValueChange={(v) => setForm({ ...form, cliente_id: v })}
+                    />
                     <Button type="button" size="icon" variant="outline" className="h-10 w-10 border-[#84A59D] text-[#3A4F4A] hover:bg-[#EAF0EE] shrink-0" onClick={() => { setClientForm({ nome: "", telefone: "", email: "" }); setOpenNewClient(true); }} title="Cadastrar Novo Cliente">
                       <Plus className="w-4 h-4" />
                     </Button>
@@ -609,26 +648,58 @@ export default function Agenda() {
                 </div>
               </div>
 
-              <div className="form-group mb-4">
-                <Label className="form-label">Adicionar Serviço</Label>
-                <Select onValueChange={(v) => { if (v) { addServico(v); } }}>
-                  <SelectTrigger><SelectValue placeholder="Escolha um serviço para adicionar..." /></SelectTrigger>
-                  <SelectContent>
-                    {servicos.filter(s => s.id && s.id.trim()).map(s => <SelectItem key={s.id} value={s.id}>{s.nome} - {fmtBRL(s.valor)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-3 mb-4">
+                <div>
+                  <Label className="text-xs text-zinc-500 mb-1 block">1. Selecionar Categoria do Serviço</Label>
+                  <Select value={selectedAddCategory} onValueChange={(val) => setSelectedAddCategory(val)}>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Todas as categorias" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas as categorias</SelectItem>
+                      <SelectItem value="none">Sem categoria</SelectItem>
+                      {categorias.filter(c => c.tipo === "servico" || c.tipo === "ambos").map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-xs text-zinc-500 mb-1 block">2. Escolher o Serviço</Label>
+                  <SearchableSelect
+                    placeholder="Escolha um serviço para adicionar..."
+                    searchPlaceholder="Pesquisar serviço pelo nome..."
+                    options={servicos
+                      .filter(s => s.id && s.id.trim())
+                      .filter(s => {
+                        const matchesCategory =
+                          selectedAddCategory === "all" ||
+                          (selectedAddCategory === "none" && !s.categoria_id) ||
+                          s.categoria_id === selectedAddCategory;
+                        return matchesCategory;
+                      })
+                      .map((s) => ({
+                        value: s.id,
+                        label: `${s.nome} — ${fmtBRL(s.valor)} (${s.duracao_minutos}min)`
+                      }))
+                    }
+                    value=""
+                    onValueChange={(val) => { if (val) { addServico(val); } }}
+                  />
+                </div>
               </div>
 
               <div className="services-list mb-4">
                 {form.itens_selecionados.map((item, index) => {
                   const s = servicos.find(x => x.id === item.servico_id);
                   return (
-                    <div key={index} style={{ backgroundColor: "#F0F5F4", borderRadius: "0.5rem", padding: "0.75rem", marginBottom: "0.5rem", border: "1px solid #E0E7E6" }}>
+                    <div key={index} className="service-item-card">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold" style={{ color: "#3A4F4A" }}>{s?.nome}</span>
+                        <span className="font-semibold service-item-card-name">{s?.nome}</span>
                         <Button size="sm" variant="ghost" onClick={() => removeServico(index)}><X className="w-4 h-4 text-rose-500" /></Button>
                       </div>
-                      <div className="text-xs" style={{ color: "#a1a1aa", marginBottom: "0.5rem" }}>{s?.duracao_minutos}min • {fmtBRL(s?.valor)}</div>
+                      <div className="text-xs service-item-card-info">{s?.duracao_minutos}min • {fmtBRL(s?.valor)}</div>
                       <div className="grid-2">
                         <div className="form-group">
                           <Label className="form-label flex items-center gap-1"><User className="w-3 h-3" /> Profissional Principal</Label>
@@ -957,6 +1028,22 @@ export default function Agenda() {
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>
             <Button onClick={confirmDelete} className="bg-rose-500 hover:bg-rose-600 text-white">Excluir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de confirmação de data passada */}
+      <Dialog open={pastDateConfirmOpen} onOpenChange={setPastDateConfirmOpen}>
+        <DialogContent className="sm:max-w-md" aria-describedby="dialog-data-passada">
+          <DialogHeader>
+            <DialogTitle>Agendamento em data passada</DialogTitle>
+          </DialogHeader>
+          <div id="dialog-data-passada" className="py-4 text-sm text-zinc-600">
+            A data informada é uma data passada. Deseja continuar com o agendamento?
+          </div>
+          <DialogFooter className="gap-2 flex flex-col sm:flex-row">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setPastDateConfirmOpen(false)}>Não</Button>
+            <Button className="bg-[#84A59D] hover:bg-[#6F9189] w-full sm:w-auto" onClick={async () => { setPastDateConfirmOpen(false); await doSave(); }}>Sim</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

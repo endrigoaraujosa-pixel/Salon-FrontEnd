@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { ShoppingBag, Plus, Trash2, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import SearchableSelect from "../components/SearchableSelect";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtDT = (s) => new Date(s).toLocaleString("pt-BR");
@@ -23,6 +24,9 @@ export default function VendasDiretas() {
   const [produtos, setProdutos] = useState([]);
   const [colaboradores, setColaboradores] = useState([]);
   const [clientes, setClientes] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [selectedAddCategory, setSelectedAddCategory] = useState("all");
+  const [productSearch, setProductSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
@@ -37,6 +41,7 @@ export default function VendasDiretas() {
     http.get("/produtos").then((r) => setProdutos(r.data.filter((p) => p.quantidade_estoque > 0)));
     http.get("/colaboradores").then((r) => setColaboradores(r.data.filter((c) => c.ativo)));
     http.get("/clientes").then((r) => setClientes(r.data));
+    http.get("/categorias").then((r) => setCategorias(r.data || []));
   }, []);
 
   const produto = produtos.find((p) => p.id === form.produto_id);
@@ -45,6 +50,10 @@ export default function VendasDiretas() {
   const save = async () => {
     if (!form.produto_id || !form.quantidade) {
       toast.error("Produto e quantidade obrigatórios");
+      return;
+    }
+    if (!form.colaborador_id) {
+      toast.error("Informe o profissional responsável pela venda.");
       return;
     }
     try {
@@ -104,20 +113,46 @@ export default function VendasDiretas() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader><DialogTitle>Nova venda direta</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <div>
-                <Label>Produto *</Label>
-                <Select value={form.produto_id || ""} onValueChange={(v) => setForm({ ...form, produto_id: v })}>
-                  <SelectTrigger data-testid="venda-produto">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {produtos.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.nome} — {fmtBRL(p.preco_venda)} (estq: {p.quantidade_estoque})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs text-zinc-500 mb-1 block">1. Selecionar Categoria</Label>
+                  <Select value={selectedAddCategory} onValueChange={(val) => { setSelectedAddCategory(val); setForm({ ...form, produto_id: "" }); }}>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Todas as categorias" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas as categorias</SelectItem>
+                      <SelectItem value="none">Sem categoria</SelectItem>
+                      {categorias.filter(c => c.tipo === "produto" || c.tipo === "ambos").map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-xs text-zinc-500 mb-1 block">2. Selecionar o Produto *</Label>
+                  <SearchableSelect
+                    placeholder="Selecione o produto..."
+                    searchPlaceholder="Pesquisar produto pelo nome..."
+                    triggerTestId="venda-produto"
+                    options={produtos
+                      .filter(p => {
+                        const matchesCategory =
+                          selectedAddCategory === "all" ||
+                          (selectedAddCategory === "none" && !p.categoria_id) ||
+                          p.categoria_id === selectedAddCategory;
+                        return matchesCategory;
+                      })
+                      .map((p) => ({
+                        value: p.id,
+                        label: `${p.nome} — ${fmtBRL(p.preco_venda)} (estq: ${p.quantidade_estoque})`
+                      }))
+                    }
+                    value={form.produto_id}
+                    onValueChange={(val) => setForm({ ...form, produto_id: val })}
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -125,7 +160,7 @@ export default function VendasDiretas() {
                   <Input data-testid="venda-qtd" type="number" min="1" step="0.01" value={form.quantidade} onChange={(e) => setForm({ ...form, quantidade: e.target.value })} />
                 </div>
                 <div>
-                  <Label>Vendedor</Label>
+                  <Label>Vendedor *</Label>
                   <Select value={form.colaborador_id || ""} onValueChange={(v) => setForm({ ...form, colaborador_id: v })}>
                     <SelectTrigger>
                       <SelectValue placeholder="—" />
@@ -140,16 +175,16 @@ export default function VendasDiretas() {
               </div>
               <div>
                 <Label>Cliente (opcional)</Label>
-                <Select value={form.cliente_id || ""} onValueChange={(v) => setForm({ ...form, cliente_id: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="—" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clientes.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  placeholder="Selecione um cliente..."
+                  searchPlaceholder="Pesquisar cliente pelo nome..."
+                  options={clientes.map((c) => ({
+                    value: c.id,
+                    label: c.telefone ? `${c.nome} — ${c.telefone}` : c.nome
+                  }))}
+                  value={form.cliente_id || ""}
+                  onValueChange={(v) => setForm({ ...form, cliente_id: v })}
+                />
               </div>
               {produto && (
                 <div className="bg-[#EAF0EE] rounded-lg p-3 flex items-center justify-between">

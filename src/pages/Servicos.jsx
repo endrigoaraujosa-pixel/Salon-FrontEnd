@@ -11,26 +11,31 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from ".
 import { Scissors, Plus, Edit2, Trash2, Clock, Package, X } from "lucide-react";
 import { toast } from "sonner";
 
-const blank = { nome: "", duracao_minutos: 60, valor: 0, descricao: "", ativo: true, produtos_vinculados: [] };
+const blank = { nome: "", categoria_id: "", duracao_minutos: 60, valor: 0, descricao: "", ativo: true, produtos_vinculados: [] };
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function Servicos() {
   const [list, setList] = useState([]);
   const [produtos, setProdutos] = useState([]);
+  const [categorias, setCategorias] = useState([]);
   const [open, setOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState(blank);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const load = () => {
     http.get("/servicos").then((r) => setList(r.data));
     http.get("/produtos").then((r) => setProdutos(r.data));
+    http.get("/categorias").then((r) => setCategorias(r.data));
   };
 
   useEffect(() => { load(); }, []);
 
   const save = async () => {
-    if (!form.nome) return toast.error("Nome é obrigatório");
+    if (!form.nome || !form.nome.trim()) return toast.error("Nome é obrigatório");
+    if (!form.categoria_id) return toast.error("A categoria é obrigatória. Selecione uma categoria cadastrada.");
     try {
       let pvs = form.produtos_vinculados;
       if (typeof pvs === "string") {
@@ -129,6 +134,16 @@ export default function Servicos() {
     });
   };
 
+  const filteredList = list.filter((s) => {
+    const matchesSearch = s.nome.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (s.descricao && s.descricao.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCategory =
+      selectedCategoryFilter === "all" ||
+      (selectedCategoryFilter === "none" && !s.categoria_id) ||
+      s.categoria_id === selectedCategoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
   return (
     <div className="p-6 lg:p-8 fade-in">
       <PageHeader overline="Catálogo" title="Serviços" action={
@@ -141,6 +156,22 @@ export default function Servicos() {
           <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2"><Label>Nome *</Label><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
+              <div className="col-span-2">
+                <Label>Categoria *</Label>
+                <Select
+                  value={form.categoria_id || ""}
+                  onValueChange={(val) => setForm({ ...form, categoria_id: val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a categoria *" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categorias.filter(c => c.tipo === "servico" || c.tipo === "ambos").map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div><Label>Duração (min)</Label><Input type="number" value={form.duracao_minutos} onChange={(e) => setForm({ ...form, duracao_minutos: e.target.value })} /></div>
               <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={form.valor} onChange={(e) => setForm({ ...form, valor: e.target.value })} /></div>
             </div>
@@ -198,9 +229,45 @@ export default function Servicos() {
         </DialogContent>
       </Dialog>
 
-      {list.length === 0 ? <EmptyState icon={Scissors} title="Nenhum serviço" hint="Cadastre os serviços do seu salão." /> : (
+      <div className="mb-6 flex flex-col md:flex-row gap-4 max-w-2xl">
+        <div className="flex-1">
+          <Label className="text-xs text-zinc-500 mb-1 block">Pesquisar serviço</Label>
+          <Input
+            placeholder="Pesquisar por nome ou descrição..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white"
+          />
+        </div>
+        <div className="w-full md:w-64">
+          <Label className="text-xs text-zinc-500 mb-1 block">Filtrar por Categoria</Label>
+          <Select
+            value={selectedCategoryFilter}
+            onValueChange={setSelectedCategoryFilter}
+          >
+            <SelectTrigger className="bg-white">
+              <SelectValue placeholder="Todas as categorias" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as categorias</SelectItem>
+              <SelectItem value="none">Sem categoria</SelectItem>
+              {categorias.filter(c => c.tipo === "servico" || c.tipo === "ambos").map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {filteredList.length === 0 ? (
+        <EmptyState
+          icon={Scissors}
+          title={searchQuery || selectedCategoryFilter !== "all" ? "Nenhum serviço encontrado" : "Nenhum serviço"}
+          hint={searchQuery || selectedCategoryFilter !== "all" ? "Tente ajustar seus filtros de busca." : "Cadastre os serviços do seu salão."}
+        />
+      ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {list.map((s) => (
+          {filteredList.map((s) => (
             <div key={s.id} className="bg-white border border-zinc-200 rounded-xl p-5 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between">
                 <div className="font-display text-lg font-medium">{s.nome}</div>

@@ -1,7 +1,7 @@
 import React from "react";
 import { NavLink, useNavigate, Outlet } from "react-router-dom";
 import { useAuth } from "../auth";
-import { LayoutDashboard, Calendar, Users, Scissors, Package, UserCog, LogOut, ShoppingBag, Wallet, BarChart3, UsersRound, DollarSign, TrendingUp, Menu, X } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Scissors, Package, UserCog, LogOut, ShoppingBag, Wallet, BarChart3, UsersRound, DollarSign, TrendingUp, Menu, X, Tags } from "lucide-react";
 import { Button } from "../components/ui/button";
 import ThemeToggle from "../components/ThemeToggle";
 
@@ -12,6 +12,7 @@ const nav = [
   { to: "/colaboradores", label: "Colaboradores", icon: UserCog },
   { to: "/servicos", label: "Serviços", icon: Scissors },
   { to: "/produtos", label: "Produtos", icon: Package },
+  { to: "/categorias", label: "Categorias", icon: Tags },
   { to: "/vendas-diretas", label: "Vendas", icon: ShoppingBag },
   { to: "/despesas", label: "Despesas", icon: DollarSign, adminOnly: true },
   { to: "/outras-receitas", label: "Outras Receitas", icon: TrendingUp, adminOnly: true },
