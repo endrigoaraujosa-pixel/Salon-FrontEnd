@@ -16,7 +16,7 @@ import { useAuth } from "../auth";
 import "./Agenda.css";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const fmtHour = (s) => new Date(s).toLocaleTimeString("pt-BR", { timeZone: "America/Recife", hour: "2-digit", minute: "2-digit" });
+const fmtHour = (s) => new Date(s.replace('Z', '')).toLocaleTimeString("pt-BR", { timeZone: "America/Recife", hour: "2-digit", minute: "2-digit" });
 
 const toDateInput = (d) => {
   const year = d.getFullYear();
