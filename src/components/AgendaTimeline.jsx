@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import http from "../api";
 import { CalendarDays, Clock } from "lucide-react";
+import { fmtHour } from "@/pages/Agenda";
 
 // Status -> cor (vertical stripe + bg suave)
 const STATUS_COLORS = {
@@ -89,8 +90,8 @@ export default function AgendaTimeline({ data, onCardClick }) {
     return agendamentos.filter((a) => !a.profissionais?.length);
   }, [agendamentos]);
 
-  const calcBlock = (a) => {
-    const d = new Date(a.data_hora);
+  const calcBlock = (a) => {  
+    const d = new Date(a.data_hora.replace("Z", ""));
     const startH = d.getHours() + d.getMinutes() / 60;
     const dur = (a.duracao_minutos || 60) / 60;
     const left = (startH - HOUR_START) * HOUR_WIDTH;
@@ -177,7 +178,7 @@ export default function AgendaTimeline({ data, onCardClick }) {
                   {byColab[c.id]?.map((a) => {
                     const { left, width } = calcBlock(a);
                     const colors = STATUS_COLORS[a.status] || STATUS_COLORS.agendado;
-                    const time = new Date(a.data_hora).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+                    const time = fmtHour(a.data_hora);
                     return (
                       <div
                         key={a.id}
@@ -212,7 +213,7 @@ export default function AgendaTimeline({ data, onCardClick }) {
                   {agendamentosSemProf.map((a) => {
                     const { left, width } = calcBlock(a);
                     const colors = STATUS_COLORS[a.status] || STATUS_COLORS.agendado;
-                    const time = new Date(a.data_hora).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+                    const time = fmtHour(a.data_hora);
                     return (
                       <div 
                         key={a.id} 

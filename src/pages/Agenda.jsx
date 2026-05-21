@@ -17,7 +17,7 @@ import SearchableSelect from "../components/SearchableSelect";
 import "./Agenda.css";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const fmtHour = (s) => new Date(s.replace('Z', '')).toLocaleTimeString("pt-BR", { timeZone: "America/Recife", hour: "2-digit", minute: "2-digit" });
+export const fmtHour = (s) => new Date(s.replace('Z', '')).toLocaleTimeString("pt-BR", { timeZone: "America/Recife", hour: "2-digit", minute: "2-digit" });
 
 const toDateInput = (d) => {
   const year = d.getFullYear();
@@ -28,7 +28,7 @@ const toDateInput = (d) => {
 
 const toDatetimeLocalInput = (dtStr) => {
   if (!dtStr) return "";
-  const d = new Date(dtStr);
+  const d = new Date(dtStr.replace('Z', ''));
   if (isNaN(d.getTime())) return "";
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -614,7 +614,9 @@ export default function Agenda() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="dialog-content sm:max-w-3xl" aria-describedby="dialog-agendamento">
-          <DialogHeader className="dialog-header"><DialogTitle className="dialog-title">{form?.id ? "Editar Agendamento" : "Novo Agendamento"}</DialogTitle></DialogHeader>
+          <DialogHeader className="dialog-header">
+            <DialogTitle className="dialog-title">{form?.id ? "Editar Agendamento" : "Novo Agendamento"}</DialogTitle>
+          </DialogHeader>
           <div id="dialog-agendamento" className="sr-only">Formulario para criar ou editar agendamento</div>
           {form && (
             <div className="dialog-body">
