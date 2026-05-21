@@ -269,6 +269,19 @@ h1, h2, h3, h4, h5, .font-display {
   border-color: hsl(var(--border)) !important;
 }
 
+.dark .service-item-card {
+  background-color: hsl(var(--muted)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .service-item-card-name {
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .service-item-card-info {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
 .dark .service-item:hover {
   background-color: hsl(var(--muted)) !important;
 }

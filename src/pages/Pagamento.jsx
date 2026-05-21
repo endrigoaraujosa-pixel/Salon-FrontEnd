@@ -227,6 +227,10 @@ export default function Pagamento() {
         toast.error(`Selecione o profissional principal para o serviço: ${p.nome}`);
         return;
       }
+      if (p.auxiliar_id && p.auxiliar_id !== "none" && p.colaborador_id === p.auxiliar_id) {
+        toast.error(`O colaborador principal e o auxiliar não podem ser a mesma pessoa. (Serviço: ${p.nome})`);
+        return;
+      }
     }
 
     try {

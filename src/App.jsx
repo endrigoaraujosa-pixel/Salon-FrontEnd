@@ -12,6 +12,7 @@ import ClienteHistorico from "./pages/ClienteHistorico";
 import Colaboradores from "./pages/Colaboradores";
 import Servicos from "./pages/Servicos";
 import Produtos from "./pages/Produtos";
+import Categorias from "./pages/Categorias";
 import Agenda from "./pages/Agenda";
 import Pagamento from "./pages/Pagamento";
 import VendasDiretas from "./pages/VendasDiretas";
@@ -53,6 +54,7 @@ function App() {
               <Route path="/colaboradores" element={<Colaboradores />} />
               <Route path="/servicos" element={<Servicos />} />
               <Route path="/produtos" element={<Produtos />} />
+              <Route path="/categorias" element={<Categorias />} />
               <Route path="/agendamentos/:id/pagamento" element={<Pagamento />} />
               <Route path="/vendas-diretas" element={<VendasDiretas />} />
               <Route path="/vendas-diretas/:id/pagamento" element={<VendaPagamento />} />

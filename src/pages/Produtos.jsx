@@ -6,23 +6,39 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import { Package, Plus, Edit2, Trash2, AlertTriangle, Percent } from "lucide-react";
 import { toast } from "sonner";
 
-const blank = { nome: "", categoria: "", unidade_medida: "un", quantidade_estoque: 0, estoque_minimo: 5, custo_unitario: 0, preco_venda: 0, fornecedor: "", ativo: true, comissao: 0 };
+const blank = { nome: "", categoria: "", categoria_id: "", unidade_medida: "un", quantidade_estoque: 0, estoque_minimo: 5, custo_unitario: 0, preco_venda: 0, fornecedor: "", ativo: true, comissao: 0 };
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function Produtos() {
   const [list, setList] = useState([]);
+  const [categorias, setCategorias] = useState([]);
   const [open, setOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState(blank);
-  const load = () => http.get("/produtos").then((r) => setList(r.data));
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const load = () => {
+    http.get("/produtos").then((r) => setList(r.data));
+    http.get("/categorias").then((r) => setCategorias(r.data));
+  };
   useEffect(() => { load(); }, []);
 
   const save = async () => {
     try {
+      if (!form.nome || !form.nome.trim()) {
+        toast.error("O nome do produto é obrigatório");
+        return;
+      }
+      if (!form.categoria_id) {
+        toast.error("A categoria é obrigatória. Selecione uma categoria cadastrada.");
+        return;
+      }
       const p = { ...form,
         quantidade_estoque: Number(form.quantidade_estoque),
         estoque_minimo: Number(form.estoque_minimo),
@@ -32,7 +48,10 @@ export default function Produtos() {
       };
       if (form.id) await http.put(`/produtos/${form.id}`, p); else await http.post("/produtos", p);
       toast.success("Salvo"); setOpen(false); setForm(blank); load();
-    } catch { toast.error("Erro"); }
+    } catch (err) {
+      const msg = err.response?.data?.detail || "Erro ao salvar";
+      toast.error(msg);
+    }
   };
   
   const del = (id) => {
@@ -55,6 +74,16 @@ export default function Produtos() {
 
   const edit = (p) => { setForm(p); setOpen(true); };
 
+  const filteredList = list.filter((p) => {
+    const matchesSearch = p.nome.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (p.fornecedor && p.fornecedor.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCategory =
+      selectedCategoryFilter === "all" ||
+      (selectedCategoryFilter === "none" && !p.categoria_id) ||
+      p.categoria_id === selectedCategoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
   return (
     <div className="p-6 lg:p-8 fade-in">
       <PageHeader overline="Estoque" title="Produtos" action={
@@ -67,7 +96,29 @@ export default function Produtos() {
           <div className="space-y-3 py-2 max-h-[70vh] overflow-y-auto pr-2">
             <div><Label>Nome *</Label><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Categoria</Label><Input value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })} /></div>
+              <div>
+                <Label>Categoria *</Label>
+                <Select
+                  value={form.categoria_id || ""}
+                  onValueChange={(val) => {
+                    const cat = categorias.find(c => c.id === val);
+                    setForm({
+                      ...form,
+                      categoria_id: val,
+                      categoria: cat ? cat.nome : ""
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a categoria *" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categorias.filter(c => c.tipo === "produto" || c.tipo === "ambos").map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div><Label>Unidade</Label><Input value={form.unidade_medida} onChange={(e) => setForm({ ...form, unidade_medida: e.target.value })} /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -95,7 +146,43 @@ export default function Produtos() {
         </DialogContent>
       </Dialog>
 
-      {list.length === 0 ? <EmptyState icon={Package} title="Nenhum produto" hint="Adicione produtos para controlar seu estoque." /> : (
+      <div className="mb-6 flex flex-col md:flex-row gap-4 max-w-2xl">
+        <div className="flex-1">
+          <Label className="text-xs text-zinc-500 mb-1 block">Pesquisar produto</Label>
+          <Input
+            placeholder="Pesquisar por nome ou fornecedor..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white"
+          />
+        </div>
+        <div className="w-full md:w-64">
+          <Label className="text-xs text-zinc-500 mb-1 block">Filtrar por Categoria</Label>
+          <Select
+            value={selectedCategoryFilter}
+            onValueChange={setSelectedCategoryFilter}
+          >
+            <SelectTrigger className="bg-white">
+              <SelectValue placeholder="Todas as categorias" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as categorias</SelectItem>
+              <SelectItem value="none">Sem categoria</SelectItem>
+              {categorias.filter(c => c.tipo === "produto" || c.tipo === "ambos").map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {filteredList.length === 0 ? (
+        <EmptyState
+          icon={Package}
+          title={searchQuery || selectedCategoryFilter !== "all" ? "Nenhum produto encontrado" : "Nenhum produto"}
+          hint={searchQuery || selectedCategoryFilter !== "all" ? "Tente ajustar seus filtros de busca." : "Adicione produtos para controlar seu estoque."}
+        />
+      ) : (
         <div className="bg-white border border-zinc-200 rounded-xl overflow-x-auto shadow-sm">
           <table className="w-full text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500">
@@ -109,7 +196,7 @@ export default function Produtos() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {list.map((p) => {
+              {filteredList.map((p) => {
                 const baixo = p.quantidade_estoque <= p.estoque_minimo;
                 return (
                   <tr key={p.id} className="hover:bg-zinc-50/60 transition-colors">
