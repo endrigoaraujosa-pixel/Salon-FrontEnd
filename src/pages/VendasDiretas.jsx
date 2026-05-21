@@ -6,7 +6,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
-import { ShoppingBag, Plus, Trash2, CreditCard } from "lucide-react";
+import { ShoppingBag, Plus, Trash2, CreditCard, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import SearchableSelect from "../components/SearchableSelect";
@@ -20,6 +20,14 @@ const STATUS_COLORS = {
 };
 
 export default function VendasDiretas() {
+  const getTodayStr = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [list, setList] = useState([]);
   const [produtos, setProdutos] = useState([]);
   const [colaboradores, setColaboradores] = useState([]);
@@ -31,15 +39,22 @@ export default function VendasDiretas() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState({ produto_id: "", quantidade: 1, colaborador_id: "", cliente_id: "" });
+  const [startDate, setStartDate] = useState(getTodayStr());
+  const [endDate, setEndDate] = useState(getTodayStr());
+  const [filterProdutoId, setFilterProdutoId] = useState("all");
+  const [filterColaboradorId, setFilterColaboradorId] = useState("all");
+  const [filterClienteId, setFilterClienteId] = useState("all");
   const nav = useNavigate();
 
-  const load = () => http.get("/vendas-diretas").then((r) => setList(r.data));
+  const load = () => {
+    http.get("/vendas-diretas").then((r) => setList(r.data));
+  };
   
   useEffect(() => {
     load();
     // Removido o filtro p.ativo (não existe na tabela)
-    http.get("/produtos").then((r) => setProdutos(r.data.filter((p) => p.quantidade_estoque > 0)));
-    http.get("/colaboradores").then((r) => setColaboradores(r.data.filter((c) => c.ativo)));
+    http.get("/produtos").then((r) => setProdutos(r.data));
+    http.get("/colaboradores").then((r) => setColaboradores(r.data));
     http.get("/clientes").then((r) => setClientes(r.data));
     http.get("/categorias").then((r) => setCategorias(r.data || []));
   }, []);
@@ -101,6 +116,39 @@ export default function VendasDiretas() {
     }
   };
 
+  const filteredList = list.filter((v) => {
+    // 1. Date Filter
+    if (!v.data_venda) return false;
+    const d = new Date(v.data_venda);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const saleDateStr = `${year}-${month}-${day}`;
+    const matchesDate = saleDateStr >= startDate && saleDateStr <= endDate;
+    if (!matchesDate) return false;
+
+    // 2. Product Filter
+    if (filterProdutoId !== "all" && v.produto_id !== filterProdutoId) {
+      return false;
+    }
+
+    // 3. Collaborator Filter
+    if (filterColaboradorId !== "all" && v.colaborador_id !== filterColaboradorId) {
+      return false;
+    }
+
+    // 4. Client Filter
+    if (filterClienteId !== "all") {
+      if (filterClienteId === "none") {
+        if (v.cliente_id) return false;
+      } else if (v.cliente_id !== filterClienteId) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 fade-in w-full overflow-x-hidden">
       <PageHeader overline="Balcão" title="Vendas Diretas" action={
@@ -137,6 +185,7 @@ export default function VendasDiretas() {
                     searchPlaceholder="Pesquisar produto pelo nome..."
                     triggerTestId="venda-produto"
                     options={produtos
+                      .filter(p => p.quantidade_estoque > 0)
                       .filter(p => {
                         const matchesCategory =
                           selectedAddCategory === "all" ||
@@ -166,7 +215,7 @@ export default function VendasDiretas() {
                       <SelectValue placeholder="—" />
                     </SelectTrigger>
                     <SelectContent>
-                      {colaboradores.map((c) => (
+                      {colaboradores.filter(c => c.ativo).map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
                       ))}
                     </SelectContent>
@@ -202,13 +251,137 @@ export default function VendasDiretas() {
         </Dialog>
       } />
 
-      {list.length === 0 ? (
-        <EmptyState icon={ShoppingBag} title="Sem vendas" hint="Registre vendas de produtos no balcão." />
+      {/* Search and Filters Bar */}
+      <div className="bg-white border border-zinc-200 rounded-xl p-4 mb-6 shadow-sm space-y-4">
+        {/* Row 1: Date Filters */}
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center w-full lg:w-auto">
+            <div className="w-full sm:w-auto">
+              <Label className="text-xs text-zinc-500 font-medium mb-1 block">Data Inicial</Label>
+              <Input
+                type="date"
+                className="w-full sm:w-44 focus:ring-2 focus:ring-[#84A59D] transition-all bg-transparent text-foreground border-input"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div className="w-full sm:w-auto">
+              <Label className="text-xs text-zinc-500 font-medium mb-1 block">Data Final</Label>
+              <Input
+                type="date"
+                className="w-full sm:w-44 focus:ring-2 focus:ring-[#84A59D] transition-all bg-transparent text-foreground border-input"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 w-full lg:w-auto justify-end">
+            <Button
+              variant="outline"
+              className="border-zinc-200 text-[#3A4F4A] hover:bg-[#EAF0EE] dark:border-border dark:text-[#EAF0EE] dark:hover:bg-[#3A4F4A]"
+              onClick={() => {
+                const today = getTodayStr();
+                setStartDate(today);
+                setEndDate(today);
+              }}
+            >
+              <Calendar className="w-4 h-4 mr-2 text-zinc-400" /> Hoje
+            </Button>
+            <Button
+              variant="outline"
+              className="border-zinc-200 text-[#3A4F4A] hover:bg-[#EAF0EE] dark:border-border dark:text-[#EAF0EE] dark:hover:bg-[#3A4F4A]"
+              onClick={() => {
+                const d = new Date();
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                setStartDate(`${year}-${month}-01`);
+                const lastDay = new Date(year, d.getMonth() + 1, 0).getDate();
+                setEndDate(`${year}-${month}-${String(lastDay).padStart(2, '0')}`);
+              }}
+            >
+              <Calendar className="w-4 h-4 mr-2 text-zinc-400" /> Este Mês
+            </Button>
+            {(startDate !== getTodayStr() || endDate !== getTodayStr() || filterProdutoId !== "all" || filterColaboradorId !== "all" || filterClienteId !== "all") && (
+              <Button
+                variant="ghost"
+                className="text-rose-500 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30"
+                onClick={() => {
+                  setStartDate(getTodayStr());
+                  setEndDate(getTodayStr());
+                  setFilterProdutoId("all");
+                  setFilterColaboradorId("all");
+                  setFilterClienteId("all");
+                }}
+              >
+                Limpar Filtros
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Row 2: Product, Seller, and Client Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+          <div>
+            <Label className="text-xs text-zinc-500 font-medium mb-1 block">Filtrar por Produto</Label>
+            <SearchableSelect
+              placeholder="Todos os produtos"
+              searchPlaceholder="Pesquisar produto pelo nome..."
+              options={[
+                { value: "all", label: "Todos os produtos" },
+                ...produtos.map((p) => ({
+                  value: p.id,
+                  label: p.nome
+                }))
+              ]}
+              value={filterProdutoId}
+              onValueChange={setFilterProdutoId}
+            />
+          </div>
+
+          <div>
+            <Label className="text-xs text-zinc-500 font-medium mb-1 block">Filtrar por Vendedor</Label>
+            <SearchableSelect
+              placeholder="Todos os vendedores"
+              searchPlaceholder="Pesquisar vendedor pelo nome..."
+              options={[
+                { value: "all", label: "Todos os vendedores" },
+                ...colaboradores.map((c) => ({
+                  value: c.id,
+                  label: c.nome
+                }))
+              ]}
+              value={filterColaboradorId}
+              onValueChange={setFilterColaboradorId}
+            />
+          </div>
+
+          <div>
+            <Label className="text-xs text-zinc-500 font-medium mb-1 block">Filtrar por Cliente</Label>
+            <SearchableSelect
+              placeholder="Todos os clientes"
+              searchPlaceholder="Pesquisar cliente pelo nome..."
+              options={[
+                { value: "all", label: "Todos os clientes" },
+                { value: "none", label: "Sem Cliente (Consumidor Final)" },
+                ...clientes.map((c) => ({
+                  value: c.id,
+                  label: c.nome
+                }))
+              ]}
+              value={filterClienteId}
+              onValueChange={setFilterClienteId}
+            />
+          </div>
+        </div>
+      </div>
+
+      {filteredList.length === 0 ? (
+        <EmptyState icon={ShoppingBag} title="Nenhuma venda encontrada" hint="Não há registros de vendas no período selecionado." />
       ) : (
         <div className="space-y-4">
           {/* Mobile Card List (Visible only on mobile) */}
           <div className="space-y-3 sm:hidden">
-            {list.map((v) => (
+            {filteredList.map((v) => (
               <div key={v.id} className="bg-white border border-zinc-200 rounded-xl p-4 shadow-sm hover:shadow transition-shadow">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-zinc-400 font-medium">{fmtDT(v.data_venda)}</span>
@@ -258,7 +431,7 @@ export default function VendasDiretas() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
-                {list.map((v) => (
+                {filteredList.map((v) => (
                   <tr key={v.id} className="hover:bg-zinc-50/60">
                     <td className="px-4 py-3">{fmtDT(v.data_venda)}</td>
                     <td className="px-4 py-3 font-medium">{v.produto_nome}</td>
