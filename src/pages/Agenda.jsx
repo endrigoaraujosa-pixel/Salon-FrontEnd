@@ -479,10 +479,11 @@ export default function Agenda() {
   const openNew = () => {
     setForm({
       cliente_id: "",
-      data_hora: toDatetimeLocalInput(new Date()),
+      data_hora: new Date().toISOString().substring(0, 10) + 'T' + new Date().toLocaleTimeString().substring(0, 5),
       itens_selecionados: [],
       observacoes: ""
     });
+    
     setOpen(true);
   };
 
@@ -517,8 +518,8 @@ export default function Agenda() {
             <button className={`view-toggle-btn flex-1 sm:flex-none ${view === "timeline" ? "view-toggle-btn-active" : ""}`} onClick={() => setView("timeline")}>Timeline</button>
             <button className={`view-toggle-btn flex-1 sm:flex-none ${view === "calendario" ? "view-toggle-btn-active" : ""}`} onClick={() => setView("calendario")}>Calendário</button>
           </div>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => setAuditOpen(true)}
             className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800 h-9"
           >
@@ -1062,10 +1063,10 @@ export default function Agenda() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <AuditModal 
-        isOpen={auditOpen} 
-        onClose={() => setAuditOpen(false)} 
-        modulo="agendamento" 
+      <AuditModal
+        isOpen={auditOpen}
+        onClose={() => setAuditOpen(false)}
+        modulo="agendamento"
         tituloModulo="Agenda"
         onRestoreSuccess={() => loadDay(data)}
       />
