@@ -193,7 +193,7 @@ export default function Comissoes() {
                         <Eye className="w-3.5 h-3.5 text-zinc-400" />
                       </button>
                       <div className="text-xs text-zinc-400 font-normal mt-0.5">
-                        {c.comissao_principal}% princ. · {c.comissao_auxiliar}% aux.
+                        Sozinho: {c.comissao_sozinho != null ? c.comissao_sozinho : c.comissao_principal}% · c/ Assist.: {c.comissao_ajuda || 30}% · Aux: {c.comissao_auxiliar}%
                       </div>
                     </td>
                     <td className="px-5 py-4 text-right font-mono">{c.atendimentos}</td>
@@ -243,6 +243,11 @@ export default function Comissoes() {
               <Wallet className="w-6 h-6 text-[#84A59D]" />
               Detalhamento de Comissões: {selectedColab?.colaborador_nome}
             </DialogTitle>
+            {selectedColab && (
+              <div className="text-xs text-zinc-500 font-medium pl-8">
+                Regras: Sozinho: <b>{selectedColab.comissao_sozinho != null ? selectedColab.comissao_sozinho : selectedColab.comissao_principal}%</b> | Com ajuda: <b>{selectedColab.comissao_ajuda || 30}%</b> | Auxiliar: <b>{selectedColab.comissao_auxiliar}%</b>
+              </div>
+            )}
           </DialogHeader>
 
           {selectedColab && (

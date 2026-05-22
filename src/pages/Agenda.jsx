@@ -15,6 +15,7 @@ import AgendaTimeline from "../components/AgendaTimeline";
 import { useAuth } from "../auth";
 import SearchableSelect from "../components/SearchableSelect";
 import AuditModal from "../components/AuditModal";
+import PasswordConfirmDialog from "../components/PasswordConfirmDialog";
 import "./Agenda.css";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -73,6 +74,11 @@ export default function Agenda() {
   const [openNewClient, setOpenNewClient] = useState(false);
   const [clientForm, setClientForm] = useState({ nome: "", telefone: "", email: "" });
   const [savingClient, setSavingClient] = useState(false);
+  const [openEditSenha, setOpenEditSenha] = useState(false);
+  const [pendingEditAgendamento, setPendingEditAgendamento] = useState(null);
+  const [authCredentials, setAuthCredentials] = useState(null);
+  const [conflictConfirmOpen, setConflictConfirmOpen] = useState(false);
+  const [conflictMessage, setConflictMessage] = useState("");
 
   const saveNewClient = async () => {
     if (!clientForm.nome || !clientForm.nome.trim()) {
@@ -238,21 +244,48 @@ export default function Agenda() {
     loadMonth(monthCursor.y, monthCursor.m);
   }, [monthCursor]);
 
-  const doSave = async () => {
+  const handleConfirmEditConcluido = async (email, password) => {
     try {
+      await http.get(`/agendamentos/${pendingEditAgendamento.id}`, { params: { email, password } });
+      setAuthCredentials({ email, password });
+      setForm({
+        id: pendingEditAgendamento.id,
+        cliente_id: pendingEditAgendamento.cliente_id,
+        data_hora: toDatetimeLocalInput(pendingEditAgendamento.data_hora),
+        itens_selecionados: pendingEditAgendamento.itens || [],
+        observacoes: pendingEditAgendamento.observacoes || ""
+      });
+      setOpen(true);
+      setOpenEditSenha(false);
+      setPendingEditAgendamento(null);
+    } catch (e) {
+      throw new Error(e.response?.data?.detail || "Erro de autorização. Verifique usuário, senha e permissões.");
+    }
+  };
+
+  const doSave = async (ignorarConflito = false) => {
+    try {
+      const payload = ignorarConflito ? { ...form, ignorar_conflito: true } : form;
       if (form.id) {
-        await http.put(`/agendamentos/${form.id}`, form);
+        await http.put(`/agendamentos/${form.id}`, payload, authCredentials ? { params: authCredentials } : undefined);
         toast.success("Agendamento atualizado");
       } else {
-        await http.post("/agendamentos", form);
+        await http.post("/agendamentos", payload);
         toast.success("Agendamento criado");
       }
       setOpen(false);
       setForm(null);
+      setAuthCredentials(null);
       loadDay(data);
       loadMonth(monthCursor.y, monthCursor.m);
     } catch (e) {
-      toast.error(e.response?.data?.detail || "Erro ao salvar agendamento");
+      const errorMsg = e.response?.data?.detail || "Erro ao salvar agendamento";
+      if (errorMsg.includes("Conflito de horário")) {
+        setConflictMessage(errorMsg);
+        setConflictConfirmOpen(true);
+      } else {
+        toast.error(errorMsg);
+      }
     }
   };
 
@@ -458,6 +491,10 @@ export default function Agenda() {
   const updateItemColab = (index, cid) => {
     setForm(f => {
       const itens = [...f.itens_selecionados];
+      if (cid && cid !== "none" && itens[index].auxiliar_id && cid === itens[index].auxiliar_id) {
+        toast.error("O profissional principal não pode ser o mesmo que o auxiliar.");
+        return f;
+      }
       itens[index].colaborador_id = cid;
       return { ...f, itens_selecionados: itens };
     });
@@ -466,6 +503,10 @@ export default function Agenda() {
   const updateItemAux = (index, cid) => {
     setForm(f => {
       const itens = [...f.itens_selecionados];
+      if (cid && cid !== "none" && itens[index].colaborador_id && cid === itens[index].colaborador_id) {
+        toast.error("O profissional auxiliar não pode ser o mesmo que o principal.");
+        return f;
+      }
       itens[index].auxiliar_id = cid;
       return { ...f, itens_selecionados: itens };
     });
@@ -488,6 +529,12 @@ export default function Agenda() {
   };
 
   const openEdit = (a) => {
+    if (a.status === "concluido") {
+      setPendingEditAgendamento(a);
+      setOpenEditSenha(true);
+      return;
+    }
+    setAuthCredentials(null);
     setForm({
       id: a.id,
       cliente_id: a.cliente_id,
@@ -993,7 +1040,13 @@ export default function Agenda() {
                       <Label className="text-xs text-zinc-500">Profissional Principal</Label>
                       <Select
                         value={item.colaborador_id}
-                        onValueChange={(v) => setMissingProfs(missingProfs.map((x, idx) => idx === i ? { ...x, colaborador_id: v } : x))}
+                        onValueChange={(v) => {
+                          if (v && v !== "none" && item.auxiliar_id && v === item.auxiliar_id) {
+                            toast.error("O profissional principal não pode ser o mesmo que o auxiliar.");
+                            return;
+                          }
+                          setMissingProfs(missingProfs.map((x, idx) => idx === i ? { ...x, colaborador_id: v } : x));
+                        }}
                       >
                         <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                         <SelectContent>
@@ -1007,7 +1060,14 @@ export default function Agenda() {
                       <Label className="text-xs text-zinc-500">Auxiliar (Opcional)</Label>
                       <Select
                         value={item.auxiliar_id || "none"}
-                        onValueChange={(v) => setMissingProfs(missingProfs.map((x, idx) => idx === i ? { ...x, auxiliar_id: v === "none" ? null : v } : x))}
+                        onValueChange={(v) => {
+                          const val = v === "none" ? null : v;
+                          if (val && val !== "none" && item.colaborador_id && val === item.colaborador_id) {
+                            toast.error("O profissional auxiliar não pode ser o mesmo que o principal.");
+                            return;
+                          }
+                          setMissingProfs(missingProfs.map((x, idx) => idx === i ? { ...x, auxiliar_id: val } : x));
+                        }}
                       >
                         <SelectTrigger className="bg-white"><SelectValue placeholder="Nenhum" /></SelectTrigger>
                         <SelectContent>
@@ -1070,6 +1130,30 @@ export default function Agenda() {
         tituloModulo="Agenda"
         onRestoreSuccess={() => loadDay(data)}
       />
+      <PasswordConfirmDialog
+        open={openEditSenha}
+        onOpenChange={setOpenEditSenha}
+        onConfirm={handleConfirmEditConcluido}
+        title="Autorização Necessária"
+        description="Este agendamento já foi concluído. Informe usuário e senha de um administrador com permissão específica para editá-lo."
+        requireCredentials={true}
+      />
+      <Dialog open={conflictConfirmOpen} onOpenChange={setConflictConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Conflito de Horário</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
+            {conflictMessage}.
+            <br /><br />
+            <b>Deseja incluí-lo mesmo assim?</b>
+          </div>
+          <DialogFooter className="gap-2 flex flex-col sm:flex-row">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setConflictConfirmOpen(false)}>Não</Button>
+            <Button className="bg-[#84A59D] hover:bg-[#6F9189] w-full sm:w-auto" onClick={async () => { setConflictConfirmOpen(false); await doSave(true); }}>Sim</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

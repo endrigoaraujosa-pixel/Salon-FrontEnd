@@ -543,7 +543,13 @@ export default function Pagamento() {
                       <Label className="text-xs text-zinc-500">Profissional Principal</Label>
                       <Select 
                         value={item.colaborador_id} 
-                        onValueChange={(v) => setMissingProfs(missingProfs.map((x, idx) => idx === i ? { ...x, colaborador_id: v } : x))}
+                        onValueChange={(v) => {
+                          if (v && v !== "none" && item.auxiliar_id && v === item.auxiliar_id) {
+                            toast.error("O profissional principal não pode ser o mesmo que o auxiliar.");
+                            return;
+                          }
+                          setMissingProfs(missingProfs.map((x, idx) => idx === i ? { ...x, colaborador_id: v } : x));
+                        }}
                       >
                         <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                         <SelectContent>
@@ -557,7 +563,14 @@ export default function Pagamento() {
                       <Label className="text-xs text-zinc-500">Auxiliar (Opcional)</Label>
                       <Select 
                         value={item.auxiliar_id || "none"} 
-                        onValueChange={(v) => setMissingProfs(missingProfs.map((x, idx) => idx === i ? { ...x, auxiliar_id: v === "none" ? null : v } : x))}
+                        onValueChange={(v) => {
+                          const val = v === "none" ? null : v;
+                          if (val && val !== "none" && item.colaborador_id && val === item.colaborador_id) {
+                            toast.error("O profissional auxiliar não pode ser o mesmo que o principal.");
+                            return;
+                          }
+                          setMissingProfs(missingProfs.map((x, idx) => idx === i ? { ...x, auxiliar_id: val } : x));
+                        }}
                       >
                         <SelectTrigger className="bg-white"><SelectValue placeholder="Nenhum" /></SelectTrigger>
                         <SelectContent>
