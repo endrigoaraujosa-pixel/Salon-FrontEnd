@@ -1,7 +1,8 @@
 import axios from "axios";
 
+const baseURL = (import.meta.env.VITE_API_URL || "http://localhost:5000") + "/api";
 const api = axios.create({
-  baseURL: (import.meta.env.VITE_API_URL || "http://localhost:5000") + "/api",
+  baseURL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -22,6 +23,35 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    const responseStatus = error.response?.status;
+
+    if (responseStatus === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshResponse = await axios.post(`${baseURL}/auth/refresh`, {}, { withCredentials: true });
+        if (refreshResponse.data.token) {
+          localStorage.setItem('salon_token', refreshResponse.data.token);
+          originalRequest.headers.Authorization = `Bearer ${refreshResponse.data.token}`;
+          return api(originalRequest);
+        }
+      } catch (refreshError) {
+        console.error('Erro no refresh token:', refreshError);
+        localStorage.removeItem('salon_token');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+
     return Promise.reject(error);
   }
 );
