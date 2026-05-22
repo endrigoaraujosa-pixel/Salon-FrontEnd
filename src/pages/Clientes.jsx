@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Users, Plus, Edit2, Trash2, Search, History } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import AuditModal from "../components/AuditModal";
 
 const blank = { nome: "", telefone: "", email: "", data_nascimento: "", endereco: "", observacoes: "" };
 
@@ -19,6 +20,7 @@ export default function Clientes() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState(blank);
+  const [auditOpen, setAuditOpen] = useState(false);
   const nav = useNavigate();
 
   const load = () => http.get("/clientes").then((r) => setList(r.data));
@@ -78,9 +80,19 @@ export default function Clientes() {
         </Dialog>
       } />
 
-      <div className="relative mb-4 max-w-sm">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-        <Input data-testid="search-clientes" placeholder="Buscar por nome ou telefone..." value={q} onChange={(e) => setQ(e.target.value)} className="pl-9" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <Input data-testid="search-clientes" placeholder="Buscar por nome ou telefone..." value={q} onChange={(e) => setQ(e.target.value)} className="pl-9" />
+        </div>
+        <Button 
+          variant="outline" 
+          onClick={() => setAuditOpen(true)}
+          className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800"
+        >
+          <History className="w-3.5 h-3.5" />
+          <span>Excluídos</span>
+        </Button>
       </div>
 
       {filtered.length === 0 ? (
@@ -124,6 +136,14 @@ export default function Clientes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AuditModal 
+        isOpen={auditOpen} 
+        onClose={() => setAuditOpen(false)} 
+        modulo="cliente" 
+        tituloModulo="Clientes"
+        onRestoreSuccess={load}
+      />
     </div>
   );
 }

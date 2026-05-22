@@ -7,8 +7,9 @@ import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
-import { Package, Plus, Edit2, Trash2, AlertTriangle, Percent } from "lucide-react";
+import { Package, Plus, Edit2, Trash2, AlertTriangle, Percent, History } from "lucide-react";
 import { toast } from "sonner";
+import AuditModal from "../components/AuditModal";
 
 const blank = { nome: "", categoria: "", categoria_id: "", unidade_medida: "un", quantidade_estoque: 0, estoque_minimo: 5, custo_unitario: 0, preco_venda: 0, fornecedor: "", ativo: true, comissao: 0 };
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -22,6 +23,7 @@ export default function Produtos() {
   const [form, setForm] = useState(blank);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [auditOpen, setAuditOpen] = useState(false);
 
   const load = () => {
     http.get("/produtos").then((r) => setList(r.data));
@@ -146,7 +148,7 @@ export default function Produtos() {
         </DialogContent>
       </Dialog>
 
-      <div className="mb-6 flex flex-col md:flex-row gap-4 max-w-2xl">
+      <div className="mb-6 flex flex-col md:flex-row md:items-end gap-4 max-w-4xl">
         <div className="flex-1">
           <Label className="text-xs text-zinc-500 mb-1 block">Pesquisar produto</Label>
           <Input
@@ -174,6 +176,14 @@ export default function Produtos() {
             </SelectContent>
           </Select>
         </div>
+        <Button 
+          variant="outline" 
+          onClick={() => setAuditOpen(true)}
+          className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800 h-10 w-full md:w-auto"
+        >
+          <History className="w-3.5 h-3.5" />
+          <span>Excluídos</span>
+        </Button>
       </div>
 
       {filteredList.length === 0 ? (
@@ -247,6 +257,13 @@ export default function Produtos() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AuditModal 
+        isOpen={auditOpen} 
+        onClose={() => setAuditOpen(false)} 
+        modulo="produto" 
+        tituloModulo="Produtos" 
+        onRestoreSuccess={load}
+      />
     </div>
   );
 }

@@ -8,8 +8,9 @@ import { Textarea } from "../components/ui/textarea";
 import { Switch } from "../components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
-import { Scissors, Plus, Edit2, Trash2, Clock, Package, X } from "lucide-react";
+import { Scissors, Plus, Edit2, Trash2, Clock, Package, X, History } from "lucide-react";
 import { toast } from "sonner";
+import AuditModal from "../components/AuditModal";
 
 const blank = { nome: "", categoria_id: "", duracao_minutos: 60, valor: 0, descricao: "", ativo: true, produtos_vinculados: [] };
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -24,6 +25,7 @@ export default function Servicos() {
   const [form, setForm] = useState(blank);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [auditOpen, setAuditOpen] = useState(false);
 
   const load = () => {
     http.get("/servicos").then((r) => setList(r.data));
@@ -74,7 +76,7 @@ export default function Servicos() {
       setDeletingId(null);
       load();
     } catch (e) {
-      toast.error("Erro ao remover");
+      toast.error(e.response?.data?.detail || "Erro ao remover");
     }
   };
 
@@ -177,18 +179,19 @@ export default function Servicos() {
             </div>
             <div><Label>Descrição</Label><Textarea rows={2} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} /></div>
             
-            <div className="space-y-3 border-t pt-4">
-              <Label className="text-base font-semibold">Produtos Utilizados (Baixa Automática)</Label>
-              <div className="flex gap-2">
-                <Select onValueChange={addProduto}>
-                  <SelectTrigger className="flex-1"><SelectValue placeholder="Adicionar produto ao serviço..." /></SelectTrigger>
-                  <SelectContent>
-                    {produtos.map(p => <SelectItem key={p.id} value={p.id}>{p.nome} (Estoque: {p.quantidade_estoque})</SelectItem>)}
-                  </SelectContent>
-                </Select>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label>Produtos Vinculados (Consumo automático no estoque)</Label>
+                <div className="w-64">
+                  <Select onValueChange={(val) => addProduto(val)}>
+                    <SelectTrigger className="h-8"><SelectValue placeholder="Adicionar produto..." /></SelectTrigger>
+                    <SelectContent>
+                      {produtos.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              
-              <div className="space-y-2">
+              <div className="border border-zinc-200 rounded-lg p-3 space-y-2 bg-zinc-50 max-h-40 overflow-y-auto">
                 {(() => {
                   let pvs = form.produtos_vinculados;
                   if (typeof pvs === "string") {
@@ -197,14 +200,19 @@ export default function Servicos() {
                   if (!Array.isArray(pvs)) pvs = [];
 
                   return pvs.map((pv) => {
-                    const p = produtos.find(x => x.id === pv.produto_id);
+                    const prod = produtos.find(x => x.id === pv.produto_id);
                     return (
-                      <div key={pv.produto_id} className="flex items-center gap-3 p-2 bg-zinc-50 border rounded-lg">
-                        <Package className="w-4 h-4 text-zinc-400" />
-                        <div className="flex-1 text-sm font-medium">{p?.nome}</div>
+                      <div key={pv.produto_id} className="flex items-center justify-between bg-white p-2 rounded border shadow-sm">
+                        <span className="text-sm font-medium">{prod?.nome || "Carregando..."}</span>
                         <div className="flex items-center gap-2">
-                          <Label className="text-xs">Qtde:</Label>
-                          <Input type="number" step="0.01" className="w-20 h-8 text-xs" value={pv.quantidade} onChange={(e) => updateProdQtde(pv.produto_id, e.target.value)} />
+                          <Input
+                            type="number"
+                            min="1"
+                            value={pv.quantidade}
+                            onChange={(e) => updateProdQtde(pv.produto_id, parseInt(e.target.value) || 1)}
+                            className="w-16 h-8 text-center"
+                          />
+                          <span className="text-xs text-zinc-500">{prod?.unidade || "un"}</span>
                         </div>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500" onClick={() => removeProduto(pv.produto_id)}><X className="w-4 h-4" /></Button>
                       </div>
@@ -218,7 +226,7 @@ export default function Servicos() {
                   }
                   return !pvs || pvs.length === 0;
                 })() && (
-                  <div className="text-center py-4 border-2 border-dashed rounded-lg text-zinc-400 text-sm">Nenhum produto vinculado</div>
+                  <div className="text-center py-4 text-zinc-400 text-sm">Nenhum produto vinculado</div>
                 )}
               </div>
             </div>
@@ -229,7 +237,7 @@ export default function Servicos() {
         </DialogContent>
       </Dialog>
 
-      <div className="mb-6 flex flex-col md:flex-row gap-4 max-w-2xl">
+      <div className="mb-6 flex flex-col md:flex-row md:items-end gap-4 max-w-4xl">
         <div className="flex-1">
           <Label className="text-xs text-zinc-500 mb-1 block">Pesquisar serviço</Label>
           <Input
@@ -257,6 +265,14 @@ export default function Servicos() {
             </SelectContent>
           </Select>
         </div>
+        <Button 
+          variant="outline" 
+          onClick={() => setAuditOpen(true)}
+          className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800 h-10 w-full md:w-auto"
+        >
+          <History className="w-3.5 h-3.5" />
+          <span>Excluídos</span>
+        </Button>
       </div>
 
       {filteredList.length === 0 ? (
@@ -313,6 +329,13 @@ export default function Servicos() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AuditModal 
+        isOpen={auditOpen} 
+        onClose={() => setAuditOpen(false)} 
+        modulo="servico" 
+        tituloModulo="Serviços" 
+        onRestoreSuccess={load}
+      />
     </div>
   );
 }

@@ -7,8 +7,9 @@ import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
-import { Tags, Plus, Edit2, Trash2, Check, X } from "lucide-react";
+import { Tags, Plus, Edit2, Trash2, Check, X, History } from "lucide-react";
 import { toast } from "sonner";
+import AuditModal from "../components/AuditModal";
 
 const blank = { nome: "", tipo: "ambos", ativo: true };
 
@@ -19,6 +20,7 @@ export default function Categorias() {
   const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState(blank);
   const [search, setSearch] = useState("");
+  const [auditOpen, setAuditOpen] = useState(false);
 
   const load = () => {
     http.get("/categorias").then((r) => setList(r.data));
@@ -90,15 +92,23 @@ export default function Categorias() {
         }
       />
 
-      <div className="mb-6 flex gap-4 max-w-md">
-        <div className="relative flex-1">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-4 max-w-2xl">
+        <div className="relative flex-1 max-w-md">
           <Input
             placeholder="Pesquisar categoria por nome..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full"
+            className="w-full bg-white"
           />
         </div>
+        <Button 
+          variant="outline" 
+          onClick={() => setAuditOpen(true)}
+          className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800"
+        >
+          <History className="w-3.5 h-3.5" />
+          <span>Excluídos</span>
+        </Button>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -227,6 +237,13 @@ export default function Categorias() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AuditModal 
+        isOpen={auditOpen} 
+        onClose={() => setAuditOpen(false)} 
+        modulo="categoria" 
+        tituloModulo="Categorias"
+        onRestoreSuccess={load}
+      />
     </div>
   );
 }

@@ -253,16 +253,51 @@ export default function VendaPagamento() {
       <div className="text-xs uppercase tracking-wider text-zinc-400">Venda de Produto</div>
       <h1 className="font-display text-2xl sm:text-4xl font-semibold tracking-tight mt-1 flex flex-wrap items-center gap-2 sm:gap-3">
         {v.produto_nome}
-        <span className="text-xs sm:text-sm font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] px-2.5 py-1 rounded-full">
-          Qtd: {v.quantidade}
-        </span>
+        {v.numero_venda && (
+          <span className="text-xs sm:text-sm font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] px-2.5 py-1 rounded-full">
+            {String(v.numero_venda).padStart(6, "0")} | V
+          </span>
+        )}
       </h1>
-      <div className="text-sm text-zinc-500 mt-1">
-        {fmtDT(v.data_venda)}
-        {v.cliente_nome && ` · Cliente: ${v.cliente_nome}`}
-        {v.colaborador_nome && ` · Vendedor: ${v.colaborador_nome}`}
-        {` · `}<StatusBadge status={v.status} />
+      <div className="text-sm text-zinc-500 mt-1 flex flex-wrap gap-x-3 gap-y-1">
+        <span>{fmtDT(v.data_venda)}</span>
+        {v.cliente_nome && <span>· Cliente: {v.cliente_nome}</span>}
+        {v.colaborador_nome && <span>· Vendedor: {v.colaborador_nome}</span>}
+        <span>· <StatusBadge status={v.status} /></span>
       </div>
+
+      {/* Itens do carrinho */}
+      {Array.isArray(v.itens) && v.itens.length > 1 ? (
+        <div className="mt-4 bg-white border border-zinc-200 rounded-xl overflow-hidden">
+          <div className="px-4 py-3 bg-zinc-50 border-b border-zinc-100">
+            <h3 className="text-sm font-semibold text-zinc-700">Itens da venda ({v.itens.length} produtos)</h3>
+          </div>
+          <table className="w-full text-sm">
+            <thead className="text-xs uppercase tracking-wider text-zinc-400 bg-zinc-50/50">
+              <tr>
+                <th className="px-4 py-2 text-left">Produto</th>
+                <th className="px-4 py-2 text-center">Qtd</th>
+                <th className="px-4 py-2 text-right">Unit.</th>
+                <th className="px-4 py-2 text-right">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {v.itens.map((item, i) => (
+                <tr key={i} className="hover:bg-zinc-50/50">
+                  <td className="px-4 py-2.5 font-medium text-zinc-800">{item.produto_nome}</td>
+                  <td className="px-4 py-2.5 text-center text-zinc-600">{item.quantidade}</td>
+                  <td className="px-4 py-2.5 text-right text-zinc-600">{fmtBRL(item.preco_unitario)}</td>
+                  <td className="px-4 py-2.5 text-right font-semibold text-[#3A4F4A]">{fmtBRL(item.subtotal)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="mt-2 text-sm text-zinc-500">
+          Qtd: <strong>{v.quantidade}</strong>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 my-6">
         <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-5">

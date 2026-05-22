@@ -8,12 +8,13 @@ import { Textarea } from "../components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import StatusBadge, { STATUS_LABELS } from "../components/StatusBadge";
-import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2 } from "lucide-react";
+import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import AgendaTimeline from "../components/AgendaTimeline";
 import { useAuth } from "../auth";
 import SearchableSelect from "../components/SearchableSelect";
+import AuditModal from "../components/AuditModal";
 import "./Agenda.css";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -28,7 +29,8 @@ const toDateInput = (d) => {
 
 const toDatetimeLocalInput = (dtStr) => {
   if (!dtStr) return "";
-  const d = new Date(dtStr.replace('Z', ''));
+  const raw = typeof dtStr === 'string' ? dtStr : dtStr.toISOString();
+  const d = new Date(raw.replace('Z', ''));
   if (isNaN(d.getTime())) return "";
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -65,6 +67,7 @@ export default function Agenda() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [pastDateConfirmOpen, setPastDateConfirmOpen] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(false);
   const nav = useNavigate();
 
   const [openNewClient, setOpenNewClient] = useState(false);
@@ -508,10 +511,20 @@ export default function Agenda() {
     <div className="agenda-container w-full overflow-x-hidden">
       <PageHeader title="Agenda" />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-        <div className="view-toggle w-full sm:w-auto">
-          <button className={`view-toggle-btn flex-1 sm:flex-none ${view === "dia" ? "view-toggle-btn-active" : ""}`} onClick={() => setView("dia")}>Dia</button>
-          <button className={`view-toggle-btn flex-1 sm:flex-none ${view === "timeline" ? "view-toggle-btn-active" : ""}`} onClick={() => setView("timeline")}>Timeline</button>
-          <button className={`view-toggle-btn flex-1 sm:flex-none ${view === "calendario" ? "view-toggle-btn-active" : ""}`} onClick={() => setView("calendario")}>Calendário</button>
+        <div className="flex items-center flex-wrap gap-2 w-full sm:w-auto">
+          <div className="view-toggle">
+            <button className={`view-toggle-btn flex-1 sm:flex-none ${view === "dia" ? "view-toggle-btn-active" : ""}`} onClick={() => setView("dia")}>Dia</button>
+            <button className={`view-toggle-btn flex-1 sm:flex-none ${view === "timeline" ? "view-toggle-btn-active" : ""}`} onClick={() => setView("timeline")}>Timeline</button>
+            <button className={`view-toggle-btn flex-1 sm:flex-none ${view === "calendario" ? "view-toggle-btn-active" : ""}`} onClick={() => setView("calendario")}>Calendário</button>
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={() => setAuditOpen(true)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800 h-9"
+          >
+            <History className="w-3.5 h-3.5" />
+            <span>Excluídos</span>
+          </Button>
         </div>
         <button className="btn-primary w-full sm:w-auto justify-center" onClick={openNew}><Plus className="w-4 h-4 mr-2" /> Novo Agendamento</button>
       </div>
@@ -536,7 +549,7 @@ export default function Agenda() {
                       {a.cliente_nome}
                       {a.numero && (
                         <span className="text-[10px] font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] px-1.5 py-0.5 rounded">
-                          #{String(a.numero).padStart(4, "0")}
+                          {String(a.numero).padStart(6, "0")} | S
                         </span>
                       )}
                     </div>
@@ -843,7 +856,7 @@ export default function Agenda() {
               </span>
               {resumoAgendamento?.numero && (
                 <span className="text-xs font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] px-2.5 py-0.5 rounded-full mr-6">
-                  Nº {String(resumoAgendamento.numero).padStart(4, "0")}
+                  {String(resumoAgendamento.numero).padStart(6, "0")} | S
                 </span>
               )}
             </DialogTitle>
@@ -1049,6 +1062,13 @@ export default function Agenda() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AuditModal 
+        isOpen={auditOpen} 
+        onClose={() => setAuditOpen(false)} 
+        modulo="agendamento" 
+        tituloModulo="Agenda"
+        onRestoreSuccess={() => loadDay(data)}
+      />
     </div>
   );
 }

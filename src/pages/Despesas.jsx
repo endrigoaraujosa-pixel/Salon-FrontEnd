@@ -8,8 +8,9 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from ".
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
 import { Checkbox } from "../components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs";
-import { Plus, Trash2, Edit2, AlertCircle } from "lucide-react";
+import { Plus, Trash2, Edit2, AlertCircle, History } from "lucide-react";
 import { toast } from "sonner";
+import AuditModal from "../components/AuditModal";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtDT = (s) => s ? new Date(s).toLocaleDateString("pt-BR") : "-";
@@ -36,6 +37,7 @@ export default function Despesas() {
   const [deletingId, setDeletingId] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [tab, setTab] = useState("fixo");
+  const [auditOpen, setAuditOpen] = useState(false);
   const [form, setForm] = useState({
     descricao: "",
     valor: "",
@@ -137,14 +139,26 @@ export default function Despesas() {
 
   return (
     <div className="p-6 lg:p-8 fade-in">
-      <PageHeader overline="Financeiro" title="Despesas" action={<Button onClick={() => openDialog()}><Plus className="w-4 h-4 mr-1" /> Nova despesa</Button>} />
+      <PageHeader overline="Financeiro" title="Despesas" action={
+        <Button onClick={() => openDialog()}><Plus className="w-4 h-4 mr-1" /> Nova despesa</Button>
+      } />
 
-      <Tabs value={tab} onValueChange={setTab} className="mb-6">
-        <TabsList>
-          <TabsTrigger value="fixo">Despesas Fixas</TabsTrigger>
-          <TabsTrigger value="variavel">Despesas Variáveis</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <Tabs value={tab} onValueChange={setTab} className="w-full sm:w-auto">
+          <TabsList>
+            <TabsTrigger value="fixo">Despesas Fixas</TabsTrigger>
+            <TabsTrigger value="variavel">Despesas Variáveis</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Button 
+          variant="outline" 
+          onClick={() => setAuditOpen(true)}
+          className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800"
+        >
+          <History className="w-3.5 h-3.5" />
+          <span>Excluídos</span>
+        </Button>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white border border-zinc-200 rounded-xl p-5">
@@ -309,6 +323,13 @@ export default function Despesas() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AuditModal 
+        isOpen={auditOpen} 
+        onClose={() => setAuditOpen(false)} 
+        modulo="despesa" 
+        tituloModulo="Despesas" 
+        onRestoreSuccess={load}
+      />
     </div>
   );
 }

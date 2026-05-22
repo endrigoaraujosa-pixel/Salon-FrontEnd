@@ -6,8 +6,9 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
-import { Plus, Trash2, Edit2, AlertCircle } from "lucide-react";
+import { Plus, Trash2, Edit2, AlertCircle, History } from "lucide-react";
 import { toast } from "sonner";
+import AuditModal from "../components/AuditModal";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtDT = (s) => s ? new Date(s).toLocaleDateString("pt-BR") : "-";
@@ -30,6 +31,7 @@ export default function OutrasReceitas() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const [auditOpen, setAuditOpen] = useState(false);
   const [form, setForm] = useState({
     descricao: "",
     valor: "",
@@ -119,7 +121,20 @@ export default function OutrasReceitas() {
 
   return (
     <div className="p-6 lg:p-8 fade-in">
-      <PageHeader overline="Financeiro" title="Outras Receitas" action={<Button onClick={() => openDialog()}><Plus className="w-4 h-4 mr-1" /> Nova receita</Button>} />
+      <PageHeader overline="Financeiro" title="Outras Receitas" action={
+        <Button onClick={() => openDialog()}><Plus className="w-4 h-4 mr-1" /> Nova receita</Button>
+      } />
+
+      <div className="flex justify-end mb-4">
+        <Button 
+          variant="outline" 
+          onClick={() => setAuditOpen(true)}
+          className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800"
+        >
+          <History className="w-3.5 h-3.5" />
+          <span>Excluídos</span>
+        </Button>
+      </div>
 
       <div className="bg-white border border-zinc-200 rounded-xl p-5 mb-6">
         <div className="text-xs uppercase tracking-wider text-zinc-400">Total de outras receitas</div>
@@ -242,6 +257,13 @@ export default function OutrasReceitas() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AuditModal 
+        isOpen={auditOpen} 
+        onClose={() => setAuditOpen(false)} 
+        modulo="receita" 
+        tituloModulo="Outras Receitas" 
+        onRestoreSuccess={load}
+      />
     </div>
   );
 }

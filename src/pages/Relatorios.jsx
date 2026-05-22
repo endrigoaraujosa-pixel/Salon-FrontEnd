@@ -11,8 +11,39 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { FileText, Banknote, Package, TrendingUp, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle } from "lucide-react";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const todayStr = () => new Date().toISOString().split("T")[0];
-const firstDayMonth = () => { const d = new Date(); d.setDate(1); return d.toISOString().split("T")[0]; };
+
+const todayStr = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const firstDayMonth = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}-01`;
+};
+
+const getDaysAgoStr = (days) => {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getStartOfWeekStr = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - d.getDay());
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const FORMA_LABELS = {
   dinheiro: "Dinheiro", pix: "PIX",
@@ -23,9 +54,9 @@ const FORMA_LABELS = {
 const PresetButtons = ({ onPick }) => {
   const presets = [
     { l: "Hoje", from: todayStr(), to: todayStr() },
-    { l: "Esta semana", from: (() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().split("T")[0]; })(), to: todayStr() },
+    { l: "Esta semana", from: getStartOfWeekStr(), to: todayStr() },
     { l: "Este mês", from: firstDayMonth(), to: todayStr() },
-    { l: "Últimos 30 dias", from: (() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().split("T")[0]; })(), to: todayStr() },
+    { l: "Últimos 30 dias", from: getDaysAgoStr(30), to: todayStr() },
   ];
   return (
     <div className="flex flex-wrap gap-1">
@@ -43,6 +74,7 @@ export default function Relatorios() {
   const [produtos, setProdutos] = useState(null);
   const [servicos, setServicos] = useState(null);
   const [dreDetailsOpen, setDreDetailsOpen] = useState(false);
+  const [hasInitializedCaixa, setHasInitializedCaixa] = useState(false);
   
   // Estados para filtros
   const [colaboradores, setColaboradores] = useState([]);
@@ -83,6 +115,14 @@ export default function Relatorios() {
     http.get("/servicos").then((r) => setServicosList(r.data)).catch(() => {});
     http.get("/clientes").then((r) => setClientesList(r.data)).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (tab === "caixa" && !hasInitializedCaixa) {
+      setFrom(todayStr());
+      setTo(todayStr());
+      setHasInitializedCaixa(true);
+    }
+  }, [tab, hasInitializedCaixa]);
 
   const reload = () => {
     const params = { data_inicio: from, data_fim: to };
@@ -544,11 +584,15 @@ export default function Relatorios() {
                 .filter(v => {
                   if (!searchQuery) return true;
                   const query = searchQuery.toLowerCase();
+                  const numStr = v.numero_venda ? String(v.numero_venda).padStart(6, '0') : '';
+                  const formattedNum = v.numero_venda ? `${numStr} | V`.toLowerCase() : '';
                   return (
                     v.produto_nome.toLowerCase().includes(query) ||
                     (v.colaborador_nome || "").toLowerCase().includes(query) ||
                     (v.cliente_nome || "").toLowerCase().includes(query) ||
-                    (v.categoria || "").toLowerCase().includes(query)
+                    (v.categoria || "").toLowerCase().includes(query) ||
+                    numStr.includes(query) ||
+                    formattedNum.includes(query)
                   );
                 })
                 .sort((a, b) => {
@@ -566,15 +610,16 @@ export default function Relatorios() {
                 });
 
               // 2. Calcular totais dinâmicos baseados na lista filtrada
-              const totalFaturamento = filteredVendas.reduce((acc, v) => acc + v.valor_total, 0);
-              const totalQuantidade = filteredVendas.reduce((acc, v) => acc + v.quantidade, 0);
-              const totalCusto = filteredVendas.reduce((acc, v) => acc + v.custo_total, 0);
+              const totalFaturamento = filteredVendas.filter(v => v.status === "pago").reduce((acc, v) => acc + v.valor_total, 0);
+              const totalQuantidade = filteredVendas.filter(v => v.status === "pago").reduce((acc, v) => acc + v.quantidade, 0);
+              const totalCusto = filteredVendas.filter(v => v.status === "pago").reduce((acc, v) => acc + v.custo_total, 0);
               const totalLucro = totalFaturamento - totalCusto;
 
               // 3. Agrupamentos para o painel lateral de desempenho (breakdowns)
               const porColab = {};
               const porProd = {};
               filteredVendas.forEach(v => {
+                if (v.status !== "pago") return;
                 const cName = v.colaborador_nome || 'Nenhum';
                 porColab[cName] = (porColab[cName] || 0) + v.valor_total;
                 
@@ -758,8 +803,11 @@ export default function Relatorios() {
                                   </td>
                                   <td className="px-4 py-3">
                                     <div className="font-semibold text-zinc-800">{v.produto_nome}</div>
-                                    <div className="text-[10px] text-zinc-400 font-normal flex items-center gap-1">
-                                      <Tag className="w-3 h-3" /> {v.categoria}
+                                    <div className="text-[10px] text-zinc-400 font-normal flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                      <span className="flex items-center gap-1"><Tag className="w-3 h-3" /> {v.categoria}</span>
+                                      {v.numero_venda && (
+                                        <span className="font-mono text-zinc-400 font-normal">• {String(v.numero_venda).padStart(6, "0")} | V</span>
+                                      )}
                                     </div>
                                   </td>
                                   <td className="px-4 py-3 font-normal text-zinc-700 whitespace-nowrap">
@@ -869,11 +917,15 @@ export default function Relatorios() {
                 .filter(s => {
                   if (!searchQueryServico) return true;
                   const query = searchQueryServico.toLowerCase();
+                  const numStr = s.agendamento_numero ? String(s.agendamento_numero).padStart(6, '0') : '';
+                  const formattedNum = s.agendamento_numero ? `${numStr} | S`.toLowerCase() : '';
                   return (
                     s.servico_nome.toLowerCase().includes(query) ||
                     (s.colaborador_nome || "").toLowerCase().includes(query) ||
                     (s.auxiliar_nome || "").toLowerCase().includes(query) ||
-                    (s.cliente_nome || "").toLowerCase().includes(query)
+                    (s.cliente_nome || "").toLowerCase().includes(query) ||
+                    numStr.includes(query) ||
+                    formattedNum.includes(query)
                   );
                 })
                 .sort((a, b) => {
@@ -891,15 +943,16 @@ export default function Relatorios() {
                 });
 
               // 2. Calcular totais dinâmicos baseados na lista filtrada
-              const totalFaturamento = filteredServicos.reduce((acc, s) => acc + s.valor, 0);
-              const totalQuantidade = filteredServicos.length;
-              const totalDuracao = filteredServicos.reduce((acc, s) => acc + (s.duracao || 0), 0);
+              const totalFaturamento = filteredServicos.filter(s => s.status === "concluido").reduce((acc, s) => acc + s.valor, 0);
+              const totalQuantidade = filteredServicos.filter(s => s.status === "concluido").length;
+              const totalDuracao = filteredServicos.filter(s => s.status === "concluido").reduce((acc, s) => acc + (s.duracao || 0), 0);
               const ticketMedio = totalQuantidade > 0 ? (totalFaturamento / totalQuantidade) : 0;
 
               // 3. Agrupamentos para o painel lateral de desempenho (breakdowns)
               const porColab = {};
               const porServ = {};
               filteredServicos.forEach(s => {
+                if (s.status !== "concluido") return;
                 const cName = s.colaborador_nome || 'Nenhum';
                 porColab[cName] = (porColab[cName] || 0) + s.valor;
                 
@@ -1085,8 +1138,8 @@ export default function Relatorios() {
                                   </td>
                                   <td className="px-3 py-3">
                                     <div className="font-semibold text-zinc-800">{s.servico_nome}</div>
-                                    <div className="text-[10px] text-zinc-400 font-normal">
-                                      #{s.agendamento_numero || "N/A"}
+                                    <div className="text-[10px] font-mono text-zinc-400 font-normal">
+                                      {s.agendamento_numero ? `${String(s.agendamento_numero).padStart(6, "0")} | S` : "-"}
                                     </div>
                                   </td>
                                   <td className="px-3 py-3 font-normal text-zinc-700 whitespace-nowrap">
