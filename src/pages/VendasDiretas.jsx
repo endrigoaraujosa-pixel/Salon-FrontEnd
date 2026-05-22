@@ -39,7 +39,7 @@ export default function VendasDiretas() {
   const [productSearch, setProductSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-    const [deletingId, setDeletingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const [carrinhoOpen, setCarrinhoOpen] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
@@ -69,14 +69,18 @@ export default function VendasDiretas() {
   const load = () => {
     http.get("/vendas-diretas").then((r) => setList(r.data));
   };
-  
+
   useEffect(() => {
     load();
     // Removido o filtro p.ativo (não existe na tabela)
     http.get("/produtos").then((r) => setProdutos(r.data));
     http.get("/colaboradores").then((r) => setColaboradores(r.data));
     http.get("/clientes").then((r) => setClientes(r.data));
-    http.get("/categorias").then((r) => setCategorias(r.data || []));
+    http.get("/categorias", {
+      params: {
+        ativo: true
+      }
+    }).then((r) => setCategorias(r.data || []));
   }, []);
 
   useEffect(() => {
@@ -108,18 +112,18 @@ export default function VendasDiretas() {
         }))
       };
       if (form.cliente_id) payload.cliente_id = form.cliente_id;
-      
+
       console.log("Enviando payload nova venda:", payload);
       const { data } = await http.post("/vendas-diretas", payload);
       console.log("Resposta:", data);
-      
+
       toast.success("Venda criada! Registre o pagamento.");
       setOpen(false);
       load();
       nav(`/vendas-diretas/${data.id}/pagamento`);
-    } catch (e) { 
+    } catch (e) {
       console.error("Erro:", e);
-      toast.error(e.response?.data?.detail || "Erro ao criar venda"); 
+      toast.error(e.response?.data?.detail || "Erro ao criar venda");
     }
   };
 
@@ -489,7 +493,7 @@ export default function VendasDiretas() {
                               {fmtBRL(item.preco_unitario)} / un
                             </p>
                           </div>
-                          
+
                           <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 pt-3 sm:pt-0 border-zinc-100">
                             {/* Incr / Decr */}
                             <div className="flex items-center gap-1 bg-zinc-100/80 border border-zinc-200 p-0.5 rounded-xl shadow-xs">
@@ -658,8 +662,8 @@ export default function VendasDiretas() {
                 Limpar Filtros
               </Button>
             )}
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setAuditOpen(true)}
               className="flex items-center gap-1.5 border-zinc-200 text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800"
             >
@@ -757,18 +761,18 @@ export default function VendasDiretas() {
                     <span className="font-display font-bold text-[#3A4F4A] text-base">{fmtBRL(v.valor_total)}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Button 
-                      size="default" 
-                      variant="outline" 
-                      className="h-11 px-4 rounded-xl shadow-sm font-semibold border-zinc-200 text-[#3A4F4A] hover:bg-[#EAF0EE]" 
+                    <Button
+                      size="default"
+                      variant="outline"
+                      className="h-11 px-4 rounded-xl shadow-sm font-semibold border-zinc-200 text-[#3A4F4A] hover:bg-[#EAF0EE]"
                       onClick={(e) => { e.stopPropagation(); openCarrinhoModal(v.id); }}
                       title="Ver/Editar Carrinho"
                     >
                       <ShoppingCart className="w-5 h-5 mr-2 text-zinc-500" /> Carrinho
                     </Button>
                     <Button size="default" variant="outline" className="h-11 px-4 rounded-xl shadow-sm font-semibold border-zinc-200 text-[#3A4F4A] hover:bg-[#EAF0EE]" onClick={(e) => { e.stopPropagation(); nav(`/vendas-diretas/${v.id}/pagamento`); }} data-testid={`pay-venda-mob-${v.id}`}>
-                        <CreditCard className="w-5 h-5 mr-2" /> Pagar
-                      </Button>
+                      <CreditCard className="w-5 h-5 mr-2" /> Pagar
+                    </Button>
                     <Button size="default" variant="ghost" className="h-11 w-11 rounded-xl shadow-sm border border-zinc-100 text-rose-500 hover:bg-rose-50 hover:border-rose-200 ml-4" onClick={(e) => { e.stopPropagation(); del(v.id); }}>
                       <Trash2 className="w-5 h-5" />
                     </Button>
@@ -816,29 +820,29 @@ export default function VendasDiretas() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right space-x-3">
-                      <Button 
-                        size="default" 
-                        variant="ghost" 
+                      <Button
+                        size="default"
+                        variant="ghost"
                         className="h-10 w-10 rounded-lg hover:bg-[#EAF0EE] border border-transparent hover:border-[#84A59D]/30"
                         onClick={(e) => { e.stopPropagation(); openCarrinhoModal(v.id); }}
                         title="Ver/Editar Carrinho"
                       >
                         <ShoppingCart className="w-5 h-5 text-zinc-500 hover:text-[#84A59D]" />
                       </Button>
-                      <Button 
-                        size="default" 
-                        variant="ghost" 
+                      <Button
+                        size="default"
+                        variant="ghost"
                         className="h-10 w-10 rounded-lg hover:bg-zinc-100 border border-transparent hover:border-zinc-200"
-                        onClick={(e) => { e.stopPropagation(); nav(`/vendas-diretas/${v.id}/pagamento`); }} 
+                        onClick={(e) => { e.stopPropagation(); nav(`/vendas-diretas/${v.id}/pagamento`); }}
                         title="Pagar Venda"
                         data-testid={`pay-venda-${v.id}`}
                       >
-                          <CreditCard className="w-5 h-5 text-zinc-600" />
-                        </Button>
-                      <Button 
-                        size="default" 
-                        variant="ghost" 
-                        className="ml-6 h-10 w-10 rounded-lg hover:bg-rose-50 border border-transparent hover:border-rose-200" 
+                        <CreditCard className="w-5 h-5 text-zinc-600" />
+                      </Button>
+                      <Button
+                        size="default"
+                        variant="ghost"
+                        className="ml-6 h-10 w-10 rounded-lg hover:bg-rose-50 border border-transparent hover:border-rose-200"
                         title="Excluir Venda"
                         onClick={(e) => { e.stopPropagation(); del(v.id); }}
                       >
@@ -853,7 +857,7 @@ export default function VendasDiretas() {
         </div>
       )}
 
-            {/* Dialog do Carrinho de Compras */}
+      {/* Dialog do Carrinho de Compras */}
       <Dialog open={carrinhoOpen} onOpenChange={(o) => { if (!o) { setCarrinhoOpen(false); setConfirmRemoveIdx(null); setEditingQtdIdx(null); } }}>
         <DialogContent className="sm:max-w-2xl w-full p-0 gap-0 flex flex-col overflow-hidden bg-white shadow-2xl rounded-2xl border-0" style={{ maxHeight: '92vh' }}>
 
@@ -971,15 +975,14 @@ export default function VendasDiretas() {
                   {(carrinhoData.itens || []).map((item, idx) => (
                     <div
                       key={idx}
-                      className={`rounded-xl border p-4 transition-all duration-200 ${
-                        confirmRemoveIdx === idx
+                      className={`rounded-xl border p-4 transition-all duration-200 ${confirmRemoveIdx === idx
                           ? 'border-rose-200 bg-rose-50/50 shadow-xs'
                           : 'border-zinc-200 bg-white hover:border-zinc-300 hover:shadow-sm'
-                      }`}
+                        }`}
                     >
                       {/* Grid adaptável para mobile e desktop */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        
+
                         {/* Info Produto */}
                         <div className="min-w-0 flex-1">
                           <p className="font-bold text-sm text-zinc-900 leading-snug break-words">{item.produto_nome}</p>
@@ -990,7 +993,7 @@ export default function VendasDiretas() {
 
                         {/* Controles do carrinho (Qtd + Subtotal + Excluir) */}
                         <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 pt-3 sm:pt-0 border-zinc-100">
-                          
+
                           {/* Botões táteis de incrementar / decrementar quantidade */}
                           {!carrinhoData.bloqueado ? (
                             <div className="flex items-center gap-1 bg-zinc-100/80 border border-zinc-200 p-0.5 rounded-xl shadow-xs">
@@ -1003,7 +1006,7 @@ export default function VendasDiretas() {
                               >
                                 <Minus className="w-3.5 h-3.5" />
                               </button>
-                              
+
                               {/* Visualização de quantidade (clicável para edição manual) */}
                               {editingQtdIdx === idx ? (
                                 <Input
@@ -1106,7 +1109,7 @@ export default function VendasDiretas() {
               <Button variant="outline" className="border-zinc-300 hover:bg-zinc-100" onClick={() => setCarrinhoOpen(false)}>Fechar</Button>
               {carrinhoData && !carrinhoData.bloqueado && (
                 <Button
-                  onClick={() => { setCarrinhoOpen(false); nav(`/vendas-diretas/${carrinhoVendaId}/pagamento`)} }
+                  onClick={() => { setCarrinhoOpen(false); nav(`/vendas-diretas/${carrinhoVendaId}/pagamento`) }}
                   className="bg-[#84A59D] hover:bg-[#6F9189] text-white shadow-xs font-semibold"
                 >
                   <CreditCard className="w-4 h-4 mr-1.5" /> Ir para Pagamento
@@ -1135,11 +1138,11 @@ export default function VendasDiretas() {
       </Dialog>
       {/* Modal de Recibo */}
       <VendaReceiptModal open={receiptOpen} onOpenChange={setReceiptOpen} vendaId={receiptVendaId} />
-      <AuditModal 
-        isOpen={auditOpen} 
-        onClose={() => setAuditOpen(false)} 
-        modulo="venda_direta" 
-        tituloModulo="Vendas Diretas" 
+      <AuditModal
+        isOpen={auditOpen}
+        onClose={() => setAuditOpen(false)}
+        modulo="venda_direta"
+        tituloModulo="Vendas Diretas"
         onRestoreSuccess={load}
       />
     </div>
