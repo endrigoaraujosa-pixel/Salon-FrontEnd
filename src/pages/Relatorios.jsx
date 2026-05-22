@@ -6,11 +6,44 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
-import { FileText, Banknote, Package, TrendingUp, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock } from "lucide-react";
+import SearchableSelect from "../components/SearchableSelect";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
+import { FileText, Banknote, Package, TrendingUp, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle } from "lucide-react";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const todayStr = () => new Date().toISOString().split("T")[0];
-const firstDayMonth = () => { const d = new Date(); d.setDate(1); return d.toISOString().split("T")[0]; };
+
+const todayStr = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const firstDayMonth = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}-01`;
+};
+
+const getDaysAgoStr = (days) => {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getStartOfWeekStr = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - d.getDay());
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const FORMA_LABELS = {
   dinheiro: "Dinheiro", pix: "PIX",
@@ -21,9 +54,9 @@ const FORMA_LABELS = {
 const PresetButtons = ({ onPick }) => {
   const presets = [
     { l: "Hoje", from: todayStr(), to: todayStr() },
-    { l: "Esta semana", from: (() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().split("T")[0]; })(), to: todayStr() },
+    { l: "Esta semana", from: getStartOfWeekStr(), to: todayStr() },
     { l: "Este mês", from: firstDayMonth(), to: todayStr() },
-    { l: "Últimos 30 dias", from: (() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().split("T")[0]; })(), to: todayStr() },
+    { l: "Últimos 30 dias", from: getDaysAgoStr(30), to: todayStr() },
   ];
   return (
     <div className="flex flex-wrap gap-1">
@@ -40,6 +73,8 @@ export default function Relatorios() {
   const [caixa, setCaixa] = useState(null);
   const [produtos, setProdutos] = useState(null);
   const [servicos, setServicos] = useState(null);
+  const [dreDetailsOpen, setDreDetailsOpen] = useState(false);
+  const [hasInitializedCaixa, setHasInitializedCaixa] = useState(false);
   
   // Estados para filtros
   const [colaboradores, setColaboradores] = useState([]);
@@ -80,6 +115,14 @@ export default function Relatorios() {
     http.get("/servicos").then((r) => setServicosList(r.data)).catch(() => {});
     http.get("/clientes").then((r) => setClientesList(r.data)).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (tab === "caixa" && !hasInitializedCaixa) {
+      setFrom(todayStr());
+      setTo(todayStr());
+      setHasInitializedCaixa(true);
+    }
+  }, [tab, hasInitializedCaixa]);
 
   const reload = () => {
     const params = { data_inicio: from, data_fim: to };
@@ -138,17 +181,16 @@ export default function Relatorios() {
         {tab === "caixa" && (
           <div className="w-full lg:w-64 sm:col-span-2 lg:col-span-1">
             <Label className="text-xs uppercase font-bold text-zinc-400 tracking-wider">Profissional</Label>
-            <Select value={colaboradorId} onValueChange={setColaboradorId}>
-              <SelectTrigger data-testid="rep-colab" className="bg-white w-full">
-                <SelectValue placeholder="Todos os usuários" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os usuários</SelectItem>
-                {colaboradores.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              placeholder="Todos os usuários"
+              searchPlaceholder="Pesquisar profissional..."
+              options={[
+                { value: "todos", label: "Todos os usuários" },
+                ...colaboradores.map((c) => ({ value: c.id, label: c.nome }))
+              ]}
+              value={colaboradorId}
+              onValueChange={setColaboradorId}
+            />
           </div>
         )}
 
@@ -168,49 +210,49 @@ export default function Relatorios() {
             {/* Colaborador */}
             <div>
               <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Colaborador</Label>
-              <Select value={filterColaborador} onValueChange={setFilterColaborador}>
-                <SelectTrigger className="bg-white h-9 text-xs">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os colaboradores</SelectItem>
-                  {colaboradores.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                placeholder="Todos os colaboradores"
+                searchPlaceholder="Pesquisar colaborador..."
+                options={[
+                  { value: "todos", label: "Todos os colaboradores" },
+                  ...colaboradores.map((c) => ({ value: c.id, label: c.nome }))
+                ]}
+                value={filterColaborador}
+                onValueChange={setFilterColaborador}
+              />
             </div>
 
             {/* Produto */}
             <div>
               <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Produto</Label>
-              <Select value={filterProduto} onValueChange={setFilterProduto}>
-                <SelectTrigger className="bg-white h-9 text-xs">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os produtos</SelectItem>
-                  {produtosList.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                placeholder="Todos os produtos"
+                searchPlaceholder="Pesquisar produto..."
+                options={[
+                  { value: "todos", label: "Todos os produtos" },
+                  ...produtosList.map((p) => ({ value: p.id, label: p.nome }))
+                ]}
+                value={filterProduto}
+                onValueChange={setFilterProduto}
+              />
             </div>
 
             {/* Categoria */}
             <div>
               <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Categoria</Label>
-              <Select value={filterCategoria} onValueChange={setFilterCategoria}>
-                <SelectTrigger className="bg-white h-9 text-xs">
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todas as categorias</SelectItem>
-                  {[...new Set(produtosList.map(p => p.categoria).filter(Boolean))].map((cat) => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                placeholder="Todas as categorias"
+                searchPlaceholder="Pesquisar categoria..."
+                options={[
+                  { value: "todos", label: "Todas as categorias" },
+                  ...[...new Set(produtosList.map(p => p.categoria).filter(Boolean))].map((cat) => ({
+                    value: cat,
+                    label: cat
+                  }))
+                ]}
+                value={filterCategoria}
+                onValueChange={setFilterCategoria}
+              />
             </div>
 
             {/* Forma de Pagamento */}
@@ -232,17 +274,16 @@ export default function Relatorios() {
             {/* Cliente */}
             <div>
               <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Cliente</Label>
-              <Select value={filterCliente} onValueChange={setFilterCliente}>
-                <SelectTrigger className="bg-white h-9 text-xs">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os clientes</SelectItem>
-                  {clientesList.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                placeholder="Todos os clientes"
+                searchPlaceholder="Pesquisar cliente..."
+                options={[
+                  { value: "todos", label: "Todos os clientes" },
+                  ...clientesList.map((c) => ({ value: c.id, label: c.nome }))
+                ]}
+                value={filterCliente}
+                onValueChange={setFilterCliente}
+              />
             </div>
 
             {/* Status */}
@@ -273,33 +314,31 @@ export default function Relatorios() {
             {/* Colaborador */}
             <div>
               <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Profissional</Label>
-              <Select value={filterColaboradorServico} onValueChange={setFilterColaboradorServico}>
-                <SelectTrigger className="bg-white h-9 text-xs">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os profissionais</SelectItem>
-                  {colaboradores.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                placeholder="Todos os profissionais"
+                searchPlaceholder="Pesquisar profissional..."
+                options={[
+                  { value: "todos", label: "Todos os profissionais" },
+                  ...colaboradores.map((c) => ({ value: c.id, label: c.nome }))
+                ]}
+                value={filterColaboradorServico}
+                onValueChange={setFilterColaboradorServico}
+              />
             </div>
 
             {/* Serviço */}
             <div>
               <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Serviço</Label>
-              <Select value={filterServico} onValueChange={setFilterServico}>
-                <SelectTrigger className="bg-white h-9 text-xs">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os serviços</SelectItem>
-                  {servicosList.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                placeholder="Todos os serviços"
+                searchPlaceholder="Pesquisar serviço..."
+                options={[
+                  { value: "todos", label: "Todos os serviços" },
+                  ...servicosList.map((s) => ({ value: s.id, label: s.nome }))
+                ]}
+                value={filterServico}
+                onValueChange={setFilterServico}
+              />
             </div>
 
             {/* Forma de Pagamento */}
@@ -321,17 +360,16 @@ export default function Relatorios() {
             {/* Cliente */}
             <div>
               <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Cliente</Label>
-              <Select value={filterClienteServico} onValueChange={setFilterClienteServico}>
-                <SelectTrigger className="bg-white h-9 text-xs">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os clientes</SelectItem>
-                  {clientesList.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                placeholder="Todos os clientes"
+                searchPlaceholder="Pesquisar cliente..."
+                options={[
+                  { value: "todos", label: "Todos os clientes" },
+                  ...clientesList.map((c) => ({ value: c.id, label: c.nome }))
+                ]}
+                value={filterClienteServico}
+                onValueChange={setFilterClienteServico}
+              />
             </div>
 
             {/* Status */}
@@ -365,7 +403,95 @@ export default function Relatorios() {
           {!dre ? <div className="text-zinc-400 p-8 text-center">Carregando...</div> : (
             <div className="grid lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-6 space-y-4 shadow-sm">
-                <h3 className="font-display text-lg font-medium text-zinc-800">Demonstração de Resultado</h3>
+                <div className="flex items-center justify-between border-b border-zinc-100 pb-2 dark:border-zinc-800">
+                  <h3 className="font-display text-lg font-medium text-zinc-800 dark:text-zinc-100">Demonstração de Resultado</h3>
+                  <Dialog open={dreDetailsOpen} onOpenChange={setDreDetailsOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="text-[#84A59D] hover:text-[#6F9189] hover:bg-[#EAF0EE] flex items-center gap-1.5 h-8 px-2.5 text-xs font-semibold rounded-lg dark:hover:bg-[#3A4F4A]/30">
+                        <HelpCircle className="w-4 h-4" /> Como é calculado?
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <FileText className="w-5 h-5 text-[#84A59D]" />
+                          <span>Entendendo o DRE (Origem e Composição)</span>
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 my-2 text-sm text-zinc-600 dark:text-zinc-300">
+                        <p className="text-xs text-zinc-500">
+                          A Demonstração de Resultado do Exercício (DRE) apresenta o confronto entre as receitas operacionais, custos e despesas operacionais no período selecionado para apurar se a empresa obteve lucro ou prejuízo.
+                        </p>
+
+                        <div className="space-y-3 divide-y divide-zinc-100 dark:divide-zinc-800">
+                          <div className="pt-2">
+                            <span className="font-semibold text-zinc-800 dark:text-zinc-100 block">Receita de Serviços</span>
+                            <span className="text-xs text-zinc-500">Soma de todas as prestações de serviços concluídas e pagas/agendadas no período selecionado.</span>
+                          </div>
+
+                          <div className="pt-3">
+                            <span className="font-semibold text-zinc-800 dark:text-zinc-100 block">Receita de Vendas Diretas</span>
+                            <span className="text-xs text-zinc-500">Faturamento total obtido através da comercialização direta de produtos físicos no balcão da loja.</span>
+                          </div>
+
+                          <div className="pt-3">
+                            <span className="font-semibold text-zinc-800 dark:text-zinc-100 block">Outras Receitas</span>
+                            <span className="text-xs text-zinc-500">Valores adicionais recebidos pela empresa que não fazem parte do core business (ex: comissões extras, parcerias, taxas de terceiros).</span>
+                          </div>
+
+                          <div className="pt-3">
+                            <span className="font-semibold text-zinc-800 dark:text-zinc-100 block">Receita Bruta</span>
+                            <span className="text-xs font-mono text-[#84A59D] block">Fórmula: Receita de Serviços + Receita de Vendas Diretas + Outras Receitas</span>
+                            <span className="text-xs text-zinc-500">Representa a entrada financeira total bruta da empresa antes de qualquer dedução de custos ou impostos.</span>
+                          </div>
+
+                          <div className="pt-3">
+                            <span className="font-semibold text-rose-500 block">(-) Custo dos Produtos Vendidos (CMV)</span>
+                            <span className="text-xs text-zinc-500">Custo direto de aquisição/fornecedor das mercadorias que foram vendidas no período analisado.</span>
+                          </div>
+
+                          <div className="pt-3">
+                            <span className="font-semibold text-zinc-800 dark:text-zinc-100 block">Lucro Bruto</span>
+                            <span className="text-xs font-mono text-emerald-600 block">Fórmula: Receita Bruta - Custo dos Produtos Vendidos (CMV)</span>
+                            <span className="text-xs text-zinc-500">O resultado operacional bruto da empresa após deduzir o custo direto de fabricação ou aquisição de produtos.</span>
+                          </div>
+
+                          <div className="pt-3">
+                            <span className="font-semibold text-zinc-800 dark:text-zinc-100 block">Despesas Operacionais</span>
+                            <span className="text-xs text-zinc-500">Soma consolidada de todos os gastos fixos e variáveis indispensáveis para manter o estabelecimento aberto e operando.</span>
+                          </div>
+
+                          <div className="pt-3 pl-3 border-l-2 border-zinc-200 dark:border-zinc-700 space-y-2">
+                            <div>
+                              <span className="font-medium text-zinc-700 dark:text-zinc-200 block">(-) Despesas Fixas</span>
+                              <span className="text-xs text-zinc-500">Gastos fixos recorrentes que não flutuam com as vendas (ex: aluguel, internet, salários de colaboradores fixos).</span>
+                            </div>
+                            <div>
+                              <span className="font-medium text-zinc-700 dark:text-zinc-200 block">(-) Despesas Variáveis</span>
+                              <span className="text-xs text-zinc-500">Custos variáveis que oscilam de acordo com o volume de vendas/atividade (ex: impostos diretos, insumos).</span>
+                            </div>
+                            <div>
+                              <span className="font-medium text-zinc-700 dark:text-zinc-200 block">(-) Taxas de Cartão de Crédito / Débito</span>
+                              <span className="text-xs text-zinc-500">Tarifas cobradas pelas adquirentes e operadoras de cartão de crédito e débito sobre cada transação financeira realizada.</span>
+                            </div>
+                          </div>
+
+                          <div className="pt-3">
+                            <span className="font-semibold text-zinc-800 dark:text-zinc-100 block">Total Despesas Operacionais</span>
+                            <span className="text-xs font-mono text-rose-500 block">Fórmula: Despesas Fixas + Despesas Variáveis + Taxas de Cartão</span>
+                            <span className="text-xs text-zinc-500">Gasto operacional consolidado total do estabelecimento no período selecionado.</span>
+                          </div>
+
+                          <div className="pt-3">
+                            <span className="font-semibold text-zinc-800 dark:text-zinc-100 block">Lucro Líquido</span>
+                            <span className="text-xs font-mono text-emerald-600 block">Fórmula: Lucro Bruto - Total Despesas Operacionais</span>
+                            <span className="text-xs text-zinc-500">Resultado final líquido do estabelecimento. Se positivo, representa o lucro líquido real; se negativo, prejuízo.</span>
+                          </div>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
                 <div className="space-y-3 text-sm divide-y divide-zinc-100">
                   <div className="pt-2"><Row label="Receita de Serviços" value={dre.receita_servicos} /></div>
                   <div className="pt-2"><Row label="Receita de Vendas Diretas" value={dre.receita_vendas_diretas} /></div>
@@ -458,11 +584,15 @@ export default function Relatorios() {
                 .filter(v => {
                   if (!searchQuery) return true;
                   const query = searchQuery.toLowerCase();
+                  const numStr = v.numero_venda ? String(v.numero_venda).padStart(6, '0') : '';
+                  const formattedNum = v.numero_venda ? `${numStr} | V`.toLowerCase() : '';
                   return (
                     v.produto_nome.toLowerCase().includes(query) ||
                     (v.colaborador_nome || "").toLowerCase().includes(query) ||
                     (v.cliente_nome || "").toLowerCase().includes(query) ||
-                    (v.categoria || "").toLowerCase().includes(query)
+                    (v.categoria || "").toLowerCase().includes(query) ||
+                    numStr.includes(query) ||
+                    formattedNum.includes(query)
                   );
                 })
                 .sort((a, b) => {
@@ -480,15 +610,16 @@ export default function Relatorios() {
                 });
 
               // 2. Calcular totais dinâmicos baseados na lista filtrada
-              const totalFaturamento = filteredVendas.reduce((acc, v) => acc + v.valor_total, 0);
-              const totalQuantidade = filteredVendas.reduce((acc, v) => acc + v.quantidade, 0);
-              const totalCusto = filteredVendas.reduce((acc, v) => acc + v.custo_total, 0);
+              const totalFaturamento = filteredVendas.filter(v => v.status === "pago").reduce((acc, v) => acc + v.valor_total, 0);
+              const totalQuantidade = filteredVendas.filter(v => v.status === "pago").reduce((acc, v) => acc + v.quantidade, 0);
+              const totalCusto = filteredVendas.filter(v => v.status === "pago").reduce((acc, v) => acc + v.custo_total, 0);
               const totalLucro = totalFaturamento - totalCusto;
 
               // 3. Agrupamentos para o painel lateral de desempenho (breakdowns)
               const porColab = {};
               const porProd = {};
               filteredVendas.forEach(v => {
+                if (v.status !== "pago") return;
                 const cName = v.colaborador_nome || 'Nenhum';
                 porColab[cName] = (porColab[cName] || 0) + v.valor_total;
                 
@@ -672,8 +803,11 @@ export default function Relatorios() {
                                   </td>
                                   <td className="px-4 py-3">
                                     <div className="font-semibold text-zinc-800">{v.produto_nome}</div>
-                                    <div className="text-[10px] text-zinc-400 font-normal flex items-center gap-1">
-                                      <Tag className="w-3 h-3" /> {v.categoria}
+                                    <div className="text-[10px] text-zinc-400 font-normal flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                      <span className="flex items-center gap-1"><Tag className="w-3 h-3" /> {v.categoria}</span>
+                                      {v.numero_venda && (
+                                        <span className="font-mono text-zinc-400 font-normal">• {String(v.numero_venda).padStart(6, "0")} | V</span>
+                                      )}
                                     </div>
                                   </td>
                                   <td className="px-4 py-3 font-normal text-zinc-700 whitespace-nowrap">
@@ -783,11 +917,15 @@ export default function Relatorios() {
                 .filter(s => {
                   if (!searchQueryServico) return true;
                   const query = searchQueryServico.toLowerCase();
+                  const numStr = s.agendamento_numero ? String(s.agendamento_numero).padStart(6, '0') : '';
+                  const formattedNum = s.agendamento_numero ? `${numStr} | S`.toLowerCase() : '';
                   return (
                     s.servico_nome.toLowerCase().includes(query) ||
                     (s.colaborador_nome || "").toLowerCase().includes(query) ||
                     (s.auxiliar_nome || "").toLowerCase().includes(query) ||
-                    (s.cliente_nome || "").toLowerCase().includes(query)
+                    (s.cliente_nome || "").toLowerCase().includes(query) ||
+                    numStr.includes(query) ||
+                    formattedNum.includes(query)
                   );
                 })
                 .sort((a, b) => {
@@ -805,15 +943,16 @@ export default function Relatorios() {
                 });
 
               // 2. Calcular totais dinâmicos baseados na lista filtrada
-              const totalFaturamento = filteredServicos.reduce((acc, s) => acc + s.valor, 0);
-              const totalQuantidade = filteredServicos.length;
-              const totalDuracao = filteredServicos.reduce((acc, s) => acc + (s.duracao || 0), 0);
+              const totalFaturamento = filteredServicos.filter(s => s.status === "concluido").reduce((acc, s) => acc + s.valor, 0);
+              const totalQuantidade = filteredServicos.filter(s => s.status === "concluido").length;
+              const totalDuracao = filteredServicos.filter(s => s.status === "concluido").reduce((acc, s) => acc + (s.duracao || 0), 0);
               const ticketMedio = totalQuantidade > 0 ? (totalFaturamento / totalQuantidade) : 0;
 
               // 3. Agrupamentos para o painel lateral de desempenho (breakdowns)
               const porColab = {};
               const porServ = {};
               filteredServicos.forEach(s => {
+                if (s.status !== "concluido") return;
                 const cName = s.colaborador_nome || 'Nenhum';
                 porColab[cName] = (porColab[cName] || 0) + s.valor;
                 
@@ -999,8 +1138,8 @@ export default function Relatorios() {
                                   </td>
                                   <td className="px-3 py-3">
                                     <div className="font-semibold text-zinc-800">{s.servico_nome}</div>
-                                    <div className="text-[10px] text-zinc-400 font-normal">
-                                      #{s.agendamento_numero || "N/A"}
+                                    <div className="text-[10px] font-mono text-zinc-400 font-normal">
+                                      {s.agendamento_numero ? `${String(s.agendamento_numero).padStart(6, "0")} | S` : "-"}
                                     </div>
                                   </td>
                                   <td className="px-3 py-3 font-normal text-zinc-700 whitespace-nowrap">

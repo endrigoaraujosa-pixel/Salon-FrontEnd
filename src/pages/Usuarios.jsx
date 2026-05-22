@@ -7,9 +7,10 @@ import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
-import { UsersRound, Plus, Edit2, Trash2, Shield } from "lucide-react";
+import { UsersRound, Plus, Edit2, Trash2, Shield, History } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../auth";
+import AuditModal from "../components/AuditModal";
 
 const blank = { name: "", email: "", senha: "", role: "funcionario", ativo: true, pode_alterar_concluido: false, pode_excluir_agendamento: false, pode_excluir_pagamento: false };
 
@@ -21,6 +22,7 @@ export default function Usuarios() {
   const [deletingId, setDeletingId] = useState(null);
   const [deletingEmail, setDeletingEmail] = useState("");
   const [form, setForm] = useState(blank);
+  const [auditOpen, setAuditOpen] = useState(false);
 
   const load = () => http.get("/users").then((r) => setList(r.data)).catch((e) => toast.error(e.response?.data?.detail || "Erro ao carregar"));
   useEffect(() => { load(); }, []);
@@ -28,6 +30,14 @@ export default function Usuarios() {
   const save = async () => {
     if (!form.name || !form.email) { toast.error("Nome e email obrigatórios"); return; }
     if (!form.id && !form.senha) { toast.error("Senha obrigatória"); return; }
+    
+    const emailLower = form.email.toLowerCase().trim();
+    const emailExists = list.some((u) => u.email.toLowerCase().trim() === emailLower && u.id !== form.id);
+    if (emailExists) {
+      toast.error("Este email já está cadastrado");
+      return;
+    }
+
     try {
       const payload = { 
         name: form.name, 
@@ -96,7 +106,7 @@ export default function Usuarios() {
             <DialogHeader><DialogTitle>{form.id ? "Editar" : "Novo"} usuário</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div><Label>Nome *</Label><Input data-testid="user-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-              <div><Label>Email *</Label><Input data-testid="user-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+              <div><Label>Email *</Label><Input data-testid="user-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} autoComplete="off" /></div>
               <div>
                 <Label>{form.id ? "Nova senha (deixe vazio para manter)" : "Senha *"}</Label>
                 <Input 
@@ -105,6 +115,7 @@ export default function Usuarios() {
                   value={form.senha || ""} 
                   onChange={(e) => setForm({ ...form, senha: e.target.value })} 
                   placeholder={form.id ? "Digite uma nova senha se quiser alterar" : "Senha obrigatória"}
+                  autoComplete="new-password"
                 />
               </div>
               <div>
@@ -133,7 +144,7 @@ export default function Usuarios() {
                 </div>
                 <div className="flex items-center gap-2 mt-1">
                   <Switch checked={form.pode_excluir_pagamento} onCheckedChange={(v) => setForm({ ...form, pode_excluir_pagamento: v })} />
-                  <Label className="text-xs">Permitir exclusão de pagamento</Label>
+                  <Label className="text-xs">Permitir exclusão de pagamentos e cancelamento de vendas</Label>
                 </div>
               </div>
             </div>
@@ -143,6 +154,17 @@ export default function Usuarios() {
           </DialogContent>
         </Dialog>
       } />
+
+      <div className="flex justify-end mb-4">
+        <Button 
+          variant="outline" 
+          onClick={() => setAuditOpen(true)}
+          className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+        >
+          <History className="w-3.5 h-3.5" />
+          <span>Excluídos</span>
+        </Button>
+      </div>
 
       {list.length === 0 ? <EmptyState icon={UsersRound} title="Nenhum usuário" hint="Cadastre usuários para dar acesso ao sistema." /> : (
         <div className="bg-white border border-zinc-200 rounded-xl overflow-x-auto">
@@ -191,6 +213,13 @@ export default function Usuarios() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AuditModal 
+        isOpen={auditOpen} 
+        onClose={() => setAuditOpen(false)} 
+        modulo="usuario" 
+        tituloModulo="Usuários" 
+        onRestoreSuccess={load}
+      />
     </div>
   );
 }

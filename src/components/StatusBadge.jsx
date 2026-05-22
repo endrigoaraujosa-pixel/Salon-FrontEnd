@@ -9,11 +9,11 @@ export const STATUS_LABELS = {
 };
 
 const COLORS = {
-  agendado: "bg-sky-100 text-sky-700",
-  confirmado: "bg-amber-100 text-amber-700",
-  em_andamento: "bg-purple-100 text-purple-700",
-  concluido: "bg-emerald-100 text-emerald-700",
-  cancelado: "bg-rose-100 text-rose-700",
+  agendado: "bg-sky-50 text-sky-700 dark:bg-zinc-900 dark:text-sky-400 dark:border dark:border-sky-950",
+  confirmado: "bg-amber-50 text-amber-700 dark:bg-zinc-900 dark:text-amber-400 dark:border dark:border-amber-950",
+  em_andamento: "bg-purple-50 text-purple-700 dark:bg-zinc-900 dark:text-purple-400 dark:border dark:border-purple-950",
+  concluido: "bg-emerald-50 text-emerald-700 dark:bg-zinc-900 dark:text-emerald-400 dark:border dark:border-emerald-950",
+  cancelado: "bg-rose-50 text-rose-700 dark:bg-zinc-900 dark:text-rose-400 dark:border dark:border-rose-950",
 };
 
 export default function StatusBadge({ status }) {

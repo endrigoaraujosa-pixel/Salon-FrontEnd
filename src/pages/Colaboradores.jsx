@@ -6,8 +6,9 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
-import { UserCog, Plus, Edit2, Trash2 } from "lucide-react";
+import { UserCog, Plus, Edit2, Trash2, History } from "lucide-react";
 import { toast } from "sonner";
+import AuditModal from "../components/AuditModal";
 
 const blank = { nome: "", cargo: "", telefone: "", comissao_principal: 40, comissao_auxiliar: 20, ativo: true };
 
@@ -17,6 +18,7 @@ export default function Colaboradores() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState(blank);
+  const [auditOpen, setAuditOpen] = useState(false);
   const load = () => http.get("/colaboradores").then((r) => setList(r.data));
   useEffect(() => { load(); }, []);
 
@@ -72,6 +74,17 @@ export default function Colaboradores() {
         </Dialog>
       } />
 
+      <div className="flex justify-end mb-4">
+        <Button 
+          variant="outline" 
+          onClick={() => setAuditOpen(true)}
+          className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800"
+        >
+          <History className="w-3.5 h-3.5" />
+          <span>Excluídos</span>
+        </Button>
+      </div>
+
       {list.length === 0 ? <EmptyState icon={UserCog} title="Nenhum colaborador" hint="Cadastre profissionais para começar a agendar." /> : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {list.map((c) => (
@@ -111,6 +124,14 @@ export default function Colaboradores() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AuditModal 
+        isOpen={auditOpen} 
+        onClose={() => setAuditOpen(false)} 
+        modulo="colaborador" 
+        tituloModulo="Colaboradores"
+        onRestoreSuccess={load}
+      />
     </div>
   );
 }

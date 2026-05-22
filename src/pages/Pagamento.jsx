@@ -333,7 +333,7 @@ export default function Pagamento() {
         {ag.cliente_nome}
         {ag.numero && (
           <span className="text-xs sm:text-sm font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] px-2.5 py-1 rounded-full">
-            Atendimento #{String(ag.numero).padStart(4, "0")}
+            Atendimento {String(ag.numero).padStart(6, "0")} | S
           </span>
         )}
       </h1>

@@ -90,7 +90,7 @@ export default function AgendaTimeline({ data, onCardClick }) {
     return agendamentos.filter((a) => !a.profissionais?.length);
   }, [agendamentos]);
 
-  const calcBlock = (a) => {  
+  const calcBlock = (a) => {
     const d = new Date(a.data_hora.replace("Z", ""));
     const startH = d.getHours() + d.getMinutes() / 60;
     const dur = (a.duracao_minutos || 60) / 60;
@@ -119,18 +119,18 @@ export default function AgendaTimeline({ data, onCardClick }) {
           <span className="font-display font-bold text-zinc-800 text-sm md:text-base">{formatSelectedDate(data)}</span>
         </div>
         <div className="ml-auto text-xs font-semibold text-zinc-400 bg-zinc-100 px-3 py-1 rounded-full flex items-center gap-1">
-          <Clock className="w-3.5 h-3.5" /> 24h Activa
+          <Clock className="w-3.5 h-3.5" /> 24h Ativa
         </div>
       </div>
 
       <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm flex flex-col">
         {/* Scrollable Container */}
-        <div 
+        <div
           ref={scrollContainerRef}
           className="overflow-x-auto scrollbar-thin relative"
         >
           <div className="relative" style={{ minWidth: `${220 + totalWidth}px` }}>
-            
+
             {/* Header: horários */}
             <div className="flex sticky top-0 bg-zinc-50 border-b border-zinc-200 z-10">
               <div className="w-[220px] flex-shrink-0 px-4 py-3 text-xs uppercase tracking-wider text-zinc-500 font-semibold border-r border-zinc-200 bg-zinc-50 select-none">
@@ -147,7 +147,7 @@ export default function AgendaTimeline({ data, onCardClick }) {
 
             {/* Linha vertical indicando o horário atual */}
             {isSelectedDayToday && (
-              <div 
+              <div
                 className="absolute top-0 bottom-0 z-20 w-0.5 bg-rose-500 pointer-events-none transition-all duration-300"
                 style={{ left: `${220 + currentTimeLeft}px` }}
               >
@@ -215,10 +215,10 @@ export default function AgendaTimeline({ data, onCardClick }) {
                     const colors = STATUS_COLORS[a.status] || STATUS_COLORS.agendado;
                     const time = fmtHour(a.data_hora);
                     return (
-                      <div 
-                        key={a.id} 
-                        className="absolute top-1.5 bottom-1.5 rounded-lg overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 select-none" 
-                        style={{ left: `${left}px`, width: `${width}px`, background: colors.bg, borderLeft: `4px solid ${colors.stripe}` }} 
+                      <div
+                        key={a.id}
+                        className="absolute top-1.5 bottom-1.5 rounded-lg overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 select-none"
+                        style={{ left: `${left}px`, width: `${width}px`, background: colors.bg, borderLeft: `4px solid ${colors.stripe}` }}
                         title={`${time} · ${a.cliente_nome}`}
                         onClick={() => onCardClick?.(a)}
                       >

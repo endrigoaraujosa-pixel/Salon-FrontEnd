@@ -7,8 +7,9 @@ import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
-import { Tags, Plus, Edit2, Trash2, Check, X } from "lucide-react";
+import { Tags, Plus, Edit2, Trash2, Check, X, History } from "lucide-react";
 import { toast } from "sonner";
+import AuditModal from "../components/AuditModal";
 
 const blank = { nome: "", tipo: "ambos", ativo: true };
 
@@ -19,6 +20,7 @@ export default function Categorias() {
   const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState(blank);
   const [search, setSearch] = useState("");
+  const [auditOpen, setAuditOpen] = useState(false);
 
   const load = () => {
     http.get("/categorias").then((r) => setList(r.data));
@@ -90,15 +92,23 @@ export default function Categorias() {
         }
       />
 
-      <div className="mb-6 flex gap-4 max-w-md">
-        <div className="relative flex-1">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-4 max-w-2xl">
+        <div className="relative flex-1 max-w-md">
           <Input
             placeholder="Pesquisar categoria por nome..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full"
+            className="w-full bg-white"
           />
         </div>
+        <Button 
+          variant="outline" 
+          onClick={() => setAuditOpen(true)}
+          className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800"
+        >
+          <History className="w-3.5 h-3.5" />
+          <span>Excluídos</span>
+        </Button>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -157,9 +167,9 @@ export default function Categorias() {
           hint={search ? "Tente outro termo de pesquisa." : "Cadastre categorias para organizar seus produtos e serviços."}
         />
       ) : (
-        <div className="bg-white border border-zinc-200 rounded-xl overflow-x-auto shadow-sm">
+        <div className="bg-white dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-x-auto shadow-sm">
           <table className="w-full text-sm">
-            <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500">
+            <thead className="bg-zinc-50 dark:bg-zinc-900/50 text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
               <tr>
                 <th className="px-6 py-3 text-left font-semibold">Nome</th>
                 <th className="px-6 py-3 text-left font-semibold">Tipo</th>
@@ -167,12 +177,12 @@ export default function Categorias() {
                 <th className="px-6 py-3"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100">
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {filteredList.map((cat) => (
-                <tr key={cat.id} className="hover:bg-zinc-50/60 transition-colors">
-                  <td className="px-6 py-3 font-medium text-zinc-900">{cat.nome}</td>
+                <tr key={cat.id} className="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/30 transition-colors">
+                  <td className="px-6 py-3 font-medium text-zinc-900 dark:text-zinc-100">{cat.nome}</td>
                   <td className="px-6 py-3">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-800 capitalize">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 capitalize">
                       {cat.tipo === "ambos"
                         ? "Ambos"
                         : cat.tipo === "produto"
@@ -194,7 +204,7 @@ export default function Categorias() {
                   <td className="px-6 py-3 text-right">
                     <div className="flex justify-end gap-1">
                       <Button size="sm" variant="ghost" onClick={() => edit(cat)}>
-                        <Edit2 className="w-4 h-4" />
+                        <Edit2 className="w-4 h-4 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200" />
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => del(cat.id)}>
                         <Trash2 className="w-4 h-4 text-rose-500" />
@@ -227,6 +237,13 @@ export default function Categorias() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AuditModal 
+        isOpen={auditOpen} 
+        onClose={() => setAuditOpen(false)} 
+        modulo="categoria" 
+        tituloModulo="Categorias"
+        onRestoreSuccess={load}
+      />
     </div>
   );
 }
