@@ -444,9 +444,6 @@ export default function Pagamento() {
                     </div>
                   )}
                   <div className="flex items-center justify-end gap-2 border-t border-zinc-50 pt-2 mt-1">
-                    <Button size="sm" variant="outline" className="h-8 border-zinc-200 text-blue-600 hover:bg-blue-50" onClick={() => startEdit(p)}>
-                      <Edit2 className="w-3.5 h-3.5 mr-1" /> Editar
-                    </Button>
                     <Button size="sm" variant="outline" className="h-8 border-zinc-200 text-rose-600 hover:bg-rose-50" onClick={() => startDelete(p.id)}>
                       <Trash2 className="w-3.5 h-3.5 mr-1" /> Excluir
                     </Button>
@@ -461,7 +458,7 @@ export default function Pagamento() {
                 <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500"><tr><th className="px-4 py-3 text-left">Data</th><th className="px-4 py-3 text-left">Forma</th><th className="px-4 py-3 text-right">Valor</th><th className="px-4 py-3 text-left">Observação</th><th className="px-4 py-3 text-right">Ações</th></tr></thead>
                 <tbody className="divide-y divide-zinc-100">
                   {ag.pagamentos.map((p) => (
-                    <tr key={p.id}><td className="px-4 py-3 text-zinc-700">{fmtDT(p.data_hora)}</td><td className="px-4 py-3">{FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}</td><td className="px-4 py-3 text-right font-medium">{fmtBRL(p.valor)}</td><td className="px-4 py-3 text-sm text-zinc-600">{p.observacao}</td><td className="px-4 py-3 text-right space-x-2"><Button size="icon" variant="ghost" onClick={() => startEdit(p)}><Edit2 className="w-4 h-4 text-blue-500" /></Button><Button size="icon" variant="ghost" onClick={() => startDelete(p.id)}><Trash2 className="w-4 h-4 text-rose-500" /></Button></td></tr>
+                    <tr key={p.id}><td className="px-4 py-3 text-zinc-700">{fmtDT(p.data_hora)}</td><td className="px-4 py-3">{FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}</td><td className="px-4 py-3 text-right font-medium">{fmtBRL(p.valor)}</td><td className="px-4 py-3 text-sm text-zinc-600">{p.observacao}</td><td className="px-4 py-3 text-right space-x-2"><Button size="icon" variant="ghost" onClick={() => startDelete(p.id)}><Trash2 className="w-4 h-4 text-rose-500" /></Button></td></tr>
                   ))}
                 </tbody>
               </table>

@@ -205,7 +205,7 @@ export default function Usuarios() {
             <DialogTitle>Confirmar exclusão</DialogTitle>
           </DialogHeader>
           <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
-            Tem certeza que deseja excluir o usuário <b>{deletingEmail}</b>? Esta ação removerá permanentemente o acesso dele ao sistema.
+            Tem certeza que deseja excluir o usuário <b>{deletingEmail}</b>? Esta ação pode ser desfeita a qualquer momento a partir da tela de "Excluídos".
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>

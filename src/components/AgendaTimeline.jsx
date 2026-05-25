@@ -17,11 +17,45 @@ const HOUR_END = 24;
 const ROW_HEIGHT = 64; // Increased for a more spacious premium feel
 const HOUR_WIDTH = 120; // Slightly wider hour blocks for better readability
 
-export default function AgendaTimeline({ data, onCardClick }) {
+export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, servicos, onCardClick }) {
   const [colaboradores, setColaboradores] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
   const [now, setNow] = useState(new Date());
   const scrollContainerRef = useRef(null);
+
+  const getInsumosStatus = (a) => {
+    let hasRequired = false;
+    let hasPending = false;
+
+    for (const item of (a.itens || [])) {
+      const s = servicos?.find(x => x.id === item.servico_id);
+      const linkedCount = s?.produtos_vinculados?.length || 0;
+      if (linkedCount > 0) {
+        hasRequired = true;
+        const utilizedCount = item.produtos_utilizados?.length || 0;
+        if (utilizedCount === 0) {
+          hasPending = true;
+        }
+      }
+    }
+
+    if (!hasRequired) return "none";
+    return hasPending ? "pending" : "launched";
+  };
+
+  const filteredAgendamentos = useMemo(() => {
+    return agendamentos.filter(a => {
+      if (selectedStatus && selectedStatus !== "all" && a.status !== selectedStatus) return false;
+      
+      if (selectedInsumos && selectedInsumos !== "all") {
+        const insumosStatus = getInsumosStatus(a);
+        if (selectedInsumos === "pending" && insumosStatus !== "pending") return false;
+        if (selectedInsumos === "launched" && insumosStatus !== "launched") return false;
+      }
+      
+      return true;
+    });
+  }, [agendamentos, selectedStatus, selectedInsumos, servicos]);
 
   useEffect(() => {
     http.get("/colaboradores").then((r) => setColaboradores(r.data.filter((c) => c.ativo)));
@@ -77,18 +111,18 @@ export default function AgendaTimeline({ data, onCardClick }) {
   const byColab = useMemo(() => {
     const map = {};
     colaboradores.forEach((c) => { map[c.id] = []; });
-    agendamentos.forEach((a) => {
+    filteredAgendamentos.forEach((a) => {
       const principais = a.profissionais?.filter((p) => p.tipo === "principal") || [];
       principais.forEach((p) => {
         if (map[p.id]) map[p.id].push(a);
       });
     });
     return map;
-  }, [colaboradores, agendamentos]);
+  }, [colaboradores, filteredAgendamentos]);
 
   const agendamentosSemProf = useMemo(() => {
-    return agendamentos.filter((a) => !a.profissionais?.length);
-  }, [agendamentos]);
+    return filteredAgendamentos.filter((a) => !a.profissionais?.length);
+  }, [filteredAgendamentos]);
 
   const calcBlock = (a) => {
     const d = new Date(a.data_hora.replace("Z", ""));

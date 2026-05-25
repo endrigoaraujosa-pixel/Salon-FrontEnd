@@ -42,7 +42,7 @@
     --secondary-foreground: 0 0% 98%;
     --muted: 240 10% 24%;
     --muted-foreground: 240 5% 65%;
-    --accent: 162 14% 57%;
+    --accent: 168 12% 26%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -85,6 +85,17 @@ h1, h2, h3, h4, h5, .font-display {
 /* Ajustes específicos para o tema escuro */
 .dark {
   color-scheme: dark;
+}
+
+/* Fallback hover overrides to prevent pure white hover backgrounds in dark mode */
+.dark .hover\:bg-zinc-50:hover {
+  background-color: hsl(var(--secondary)) !important;
+}
+.dark .hover\:bg-zinc-100:hover {
+  background-color: hsl(var(--secondary)) !important;
+}
+.dark .hover\:bg-zinc-50\/30:hover {
+  background-color: hsl(var(--secondary) / 0.3) !important;
 }
 
 .dark input::placeholder {

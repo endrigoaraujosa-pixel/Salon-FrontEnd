@@ -54,7 +54,7 @@ export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl w-full p-0 gap-0 overflow-hidden bg-white print:shadow-none print:max-w-none print:w-full print:border-none">
+      <DialogContent className="sm:max-w-xl w-full p-0 gap-0 overflow-hidden bg-white dark:bg-zinc-900 print:shadow-none print:max-w-none print:w-full print:border-none">
         {/* Helper print styles global injection for this modal */}
         <style dangerouslySetInnerHTML={{__html: `
           @media print {
@@ -104,20 +104,20 @@ export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#84A59D]" />
+             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#84A59D] dark:border-emerald-500" />
              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Carregando recibo...</p>
           </div>
         ) : data ? (
-          <div className="receipt-print-area flex flex-col h-full bg-white print:bg-white print:p-8">
+          <div className="receipt-print-area flex flex-col h-full bg-white dark:bg-zinc-900 print:bg-white print:p-8">
             {/* Header / Actions (no-print) */}
-            <div className="flex items-center justify-between pl-6 pr-16 py-4 border-b border-zinc-100 bg-zinc-50/50 no-print">
-              <DialogTitle className="text-sm font-bold flex items-center gap-2 text-zinc-800">
-                <Receipt className="w-4 h-4 text-zinc-500" /> Detalhes da Venda
+            <div className="flex items-center justify-between pl-6 pr-16 py-4 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50 no-print">
+              <DialogTitle className="text-sm font-bold flex items-center gap-2 text-zinc-800 dark:text-zinc-100">
+                <Receipt className="w-4 h-4 text-zinc-500 dark:text-zinc-400" /> Detalhes da Venda
               </DialogTitle>
               <div className="flex items-center gap-2">
                 <button 
                   onClick={handlePrint} 
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-zinc-200 rounded-lg hover:bg-zinc-50 text-zinc-600 transition-colors font-semibold text-xs shadow-xs" 
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 transition-colors font-semibold text-xs shadow-xs" 
                   title="Imprimir Recibo"
                 >
                   <Printer className="w-3.5 h-3.5" />
@@ -127,22 +127,22 @@ export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
             </div>
 
             {/* Content Body */}
-            <div className="p-6 overflow-y-auto max-h-[80vh] print:max-h-none print:overflow-visible text-zinc-800 space-y-6">
+            <div className="p-6 overflow-y-auto max-h-[80vh] print:max-h-none print:overflow-visible text-zinc-800 dark:text-zinc-200 space-y-6">
               
               {/* Receipt Header */}
-              <div className="text-center space-y-2 border-b border-dashed border-zinc-300 pb-6 print:border-zinc-800">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-zinc-100 print:bg-transparent print:border print:border-zinc-800 rounded-full mb-2">
-                  <ShoppingBag className="w-6 h-6 text-[#3A4F4A] print:text-black" />
+              <div className="text-center space-y-2 border-b border-dashed border-zinc-300 dark:border-zinc-700 pb-6 print:border-zinc-800">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-zinc-100 dark:bg-zinc-800 print:bg-transparent print:border print:border-zinc-800 rounded-full mb-2">
+                  <ShoppingBag className="w-6 h-6 text-[#3A4F4A] dark:text-emerald-500 print:text-black" />
                 </div>
-                <h2 className="text-2xl font-black font-display text-zinc-900 leading-none">
+                <h2 className="text-2xl font-black font-display text-zinc-900 dark:text-zinc-50 leading-none">
                   Venda #{String(data.numero_venda).padStart(6, '0')} | V
                 </h2>
-                <div className="flex items-center justify-center gap-1.5 text-xs text-zinc-500 font-medium print:text-zinc-800">
+                <div className="flex items-center justify-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 font-medium print:text-zinc-800">
                   <Calendar className="w-3.5 h-3.5" />
                   {fmtDT(data.data_venda)}
                 </div>
                 <div className="mt-4 flex justify-center print:hidden">
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${data.status === 'pago' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${data.status === 'pago' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400'}`}>
                     {data.status === 'pago' ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
                     {data.status === 'pago' ? 'Pago' : 'Pendente'}
                   </span>
@@ -154,18 +154,18 @@ export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
               </div>
 
               {/* People Info */}
-              <div className="grid grid-cols-2 gap-4 text-sm bg-zinc-50 rounded-xl p-4 border border-zinc-100 print:border-zinc-800 print:bg-transparent">
+              <div className="grid grid-cols-2 gap-4 text-sm bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-4 border border-zinc-100 dark:border-zinc-700/50 print:border-zinc-800 print:bg-transparent">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-zinc-400 block mb-1 print:text-zinc-600">Vendedor</span>
-                  <div className="flex items-center gap-1.5 font-medium text-zinc-700 print:text-black">
-                    <User className="w-3.5 h-3.5 text-zinc-400 print:hidden" />
+                  <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 block mb-1 print:text-zinc-600">Vendedor</span>
+                  <div className="flex items-center gap-1.5 font-medium text-zinc-700 dark:text-zinc-300 print:text-black">
+                    <User className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 print:hidden" />
                     {data.colaborador_nome || '—'}
                   </div>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-zinc-400 block mb-1 print:text-zinc-600">Cliente</span>
-                  <div className="flex items-center gap-1.5 font-medium text-zinc-700 print:text-black">
-                    <User className="w-3.5 h-3.5 text-zinc-400 print:hidden" />
+                  <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 block mb-1 print:text-zinc-600">Cliente</span>
+                  <div className="flex items-center gap-1.5 font-medium text-zinc-700 dark:text-zinc-300 print:text-black">
+                    <User className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 print:hidden" />
                     {data.cliente_nome || 'Consumidor Final'}
                   </div>
                 </div>
@@ -173,15 +173,15 @@ export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
 
               {/* Items List */}
               <div className="space-y-3">
-                <h3 className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider print:text-zinc-600">Produtos</h3>
-                <div className="space-y-3 border-b border-dashed border-zinc-300 pb-4 print:border-zinc-800">
+                <h3 className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider print:text-zinc-600">Produtos</h3>
+                <div className="space-y-3 border-b border-dashed border-zinc-300 dark:border-zinc-700 pb-4 print:border-zinc-800">
                   {itens.map((item, idx) => (
                     <div key={idx} className="flex justify-between items-start gap-4 text-sm">
                       <div className="flex-1">
-                        <p className="font-bold text-zinc-800 print:text-black leading-snug">{item.produto_nome}</p>
-                        <p className="text-xs text-zinc-500 font-medium print:text-zinc-700">{item.quantidade}x {fmtBRL(item.preco_unitario || 0)}</p>
+                        <p className="font-bold text-zinc-800 dark:text-zinc-100 print:text-black leading-snug">{item.produto_nome}</p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium print:text-zinc-700">{item.quantidade}x {fmtBRL(item.preco_unitario || 0)}</p>
                       </div>
-                      <div className="font-bold font-mono text-zinc-800 print:text-black">
+                      <div className="font-bold font-mono text-zinc-800 dark:text-zinc-100 print:text-black">
                         {fmtBRL(item.subtotal)}
                       </div>
                     </div>
@@ -190,18 +190,18 @@ export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
               </div>
 
               {/* Totals */}
-              <div className="space-y-2 border-b border-dashed border-zinc-300 pb-4 print:border-zinc-800">
-                <div className="flex justify-between text-sm text-zinc-500 print:text-zinc-700">
+              <div className="space-y-2 border-b border-dashed border-zinc-300 dark:border-zinc-700 pb-4 print:border-zinc-800">
+                <div className="flex justify-between text-sm text-zinc-500 dark:text-zinc-400 print:text-zinc-700">
                   <span>Subtotal Itens</span>
                   <span>{fmtBRL(subtotalItens)}</span>
                 </div>
                 {desconto > 0.01 && (
-                  <div className="flex justify-between text-sm text-emerald-600 font-medium print:text-black">
+                  <div className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400 font-medium print:text-black">
                     <span>Descontos</span>
                     <span>-{fmtBRL(desconto)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-lg font-black text-[#3A4F4A] pt-2 print:text-black">
+                <div className="flex justify-between text-lg font-black text-[#3A4F4A] dark:text-emerald-400 pt-2 print:text-black">
                   <span>Total</span>
                   <span>{fmtBRL(data.valor_total)}</span>
                 </div>
@@ -209,35 +209,35 @@ export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
 
               {/* Payments */}
               <div className="space-y-3">
-                <h3 className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider print:text-zinc-600">Pagamentos Vinculados</h3>
+                <h3 className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider print:text-zinc-600">Pagamentos Vinculados</h3>
                 {data.pagamentos && data.pagamentos.length > 0 ? (
                   <div className="space-y-2">
                     {data.pagamentos.map((p, idx) => (
-                      <div key={idx} className="flex justify-between text-sm items-center bg-zinc-50 rounded-lg p-2.5 border border-zinc-100 print:border-none print:bg-transparent print:p-0">
+                      <div key={idx} className="flex justify-between text-sm items-center bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-2.5 border border-zinc-100 dark:border-zinc-800 print:border-none print:bg-transparent print:p-0">
                         <div className="flex flex-col">
-                          <span className="font-bold text-zinc-700 capitalize flex items-center gap-1.5 print:text-black">
-                            <CreditCard className="w-3.5 h-3.5 text-zinc-400 print:hidden" />
+                          <span className="font-bold text-zinc-700 dark:text-zinc-300 capitalize flex items-center gap-1.5 print:text-black">
+                            <CreditCard className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 print:hidden" />
                             {p.forma_pagamento}
                           </span>
-                          {p.observacao && <span className="text-[10px] text-zinc-500 mt-0.5 print:text-zinc-700">{p.observacao}</span>}
+                          {p.observacao && <span className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5 print:text-zinc-700">{p.observacao}</span>}
                         </div>
-                        <span className="font-mono font-bold text-zinc-800 print:text-black">{fmtBRL(p.valor)}</span>
+                        <span className="font-mono font-bold text-zinc-800 dark:text-zinc-200 print:text-black">{fmtBRL(p.valor)}</span>
                       </div>
                     ))}
-                    <div className="flex justify-between text-sm font-bold text-zinc-600 pt-2 px-1 border-t border-zinc-100 mt-2 print:text-black print:border-zinc-800">
+                    <div className="flex justify-between text-sm font-bold text-zinc-600 dark:text-zinc-400 pt-2 px-1 border-t border-zinc-100 dark:border-zinc-800 mt-2 print:text-black print:border-zinc-800">
                       <span>Total Pago</span>
-                      <span className={data.total_pago >= data.valor_total ? 'text-emerald-600 print:text-black' : 'text-amber-600 print:text-black'}>
+                      <span className={data.total_pago >= data.valor_total ? 'text-emerald-600 dark:text-emerald-400 print:text-black' : 'text-amber-600 dark:text-amber-500 print:text-black'}>
                         {fmtBRL(data.total_pago)}
                       </span>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-xs text-zinc-500 italic print:text-zinc-700">Nenhum pagamento registrado.</p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 italic print:text-zinc-700">Nenhum pagamento registrado.</p>
                 )}
               </div>
 
               {/* Print Footer */}
-              <div className="text-center text-[10px] text-zinc-400 font-medium pt-4 pb-2 print:text-zinc-600 print:pt-8">
+              <div className="text-center text-[10px] text-zinc-400 dark:text-zinc-500 font-medium pt-4 pb-2 print:text-zinc-600 print:pt-8">
                 <p>Obrigado pela preferência!</p>
                 <p>Documento sem valor fiscal.</p>
               </div>
