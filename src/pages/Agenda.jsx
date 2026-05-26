@@ -226,7 +226,9 @@ export default function Agenda() {
           servico_id: x.servico_id,
           colaborador_id: x.colaborador_id,
           auxiliar_id: x.auxiliar_id,
-          produtos_utilizados: x.produtos_utilizados || []
+          produtos_utilizados: x.produtos_utilizados || [],
+          valor: x.valor,
+          valor_original: x.valor_original
         }))
       };
 
@@ -1175,15 +1177,15 @@ export default function Agenda() {
       </Dialog>
 
       <Dialog open={openResumo} onOpenChange={setOpenResumo}>
-        <DialogContent className="dialog-content sm:max-w-xl md:max-w-2xl lg:max-w-3xl rounded-2xl p-6 overflow-y-auto max-h-[90vh]" aria-describedby="dialog-resumo">
-          <DialogHeader className="dialog-header flex flex-row items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+        <DialogContent className="dialog-content sm:max-w-3xl md:max-w-4xl lg:max-w-5xl rounded-2xl p-8 overflow-y-auto max-h-[90vh]" aria-describedby="dialog-resumo">
+          <DialogHeader className="dialog-header flex flex-row items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-4">
             <DialogTitle className="dialog-title flex items-center gap-2 justify-between w-full">
-              <span className="flex items-center gap-2">
-                <CalendarDays className="w-5 h-5 text-[#84A59D]" />
+              <span className="flex items-center gap-3 text-xl font-semibold">
+                <CalendarDays className="w-6 h-6 text-[#84A59D]" />
                 Resumo do Atendimento
               </span>
               {resumoAgendamento?.numero && (
-                <span className="text-xs font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] px-2.5 py-0.5 rounded-full mr-6">
+                <span className="text-sm font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] px-3.5 py-1 rounded-full mr-6">
                   {String(resumoAgendamento.numero).padStart(6, "0")} | S
                 </span>
               )}
@@ -1191,94 +1193,121 @@ export default function Agenda() {
           </DialogHeader>
           <div id="dialog-resumo" className="sr-only">Resumo detalhado do agendamento selecionado</div>
           {resumoAgendamento && (
-            <div className="dialog-body grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+            <div className="dialog-body grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
               
               {/* Coluna Esquerda: Informações Gerais e Notas */}
-              <div className="space-y-5">
+              <div className="space-y-6">
                 {/* Cliente e Status */}
-                <div className="flex items-start justify-between bg-[#F8FBFB] dark:bg-[#1a2322] p-4 rounded-xl border border-[#E8EFEF] dark:border-[#2e3e3b]">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#EAF0EE] flex items-center justify-center text-[#3A4F4A] font-semibold text-lg">
+                <div className="flex items-center justify-between bg-[#F8FBFB] dark:bg-[#1a2322] p-5 rounded-2xl border border-[#E8EFEF] dark:border-[#2e3e3b] shadow-xs">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-[#EAF0EE] flex items-center justify-center text-[#3A4F4A] font-semibold text-xl">
                       {resumoAgendamento.cliente_nome?.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <h3 className="font-display font-semibold text-zinc-800 dark:text-zinc-100">{resumoAgendamento.cliente_nome}</h3>
+                      <h3 className="font-display font-semibold text-zinc-800 dark:text-zinc-100 text-lg">{resumoAgendamento.cliente_nome}</h3>
                       <p className="text-xs text-zinc-400">Cliente cadastrado(a)</p>
                     </div>
                   </div>
                   <StatusBadge status={resumoAgendamento.status} />
                 </div>
-
+ 
                 {/* Data e Hora */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
-                    <CalIcon className="w-5 h-5 text-[#84A59D]" />
+                <div className="grid grid-cols-2 gap-5">
+                  <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-3 shadow-xs">
+                    <CalIcon className="w-6 h-6 text-[#84A59D]" />
                     <div>
-                      <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">Data</p>
-                      <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
+                      <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">Data</p>
+                      <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
                         {new Date(resumoAgendamento.data_hora).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
                       </p>
                     </div>
                   </div>
-                  <div className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
-                    <Clock className="w-5 h-5 text-[#84A59D]" />
+                  <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-3 shadow-xs">
+                    <Clock className="w-6 h-6 text-[#84A59D]" />
                     <div>
-                      <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">Horário</p>
-                      <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
+                      <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">Horário</p>
+                      <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
                         {fmtHour(resumoAgendamento.data_hora)}
                       </p>
                     </div>
                   </div>
                 </div>
-
+ 
                 {/* Observações */}
-                <div className="space-y-1.5 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                <div className="space-y-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
                   <h4 className="text-xs uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-bold flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-[#84A59D]" /> Observações do Atendimento
+                    <FileText className="w-4 h-4 text-[#84A59D]" /> Observações do Atendimento
                   </h4>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-3">
                     <Textarea
                       placeholder="Digite observações importantes sobre este atendimento..."
                       value={observacoesResumo}
                       onChange={(e) => setObservacoesResumo(e.target.value)}
-                      className="w-full h-24 text-xs bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 leading-relaxed"
+                      className="w-full h-32 text-sm bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 leading-relaxed rounded-xl shadow-inner p-3"
                     />
                     <Button 
                       onClick={handleSaveResumoObs}
                       disabled={savingResumoObs}
                       size="sm" 
-                      className="self-end bg-[#84A59D] hover:bg-[#6F9189] text-xs h-7 px-3 flex items-center gap-1 text-white font-bold"
+                      className="self-end bg-[#84A59D] hover:bg-[#6F9189] text-xs h-8 px-4 flex items-center gap-1 text-white font-bold rounded-lg shadow-sm"
                     >
                       {savingResumoObs ? "Salvando..." : "Salvar Observação"}
                     </Button>
                   </div>
                 </div>
               </div>
-
+ 
               {/* Coluna Direita: Serviços, Produtos e Valores */}
-              <div className="space-y-5 flex flex-col justify-between">
+              <div className="space-y-6 flex flex-col justify-between">
                 {/* Serviços e Profissionais */}
-                <div className="space-y-2">
-                  <h4 className="text-xs uppercase tracking-wider text-zinc-400 font-semibold flex items-center gap-1.5">
-                    <Scissors className="w-3.5 h-3.5 text-[#84A59D]" /> Serviços Agendados
+                <div className="space-y-3">
+                  <h4 className="text-xs uppercase tracking-wider text-zinc-400 font-bold flex items-center gap-1.5">
+                    <Scissors className="w-4 h-4 text-[#84A59D]" /> Serviços Agendados
                   </h4>
-                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                  <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
                     {resumoAgendamento.itens?.map((item, idx) => {
                       const s = servicos.find(x => x.id === item.servico_id);
                       const mainColab = colaboradores.find(c => c.id === item.colaborador_id)?.nome;
                       const auxColab = colaboradores.find(c => c.id === item.auxiliar_id)?.nome;
                       return (
-                        <div key={idx} className="bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] p-3 rounded-xl flex flex-col gap-2 shadow-xs">
+                        <div key={idx} className="bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] p-4 rounded-xl flex flex-col gap-3 shadow-xs">
                           <div className="flex items-center justify-between">
-                            <span className="font-medium text-sm text-zinc-800 dark:text-zinc-200">{item.nome || s?.nome || "Serviço"}</span>
-                            <div className="text-right">
-                              <span className="text-sm font-semibold text-[#3A4F4A]">{fmtBRL(item.valor)}</span>
-                              {item.valor_original !== undefined && Number(item.valor_original) !== Number(item.valor) && (
-                                <div className="text-[10px] text-zinc-455 line-through font-normal">{fmtBRL(item.valor_original)}</div>
-                              )}
-                            </div>
+                            <span className="font-semibold text-base text-zinc-800 dark:text-zinc-200">{item.nome || s?.nome || "Serviço"}</span>
+                            <span className="text-base font-bold text-[#3A4F4A] dark:text-[#EAF0EE]">{fmtBRL(item.valor)}</span>
                           </div>
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
+
+                          {/* Box de detalhamento de negociação do valor */}
+                          <div className="bg-white/80 dark:bg-zinc-900/50 p-2.5 rounded-lg border border-zinc-200/50 dark:border-zinc-800/80 text-xs space-y-1 mt-0.5">
+                            <div className="flex justify-between items-center text-zinc-500 dark:text-zinc-400">
+                              <span>Valor de Tabela (Base):</span>
+                              <span className="font-mono">{fmtBRL(item.valor_original !== undefined && item.valor_original !== null ? item.valor_original : item.valor)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[#3A4F4A] dark:text-[#84A59D] font-medium">
+                              <span>Valor Acordado/Negociado:</span>
+                              <span className="font-mono font-semibold">{fmtBRL(item.valor)}</span>
+                            </div>
+                            {(() => {
+                              const valBase = Number(item.valor_original !== undefined && item.valor_original !== null ? item.valor_original : item.valor);
+                              const valCobrado = Number(item.valor);
+                              const diferenca = valCobrado - valBase;
+                              if (Math.abs(diferenca) > 0.01) {
+                                const isDesconto = diferenca < 0;
+                                return (
+                                  <div className="flex justify-between items-center pt-1 border-t border-dashed border-zinc-200 dark:border-zinc-800 text-[11px] mt-0.5">
+                                    <span className={isDesconto ? "text-rose-600 dark:text-rose-400 font-semibold" : "text-emerald-600 dark:text-emerald-400 font-semibold"}>
+                                      {isDesconto ? "Diferença (Desconto):" : "Diferença (Ajuste Negociado):"}
+                                    </span>
+                                    <span className={`font-mono font-bold ${isDesconto ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                                      {isDesconto ? "-" : "+"}{fmtBRL(Math.abs(diferenca))}
+                                    </span>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500 mt-0.5">
                             <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {s?.duracao_minutos} min</span>
                             {mainColab && (
                               <span className="flex items-center gap-1"><User className="w-3 h-3" /> Profissional: <strong>{mainColab}</strong></span>
