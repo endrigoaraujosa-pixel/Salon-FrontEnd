@@ -37,7 +37,8 @@ const defaultPermissions = {
   acoes: {
     criar: false,
     editar: false,
-    excluir: false
+    excluir: false,
+    realizar_pagamento: false
   }
 };
 
@@ -433,6 +434,26 @@ export default function PerfisAcesso() {
                         form.permissoes.acoes.excluir ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
                       }`}>
                         {form.permissoes.acoes.excluir && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </div>
+                    </div>
+
+                    {/* Realizar Pagamentos */}
+                    <div 
+                      onClick={() => handleToggleAcao("realizar_pagamento")}
+                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
+                        form.permissoes.acoes.realizar_pagamento 
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
+                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
+                      }`}
+                    >
+                      <div>
+                        <span className="text-xs font-bold block">Realizar Pagamentos</span>
+                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Permitir recebimento de serviços e produtos</span>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
+                        form.permissoes.acoes.realizar_pagamento ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
+                      }`}>
+                        {form.permissoes.acoes.realizar_pagamento && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                       </div>
                     </div>
                   </div>

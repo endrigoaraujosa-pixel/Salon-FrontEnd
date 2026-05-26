@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { ArrowLeft, Plus, Trash2, CheckCircle2, Edit2, AlertCircle } from "lucide-react";
 import StatusBadge from "../components/StatusBadge";
 import PasswordConfirmDialog from "../components/PasswordConfirmDialog";
+import { useAuth } from "../auth";
 import { toast } from "sonner";
 
 const FORMAS = [
@@ -25,6 +26,8 @@ const fmtDT = (s) => new Date(s).toLocaleString("pt-BR");
 export default function Pagamento() {
   const { id } = useParams();
   const nav = useNavigate();
+  const { user } = useAuth();
+  const temPermissaoPagamento = user?.role === "admin" || !!user?.perfil?.permissoes?.acoes?.realizar_pagamento;
   const [ag, setAg] = useState(null);
   const [novos, setNovos] = useState([{ valor: "", forma_pagamento: "dinheiro", observacao: "" }]);
   
@@ -171,6 +174,10 @@ export default function Pagamento() {
   };
 
   const submit = async (forceSaldo = false) => {
+    if (!temPermissaoPagamento) {
+      toast.error("Você não tem permissão para realizar pagamentos.");
+      return;
+    }
     for (const p of novos) {
       const valNum = Number(p.valor) || 0;
       if (valNum > saldo && p.forma_pagamento !== "dinheiro") {
@@ -306,17 +313,29 @@ export default function Pagamento() {
 
   // Iniciar processo de edição
   const startEdit = (payment) => {
+    if (!temPermissaoPagamento) {
+      toast.error("Você não tem permissão para realizar pagamentos.");
+      return;
+    }
     openEditDialog(payment);
   };
 
   // Iniciar processo de deleção
   const startDelete = (paymentId) => {
+    if (!temPermissaoPagamento) {
+      toast.error("Você não tem permissão para realizar pagamentos.");
+      return;
+    }
     setPendingAction({ type: 'delete', paymentId });
     setPasswordDialogOpen(true);
   };
 
   // Salvar edição (abre dialog de senha)
   const saveEdit = () => {
+    if (!temPermissaoPagamento) {
+      toast.error("Você não tem permissão para realizar pagamentos.");
+      return;
+    }
     if (!editingPayment?.valor || Number(editingPayment.valor) <= 0) {
       toast.error("Valor deve ser maior que zero");
       return;
@@ -338,6 +357,15 @@ export default function Pagamento() {
         )}
       </h1>
       <div className="text-sm text-zinc-500 mt-1">{fmtDT(ag.data_hora)} · <StatusBadge status={ag.status} /></div>
+
+      {!temPermissaoPagamento && (
+        <div className="mt-6 p-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 rounded-xl flex items-start gap-3 fade-in">
+          <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-rose-800 dark:text-rose-300">
+            <span className="font-semibold">Acesso Restrito:</span> Você não possui a permissão necessária para realizar pagamentos no sistema.
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 my-6">
         <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-5">
@@ -361,7 +389,7 @@ export default function Pagamento() {
             <div key={i} className="border border-zinc-150 sm:border-0 rounded-xl p-4 sm:p-0 bg-zinc-50/50 sm:bg-transparent space-y-3 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end relative">
               {novos.length > 1 && (
                 <div className="sm:hidden absolute top-2 right-2">
-                  <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:bg-rose-50" onClick={() => removeLine(i)}>
+                  <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:bg-rose-50" onClick={() => removeLine(i)} disabled={!temPermissaoPagamento}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
@@ -376,12 +404,13 @@ export default function Pagamento() {
                   onChange={(e) => updateLine(i, "valor", e.target.value)}
                   placeholder={p.forma_pagamento === "dinheiro" && saldo > 0 ? `Troco se > ${fmtBRL(saldo)}` : "Digite o valor"}
                   className="bg-white sm:bg-transparent mt-1"
+                  disabled={!temPermissaoPagamento}
                 />
               </div>
               <div className="col-span-4">
                 <Label className="text-xs sm:text-sm">Forma</Label>
-                <Select value={p.forma_pagamento} onValueChange={(v) => updateLine(i, "forma_pagamento", v)}>
-                  <SelectTrigger data-testid={`pay-forma-${i}`} className="bg-white sm:bg-transparent mt-1"><SelectValue /></SelectTrigger>
+                <Select value={p.forma_pagamento} onValueChange={(v) => updateLine(i, "forma_pagamento", v)} disabled={!temPermissaoPagamento}>
+                  <SelectTrigger data-testid={`pay-forma-${i}`} className="bg-white sm:bg-transparent mt-1" disabled={!temPermissaoPagamento}><SelectValue /></SelectTrigger>
                   <SelectContent>{FORMAS.map((f) => <SelectItem key={f.v} value={f.v}>{f.l}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
@@ -392,11 +421,12 @@ export default function Pagamento() {
                   onChange={(e) => updateLine(i, "observacao", e.target.value)}
                   placeholder={p.forma_pagamento === "dinheiro" && Number(p.valor) > saldo ? `Troco: ${fmtBRL(Number(p.valor) - saldo)}` : ""}
                   className="bg-white sm:bg-transparent mt-1"
+                  disabled={!temPermissaoPagamento}
                 />
               </div>
               <div className="hidden sm:block col-span-1 text-center">
                 {novos.length > 1 && (
-                  <Button size="icon" variant="ghost" onClick={() => removeLine(i)}>
+                  <Button size="icon" variant="ghost" onClick={() => removeLine(i)} disabled={!temPermissaoPagamento}>
                     <Trash2 className="w-4 h-4 text-rose-500" />
                   </Button>
                 )}
@@ -418,8 +448,8 @@ export default function Pagamento() {
         )}
         
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6">
-          <Button variant="outline" size="sm" onClick={addLine} className="justify-center"><Plus className="w-3 h-3 mr-1" /> Adicionar forma</Button>
-          <Button data-testid="pay-finish-btn" onClick={submit} className="bg-[#84A59D] hover:bg-[#6F9189] justify-center"><CheckCircle2 className="w-4 h-4 mr-1" /> Registrar e Finalizar</Button>
+          <Button variant="outline" size="sm" onClick={addLine} className="justify-center" disabled={!temPermissaoPagamento}><Plus className="w-3 h-3 mr-1" /> Adicionar forma</Button>
+          <Button data-testid="pay-finish-btn" onClick={submit} className="bg-[#84A59D] hover:bg-[#6F9189] justify-center" disabled={!temPermissaoPagamento}><CheckCircle2 className="w-4 h-4 mr-1" /> Registrar e Finalizar</Button>
         </div>
       </div>
 
