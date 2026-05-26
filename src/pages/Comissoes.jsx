@@ -20,8 +20,10 @@ import {
   Users, 
   Clock,
   Filter,
-  AlertTriangle
+  AlertTriangle,
+  Printer
 } from "lucide-react";
+import { Checkbox } from "../components/ui/checkbox";
 import { toast } from "sonner";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -56,6 +58,15 @@ export default function Comissoes() {
   const [confirmInsumosOpen, setConfirmInsumosOpen] = useState(false);
   const [comissaoToPay, setComissaoToPay] = useState(null);
 
+  // Relatório states
+  const [colaboradores, setColaboradores] = useState([]);
+  const [relatorioDialogOpen, setRelatorioDialogOpen] = useState(false);
+  const [relatorioDataInicio, setRelatorioDataInicio] = useState(formatDateString(firstDay));
+  const [relatorioDataFim, setRelatorioDataFim] = useState(formatDateString(lastDay));
+  const [relatorioColabId, setRelatorioColabId] = useState("todos");
+  const [relatorioStatus, setRelatorioStatus] = useState("todos");
+  const [relatorioExibirDetalhamento, setRelatorioExibirDetalhamento] = useState(false);
+
   const load = () => {
     http.get("/comissoes", { 
       params: { 
@@ -73,6 +84,579 @@ export default function Comissoes() {
       load();
     }
   }, [dataInicio, dataFim, statusFilter]);
+
+  useEffect(() => {
+    http.get("/colaboradores")
+      .then((r) => {
+        setColaboradores(r.data || []);
+        if (isFunc && user?.name) {
+          const matched = r.data.find(c => c.nome.toLowerCase() === user.name.toLowerCase());
+          if (matched) {
+            setRelatorioColabId(String(matched.id));
+          }
+        }
+      })
+      .catch(() => {});
+  }, [isFunc, user]);
+
+  const generatePDF = async () => {
+    try {
+      const response = await http.get("/comissoes", { 
+        params: { 
+          data_inicio: relatorioDataInicio, 
+          data_fim: relatorioDataFim,
+          status: relatorioStatus === "cancelado" ? "pendente" : relatorioStatus
+        } 
+      });
+      
+      const fetchedData = response.data;
+      let filteredComissoes = fetchedData.comissoes || [];
+      if (relatorioColabId !== "todos") {
+        filteredComissoes = filteredComissoes.filter(c => c.colaborador_id === Number(relatorioColabId));
+      }
+      
+      if (relatorioStatus === "cancelado") {
+        filteredComissoes = filteredComissoes.map(c => ({
+          ...c,
+          atendimentos: 0,
+          total_principal: 0,
+          total_auxiliar: 0,
+          total_produtos: 0,
+          valor_comissao: 0,
+          detalhes: []
+        }));
+      }
+
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        toast.error("Por favor, permita pop-ups para gerar o relatório.");
+        return;
+      }
+
+      const currentDate = new Date().toLocaleDateString("pt-BR");
+      const currentTime = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+      const colabName = relatorioColabId === "todos" 
+        ? "Todos os colaboradores" 
+        : colaboradores.find(c => c.id === Number(relatorioColabId))?.nome || "Colaborador";
+
+      const statusName = {
+        todos: "Todos os status",
+        pendente: "Não Pagas (Pendentes)",
+        pago: "Pagas",
+        cancelado: "Cancelado"
+      }[relatorioStatus];
+
+      const totalComissoes = filteredComissoes.reduce((sum, c) => sum + c.valor_comissao, 0);
+      const totalAtendimentos = filteredComissoes.reduce((sum, c) => sum + c.atendimentos, 0);
+      const totalInsumos = filteredComissoes.reduce((sum, c) => {
+        const colabInsumos = c.detalhes?.reduce((s, d) => s + (d.custo_produtos || 0), 0) || 0;
+        return sum + colabInsumos;
+      }, 0);
+      const totalFaturamento = filteredComissoes.reduce((sum, c) => sum + c.total_principal + c.total_auxiliar, 0);
+
+      let htmlContent = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Relatório de Comissões de Funcionários</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Manrope', sans-serif;
+      color: #1f2937;
+      margin: 0;
+      padding: 30px;
+      background-color: #ffffff;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    h1, h2, h3, .font-display {
+      font-family: 'Outfit', sans-serif;
+      margin: 0;
+    }
+    .header {
+      border-bottom: 2px solid #84A59D;
+      padding-bottom: 15px;
+      margin-bottom: 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .header-left h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #3A4F4A;
+      letter-spacing: -0.02em;
+    }
+    .header-left p {
+      margin: 4px 0 0 0;
+      color: #6b7280;
+      font-size: 10px;
+    }
+    .header-right {
+      text-align: right;
+      color: #6b7280;
+      font-size: 10px;
+    }
+    .header-right .brand {
+      font-size: 14px;
+      font-weight: 700;
+      color: #84A59D;
+      font-family: 'Outfit', sans-serif;
+      margin-bottom: 3px;
+    }
+    
+    .filters-summary {
+      background-color: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 10px 15px;
+      margin-bottom: 20px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .filter-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .filter-label {
+      font-size: 9px;
+      font-weight: 700;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .filter-value {
+      font-size: 11px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    /* KPI grid */
+    .kpi-container {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .kpi-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 12px 15px;
+      background-color: #ffffff;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    }
+    .kpi-card.highlight {
+      background-color: #fafdfd;
+      border-color: #e1eeed;
+    }
+    .kpi-title {
+      font-size: 9px;
+      font-weight: 700;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .kpi-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #374151;
+      margin-top: 4px;
+    }
+    .kpi-card.highlight .kpi-value {
+      color: #3A4F4A;
+    }
+    .kpi-subtitle {
+      font-size: 8px;
+      color: #9ca3af;
+      margin-top: 2px;
+    }
+
+    .report-title-section {
+      margin-bottom: 15px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #3a4f4a;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 5px;
+    }
+
+    /* Summary Table */
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 25px;
+    }
+    .summary-table th {
+      background-color: #f9fafb;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #6b7280;
+      border-bottom: 1.5px solid #e5e7eb;
+      padding: 8px 12px;
+      font-weight: 700;
+      text-align: left;
+    }
+    .summary-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #f3f4f6;
+      font-size: 11px;
+    }
+    .summary-table tr.total-row td {
+      font-weight: 700;
+      border-top: 1.5px solid #e5e7eb;
+      background-color: #fafdfd;
+      color: #3a4f4a;
+    }
+
+    /* Collaborator detailed section */
+    .colab-section {
+      margin-bottom: 30px;
+      page-break-inside: avoid;
+    }
+    .colab-header {
+      background-color: #f4f7f6;
+      border-left: 4px solid #84A59D;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 0 6px 6px 0;
+    }
+    .colab-name {
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: #3A4F4A;
+    }
+    .colab-rates {
+      font-size: 9px;
+      color: #6b7280;
+      font-weight: 500;
+    }
+    
+    .detail-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10px;
+    }
+    .detail-table th {
+      font-size: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #6b7280;
+      border-bottom: 1.2px solid #e5e7eb;
+      padding: 6px 8px;
+      font-weight: 700;
+      text-align: left;
+    }
+    .detail-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #f3f4f6;
+      font-size: 10px;
+    }
+    .detail-table tr.colab-summary-row td {
+      font-weight: 700;
+      border-top: 1.2px solid #e5e7eb;
+      background-color: #fafdfd;
+      color: #3a4f4a;
+      font-size: 10px;
+      padding: 8px;
+    }
+
+    .numeric {
+      text-align: right;
+    }
+    .center {
+      text-align: center;
+    }
+    .font-mono {
+      font-family: monospace;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 1px 5px;
+      border-radius: 10px;
+      font-size: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .status-pago {
+      background-color: #ecfdf5;
+      color: #047857;
+      border: 1px solid #d1fae5;
+    }
+    .status-pendente {
+      background-color: #fffbeb;
+      color: #b45309;
+      border: 1px solid #fef3c7;
+    }
+    .text-danger {
+      color: #ef4444;
+    }
+
+    @media print {
+      body {
+        padding: 0;
+        font-size: 10px;
+      }
+      .kpi-card {
+        box-shadow: none;
+      }
+      .colab-section {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <h1>Relatório de Comissões de Funcionários</h1>
+      <p>Gerado a partir das movimentações de atendimentos e vendas.</p>
+    </div>
+    <div class="header-right">
+      <div class="brand">Salon Studio</div>
+      <div>Gerado em ${currentDate} às ${currentTime}</div>
+    </div>
+  </div>
+
+  <div class="filters-summary">
+    <div class="filter-item">
+      <span class="filter-label">Período</span>
+      <span class="filter-value">${new Date(relatorioDataInicio + 'T12:00:00').toLocaleDateString('pt-BR')} a ${new Date(relatorioDataFim + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+    </div>
+    <div class="filter-item">
+      <span class="filter-label">Colaborador</span>
+      <span class="filter-value">${colabName}</span>
+    </div>
+    <div class="filter-item">
+      <span class="filter-label">Status Comissões</span>
+      <span class="filter-value">${statusName}</span>
+    </div>
+    <div class="filter-item">
+      <span class="filter-label">Detalhamento</span>
+      <span class="filter-value">${relatorioExibirDetalhamento ? "Exibido" : "Não exibido"}</span>
+    </div>
+  </div>
+
+  <div class="kpi-container">
+    <div class="kpi-card">
+      <div class="kpi-title">Faturamento Executado</div>
+      <div class="kpi-value">${fmtBRL(totalFaturamento)}</div>
+      <div class="kpi-subtitle">Total bruto em serviços</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">Dedução de Insumos</div>
+      <div class="kpi-value text-danger">-${fmtBRL(totalInsumos)}</div>
+      <div class="kpi-subtitle">Custo de produtos nos serviços</div>
+    </div>
+    <div class="kpi-card highlight">
+      <div class="kpi-title">Comissão Líquida</div>
+      <div class="kpi-value">${fmtBRL(totalComissoes)}</div>
+      <div class="kpi-subtitle">${statusName}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">Total Atendimentos</div>
+      <div class="kpi-value">${totalAtendimentos}</div>
+      <div class="kpi-subtitle">Serviços executados</div>
+    </div>
+  </div>
+  `;
+
+      if (filteredComissoes.length === 0) {
+        htmlContent += `
+        <div style="text-align: center; padding: 50px; color: #6b7280; border: 1px dashed #d1d5db; border-radius: 8px;">
+          <h3 style="margin: 0; font-size: 14px;">Nenhuma comissão encontrada para os filtros selecionados</h3>
+          <p style="margin: 5px 0 0 0; font-size: 11px;">Verifique os períodos e os status desejados.</p>
+        </div>
+        `;
+      } else {
+        if (!relatorioExibirDetalhamento) {
+          htmlContent += `
+          <div class="report-title-section">Resumo Consolidado de Comissões</div>
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th>Profissional</th>
+                <th class="center" style="width: 100px;">Atendimentos</th>
+                <th class="numeric" style="width: 130px;">Serviços Executados</th>
+                <th class="numeric" style="width: 120px;">Dedução Insumos</th>
+                <th class="numeric" style="width: 120px;">Vendas de Produtos</th>
+                <th class="numeric" style="width: 130px;">Comissão Líquida</th>
+                <th class="center" style="width: 110px;">Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+          `;
+
+          filteredComissoes.forEach(c => {
+            const colabCustoInsumos = c.detalhes?.reduce((sum, d) => sum + (d.custo_produtos || 0), 0) || 0;
+            const statusLabel = c.pago 
+              ? `<span class="status-badge status-pago">Pago</span>` 
+              : `<span class="status-badge status-pendente">Pendente</span>`;
+
+            htmlContent += `
+              <tr>
+                <td style="font-weight: 600;">${c.colaborador_nome}</td>
+                <td class="center font-mono font-semibold">${c.atendimentos}</td>
+                <td class="numeric font-mono">${fmtBRL(c.total_principal + c.total_auxiliar)}</td>
+                <td class="numeric font-mono text-danger">-${fmtBRL(colabCustoInsumos)}</td>
+                <td class="numeric font-mono">${fmtBRL(c.total_produtos || 0)}</td>
+                <td class="numeric font-mono font-bold" style="color: #3A4F4A;">${fmtBRL(c.valor_comissao)}</td>
+                <td class="center">${statusLabel}</td>
+              </tr>
+            `;
+          });
+
+          const totalServicos = filteredComissoes.reduce((acc, c) => acc + c.total_principal + c.total_auxiliar, 0);
+          const totalVendas = filteredComissoes.reduce((acc, c) => acc + (c.total_produtos || 0), 0);
+
+          htmlContent += `
+              <tr class="total-row">
+                <td>TOTAL GERAL</td>
+                <td class="center font-mono">${totalAtendimentos}</td>
+                <td class="numeric font-mono">${fmtBRL(totalFaturamento)}</td>
+                <td class="numeric font-mono text-danger">-${fmtBRL(totalInsumos)}</td>
+                <td class="numeric font-mono">${fmtBRL(totalVendas)}</td>
+                <td class="numeric font-mono font-bold">${fmtBRL(totalComissoes)}</td>
+                <td class="center">—</td>
+              </tr>
+            </tbody>
+          </table>
+          `;
+        } else {
+          htmlContent += `
+          <div class="report-title-section">Detalhamento Individual de Comissões</div>
+          `;
+
+          filteredComissoes.forEach(c => {
+            const colabCustoInsumos = c.detalhes?.reduce((sum, d) => sum + (d.custo_produtos || 0), 0) || 0;
+            const soloRate = c.comissao_sozinho != null ? c.comissao_sozinho : c.comissao_principal;
+            
+            htmlContent += `
+            <div class="colab-section">
+              <div class="colab-header">
+                <span class="colab-name">${c.colaborador_nome}</span>
+                <span class="colab-rates">
+                  Políticas: Sozinho: <strong>${soloRate != null ? soloRate : 0}%</strong> · 
+                  Com ajuda: <strong>${c.comissao_ajuda || 30}%</strong> · 
+                  Auxiliar: <strong>${c.comissao_auxiliar || 0}%</strong>
+                </span>
+              </div>
+              
+              <table class="detail-table">
+                <thead>
+                  <tr>
+                    <th style="width: 110px;">Data / Hora</th>
+                    <th style="width: 70px;">Documento</th>
+                    <th style="width: 60px;">Tipo</th>
+                    <th style="width: 80px;">Papel</th>
+                    <th>Descrição Serviço / Produto</th>
+                    <th class="numeric" style="width: 80px;">Valor Item</th>
+                    <th class="numeric" style="width: 80px;">Insumo</th>
+                    <th class="numeric" style="width: 80px;">Base Comis.</th>
+                    <th class="numeric" style="width: 50px;">%</th>
+                    <th class="numeric" style="width: 80px;">Comissão</th>
+                    <th class="center" style="width: 70px;">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+            `;
+
+            const detalhes = c.detalhes || [];
+            if (detalhes.length === 0) {
+              htmlContent += `
+                <tr>
+                  <td colspan="11" style="text-align: center; color: #9ca3af; padding: 15px; font-style: italic;">
+                    Nenhuma movimentação individual registrada no período.
+                  </td>
+                </tr>
+              `;
+            } else {
+              detalhes.forEach(item => {
+                const docNum = item.numero != null 
+                  ? `${String(item.numero).padStart(6, "0")} | ${item.tipo === 'servico' ? 'S' : 'V'}`
+                  : "—";
+
+                const typeLabel = item.tipo === 'servico' ? 'Serviço' : 'Produto';
+                const statusBadge = item.pago 
+                  ? `<span class="status-badge status-pago">Pago</span>` 
+                  : `<span class="status-badge status-pendente">Pendente</span>`;
+
+                const baseCom = item.tipo === 'servico' 
+                  ? (item.base_comissao != null ? item.base_comissao : item.valor_movimentacao) 
+                  : item.valor_movimentacao;
+
+                htmlContent += `
+                  <tr>
+                    <td class="font-mono" style="font-size: 9px; white-space: nowrap;">${new Date(item.data).toLocaleString("pt-BR")}</td>
+                    <td class="font-mono font-semibold" style="font-size: 9px;">${docNum}</td>
+                    <td style="font-weight: 500;">${typeLabel}</td>
+                    <td style="color: #4b5563;">${item.papel}</td>
+                    <td style="font-weight: 600; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                      ${item.descricao}
+                      ${item.insumos_pendentes ? `<span style="color: #ef4444; font-size: 7px; font-weight: 700; margin-left: 3px;">⚠️ INSUMOS PENDENTES</span>` : ''}
+                    </td>
+                    <td class="numeric font-mono">${fmtBRL(item.valor_movimentacao)}</td>
+                    <td class="numeric font-mono text-danger">${item.tipo === 'servico' ? `-${fmtBRL(item.custo_produtos || 0)}` : '—'}</td>
+                    <td class="numeric font-mono">${fmtBRL(baseCom)}</td>
+                    <td class="numeric font-mono font-semibold">${item.percentual_aplicado}%</td>
+                    <td class="numeric font-mono font-bold" style="color: #047857;">${fmtBRL(item.valor_comissao)}</td>
+                    <td class="center">${statusBadge}</td>
+                  </tr>
+                `;
+              });
+            }
+
+            htmlContent += `
+                  <tr class="colab-summary-row">
+                    <td colspan="5">RESUMO: ${c.colaborador_nome}</td>
+                    <td class="numeric font-mono">${fmtBRL(c.total_principal + c.total_auxiliar)}</td>
+                    <td class="numeric font-mono text-danger">-${fmtBRL(colabCustoInsumos)}</td>
+                    <td class="numeric font-mono">${fmtBRL((c.total_principal + c.total_auxiliar) - colabCustoInsumos)}</td>
+                    <td class="numeric font-mono">—</td>
+                    <td class="numeric font-mono font-bold" style="color: #3a4f4a;">${fmtBRL(c.valor_comissao)}</td>
+                    <td class="center font-semibold">${c.pago ? 'PAGO' : 'PENDENTE'}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            `;
+          });
+        }
+      }
+
+      htmlContent += `
+  <div style="margin-top: 35px; text-align: center; font-size: 8px; color: #9ca3af; border-top: 1px dashed #e5e7eb; padding-top: 15px; page-break-inside: avoid;">
+    <p style="margin: 0;">Relatório gerado automaticamente pelo sistema Studio App. Documento para fins de controle interno e conferência.</p>
+    <p style="margin: 2px 0 0 0;">© ${new Date().getFullYear()} Salon Studio - Todos os direitos reservados.</p>
+  </div>
+</body>
+</html>
+      `;
+
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.onload = () => {
+        printWindow.focus();
+        printWindow.print();
+      };
+      
+      setRelatorioDialogOpen(false);
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao gerar o relatório em PDF.");
+    }
+  };
 
   const executePago = async (c) => {
     try {
@@ -168,6 +752,14 @@ export default function Comissoes() {
           <h1 className="font-display text-3xl font-extrabold text-[#3A4F4A] dark:text-zinc-100 tracking-tight">Comissões de Funcionários</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button 
+            onClick={() => setRelatorioDialogOpen(true)}
+            variant="outline" 
+            size="sm"
+            className="text-zinc-655 border-zinc-200 flex items-center gap-1.5 h-9 px-3 text-xs font-semibold rounded-lg dark:border-zinc-850 dark:text-zinc-200"
+          >
+            <Printer className="w-4 h-4 text-zinc-400" /> Relatório de Comissões
+          </Button>
           <Button variant="outline" size="sm" onClick={setPeriodoHoje} className="hover:bg-zinc-50 border-zinc-200 dark:border-zinc-800 dark:hover:bg-zinc-800 dark:text-zinc-200">Hoje</Button>
           <Button variant="outline" size="sm" onClick={setPeriodoEstaSemana} className="hover:bg-zinc-50 border-zinc-200 dark:border-zinc-800 dark:hover:bg-zinc-800 dark:text-zinc-200">Esta Semana</Button>
           <Button variant="outline" size="sm" onClick={setPeriodoEsteMes} className="hover:bg-zinc-50 border-zinc-200 dark:border-zinc-800 dark:hover:bg-zinc-800 dark:text-zinc-200">Este Mês</Button>
@@ -552,7 +1144,7 @@ export default function Comissoes() {
             </DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-sm text-zinc-600 dark:text-zinc-300">
+            <p className="text-sm text-zinc-650 dark:text-zinc-300">
               Este serviço possui lançamentos de insumos pendentes. Deseja realizar o pagamento da comissão mesmo assim?
             </p>
           </div>
@@ -561,13 +1153,126 @@ export default function Comissoes() {
               Cancelar e Revisar
             </Button>
             <Button 
-              className="bg-rose-500 hover:bg-rose-600 text-white" 
+              className="bg-rose-500 hover:bg-rose-650 text-white" 
               onClick={() => {
                 setConfirmInsumosOpen(false);
                 if (comissaoToPay) executePago(comissaoToPay);
               }}
             >
               Sim, Pagar Comissão
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Filtros para Relatório de Comissões */}
+      <Dialog open={relatorioDialogOpen} onOpenChange={setRelatorioDialogOpen}>
+        <DialogContent className="max-w-md bg-white dark:bg-zinc-950 rounded-2xl border-0 shadow-2xl">
+          <DialogHeader className="border-b border-zinc-100 dark:border-zinc-850 pb-3">
+            <DialogTitle className="flex items-center gap-2">
+              <Printer className="w-5 h-5 text-[#84A59D]" />
+              <span className="font-display font-bold text-zinc-900 dark:text-zinc-50">Relatório de Comissões</span>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-3">
+            {/* Datas */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold text-zinc-655 dark:text-zinc-350">Data de Início</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-400" />
+                  <Input 
+                    type="date" 
+                    value={relatorioDataInicio} 
+                    onChange={(e) => setRelatorioDataInicio(e.target.value)} 
+                    className="pl-8 text-xs bg-zinc-50/50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-9"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold text-zinc-655 dark:text-zinc-350">Data de Término</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-400" />
+                  <Input 
+                    type="date" 
+                    value={relatorioDataFim} 
+                    onChange={(e) => setRelatorioDataFim(e.target.value)} 
+                    className="pl-8 text-xs bg-zinc-50/50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-9"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Colaborador */}
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-zinc-655 dark:text-zinc-350">Colaborador</Label>
+              <Select 
+                value={relatorioColabId} 
+                onValueChange={setRelatorioColabId} 
+                disabled={isFunc}
+              >
+                <SelectTrigger className="bg-zinc-50/50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-9 text-xs">
+                  <SelectValue placeholder="Selecione o colaborador" />
+                </SelectTrigger>
+                <SelectContent className="dark:bg-zinc-950 dark:border-zinc-850">
+                  <SelectItem value="todos" className="text-xs dark:text-zinc-200">Todos os colaboradores</SelectItem>
+                  {colaboradores.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)} className="text-xs dark:text-zinc-200">
+                      {c.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Status */}
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-zinc-655 dark:text-zinc-350">Status das Comissões</Label>
+              <Select value={relatorioStatus} onValueChange={setRelatorioStatus}>
+                <SelectTrigger className="bg-zinc-50/50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-9 text-xs">
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent className="dark:bg-zinc-950 dark:border-zinc-850">
+                  <SelectItem value="todos" className="text-xs dark:text-zinc-200">Todos os status</SelectItem>
+                  <SelectItem value="pendente" className="text-xs dark:text-zinc-200">Não Pagas (Pendentes)</SelectItem>
+                  <SelectItem value="pago" className="text-xs dark:text-zinc-200">Pagas</SelectItem>
+                  <SelectItem value="cancelado" className="text-xs dark:text-zinc-200">Canceladas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Checkbox Detalhamento */}
+            <div className="flex items-center space-x-2.5 bg-zinc-50 dark:bg-zinc-900/40 p-3 rounded-xl border border-zinc-200/60 dark:border-zinc-800/80 mt-2">
+              <Checkbox 
+                id="exibir-detalhamento"
+                checked={relatorioExibirDetalhamento}
+                onCheckedChange={setRelatorioExibirDetalhamento}
+              />
+              <div className="grid gap-0.5 leading-none">
+                <Label htmlFor="exibir-detalhamento" className="text-xs font-bold text-zinc-800 dark:text-zinc-200 cursor-pointer select-none">
+                  Exibir detalhamento das comissões
+                </Label>
+                <p className="text-[10px] text-zinc-400">
+                  Inclui a lista detalhada de cada serviço/venda, valor, data e identificador.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter className="border-t border-zinc-100 dark:border-zinc-800 pt-3 gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={() => setRelatorioDialogOpen(false)}
+              className="text-xs h-9"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={generatePDF}
+              className="bg-[#84A59D] hover:bg-[#6F9189] dark:bg-[#84A59D] dark:hover:bg-[#6F9189] dark:text-zinc-950 text-white font-semibold text-xs h-9 px-5"
+            >
+              Gerar PDF
             </Button>
           </DialogFooter>
         </DialogContent>
