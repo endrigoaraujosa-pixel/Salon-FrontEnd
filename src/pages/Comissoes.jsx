@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import http from "../api";
+import { useAuth } from "../auth";
 import { PageHeader } from "../components/Page";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -28,6 +29,8 @@ const fmtDate = (s) => s ? new Date(s).toLocaleDateString("pt-BR") : "—";
 const fmtDateTime = (s) => s ? new Date(s).toLocaleString("pt-BR") : "—";
 
 export default function Comissoes() {
+  const { user } = useAuth();
+  const isFunc = user?.role === "funcionario";
   const today = new Date();
   
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -224,9 +227,9 @@ export default function Comissoes() {
             {/* Card 1: Faturamento Geral de Serviços */}
             <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center justify-between hover:scale-[1.01] transition-transform">
               <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Faturamento Bruto</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">{isFunc ? "Meu Faturamento" : "Faturamento Bruto"}</span>
                 <div className="font-display text-2xl font-black text-zinc-700 dark:text-zinc-100">{fmtBRL(totalFaturamentoServicos)}</div>
-                <span className="text-[10px] text-zinc-400 block font-medium">Executado em atendimentos</span>
+                <span className="text-[10px] text-zinc-400 block font-medium">{isFunc ? "Executado em meus atendimentos" : "Executado em atendimentos"}</span>
               </div>
               <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-xl">
                 <TrendingUp className="w-6 h-6 text-zinc-500 dark:text-zinc-400" />
@@ -236,7 +239,7 @@ export default function Comissoes() {
             {/* Card 2: Custo total de insumos */}
             <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center justify-between hover:scale-[1.01] transition-transform">
               <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 block">Dedução de Insumos</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 block">{isFunc ? "Minha Dedução de Insumos" : "Dedução de Insumos"}</span>
                 <div className="font-display text-2xl font-black text-zinc-700 dark:text-zinc-150">{fmtBRL(totalInsumosGeral)}</div>
                 <span className="text-[10px] text-zinc-400 block font-medium">Custo total dos produtos</span>
               </div>
@@ -248,7 +251,7 @@ export default function Comissoes() {
             {/* Card 3: Comissão Líquida Geral */}
             <div className="bg-[#FAFDFD] border border-[#E1EEED] dark:bg-emerald-950/10 dark:border-emerald-900/30 rounded-2xl p-5 shadow-sm flex items-center justify-between hover:scale-[1.01] transition-transform">
               <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#3A4F4A] dark:text-emerald-400 block">Comissão Líquida</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#3A4F4A] dark:text-emerald-400 block">{isFunc ? "Minha Comissão Líquida" : "Comissão Líquida"}</span>
                 <div className="font-display text-2xl font-black text-[#3A4F4A] dark:text-emerald-300">{fmtBRL(totalComissoesGeral)}</div>
                 <span className="text-[10px] text-[#84A59D] dark:text-emerald-400/80 block font-semibold uppercase tracking-wide">
                   {statusFilter === "pendente" && "A pagar no período"}
@@ -264,7 +267,7 @@ export default function Comissoes() {
             {/* Card 4: Total de Atendimentos */}
             <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center justify-between hover:scale-[1.01] transition-transform">
               <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Atendimentos</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">{isFunc ? "Meus Atendimentos" : "Atendimentos"}</span>
                 <div className="font-display text-2xl font-black text-zinc-700 dark:text-zinc-100">{totalAtendimentosGeral}</div>
                 <span className="text-[10px] text-zinc-400 block font-medium">Serviços executados</span>
               </div>
@@ -285,7 +288,7 @@ export default function Comissoes() {
                     <th className="px-6 py-4 text-right font-bold">Serviços Executados</th>
                     <th className="px-6 py-4 text-right font-bold">Consumo / Vendas</th>
                     <th className="px-6 py-4 text-right font-bold">Comissão Líquida</th>
-                    <th className="px-6 py-4 text-center font-bold">Situação / Ação</th>
+                    <th className="px-6 py-4 text-center font-bold">{user?.role === "admin" ? "Situação / Ação" : "Situação"}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -374,7 +377,7 @@ export default function Comissoes() {
                                 <Clock className="w-3 h-3" /> Pendente
                               </span>
                             )}
-                            {c.valor_comissao > 0 && (
+                            {user?.role === "admin" && c.valor_comissao > 0 && (
                               <button 
                                 onClick={() => togglePago(c)} 
                                 className={`text-[10px] font-bold hover:underline transition-colors uppercase tracking-wider ${

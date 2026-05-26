@@ -653,8 +653,25 @@ export default function Agenda() {
     if (!s) return;
     setForm(f => ({
       ...f,
-      itens_selecionados: [...f.itens_selecionados, { servico_id: sid, colaborador_id: "", auxiliar_id: "" }]
+      itens_selecionados: [
+        ...f.itens_selecionados,
+        {
+          servico_id: sid,
+          colaborador_id: "",
+          auxiliar_id: "",
+          valor: s.valor,
+          valor_original: s.valor
+        }
+      ]
     }));
+  };
+
+  const updateItemValor = (index, val) => {
+    setForm(f => {
+      const itens = [...f.itens_selecionados];
+      itens[index].valor = val === "" ? "" : Number(val);
+      return { ...f, itens_selecionados: itens };
+    });
   };
 
   const removeServico = (index) => {
@@ -744,7 +761,7 @@ export default function Agenda() {
 
   const valorTotal = form?.itens_selecionados.reduce((sum, item) => {
     const s = servicos.find(x => x.id === item.servico_id);
-    return sum + (s?.valor || 0);
+    return sum + (item.valor !== undefined && item.valor !== null && item.valor !== "" ? Number(item.valor) : (s?.valor || 0));
   }, 0) || 0;
 
   const duracaoTotal = form?.itens_selecionados.reduce((sum, item) => {
@@ -1014,8 +1031,8 @@ export default function Agenda() {
                         <span className="font-semibold service-item-card-name">{s?.nome}</span>
                         <Button size="sm" variant="ghost" onClick={() => removeServico(index)}><X className="w-4 h-4 text-rose-500" /></Button>
                       </div>
-                      <div className="text-xs service-item-card-info">{s?.duracao_minutos}min • {fmtBRL(s?.valor)}</div>
-                      <div className="grid-2">
+                      <div className="text-xs service-item-card-info">Duração: {s?.duracao_minutos}min • Valor Base: {fmtBRL(s?.valor)}</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div className="form-group">
                           <Label className="form-label flex items-center gap-1"><User className="w-3 h-3" /> Profissional Principal</Label>
                           <Select value={item.colaborador_id || "none"} onValueChange={(v) => updateItemColab(index, v === "none" ? "" : v)}>
@@ -1035,6 +1052,17 @@ export default function Agenda() {
                               {colaboradores.filter(c => c.id && c.id.trim()).map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
                             </SelectContent>
                           </Select>
+                        </div>
+                        <div className="form-group">
+                          <Label className="form-label flex items-center gap-1"><span className="text-[10px] font-bold text-zinc-400">R$</span> Valor Cobrado</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0,00"
+                            value={item.valor !== undefined ? item.valor : (s?.valor || "")}
+                            onChange={(e) => updateItemValor(index, e.target.value)}
+                            className="h-8 text-xs bg-white border border-zinc-200 rounded px-2"
+                          />
                         </div>
                       </div>
                     </div>
@@ -1242,8 +1270,13 @@ export default function Agenda() {
                       return (
                         <div key={idx} className="bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] p-3 rounded-xl flex flex-col gap-2 shadow-xs">
                           <div className="flex items-center justify-between">
-                            <span className="font-medium text-sm text-zinc-800 dark:text-zinc-200">{s?.nome || "Serviço"}</span>
-                            <span className="text-sm font-semibold text-[#3A4F4A]">{fmtBRL(s?.valor)}</span>
+                            <span className="font-medium text-sm text-zinc-800 dark:text-zinc-200">{item.nome || s?.nome || "Serviço"}</span>
+                            <div className="text-right">
+                              <span className="text-sm font-semibold text-[#3A4F4A]">{fmtBRL(item.valor)}</span>
+                              {item.valor_original !== undefined && Number(item.valor_original) !== Number(item.valor) && (
+                                <div className="text-[10px] text-zinc-455 line-through font-normal">{fmtBRL(item.valor_original)}</div>
+                              )}
+                            </div>
                           </div>
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
                             <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {s?.duracao_minutos} min</span>

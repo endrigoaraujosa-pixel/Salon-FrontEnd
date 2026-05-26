@@ -51,7 +51,7 @@ function App() {
               <Route path="/agenda" element={<Agenda />} />
               <Route path="/clientes" element={<Clientes />} />
               <Route path="/clientes/:id/historico" element={<ClienteHistorico />} />
-              <Route path="/colaboradores" element={<Colaboradores />} />
+              <Route path="/colaboradores" element={<AdminRoute><Colaboradores /></AdminRoute>} />
               <Route path="/servicos" element={<Servicos />} />
               <Route path="/produtos" element={<Produtos />} />
               <Route path="/categorias" element={<Categorias />} />
@@ -60,7 +60,7 @@ function App() {
               <Route path="/vendas-diretas/:id/pagamento" element={<VendaPagamento />} />
               <Route path="/despesas" element={<AdminRoute><Despesas /></AdminRoute>} />
               <Route path="/outras-receitas" element={<AdminRoute><OutrasReceitas /></AdminRoute>} />
-              <Route path="/comissoes" element={<AdminRoute><Comissoes /></AdminRoute>} />
+              <Route path="/comissoes" element={<Comissoes />} />
               <Route path="/relatorios" element={<AdminRoute><Relatorios /></AdminRoute>} />
               <Route path="/configuracoes/taxas-cartao" element={<AdminRoute><ConfiguracoesTaxas /></AdminRoute>} />
               <Route path="/usuarios" element={<AdminRoute><Usuarios /></AdminRoute>} />

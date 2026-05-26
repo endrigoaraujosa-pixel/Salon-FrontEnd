@@ -9,7 +9,7 @@ const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/agenda", label: "Agenda", icon: Calendar },
   { to: "/clientes", label: "Clientes", icon: Users },
-  { to: "/colaboradores", label: "Colaboradores", icon: UserCog },
+  { to: "/colaboradores", label: "Colaboradores", icon: UserCog, adminOnly: true },
   { to: "/servicos", label: "Serviços", icon: Scissors },
   { to: "/produtos", label: "Produtos", icon: Package },
   { to: "/vendas-diretas", label: "Vendas", icon: ShoppingBag },

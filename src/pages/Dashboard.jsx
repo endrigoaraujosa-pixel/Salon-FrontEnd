@@ -210,7 +210,7 @@ export default function Dashboard() {
             icon={DollarSign} 
             label="Faturamento Período" 
             value={fmtBRL(d.faturamento_mes)} 
-            hint={`${d.atendimentos_mes || 0} atendimentos`}
+            hint="Consolidado (Serviços, Vendas e Outras Receitas)"
             onClick={() => handleOpenDetail("faturamento")} 
           />
         )}
