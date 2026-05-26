@@ -1579,7 +1579,7 @@ export default function Agenda() {
                                   )}
                                 </td>
                                 <td className="px-4 py-3 text-center text-zinc-500 font-mono text-xs">
-                                  {row.quantidade_estoque} {row.unidade}
+                                  {Number(Number(row.quantidade_estoque || 0).toFixed(3))} {row.unidade}
                                 </td>
                                 <td className="px-4 py-3 text-right text-zinc-600 dark:text-zinc-400 font-mono text-xs">
                                   {fmtBRL(row.custo_unitario)}/{row.unidade}
@@ -1627,7 +1627,7 @@ export default function Agenda() {
                           .filter(p => !tempUtilizedProducts.some(row => row.produto_id === p.id))
                           .map(p => (
                             <SelectItem key={p.id} value={p.id}>
-                              {p.nome} ({p.quantidade_estoque} {p.unidade})
+                              {p.nome} ({Number(Number(p.quantidade_estoque || 0).toFixed(3))} {p.unidade})
                             </SelectItem>
                           ))
                         }

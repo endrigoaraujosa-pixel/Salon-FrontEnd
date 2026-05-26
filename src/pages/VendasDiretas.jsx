@@ -147,7 +147,7 @@ export default function VendasDiretas() {
     if (itemExistenteIdx !== -1) {
       const novaQtd = novaVendaItens[itemExistenteIdx].quantidade + qtd;
       if (novaQtd > prod.quantidade_estoque) {
-        toast.error(`Estoque insuficiente. Disponível: ${prod.quantidade_estoque}`);
+        toast.error(`Estoque insuficiente. Disponível: ${Number(Number(prod.quantidade_estoque || 0).toFixed(3))}`);
         return;
       }
       const copia = [...novaVendaItens];
@@ -155,7 +155,7 @@ export default function VendasDiretas() {
       setNovaVendaItens(copia);
     } else {
       if (qtd > prod.quantidade_estoque) {
-        toast.error(`Estoque insuficiente. Disponível: ${prod.quantidade_estoque}`);
+        toast.error(`Estoque insuficiente. Disponível: ${Number(Number(prod.quantidade_estoque || 0).toFixed(3))}`);
         return;
       }
       setNovaVendaItens([
@@ -181,7 +181,7 @@ export default function VendasDiretas() {
       return;
     }
     if (prod && novaQtd > prod.quantidade_estoque) {
-      toast.error(`Estoque insuficiente. Disponível: ${prod.quantidade_estoque}`);
+      toast.error(`Estoque insuficiente. Disponível: ${Number(Number(prod.quantidade_estoque || 0).toFixed(3))}`);
       return;
     }
     const copia = [...novaVendaItens];
@@ -417,7 +417,7 @@ export default function VendasDiretas() {
                       })
                       .map((p) => ({
                         value: p.id,
-                        label: `${p.nome} — ${fmtBRL(p.preco_venda)} (Estoque: ${p.quantidade_estoque})`
+                        label: `${p.nome} — ${fmtBRL(p.preco_venda)} (Estoque: ${Number(Number(p.quantidade_estoque || 0).toFixed(3))})`
                       }))
                     }
                     value={form.produto_id}
@@ -944,7 +944,7 @@ export default function VendasDiretas() {
                           .filter(p => p.quantidade_estoque > 0)
                           .map(p => ({
                             value: p.id,
-                            label: `${p.nome} — ${fmtBRL(p.preco_venda)} (Estoque: ${p.quantidade_estoque})`
+                            label: `${p.nome} — ${fmtBRL(p.preco_venda)} (Estoque: ${Number(Number(p.quantidade_estoque || 0).toFixed(3))})`
                           }))
                         }
                         value=""

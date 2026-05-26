@@ -311,7 +311,7 @@ export default function Produtos() {
         g.products.forEach(p => {
           const baixoEstoque = p.quantidade_estoque <= p.estoque_minimo;
           const stockClass = baixoEstoque ? "stock-alert" : "stock-normal";
-          const stockLabel = `${p.quantidade_estoque} ${p.unidade_medida || "un"}`;
+          const stockLabel = `${Number(Number(p.quantidade_estoque || 0).toFixed(3))} ${p.unidade_medida || "un"}`;
           
           htmlContent += `
               <tr>
@@ -659,7 +659,7 @@ export default function Produtos() {
                     <td className="px-4 py-3 text-right">
                       <span className={`inline-flex items-center gap-1 ${baixo ? "text-amber-700 font-bold" : "text-zinc-700"}`}>
                         {baixo && <AlertTriangle className="w-3 h-3" />}
-                        {p.quantidade_estoque} {p.unidade_medida}
+                        {Number(Number(p.quantidade_estoque || 0).toFixed(3))} {p.unidade_medida}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right font-medium">{fmtBRL(p.preco_venda)}</td>

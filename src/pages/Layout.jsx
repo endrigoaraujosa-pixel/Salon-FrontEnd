@@ -18,7 +18,7 @@ const nav = [
   { to: "/outras-receitas", label: "Outras Receitas", icon: TrendingUp, adminOnly: true },
   { to: "/comissoes", label: "Comissões", icon: Wallet },
   { to: "/relatorios", label: "Relatórios", icon: BarChart3, adminOnly: true },
-  { to: "/configuracoes/taxas-cartao", label: "Configurações", icon: UserCog, adminOnly: true },
+  { to: "/configuracoes", label: "Configurações", icon: UserCog, adminOnly: true },
   { to: "/usuarios", label: "Usuários", icon: UsersRound, adminOnly: true },
 ];
 

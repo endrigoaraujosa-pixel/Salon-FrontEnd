@@ -21,7 +21,9 @@ import Relatorios from "./pages/Relatorios";
 import Usuarios from "./pages/Usuarios";
 import Despesas from "./pages/Despesas";
 import OutrasReceitas from "./pages/OutrasReceitas";
+import Configuracoes from "./pages/Configuracoes";
 import ConfiguracoesTaxas from "./pages/ConfiguracoesTaxas";
+import ConfiguracoesFornecedores from "./pages/ConfiguracoesFornecedores";
 
 const Protected = ({ children }) => {
   const { user, loading } = useAuth();
@@ -53,7 +55,9 @@ function App() {
               <Route path="/outras-receitas" element={<OutrasReceitas />} />
               <Route path="/comissoes" element={<Comissoes />} />
               <Route path="/relatorios" element={<Relatorios />} />
+              <Route path="/configuracoes" element={<Configuracoes />} />
               <Route path="/configuracoes/taxas-cartao" element={<ConfiguracoesTaxas />} />
+              <Route path="/configuracoes/fornecedores" element={<ConfiguracoesFornecedores />} />
               <Route path="/usuarios" element={<Usuarios />} />
             </Route>
           </Routes>

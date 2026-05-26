@@ -480,7 +480,7 @@ export default function Dashboard() {
                           <td className="px-4 py-3 text-zinc-800 dark:text-zinc-200 font-semibold">{item.nome}</td>
                           <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 text-xs">{item.categoria || '—'}</td>
                           <td className="px-4 py-3 text-right text-zinc-650 dark:text-zinc-350">{fmtBRL(item.preco_venda)}</td>
-                          <td className="px-4 py-3 text-center font-mono font-bold text-rose-500 dark:text-rose-455 bg-rose-50/35 dark:bg-rose-950/20">{item.quantidade_estoque}</td>
+                          <td className="px-4 py-3 text-center font-mono font-bold text-rose-500 dark:text-rose-455 bg-rose-50/35 dark:bg-rose-950/20">{Number(Number(item.quantidade_estoque || 0).toFixed(3))}</td>
                           <td className="px-4 py-3 text-center font-mono font-medium text-zinc-500 dark:text-zinc-450">{item.estoque_minimo}</td>
                         </tr>
                       ))}
