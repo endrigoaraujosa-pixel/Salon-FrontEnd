@@ -43,7 +43,7 @@ export default function Categorias() {
       setForm(blank);
       load();
     } catch (e) {
-      toast.error("Erro ao salvar categoria");
+      toast.error(e.response?.data?.detail || "Erro ao salvar categoria");
     }
   };
 
@@ -61,7 +61,7 @@ export default function Categorias() {
       setDeletingId(null);
       load();
     } catch (e) {
-      toast.error("Erro ao remover categoria");
+      toast.error(e.response?.data?.detail || "Erro ao remover categoria");
     }
   };
 
@@ -225,7 +225,7 @@ export default function Categorias() {
             <DialogTitle>Confirmar exclusão</DialogTitle>
           </DialogHeader>
           <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
-            Tem certeza que deseja excluir esta categoria? Esta ação não pode ser desfeita. Os produtos e serviços vinculados a ela permanecerão no sistema, mas sem uma categoria vinculada.
+            Tem certeza que deseja excluir esta categoria? Esta ação pode ser desfeita a qualquer momento a partir da tela de "Excluídos". Os produtos e serviços vinculados a ela permanecerão no sistema, mas sem uma categoria vinculada.
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>

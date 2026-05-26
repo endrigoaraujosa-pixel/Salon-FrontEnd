@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import SearchableSelect from "../components/SearchableSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
-import { FileText, Banknote, Package, TrendingUp, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle } from "lucide-react";
+import { FileText, Banknote, Package, TrendingUp, TrendingDown, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle, Filter } from "lucide-react";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -75,10 +75,22 @@ export default function Relatorios() {
   const [servicos, setServicos] = useState(null);
   const [dreDetailsOpen, setDreDetailsOpen] = useState(false);
   const [hasInitializedCaixa, setHasInitializedCaixa] = useState(false);
+  const [detailsForma, setDetailsForma] = useState(null);
+  const [detailsSearchQuery, setDetailsSearchQuery] = useState("");
+  
+  // DRE specific filters
+  const [filterDreCategory, setFilterDreCategory] = useState("todos");
+  const [filterDreStatus, setFilterDreStatus] = useState("todos");
+
+  // Drilldown states
+  const [drilldownOpen, setDrilldownOpen] = useState(false);
+  const [drilldownTitle, setDrilldownTitle] = useState("");
+  const [drilldownData, setDrilldownData] = useState([]);
   
   // Estados para filtros
   const [colaboradores, setColaboradores] = useState([]);
   const [colaboradorId, setColaboradorId] = useState("todos"); // Usado no Caixa
+  const [categoriesList, setCategoriesList] = useState([]);
 
   const [produtosList, setProdutosList] = useState([]);
   const [servicosList, setServicosList] = useState([]);
@@ -114,6 +126,7 @@ export default function Relatorios() {
     http.get("/produtos").then((r) => setProdutosList(r.data)).catch(() => {});
     http.get("/servicos").then((r) => setServicosList(r.data)).catch(() => {});
     http.get("/clientes").then((r) => setClientesList(r.data)).catch(() => {});
+    http.get("/categorias").then((r) => setCategoriesList(r.data || [])).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -126,10 +139,42 @@ export default function Relatorios() {
 
   const reload = () => {
     const params = { data_inicio: from, data_fim: to };
-    if (tab === "dre") http.get("/relatorios/dre", { params }).then((r) => setDre(r.data));
+    if (tab === "dre") {
+      const dreParams = {
+        data_inicio: from,
+        data_fim: to,
+        categoria: filterDreCategory,
+        status: filterDreStatus
+      };
+      http.get("/relatorios/dre", { params: dreParams })
+        .then((r) => setDre(r.data))
+        .catch((err) => {
+          console.error("DRE error:", err);
+          setDre({
+            receita_servicos: 0,
+            receita_vendas_diretas: 0,
+            outras_receitas: 0,
+            receita_bruta: 0,
+            custo_produtos: 0,
+            lucro_bruto: 0,
+            despesas: { fixas: 0, variaveis: 0 },
+            taxas_cartao: { credito: 0, debito: 0, total: 0 },
+            despesas_operacionais: 0,
+            lucro_liquido: 0,
+            total_atendimentos: 0,
+            total_vendas_diretas: 0,
+            detalhes: { agendamentos: [], vendas: [], outras_receitas: [], despesas: [] }
+          });
+        });
+    }
     if (tab === "caixa") {
       const caixaParams = { ...params, colaborador_id: colaboradorId };
-      http.get("/relatorios/caixa", { params: caixaParams }).then((r) => setCaixa(r.data));
+      http.get("/relatorios/caixa", { params: caixaParams })
+        .then((r) => setCaixa(r.data))
+        .catch((err) => {
+          console.error("Caixa error:", err);
+          setCaixa({ pagamentos: [], total: 0 });
+        });
     }
     if (tab === "produtos") {
       const prodParams = {
@@ -141,7 +186,12 @@ export default function Relatorios() {
         cliente_id: filterCliente,
         status: filterStatus
       };
-      http.get("/relatorios/produtos", { params: prodParams }).then((r) => setProdutos(r.data));
+      http.get("/relatorios/produtos", { params: prodParams })
+        .then((r) => setProdutos(r.data))
+        .catch((err) => {
+          console.error("Produtos error:", err);
+          setProdutos([]);
+        });
     }
     if (tab === "servicos") {
       const servParams = {
@@ -152,7 +202,12 @@ export default function Relatorios() {
         cliente_id: filterClienteServico,
         status: filterStatusServico
       };
-      http.get("/relatorios/servicos", { params: servParams }).then((r) => setServicos(r.data));
+      http.get("/relatorios/servicos", { params: servParams })
+        .then((r) => setServicos(r.data))
+        .catch((err) => {
+          console.error("Servicos error:", err);
+          setServicos([]);
+        });
     }
   };
 
@@ -161,8 +216,15 @@ export default function Relatorios() {
   }, [
     tab, from, to, colaboradorId,
     filterColaborador, filterProduto, filterCategoria, filterFormaPagamento, filterCliente, filterStatus,
-    filterColaboradorServico, filterServico, filterFormaPagamentoServico, filterClienteServico, filterStatusServico
+    filterColaboradorServico, filterServico, filterFormaPagamentoServico, filterClienteServico, filterStatusServico,
+    filterDreCategory, filterDreStatus
   ]);
+
+  const handleDrilldown = (title, data) => {
+    setDrilldownTitle(title);
+    setDrilldownData(data || []);
+    setDrilldownOpen(true);
+  };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 fade-in max-w-7xl mx-auto w-full overflow-x-hidden">
@@ -391,6 +453,71 @@ export default function Relatorios() {
         </div>
       )}
 
+      {tab === "dre" && (
+        <div className="bg-white border border-zinc-200 rounded-xl p-4 mb-6 shadow-sm no-print">
+          <div className="flex items-center gap-2 mb-3 text-[#3A4F4A] font-semibold text-sm">
+            <Filter className="w-4 h-4 text-[#84A59D]" />
+            <span>Filtros Adicionais para DRE</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
+            {/* Categoria */}
+            <div>
+              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Categoria</Label>
+              <Select value={filterDreCategory} onValueChange={setFilterDreCategory}>
+                <SelectTrigger className="bg-white h-9 text-xs">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-150">
+                  <SelectItem value="todos">Todas as Categorias</SelectItem>
+                  {[
+                    ...new Set([
+                      "Salários", "Aluguel", "Luz", "Internet", "Produtos", "Água", "Marketing", "Juros", "Multas", "Devoluções", "Bônus", "Reembolsos", "Aluguel de espaço", "Venda de ativos", "Investimentos", "Outros",
+                      ...categoriesList.map(c => c.nome)
+                    ].filter(Boolean))
+                  ].map(cat => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Status */}
+            <div>
+              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Status Financeiro</Label>
+              <Select value={filterDreStatus} onValueChange={setFilterDreStatus}>
+                <SelectTrigger className="bg-white h-9 text-xs">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-150">
+                  <SelectItem value="todos">Todos os Status (Competência)</SelectItem>
+                  <SelectItem value="pago">Pago / Recebido (Caixa Realizado)</SelectItem>
+                  <SelectItem value="pendente">Pendente / Aberto (A Receber/Pagar)</SelectItem>
+                  <SelectItem value="vencido">Vencido (Em Atraso)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @media print {
+          body {
+            background: white !important;
+            color: black !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          .print-full-width {
+            width: 100% !important;
+            max-width: 100% !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+        }
+      `}</style>
+
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="mb-6 bg-zinc-100 p-1 rounded-lg flex overflow-x-auto max-w-full no-scrollbar whitespace-nowrap">
           <TabsTrigger value="dre" data-testid="tab-dre" className="flex items-center gap-1.5 shrink-0"><FileText className="w-4 h-4" /> DRE</TabsTrigger>
@@ -401,16 +528,89 @@ export default function Relatorios() {
 
         <TabsContent value="dre">
           {!dre ? <div className="text-zinc-400 p-8 text-center">Carregando...</div> : (
-            <div className="grid lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-6 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between border-b border-zinc-100 pb-2 dark:border-zinc-800">
-                  <h3 className="font-display text-lg font-medium text-zinc-800 dark:text-zinc-100">Demonstração de Resultado</h3>
-                  <Dialog open={dreDetailsOpen} onOpenChange={setDreDetailsOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="text-[#84A59D] hover:text-[#6F9189] hover:bg-[#EAF0EE] flex items-center gap-1.5 h-8 px-2.5 text-xs font-semibold rounded-lg dark:hover:bg-[#3A4F4A]/30">
-                        <HelpCircle className="w-4 h-4" /> Como é calculado?
+            <div className="space-y-6 print-full-width">
+              {/* Print Only Header */}
+              <div className="hidden print:block mb-8 border-b-2 border-zinc-900 pb-4">
+                <div className="flex justify-between items-end">
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-zinc-900">STUDIO APP</h1>
+                    <p className="text-xs text-zinc-500">Demonstrativo de Resultado do Exercício (DRE)</p>
+                  </div>
+                  <div className="text-right text-xs text-zinc-500">
+                    <div><strong>Período:</strong> {from ? new Date(from + 'T12:00:00').toLocaleDateString('pt-BR') : '-'} a {to ? new Date(to + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}</div>
+                    <div><strong>Gerado em:</strong> {new Date().toLocaleString('pt-BR')}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Overview Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 no-print">
+                {/* Total Receitas */}
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Total de Receitas</span>
+                    <TrendingUp className="w-5 h-5 text-emerald-500" />
+                  </div>
+                  <div className="font-display text-3xl font-bold mt-2 text-zinc-800 dark:text-zinc-100">{fmtBRL(dre.receita_bruta)}</div>
+                  <p className="text-[10px] text-zinc-500 mt-1">Serviços, vendas e outras receitas</p>
+                </div>
+
+                {/* Total Despesas */}
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Total de Despesas</span>
+                    <TrendingDown className="w-5 h-5 text-rose-500" />
+                  </div>
+                  <div className="font-display text-3xl font-bold mt-2 text-zinc-800 dark:text-zinc-100">
+                    {fmtBRL(dre.despesas_operacionais + (dre.custo_produtos || 0))}
+                  </div>
+                  <p className="text-[10px] text-zinc-500 mt-1">Operacionais, CMV e taxas de cartão</p>
+                </div>
+
+                {/* Resultado Líquido */}
+                <div className={`border rounded-2xl p-5 shadow-sm hover:shadow-md transition-all ${
+                  dre.lucro_liquido >= 0 
+                    ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-255 dark:border-emerald-800/40" 
+                    : "bg-rose-50/50 dark:bg-rose-950/20 border-rose-255 dark:border-rose-800/40"
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-bold uppercase tracking-wider ${dre.lucro_liquido >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                      Resultado Líquido
+                    </span>
+                    {dre.lucro_liquido >= 0 ? (
+                      <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                      <TrendingDown className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                    )}
+                  </div>
+                  <div className={`font-display text-3xl font-black mt-2 ${dre.lucro_liquido >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300"}`}>
+                    {fmtBRL(dre.lucro_liquido)}
+                  </div>
+                  <p className="text-[10px] text-zinc-500 mt-1">
+                    {dre.lucro_liquido >= 0 ? "Lucro líquido do período" : "Prejuízo líquido do período"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-6 space-y-4 shadow-sm print-full-width">
+                  <div className="flex items-center justify-between border-b border-zinc-100 pb-2 dark:border-zinc-800">
+                    <h3 className="font-display text-lg font-medium text-zinc-800 dark:text-zinc-100">Demonstração de Resultado</h3>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        onClick={() => window.print()}
+                        variant="outline" 
+                        size="sm" 
+                        className="text-zinc-600 hover:text-zinc-800 border-zinc-200 flex items-center gap-1.5 h-8 px-2.5 text-xs font-semibold rounded-lg dark:border-zinc-800 dark:text-zinc-300 no-print"
+                      >
+                        <Printer className="w-4 h-4 text-zinc-400" /> Exportar PDF
                       </Button>
-                    </DialogTrigger>
+                    <Dialog open={dreDetailsOpen} onOpenChange={setDreDetailsOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="text-[#84A59D] hover:text-[#6F9189] hover:bg-[#EAF0EE] flex items-center gap-1.5 h-8 px-2.5 text-xs font-semibold rounded-lg dark:hover:bg-[#3A4F4A]/30 no-print">
+                          <HelpCircle className="w-4 h-4" /> Como é calculado?
+                        </Button>
+                      </DialogTrigger>
                     <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
@@ -492,32 +692,212 @@ export default function Relatorios() {
                     </DialogContent>
                   </Dialog>
                 </div>
-                <div className="space-y-3 text-sm divide-y divide-zinc-100">
-                  <div className="pt-2"><Row label="Receita de Serviços" value={dre.receita_servicos} /></div>
-                  <div className="pt-2"><Row label="Receita de Vendas Diretas" value={dre.receita_vendas_diretas} /></div>
-                  <div className="pt-2"><Row label="Outras Receitas" value={dre.outras_receitas} /></div>
-                  <div className="border-t border-zinc-200 pt-3"><Row label="Receita Bruta" value={dre.receita_bruta} bold /></div>
-                  <div className="pt-2"><Row label="(-) Custo dos Produtos Vendidos" value={-dre.custo_produtos} negative /></div>
-                  <div className="border-t border-zinc-200 pt-3"><Row label="Lucro Bruto" value={dre.lucro_bruto} bold highlight /></div>
+              </div>
+                <div className="space-y-3 text-sm divide-y divide-zinc-100 dark:divide-zinc-800">
+                  <div className="pt-2">
+                    <DRE_Row 
+                      label="Receita de Serviços" 
+                      value={dre.receita_servicos} 
+                      onClick={() => handleDrilldown("Receita de Serviços", dre.detalhes?.agendamentos)}
+                    />
+                  </div>
+                  <div className="pt-2">
+                    <DRE_Row 
+                      label="Receita de Vendas Diretas" 
+                      value={dre.receita_vendas_diretas} 
+                      onClick={() => handleDrilldown("Receita de Vendas Diretas", dre.detalhes?.vendas)}
+                    />
+                  </div>
+                  <div className="pt-2">
+                    <DRE_Row 
+                      label="Outras Receitas" 
+                      value={dre.outras_receitas} 
+                      onClick={() => handleDrilldown("Outras Receitas", dre.detalhes?.outras_receitas)}
+                    />
+                  </div>
+
+                  {/* Outras Receitas por Categoria */}
+                  {dre.receitas_por_categoria && Object.keys(dre.receitas_por_categoria).length > 0 && (
+                    <div className="pt-3 pl-3 border-l border-zinc-200 dark:border-zinc-700 mt-2 space-y-1 bg-zinc-50/50 dark:bg-zinc-900/30 p-2.5 rounded-lg">
+                      <div className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider mb-1.5 flex items-center gap-1">
+                        <TrendingUp className="w-3 h-3 text-[#84A59D]" /> Receitas por Categoria
+                      </div>
+                      {Object.entries(dre.receitas_por_categoria).map(([cat, val]) => (
+                        <div 
+                          key={cat} 
+                          onClick={() => handleDrilldown(`Receitas: ${cat}`, dre.detalhes?.outras_receitas.filter(r => r.categoria === cat))}
+                          className="flex items-center justify-between text-xs py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 px-1.5 rounded cursor-pointer group"
+                        >
+                          <span className="text-zinc-500 font-medium group-hover:text-[#3A4F4A]">{cat}</span>
+                          <span className="font-mono text-zinc-800 dark:text-zinc-150 font-semibold">{fmtBRL(val)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="border-t border-zinc-200 dark:border-zinc-800 pt-3">
+                    <DRE_Row label="Receita Bruta" value={dre.receita_bruta} bold />
+                  </div>
+                  <div className="pt-2">
+                    <DRE_Row 
+                      label="(-) Custo dos Produtos Vendidos" 
+                      value={-dre.custo_produtos} 
+                      negative 
+                      onClick={() => handleDrilldown("Custo dos Produtos Vendidos (CMV)", dre.detalhes?.vendas.map(v => ({ ...v, descricao: `CMV: ${v.descricao}`, valor: v.valor })))}
+                    />
+                  </div>
+                  <div className="border-t border-zinc-200 dark:border-zinc-800 pt-3">
+                    <DRE_Row label="Lucro Bruto" value={dre.lucro_bruto} bold highlight />
+                  </div>
                   
                   {/* Despesas */}
-                  <div className="border-t border-zinc-200 pt-4 mt-4">
-                    <div className="font-semibold text-zinc-800 mb-2">Despesas Operacionais</div>
+                  <div className="border-t border-zinc-200 dark:border-zinc-800 pt-4 mt-4">
+                    <div className="font-semibold text-zinc-800 dark:text-zinc-150 mb-2">Despesas Operacionais</div>
                     <div className="space-y-2 pl-2">
-                      <Row label="(-) Despesas Fixas" value={-dre.despesas.fixas} negative />
-                      <Row label="(-) Despesas Variáveis" value={-dre.despesas.variaveis} negative />
-                      <Row label="(-) Taxas de Cartão Crédito" value={-dre.taxas_cartao.credito} negative />
-                      <Row label="(-) Taxas de Cartão Débito" value={-dre.taxas_cartao.debito} negative />
+                      <DRE_Row 
+                        label="(-) Despesas Fixas" 
+                        value={-dre.despesas.fixas} 
+                        negative 
+                        onClick={() => handleDrilldown("Despesas Fixas", dre.detalhes?.despesas.filter(d => d.tipo === 'fixo'))}
+                      />
+                      <DRE_Row 
+                        label="(-) Despesas Variáveis" 
+                        value={-dre.despesas.variaveis} 
+                        negative 
+                        onClick={() => handleDrilldown("Despesas Variáveis", dre.detalhes?.despesas.filter(d => d.tipo === 'variavel'))}
+                      />
+                      <DRE_Row 
+                        label="(-) Taxas de Cartão Crédito" 
+                        value={-dre.taxas_cartao.credito} 
+                        negative 
+                      />
+                      <DRE_Row 
+                        label="(-) Taxas de Cartão Débito" 
+                        value={-dre.taxas_cartao.debito} 
+                        negative 
+                      />
                     </div>
-                    <div className="border-t border-zinc-100 pt-3 mt-2">
-                      <Row label="Total Despesas Operacionais" value={-dre.despesas_operacionais} bold negative />
+
+                    {/* Despesas por Categoria */}
+                    {dre.despesas_por_categoria && Object.keys(dre.despesas_por_categoria).length > 0 && (
+                      <div className="pt-3 pl-3 border-l border-zinc-200 dark:border-zinc-700 mt-3 space-y-1 bg-zinc-50/50 dark:bg-zinc-900/30 p-2.5 rounded-lg">
+                        <div className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider mb-1.5 flex items-center gap-1">
+                          <Tag className="w-3 h-3 text-[#84A59D]" /> Despesas por Categoria
+                        </div>
+                        {Object.entries(dre.despesas_por_categoria).map(([cat, val]) => (
+                          <div 
+                            key={cat} 
+                            onClick={() => handleDrilldown(`Despesas: ${cat}`, dre.detalhes?.despesas.filter(d => d.categoria === cat))}
+                            className="flex items-center justify-between text-xs py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 px-1.5 rounded cursor-pointer group"
+                          >
+                            <span className="text-zinc-500 font-medium group-hover:text-[#3A4F4A]">{cat}</span>
+                            <span className="font-mono text-zinc-800 dark:text-zinc-150 font-semibold">{fmtBRL(val)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3 mt-2">
+                      <DRE_Row label="Total Despesas Operacionais" value={-dre.despesas_operacionais} bold negative />
                     </div>
                   </div>
                   
-                  <div className="border-t border-zinc-300 pt-3 mt-4">
-                    <Row label="Lucro Líquido" value={dre.lucro_liquido} bold highlight />
+                  {/* Resultado Líquido em Destaque */}
+                  <div className={`border-t-2 border-zinc-300 dark:border-zinc-700 pt-4 mt-4 p-3 rounded-lg flex items-center justify-between ${
+                    dre.lucro_liquido >= 0 
+                      ? "bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-800/30" 
+                      : "bg-rose-50/60 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-800/30"
+                  }`}>
+                    <div>
+                      <span className="text-xs uppercase font-bold text-zinc-500 tracking-wider">Resultado Líquido do Exercício</span>
+                      <h4 className={`text-base font-bold font-display mt-0.5 ${dre.lucro_liquido >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"}`}>
+                        {dre.lucro_liquido >= 0 ? "Lucro Líquido Realizado" : "Prejuízo Líquido Registrado"}
+                      </h4>
+                    </div>
+                    <div className={`text-2xl font-black font-mono font-display ${dre.lucro_liquido >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                      {fmtBRL(dre.lucro_liquido)}
+                    </div>
                   </div>
                 </div>
+
+                {/* Drilldown Dialog Component */}
+                <Dialog open={drilldownOpen} onOpenChange={setDrilldownOpen}>
+                  <DialogContent className="sm:max-w-5xl md:max-w-6xl lg:max-w-7xl max-h-[90vh] overflow-y-auto w-[96vw] rounded-xl p-6 md:p-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2 text-xl md:text-2xl font-semibold text-[#3A4F4A] dark:text-[#EAF0EE]">
+                        <FileText className="w-6 h-6 text-[#84A59D]" />
+                        <span>Detalhamento DRE: {drilldownTitle}</span>
+                      </DialogTitle>
+                      <p className="text-xs sm:text-sm text-zinc-500 mt-1">
+                        Detalhamento analítico de lançamentos que compõem o valor no período selecionado.
+                      </p>
+                    </DialogHeader>
+
+                    {/* Drilldown Table */}
+                    <div className="my-5 overflow-x-auto border border-zinc-200 dark:border-zinc-800 rounded-xl max-h-[60vh] overflow-y-auto shadow-sm">
+                      {drilldownData.length === 0 ? (
+                        <div className="py-12 text-center text-zinc-400 text-sm">
+                          Nenhum lançamento encontrado para este item no período.
+                        </div>
+                      ) : (
+                        <table className="w-full text-xs sm:text-sm text-left border-collapse">
+                          <thead className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-[10px] sm:text-xs uppercase font-bold text-zinc-500 tracking-wider">
+                            <tr>
+                              <th className="px-5 py-4">Data</th>
+                              <th className="px-5 py-4">Lançamento / Descrição</th>
+                              <th className="px-5 py-4">Categoria</th>
+                              <th className="px-5 py-4 text-center">Status</th>
+                              <th className="px-5 py-4 text-right">Valor</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-medium">
+                            {drilldownData.map((item, idx) => (
+                              <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
+                                <td className="px-5 py-4 whitespace-nowrap text-zinc-500 font-mono">
+                                  {item.data ? new Date(item.data + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}
+                                </td>
+                                <td className="px-5 py-4 font-semibold text-zinc-800 dark:text-zinc-100">{item.descricao}</td>
+                                <td className="px-5 py-4">
+                                  <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-[10px] text-zinc-600 dark:text-zinc-300">
+                                    {item.categoria}
+                                  </span>
+                                </td>
+                                <td className="px-5 py-4 text-center">
+                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                    item.status === 'Pago' || item.status === 'pago' || item.status === 'Recebido' || item.status === 'concluido'
+                                      ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40'
+                                      : item.status === 'Cancelado' || item.status === 'cancelado'
+                                      ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/40'
+                                      : 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/40'
+                                  }`}>
+                                    {item.status === 'concluido' ? 'Concluído' : item.status}
+                                  </span>
+                                </td>
+                                <td className="px-5 py-4 text-right font-mono font-semibold text-zinc-900 dark:text-zinc-100">
+                                  {fmtBRL(item.valor)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+
+                    <DialogFooter className="mt-4">
+                      <div className="flex w-full items-center justify-between">
+                        <div className="text-xs font-bold text-zinc-500">
+                          Total Acumulado:{" "}
+                          <span className="font-mono text-sm text-[#3A4F4A] dark:text-[#EAF0EE]">
+                            {fmtBRL(drilldownData.reduce((acc, x) => acc + x.valor, 0))}
+                          </span>
+                        </div>
+                        <Button onClick={() => setDrilldownOpen(false)} className="bg-[#84A59D] hover:bg-[#6F9189] text-white text-xs px-4 h-9 rounded-lg">
+                          Fechar Detalhes
+                        </Button>
+                      </div>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
               <div className="space-y-4">
                 <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
@@ -537,6 +917,7 @@ export default function Relatorios() {
                   </div>
                 </div>
               </div>
+            </div>
             </div>
           )}
         </TabsContent>
@@ -562,14 +943,146 @@ export default function Relatorios() {
                   )}
                 </div>
               </div>
+              
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {["dinheiro", "pix", "cartao_credito", "cartao_debito", "vale"].map((k) => (
-                  <div key={k} className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm hover:shadow transition-shadow">
-                    <div className="text-xs uppercase tracking-wider text-zinc-400 font-semibold">{FORMA_LABELS[k]}</div>
-                    <div className="font-display text-2xl font-bold mt-1.5 text-zinc-700">{fmtBRL(caixa.totais[k])}</div>
+                  <div 
+                    key={k} 
+                    onClick={() => { setDetailsSearchQuery(""); setDetailsForma(k); }}
+                    className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm hover:shadow-md hover:border-[#84A59D] transition-all cursor-pointer group active:scale-[0.98]"
+                  >
+                    <div className="text-xs uppercase tracking-wider text-zinc-400 font-bold group-hover:text-[#84A59D] transition-colors">{FORMA_LABELS[k]}</div>
+                    <div className="font-display text-2xl font-bold mt-1.5 text-zinc-700 group-hover:text-zinc-900 transition-colors">{fmtBRL(caixa.totais[k])}</div>
+                    <div className="text-[10px] text-zinc-400 font-normal mt-2 flex items-center gap-1 group-hover:text-[#84A59D] transition-colors">
+                      Clique para ver detalhes →
+                    </div>
                   </div>
                 ))}
               </div>
+
+              {/* Modal de Detalhes do Caixa */}
+              <Dialog open={!!detailsForma} onOpenChange={(open) => { if (!open) setDetailsForma(null); }}>
+                <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col p-6">
+                  <DialogHeader className="pb-4 border-b border-zinc-150">
+                    <DialogTitle className="flex items-center gap-2 text-xl font-semibold text-[#3A4F4A]">
+                      <Banknote className="w-5 h-5 text-[#84A59D]" />
+                      <span>Detalhamento de Caixa - {FORMA_LABELS[detailsForma]}</span>
+                    </DialogTitle>
+                    <div className="text-xs text-zinc-400 mt-1 font-medium flex flex-wrap gap-x-4 gap-y-1">
+                      <span>Período: <b>{new Date(from + 'T12:00:00').toLocaleDateString('pt-BR')}</b> a <b>{new Date(to + 'T12:00:00').toLocaleDateString('pt-BR')}</b></span>
+                      <span>Profissional: <b>{colaboradorId === 'todos' ? 'Todos os usuários' : colaboradores.find(c => c.id === colaboradorId)?.nome}</b></span>
+                    </div>
+                  </DialogHeader>
+
+                  {/* Search bar and Summary */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 border-b border-zinc-150">
+                    <div className="flex items-center gap-2 max-w-sm w-full bg-zinc-50 rounded-lg border border-zinc-200 px-3 py-1.5">
+                      <Search className="w-4 h-4 text-zinc-400 shrink-0" />
+                      <input
+                        placeholder="Buscar por número, cliente, serviço/produto..."
+                        value={detailsSearchQuery}
+                        onChange={(e) => setDetailsSearchQuery(e.target.value)}
+                        className="bg-transparent border-none outline-none text-xs w-full text-zinc-700 placeholder-zinc-400"
+                      />
+                    </div>
+                    
+                    <div className="flex items-center gap-4 text-xs font-semibold bg-[#EAF0EE] text-[#3A4F4A] px-3.5 py-2 rounded-lg">
+                      {(() => {
+                        const filtered = (caixa?.pagamentos || [])
+                          .filter(p => p.forma_pagamento === detailsForma)
+                          .filter(p => {
+                            if (!detailsSearchQuery) return true;
+                            const q = detailsSearchQuery.toLowerCase();
+                            return (
+                              (p.numero || '').toLowerCase().includes(q) ||
+                              (p.cliente || '').toLowerCase().includes(q) ||
+                              (p.itens || '').toLowerCase().includes(q)
+                            );
+                          });
+                        return (
+                          <>
+                            <span>Total: <b>{filtered.length}</b> pagamentos</span>
+                            <span className="w-px h-3 bg-[#84A59D]/30" />
+                            <span>Soma: <b>{fmtBRL(filtered.reduce((acc, p) => acc + p.valor, 0))}</b></span>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Table Container */}
+                  <div className="flex-1 overflow-y-auto my-4 min-h-[300px] border border-zinc-200 rounded-lg custom-scrollbar">
+                    {(() => {
+                      const filtered = (caixa?.pagamentos || [])
+                        .filter(p => p.forma_pagamento === detailsForma)
+                        .filter(p => {
+                          if (!detailsSearchQuery) return true;
+                          const q = detailsSearchQuery.toLowerCase();
+                          return (
+                            (p.numero || '').toLowerCase().includes(q) ||
+                            (p.cliente || '').toLowerCase().includes(q) ||
+                            (p.itens || '').toLowerCase().includes(q)
+                          );
+                        });
+
+                      if (filtered.length === 0) {
+                        return (
+                          <div className="text-zinc-400 p-12 text-center text-xs">
+                            Nenhum pagamento encontrado com os filtros aplicados.
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <table className="w-full text-xs text-left">
+                          <thead className="bg-zinc-50 text-zinc-550 border-b border-zinc-200 font-semibold uppercase tracking-wider text-[10px] sticky top-0 z-10">
+                            <tr>
+                              <th className="px-4 py-3">Número</th>
+                              <th className="px-4 py-3">Cliente</th>
+                              <th className="px-4 py-3">Produto ou Serviço</th>
+                              <th className="px-4 py-3 text-right">Valor</th>
+                              <th className="px-4 py-3">Data/Hora</th>
+                              <th className="px-4 py-3 text-center">Forma</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-150 text-zinc-650 font-medium">
+                            {filtered.map((p) => (
+                              <tr key={p.id} className="hover:bg-zinc-50/50 transition-colors">
+                                <td className="px-4 py-3 whitespace-nowrap font-bold text-zinc-800">
+                                  {p.numero}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-zinc-700">
+                                  {p.cliente}
+                                </td>
+                                <td className="px-4 py-3 max-w-[250px] truncate text-zinc-600" title={p.itens}>
+                                  {p.itens}
+                                </td>
+                                <td className="px-4 py-3 text-right font-mono font-bold text-[#3A4F4A] whitespace-nowrap">
+                                  {fmtBRL(p.valor)}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-zinc-500">
+                                  {new Date(p.data_hora).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                                </td>
+                                <td className="px-4 py-3 text-center whitespace-nowrap">
+                                  <span className="px-2 py-0.5 bg-zinc-100 border border-zinc-200 text-zinc-600 rounded text-[9px] uppercase font-bold">
+                                    {FORMA_LABELS[p.forma_pagamento] || p.forma_pagamento}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      );
+                    })()}
+                  </div>
+
+                  <DialogFooter className="pt-3 border-t border-zinc-150 flex items-center justify-end">
+                    <Button variant="outline" onClick={() => setDetailsForma(null)} className="h-9 text-xs font-semibold">
+                      Fechar
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           )}
         </TabsContent>
@@ -1155,7 +1668,12 @@ export default function Relatorios() {
                                     {s.duracao} min
                                   </td>
                                   <td className="px-3 py-3 text-right font-mono font-semibold text-[#3A4F4A]">
-                                    {fmtBRL(s.valor)}
+                                    <div>{fmtBRL(s.valor)}</div>
+                                    {s.valor_original !== undefined && Number(s.valor_original) !== Number(s.valor) && (
+                                      <div className="text-[10px] text-zinc-400 line-through font-normal">
+                                        {fmtBRL(s.valor_original)}
+                                      </div>
+                                    )}
                                   </td>
                                   <td className="px-3 py-3 text-center no-print">
                                     <div className="flex justify-center gap-1 flex-wrap">
@@ -1247,7 +1765,20 @@ export default function Relatorios() {
 
 const Row = ({ label, value, bold, negative, highlight }) => (
   <div className={`flex items-center justify-between py-1 ${bold ? "text-base font-semibold" : "text-sm"} ${highlight ? "text-[#3A4F4A]" : ""}`}>
-    <span className="text-zinc-600 font-medium">{label}</span>
-    <span className={`font-display ${bold ? "text-xl font-bold" : ""} ${negative ? "text-rose-600" : ""} ${highlight ? "text-2xl text-[#3A4F4A]" : ""}`}>{fmtBRL(value)}</span>
+    <span className="text-zinc-600 dark:text-zinc-300 font-medium">{label}</span>
+    <span className={`font-display ${bold ? "text-xl font-bold" : ""} ${negative ? "text-rose-600" : "text-zinc-800 dark:text-zinc-150"} ${highlight ? "text-2xl text-[#3A4F4A] dark:text-[#EAF0EE]" : ""}`}>{fmtBRL(value)}</span>
+  </div>
+);
+
+const DRE_Row = ({ label, value, bold, negative, highlight, onClick }) => (
+  <div 
+    onClick={onClick}
+    className={`flex items-center justify-between py-1.5 px-2 rounded-lg transition-all ${bold ? "text-base font-semibold" : "text-sm"} ${onClick ? "hover:bg-zinc-50 dark:hover:bg-zinc-900/50 cursor-pointer group" : ""} ${highlight ? "text-[#3A4F4A] dark:text-[#EAF0EE] bg-[#EAF0EE]/30 dark:bg-[#3A4F4A]/20 border border-[#EAF0EE]/60 dark:border-[#3A4F4A]/30 font-bold" : ""}`}
+  >
+    <span className={`text-zinc-600 dark:text-zinc-300 font-medium ${onClick ? "group-hover:text-[#3A4F4A] dark:group-hover:text-[#EAF0EE] group-hover:font-semibold" : ""}`}>
+      {label}
+      {onClick && <span className="ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-normal text-[#84A59D]">(Ver Detalhes)</span>}
+    </span>
+    <span className={`font-display ${bold ? "text-xl font-bold" : ""} ${negative ? "text-rose-600" : "text-zinc-800 dark:text-zinc-150"} ${highlight ? "text-2xl text-[#3A4F4A] dark:text-[#EAF0EE]" : ""}`}>{fmtBRL(value)}</span>
   </div>
 );

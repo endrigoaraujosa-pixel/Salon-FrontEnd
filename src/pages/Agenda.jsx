@@ -8,13 +8,14 @@ import { Textarea } from "../components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import StatusBadge, { STATUS_LABELS } from "../components/StatusBadge";
-import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History } from "lucide-react";
+import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import AgendaTimeline from "../components/AgendaTimeline";
 import { useAuth } from "../auth";
 import SearchableSelect from "../components/SearchableSelect";
 import AuditModal from "../components/AuditModal";
+import PasswordConfirmDialog from "../components/PasswordConfirmDialog";
 import "./Agenda.css";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -73,6 +74,184 @@ export default function Agenda() {
   const [openNewClient, setOpenNewClient] = useState(false);
   const [clientForm, setClientForm] = useState({ nome: "", telefone: "", email: "" });
   const [savingClient, setSavingClient] = useState(false);
+  const [openEditSenha, setOpenEditSenha] = useState(false);
+  const [pendingEditAgendamento, setPendingEditAgendamento] = useState(null);
+  const [authCredentials, setAuthCredentials] = useState(null);
+  const [conflictConfirmOpen, setConflictConfirmOpen] = useState(false);
+  const [conflictMessage, setConflictMessage] = useState("");
+
+  const [produtos, setProdutos] = useState([]);
+  const [utilizedProductsOpen, setUtilizedProductsOpen] = useState(false);
+  const [selectedItemIndex, setSelectedItemIndex] = useState(null);
+  const [tempUtilizedProducts, setTempUtilizedProducts] = useState([]);
+  const [agForUtilized, setAgForUtilized] = useState(null);
+  const [selectedProdToAdd, setSelectedProdToAdd] = useState("");
+  const [utilizedAuthOpen, setUtilizedAuthOpen] = useState(false);
+  const [utilizedAuthCredentials, setUtilizedAuthCredentials] = useState(null);
+  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedInsumos, setSelectedInsumos] = useState("all");
+
+  const getInsumosStatus = (a) => {
+    let hasRequired = false;
+    let hasPending = false;
+
+    for (const item of (a.itens || [])) {
+      const s = servicos.find(x => x.id === item.servico_id);
+      const linkedCount = s?.produtos_vinculados?.length || 0;
+      if (linkedCount > 0) {
+        hasRequired = true;
+        const utilizedCount = item.produtos_utilizados?.length || 0;
+        if (utilizedCount === 0) {
+          hasPending = true;
+        }
+      }
+    }
+
+    if (!hasRequired) return "none";
+    return hasPending ? "pending" : "launched";
+  };
+
+  const filteredAgendamentos = useMemo(() => {
+    return agendamentos.filter(a => {
+      if (selectedStatus !== "all" && a.status !== selectedStatus) return false;
+      
+      if (selectedInsumos !== "all") {
+        const insumosStatus = getInsumosStatus(a);
+        if (selectedInsumos === "pending" && insumosStatus !== "pending") return false;
+        if (selectedInsumos === "launched" && insumosStatus !== "launched") return false;
+      }
+      
+      return true;
+    });
+  }, [agendamentos, selectedStatus, selectedInsumos, servicos]);
+
+  const openUtilizedProducts = (agendamento, itemIndex) => {
+    const item = agendamento.itens[itemIndex];
+    const s = servicos.find(x => x.id === item.servico_id);
+    
+    // Get all linked product IDs
+    const linkedProductIds = (s?.produtos_vinculados || []).map(pv => pv.produto_id);
+    
+    // Get all currently saved utilized product IDs
+    const savedUtilized = item.produtos_utilizados || [];
+    const savedProductIds = savedUtilized.map(pu => pu.produto_id);
+    
+    // Combine both lists uniquely
+    const allProductIds = Array.from(new Set([...linkedProductIds, ...savedProductIds]));
+    
+    // Build rows for spreadsheet-like grid
+    const rows = allProductIds.map(pid => {
+      const prod = produtos.find(p => p.id === pid);
+      const saved = savedUtilized.find(pu => pu.produto_id === pid);
+      const savedCusto = (saved && saved.custo_unitario != null) ? Number(saved.custo_unitario) : null;
+      const finalCusto = (savedCusto !== null && savedCusto > 0) ? savedCusto : Number(prod?.custo_unitario || 0);
+      
+      return {
+        produto_id: pid,
+        nome: prod?.nome || "Produto desconhecido",
+        unidade: prod?.unidade || "un",
+        quantidade_estoque: prod?.quantidade_estoque || 0,
+        custo_unitario: finalCusto,
+        quantidade: saved ? String(saved.quantidade || 0) : "",
+        isLinked: linkedProductIds.includes(pid)
+      };
+    });
+
+    setAgForUtilized(agendamento);
+    setSelectedItemIndex(itemIndex);
+    setTempUtilizedProducts(rows);
+    setSelectedProdToAdd("");
+    setUtilizedProductsOpen(true);
+  };
+
+  const handleAddExtraProduct = (prodId) => {
+    if (tempUtilizedProducts.some(row => row.produto_id === prodId)) {
+      toast.error("Este produto já está na lista.");
+      return;
+    }
+    const prod = produtos.find(p => p.id === prodId);
+    if (!prod) return;
+
+    setTempUtilizedProducts([
+      ...tempUtilizedProducts,
+      {
+        produto_id: prodId,
+        nome: prod.nome,
+        unidade: prod.unidade,
+        quantidade_estoque: prod.quantidade_estoque,
+        custo_unitario: Number(prod.custo_unitario || 0),
+        quantidade: "",
+        isLinked: false
+      }
+    ]);
+    setSelectedProdToAdd("");
+  };
+
+  const handleUpdateTempProductQty = (index, val) => {
+    setTempUtilizedProducts(tempUtilizedProducts.map((p, i) => i === index ? { ...p, quantidade: val } : p));
+  };
+
+  const handleRemoveTempProduct = (index) => {
+    setTempUtilizedProducts(tempUtilizedProducts.filter((_, i) => i !== index));
+  };
+
+  const saveUtilizedProductsWithCreds = async (creds) => {
+    if (!agForUtilized || selectedItemIndex === null) return;
+    
+    // Filter to only include products with utilized quantity > 0
+    const activeConsumption = tempUtilizedProducts
+      .filter(row => Number(row.quantidade || 0) > 0)
+      .map(row => ({
+        produto_id: row.produto_id,
+        quantidade: Number(row.quantidade || 0),
+        custo_unitario: row.custo_unitario
+      }));
+
+    try {
+      const updatedItens = agForUtilized.itens.map((item, idx) => {
+        if (idx === selectedItemIndex) {
+          return {
+            ...item,
+            produtos_utilizados: activeConsumption
+          };
+        }
+        return item;
+      });
+
+      const payload = {
+        cliente_id: agForUtilized.cliente_id,
+        data_hora: agForUtilized.data_hora,
+        observacoes: agForUtilized.observacoes || "",
+        itens_selecionados: updatedItens.map(x => ({
+          servico_id: x.servico_id,
+          colaborador_id: x.colaborador_id,
+          auxiliar_id: x.auxiliar_id,
+          produtos_utilizados: x.produtos_utilizados || [],
+          valor: x.valor,
+          valor_original: x.valor_original
+        }))
+      };
+
+      const params = creds ? { params: { ...creds, only_insumos: true } } : { params: { only_insumos: true } };
+      const res = await http.put(`/agendamentos/${agForUtilized.id}`, payload, params);
+      
+      toast.success("Consumo de produtos atualizado com sucesso!");
+      setUtilizedProductsOpen(false);
+      
+      loadDay(data);
+      loadMonth(monthCursor.y, monthCursor.m);
+      
+      const refreshedAg = res.data;
+      setResumoAgendamento(refreshedAg);
+    } catch (e) {
+      const errorMsg = e.response?.data?.detail || "Erro ao salvar consumo de produtos";
+      toast.error(errorMsg);
+    }
+  };
+
+  const saveUtilizedProducts = async () => {
+    await saveUtilizedProductsWithCreds(utilizedAuthCredentials);
+  };
 
   const saveNewClient = async () => {
     if (!clientForm.nome || !clientForm.nome.trim()) {
@@ -227,6 +406,7 @@ export default function Agenda() {
       http.get("/servicos").then((r) => setServicos(r.data || [])),
       http.get("/colaboradores").then((r) => setColaboradores(r.data || [])),
       http.get("/categorias").then((r) => setCategorias(r.data || [])),
+      http.get("/produtos").then((r) => setProdutos(r.data || [])),
     ]);
   }, []);
 
@@ -238,21 +418,48 @@ export default function Agenda() {
     loadMonth(monthCursor.y, monthCursor.m);
   }, [monthCursor]);
 
-  const doSave = async () => {
+  const handleConfirmEditConcluido = async (email, password) => {
     try {
+      await http.get(`/agendamentos/${pendingEditAgendamento.id}`, { params: { email, password } });
+      setAuthCredentials({ email, password });
+      setForm({
+        id: pendingEditAgendamento.id,
+        cliente_id: pendingEditAgendamento.cliente_id,
+        data_hora: toDatetimeLocalInput(pendingEditAgendamento.data_hora),
+        itens_selecionados: pendingEditAgendamento.itens || [],
+        observacoes: pendingEditAgendamento.observacoes || ""
+      });
+      setOpen(true);
+      setOpenEditSenha(false);
+      setPendingEditAgendamento(null);
+    } catch (e) {
+      throw new Error(e.response?.data?.detail || "Erro de autorização. Verifique usuário, senha e permissões.");
+    }
+  };
+
+  const doSave = async (ignorarConflito = false) => {
+    try {
+      const payload = ignorarConflito ? { ...form, ignorar_conflito: true } : form;
       if (form.id) {
-        await http.put(`/agendamentos/${form.id}`, form);
+        await http.put(`/agendamentos/${form.id}`, payload, authCredentials ? { params: authCredentials } : undefined);
         toast.success("Agendamento atualizado");
       } else {
-        await http.post("/agendamentos", form);
+        await http.post("/agendamentos", payload);
         toast.success("Agendamento criado");
       }
       setOpen(false);
       setForm(null);
+      setAuthCredentials(null);
       loadDay(data);
       loadMonth(monthCursor.y, monthCursor.m);
     } catch (e) {
-      toast.error(e.response?.data?.detail || "Erro ao salvar agendamento");
+      const errorMsg = e.response?.data?.detail || "Erro ao salvar agendamento";
+      if (errorMsg.includes("Conflito de horário")) {
+        setConflictMessage(errorMsg);
+        setConflictConfirmOpen(true);
+      } else {
+        toast.error(errorMsg);
+      }
     }
   };
 
@@ -444,8 +651,25 @@ export default function Agenda() {
     if (!s) return;
     setForm(f => ({
       ...f,
-      itens_selecionados: [...f.itens_selecionados, { servico_id: sid, colaborador_id: "", auxiliar_id: "" }]
+      itens_selecionados: [
+        ...f.itens_selecionados,
+        {
+          servico_id: sid,
+          colaborador_id: "",
+          auxiliar_id: "",
+          valor: s.valor,
+          valor_original: s.valor
+        }
+      ]
     }));
+  };
+
+  const updateItemValor = (index, val) => {
+    setForm(f => {
+      const itens = [...f.itens_selecionados];
+      itens[index].valor = val === "" ? "" : Number(val);
+      return { ...f, itens_selecionados: itens };
+    });
   };
 
   const removeServico = (index) => {
@@ -458,6 +682,10 @@ export default function Agenda() {
   const updateItemColab = (index, cid) => {
     setForm(f => {
       const itens = [...f.itens_selecionados];
+      if (cid && cid !== "none" && itens[index].auxiliar_id && cid === itens[index].auxiliar_id) {
+        toast.error("O profissional principal não pode ser o mesmo que o auxiliar.");
+        return f;
+      }
       itens[index].colaborador_id = cid;
       return { ...f, itens_selecionados: itens };
     });
@@ -466,14 +694,39 @@ export default function Agenda() {
   const updateItemAux = (index, cid) => {
     setForm(f => {
       const itens = [...f.itens_selecionados];
+      if (cid && cid !== "none" && itens[index].colaborador_id && cid === itens[index].colaborador_id) {
+        toast.error("O profissional auxiliar não pode ser o mesmo que o principal.");
+        return f;
+      }
       itens[index].auxiliar_id = cid;
       return { ...f, itens_selecionados: itens };
     });
   };
 
+  const [observacoesResumo, setObservacoesResumo] = useState("");
+  const [savingResumoObs, setSavingResumoObs] = useState(false);
+
   const openResumoModal = (a) => {
     setResumoAgendamento(a);
+    setObservacoesResumo(a.observacoes || "");
     setOpenResumo(true);
+  };
+
+  const handleSaveResumoObs = async () => {
+    if (!resumoAgendamento) return;
+    setSavingResumoObs(true);
+    try {
+      await http.put(`/agendamentos/${resumoAgendamento.id}/observacoes`, {
+        observacoes: observacoesResumo
+      });
+      toast.success("Observações salvas com sucesso!");
+      setAgendamentos(prev => prev.map(x => x.id === resumoAgendamento.id ? { ...x, observacoes: observacoesResumo } : x));
+      setResumoAgendamento(prev => ({ ...prev, observacoes: observacoesResumo }));
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Erro ao salvar observações");
+    } finally {
+      setSavingResumoObs(false);
+    }
   };
 
   const openNew = () => {
@@ -488,6 +741,12 @@ export default function Agenda() {
   };
 
   const openEdit = (a) => {
+    if (a.status === "concluido") {
+      setPendingEditAgendamento(a);
+      setOpenEditSenha(true);
+      return;
+    }
+    setAuthCredentials(null);
     setForm({
       id: a.id,
       cliente_id: a.cliente_id,
@@ -500,7 +759,7 @@ export default function Agenda() {
 
   const valorTotal = form?.itens_selecionados.reduce((sum, item) => {
     const s = servicos.find(x => x.id === item.servico_id);
-    return sum + (s?.valor || 0);
+    return sum + (item.valor !== undefined && item.valor !== null && item.valor !== "" ? Number(item.valor) : (s?.valor || 0));
   }, 0) || 0;
 
   const duracaoTotal = form?.itens_selecionados.reduce((sum, item) => {
@@ -530,16 +789,51 @@ export default function Agenda() {
         <button className="btn-primary w-full sm:w-auto justify-center" onClick={openNew}><Plus className="w-4 h-4 mr-2" /> Novo Agendamento</button>
       </div>
 
+      {view !== "calendario" && (
+        <div className="flex items-center gap-3 mb-4 flex-wrap bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 shadow-sm select-none">
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Data</span>
+            <Input type="date" value={data} onChange={(e) => setData(e.target.value)} className="w-40 h-9 text-xs" />
+          </div>
+          <div className="flex flex-col gap-1 w-44">
+            <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Status do Serviço</span>
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger className="h-9 text-xs bg-white dark:bg-zinc-950 border-zinc-250 dark:border-zinc-850">
+                <SelectValue placeholder="Todos os Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Status</SelectItem>
+                <SelectItem value="agendado">Agendado</SelectItem>
+                <SelectItem value="confirmado">Confirmado</SelectItem>
+                <SelectItem value="em_andamento">Em andamento</SelectItem>
+                <SelectItem value="concluido">Concluído</SelectItem>
+                <SelectItem value="cancelado">Cancelado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-1 w-44">
+            <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Insumos/Produtos</span>
+            <Select value={selectedInsumos} onValueChange={setSelectedInsumos}>
+              <SelectTrigger className="h-9 text-xs bg-white dark:bg-zinc-950 border-zinc-250 dark:border-zinc-850">
+                <SelectValue placeholder="Todos os Insumos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Insumos</SelectItem>
+                <SelectItem value="pending">Insumos Pendentes</SelectItem>
+                <SelectItem value="launched">Insumos Lançados</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+
       {view === "dia" ? (
         <>
-          <div className="flex items-center gap-2 mb-4">
-            <Input type="date" value={data} onChange={(e) => setData(e.target.value)} className="w-40" />
-          </div>
-          {agendamentos.length === 0 ? (
-            <EmptyState title="Sem agendamentos" description="Nenhum agendamento para este dia" />
+          {filteredAgendamentos.length === 0 ? (
+            <EmptyState title="Sem agendamentos" description="Nenhum agendamento correspondente aos filtros aplicados" />
           ) : (
             <div className="space-y-2">
-              {agendamentos.map((a) => (
+              {filteredAgendamentos.map((a) => (
                 <div key={a.id} className="agenda-card fade-in cursor-pointer hover:shadow-md transition-all duration-200" onClick={() => openResumoModal(a)}>
                   <div className="agenda-time">
                     <div className="agenda-time-hour">{fmtHour(a.data_hora).split(":")[0]}</div>
@@ -555,7 +849,27 @@ export default function Agenda() {
                       )}
                     </div>
                     <div className="agenda-services">{a.itens?.map((i) => servicos.find(s => s.id === i.servico_id)?.nome).join(", ")}</div>
-                    <div className="agenda-professionals">{a.itens?.map((i) => colaboradores.find(c => c.id === i.colaborador_id)?.nome).filter(Boolean).join(", ")}</div>
+                    <div className="agenda-professionals flex items-center gap-2 flex-wrap">
+                      <span>{a.itens?.map((i) => colaboradores.find(c => c.id === i.colaborador_id)?.nome).filter(Boolean).join(", ")}</span>
+                      {(() => {
+                        const insStatus = getInsumosStatus(a);
+                        if (insStatus === "pending") {
+                          return (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/40 dark:border-amber-900/30">
+                              <Package className="w-3 h-3 text-amber-500" /> Insumos Pendentes
+                            </span>
+                          );
+                        }
+                        if (insStatus === "launched") {
+                          return (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/40 dark:border-emerald-900/30">
+                              <Package className="w-3 h-3 text-emerald-500" /> Insumos Lançados
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
                   </div>
                   <div className="agenda-price">
                     <div className="agenda-price-value">{fmtBRL(a.valor_total)}</div>
@@ -576,7 +890,7 @@ export default function Agenda() {
           )}
         </>
       ) : view === "timeline" ? (
-        <AgendaTimeline data={data} servicos={servicos} colaboradores={colaboradores} onCardClick={openResumoModal} />
+        <AgendaTimeline data={data} selectedStatus={selectedStatus} selectedInsumos={selectedInsumos} servicos={servicos} colaboradores={colaboradores} onCardClick={openResumoModal} />
       ) : (
         <>
           <div className="flex items-center gap-2 mb-4">
@@ -715,8 +1029,8 @@ export default function Agenda() {
                         <span className="font-semibold service-item-card-name">{s?.nome}</span>
                         <Button size="sm" variant="ghost" onClick={() => removeServico(index)}><X className="w-4 h-4 text-rose-500" /></Button>
                       </div>
-                      <div className="text-xs service-item-card-info">{s?.duracao_minutos}min • {fmtBRL(s?.valor)}</div>
-                      <div className="grid-2">
+                      <div className="text-xs service-item-card-info">Duração: {s?.duracao_minutos}min • Valor Base: {fmtBRL(s?.valor)}</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div className="form-group">
                           <Label className="form-label flex items-center gap-1"><User className="w-3 h-3" /> Profissional Principal</Label>
                           <Select value={item.colaborador_id || "none"} onValueChange={(v) => updateItemColab(index, v === "none" ? "" : v)}>
@@ -736,6 +1050,17 @@ export default function Agenda() {
                               {colaboradores.filter(c => c.id && c.id.trim()).map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
                             </SelectContent>
                           </Select>
+                        </div>
+                        <div className="form-group">
+                          <Label className="form-label flex items-center gap-1"><span className="text-[10px] font-bold text-zinc-400">R$</span> Valor Cobrado</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0,00"
+                            value={item.valor !== undefined ? item.valor : (s?.valor || "")}
+                            onChange={(e) => updateItemValor(index, e.target.value)}
+                            className="h-8 text-xs bg-white border border-zinc-200 rounded px-2"
+                          />
                         </div>
                       </div>
                     </div>
@@ -848,15 +1173,15 @@ export default function Agenda() {
       </Dialog>
 
       <Dialog open={openResumo} onOpenChange={setOpenResumo}>
-        <DialogContent className="dialog-content sm:max-w-lg" aria-describedby="dialog-resumo">
-          <DialogHeader className="dialog-header flex flex-row items-center justify-between">
+        <DialogContent className="dialog-content sm:max-w-3xl md:max-w-4xl lg:max-w-5xl rounded-2xl p-8 overflow-y-auto max-h-[90vh]" aria-describedby="dialog-resumo">
+          <DialogHeader className="dialog-header flex flex-row items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-4">
             <DialogTitle className="dialog-title flex items-center gap-2 justify-between w-full">
-              <span className="flex items-center gap-2">
-                <CalendarDays className="w-5 h-5 text-[#84A59D]" />
+              <span className="flex items-center gap-3 text-xl font-semibold">
+                <CalendarDays className="w-6 h-6 text-[#84A59D]" />
                 Resumo do Atendimento
               </span>
               {resumoAgendamento?.numero && (
-                <span className="text-xs font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] px-2.5 py-0.5 rounded-full mr-6">
+                <span className="text-sm font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] px-3.5 py-1 rounded-full mr-6">
                   {String(resumoAgendamento.numero).padStart(6, "0")} | S
                 </span>
               )}
@@ -864,106 +1189,190 @@ export default function Agenda() {
           </DialogHeader>
           <div id="dialog-resumo" className="sr-only">Resumo detalhado do agendamento selecionado</div>
           {resumoAgendamento && (
-            <div className="dialog-body space-y-5">
-              {/* Cliente e Status */}
-              <div className="flex items-start justify-between bg-[#F8FBFB] dark:bg-[#1a2322] p-4 rounded-xl border border-[#E8EFEF] dark:border-[#2e3e3b]">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#EAF0EE] flex items-center justify-center text-[#3A4F4A] font-semibold text-lg">
-                    {resumoAgendamento.cliente_nome?.charAt(0).toUpperCase()}
+            <div className="dialog-body grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
+              
+              {/* Coluna Esquerda: Informações Gerais e Notas */}
+              <div className="space-y-6">
+                {/* Cliente e Status */}
+                <div className="flex items-center justify-between bg-[#F8FBFB] dark:bg-[#1a2322] p-5 rounded-2xl border border-[#E8EFEF] dark:border-[#2e3e3b] shadow-xs">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-[#EAF0EE] flex items-center justify-center text-[#3A4F4A] font-semibold text-xl">
+                      {resumoAgendamento.cliente_nome?.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="font-display font-semibold text-zinc-800 dark:text-zinc-100 text-lg">{resumoAgendamento.cliente_nome}</h3>
+                      <p className="text-xs text-zinc-400">Cliente cadastrado(a)</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-display font-semibold text-zinc-800 dark:text-zinc-100">{resumoAgendamento.cliente_nome}</h3>
-                    <p className="text-xs text-zinc-400">Cliente cadastrado(a)</p>
+                  <StatusBadge status={resumoAgendamento.status} />
+                </div>
+ 
+                {/* Data e Hora */}
+                <div className="grid grid-cols-2 gap-5">
+                  <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-3 shadow-xs">
+                    <CalIcon className="w-6 h-6 text-[#84A59D]" />
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">Data</p>
+                      <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+                        {new Date(resumoAgendamento.data_hora).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-3 shadow-xs">
+                    <Clock className="w-6 h-6 text-[#84A59D]" />
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">Horário</p>
+                      <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+                        {fmtHour(resumoAgendamento.data_hora)}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <StatusBadge status={resumoAgendamento.status} />
-              </div>
-
-              {/* Data e Hora */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
-                  <CalIcon className="w-5 h-5 text-zinc-400" />
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">Data</p>
-                    <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
-                      {new Date(resumoAgendamento.data_hora).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
-                    </p>
-                  </div>
-                </div>
-                <div className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-3">
-                  <Clock className="w-5 h-5 text-zinc-400" />
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">Horário</p>
-                    <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
-                      {fmtHour(resumoAgendamento.data_hora)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Serviços e Profissionais */}
-              <div className="space-y-2">
-                <h4 className="text-xs uppercase tracking-wider text-zinc-400 font-semibold flex items-center gap-1.5">
-                  <Scissors className="w-3.5 h-3.5" /> Serviços Agendados
-                </h4>
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {resumoAgendamento.itens?.map((item, idx) => {
-                    const s = servicos.find(x => x.id === item.servico_id);
-                    const mainColab = colaboradores.find(c => c.id === item.colaborador_id)?.nome;
-                    const auxColab = colaboradores.find(c => c.id === item.auxiliar_id)?.nome;
-                    return (
-                      <div key={idx} className="bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] p-3 rounded-xl flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-sm text-zinc-800 dark:text-zinc-200">{s?.nome || "Serviço"}</span>
-                          <span className="text-sm font-semibold text-[#3A4F4A]">{fmtBRL(s?.valor)}</span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
-                          <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {s?.duracao_minutos} min</span>
-                          {mainColab && (
-                            <span className="flex items-center gap-1"><User className="w-3 h-3" /> Profissional: <strong>{mainColab}</strong></span>
-                          )}
-                          {auxColab && (
-                            <span className="flex items-center gap-1"><Users className="w-3 h-3" /> Auxiliar: <strong>{auxColab}</strong></span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Observações */}
-              {resumoAgendamento.observacoes && (
-                <div className="space-y-1">
-                  <h4 className="text-xs uppercase tracking-wider text-zinc-400 font-semibold flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5" /> Observações
+ 
+                {/* Observações */}
+                <div className="space-y-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                  <h4 className="text-xs uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-bold flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-[#84A59D]" /> Observações do Atendimento
                   </h4>
-                  <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 p-3 rounded-xl text-sm text-zinc-600 dark:text-zinc-400 italic">
-                    "{resumoAgendamento.observacoes}"
+                  <div className="flex flex-col gap-3">
+                    <Textarea
+                      placeholder="Digite observações importantes sobre este atendimento..."
+                      value={observacoesResumo}
+                      onChange={(e) => setObservacoesResumo(e.target.value)}
+                      className="w-full h-32 text-sm bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 leading-relaxed rounded-xl shadow-inner p-3"
+                    />
+                    <Button 
+                      onClick={handleSaveResumoObs}
+                      disabled={savingResumoObs}
+                      size="sm" 
+                      className="self-end bg-[#84A59D] hover:bg-[#6F9189] text-xs h-8 px-4 flex items-center gap-1 text-white font-bold rounded-lg shadow-sm"
+                    >
+                      {savingResumoObs ? "Salvando..." : "Salvar Observação"}
+                    </Button>
                   </div>
                 </div>
-              )}
-
-              {/* Valores Totais */}
-              <div className="total-box mt-2">
-                <div className="total-label flex items-center gap-1">
-                  <Clock className="w-4 h-4 text-zinc-400" />
-                  Duração Total: {resumoAgendamento.itens?.reduce((sum, item) => sum + (servicos.find(x => x.id === item.servico_id)?.duracao_minutos || 0), 0)} min
-                </div>
-                <div className="total-value">{fmtBRL(resumoAgendamento.valor_total)}</div>
               </div>
+ 
+              {/* Coluna Direita: Serviços, Produtos e Valores */}
+              <div className="space-y-6 flex flex-col justify-between">
+                {/* Serviços e Profissionais */}
+                <div className="space-y-3">
+                  <h4 className="text-xs uppercase tracking-wider text-zinc-400 font-bold flex items-center gap-1.5">
+                    <Scissors className="w-4 h-4 text-[#84A59D]" /> Serviços Agendados
+                  </h4>
+                  <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                    {resumoAgendamento.itens?.map((item, idx) => {
+                      const s = servicos.find(x => x.id === item.servico_id);
+                      const mainColab = colaboradores.find(c => c.id === item.colaborador_id)?.nome;
+                      const auxColab = colaboradores.find(c => c.id === item.auxiliar_id)?.nome;
+                      return (
+                        <div key={idx} className="bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] p-4 rounded-xl flex flex-col gap-3 shadow-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-base text-zinc-800 dark:text-zinc-200">{item.nome || s?.nome || "Serviço"}</span>
+                            <span className="text-base font-bold text-[#3A4F4A] dark:text-[#EAF0EE]">{fmtBRL(item.valor)}</span>
+                          </div>
+
+                          {/* Box de detalhamento de negociação do valor */}
+                          <div className="bg-white/80 dark:bg-zinc-900/50 p-2.5 rounded-lg border border-zinc-200/50 dark:border-zinc-800/80 text-xs space-y-1 mt-0.5">
+                            <div className="flex justify-between items-center text-zinc-500 dark:text-zinc-400">
+                              <span>Valor de Tabela (Base):</span>
+                              <span className="font-mono">{fmtBRL(item.valor_original !== undefined && item.valor_original !== null ? item.valor_original : item.valor)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[#3A4F4A] dark:text-[#84A59D] font-medium">
+                              <span>Valor Acordado/Negociado:</span>
+                              <span className="font-mono font-semibold">{fmtBRL(item.valor)}</span>
+                            </div>
+                            {(() => {
+                              const valBase = Number(item.valor_original !== undefined && item.valor_original !== null ? item.valor_original : item.valor);
+                              const valCobrado = Number(item.valor);
+                              const diferenca = valCobrado - valBase;
+                              if (Math.abs(diferenca) > 0.01) {
+                                const isDesconto = diferenca < 0;
+                                return (
+                                  <div className="flex justify-between items-center pt-1 border-t border-dashed border-zinc-200 dark:border-zinc-800 text-[11px] mt-0.5">
+                                    <span className={isDesconto ? "text-rose-600 dark:text-rose-400 font-semibold" : "text-emerald-600 dark:text-emerald-400 font-semibold"}>
+                                      {isDesconto ? "Diferença (Desconto):" : "Diferença (Ajuste Negociado):"}
+                                    </span>
+                                    <span className={`font-mono font-bold ${isDesconto ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                                      {isDesconto ? "-" : "+"}{fmtBRL(Math.abs(diferenca))}
+                                    </span>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500 mt-0.5">
+                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {s?.duracao_minutos} min</span>
+                            {mainColab && (
+                              <span className="flex items-center gap-1"><User className="w-3 h-3" /> Profissional: <strong>{mainColab}</strong></span>
+                            )}
+                            {auxColab && (
+                              <span className="flex items-center gap-1"><Users className="w-3 h-3" /> Auxiliar: <strong>{auxColab}</strong></span>
+                            )}
+                          </div>
+
+                          {/* Utilized Products Section */}
+                          <div className="mt-2 pt-2 border-t border-dashed border-[#E8EFEF] dark:border-[#2e3e3b]">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-zinc-500 flex items-center gap-1">
+                                <Package className="w-3 h-3 text-[#84A59D]" /> Consumo de Produtos
+                              </span>
+                              <Button 
+                                onClick={() => {
+                                  openUtilizedProducts(resumoAgendamento, idx);
+                                }}
+                                variant="ghost" 
+                                className="h-6 px-2 text-[11px] text-[#3A4F4A] hover:bg-[#EAF0EE] flex items-center gap-1 border border-zinc-200 bg-white"
+                              >
+                                <PlusCircle className="w-3 h-3" /> Informar Consumo
+                              </Button>
+                            </div>
+                            {item.produtos_utilizados && item.produtos_utilizados.length > 0 ? (
+                              <div className="mt-1.5 space-y-1">
+                                {item.produtos_utilizados.map((pu, pidx) => {
+                                  const prod = produtos.find(p => p.id === pu.produto_id);
+                                  return (
+                                    <div key={pidx} className="flex justify-between items-center text-xs text-zinc-650 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
+                                      <span className="font-medium text-zinc-755">{prod?.nome || "Carregando..."}</span>
+                                      <span className="font-mono font-bold text-zinc-700 dark:text-zinc-300">{pu.quantidade} {prod?.unidade || "un"}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <p className="text-[11px] text-zinc-400 italic mt-0.5">Nenhum produto informado</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Valores Totais */}
+                <div className="total-box mt-auto p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-55 dark:bg-zinc-900 shadow-sm flex items-center justify-between">
+                  <div className="total-label flex items-center gap-1 text-zinc-500 dark:text-zinc-450 font-medium">
+                    <Clock className="w-4 h-4 text-[#84A59D]" />
+                    Duração Total: {resumoAgendamento.itens?.reduce((sum, item) => sum + (servicos.find(x => x.id === item.servico_id)?.duracao_minutos || 0), 0)} min
+                  </div>
+                  <div className="total-value text-xl font-extrabold text-[#3A4F4A] dark:text-[#EAF0EE]">{fmtBRL(resumoAgendamento.valor_total)}</div>
+                </div>
+              </div>
+
             </div>
           )}
-          <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => setOpenResumo(false)} className="flex-1">Fechar</Button>
+          <DialogFooter className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800 w-full mt-4">
+            <Button variant="outline" onClick={() => setOpenResumo(false)} className="sm:flex-1 h-10 font-medium">Fechar</Button>
             {resumoAgendamento && (
               <>
-                <Button variant="outline" onClick={() => { setOpenResumo(false); openEdit(resumoAgendamento); }} className="flex-1 border-[#84A59D] text-[#3A4F4A] hover:bg-[#EAF0EE]">
-                  <Edit2 className="w-4 h-4 mr-2" /> Editar
+                <Button variant="outline" onClick={() => { setOpenResumo(false); openEdit(resumoAgendamento); }} className="sm:flex-1 h-10 border-[#84A59D] text-[#3A4F4A] hover:bg-[#EAF0EE] font-medium">
+                  <Edit2 className="w-4 h-4 mr-2" /> Editar Atendimento
                 </Button>
                 {resumoAgendamento.status !== "concluido" && (
-                  <Button onClick={() => { setOpenResumo(false); nav(`/agendamentos/${resumoAgendamento.id}/pagamento`); }} className="btn-primary flex-1">
-                    <CreditCard className="w-4 h-4 mr-2" /> Pagar
+                  <Button onClick={() => { setOpenResumo(false); nav(`/agendamentos/${resumoAgendamento.id}/pagamento`); }} className="btn-primary sm:flex-1 h-10 font-bold">
+                    <CreditCard className="w-4 h-4 mr-2" /> Registrar Pagamento
                   </Button>
                 )}
               </>
@@ -993,7 +1402,13 @@ export default function Agenda() {
                       <Label className="text-xs text-zinc-500">Profissional Principal</Label>
                       <Select
                         value={item.colaborador_id}
-                        onValueChange={(v) => setMissingProfs(missingProfs.map((x, idx) => idx === i ? { ...x, colaborador_id: v } : x))}
+                        onValueChange={(v) => {
+                          if (v && v !== "none" && item.auxiliar_id && v === item.auxiliar_id) {
+                            toast.error("O profissional principal não pode ser o mesmo que o auxiliar.");
+                            return;
+                          }
+                          setMissingProfs(missingProfs.map((x, idx) => idx === i ? { ...x, colaborador_id: v } : x));
+                        }}
                       >
                         <SelectTrigger className="bg-white"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                         <SelectContent>
@@ -1007,7 +1422,14 @@ export default function Agenda() {
                       <Label className="text-xs text-zinc-500">Auxiliar (Opcional)</Label>
                       <Select
                         value={item.auxiliar_id || "none"}
-                        onValueChange={(v) => setMissingProfs(missingProfs.map((x, idx) => idx === i ? { ...x, auxiliar_id: v === "none" ? null : v } : x))}
+                        onValueChange={(v) => {
+                          const val = v === "none" ? null : v;
+                          if (val && val !== "none" && item.colaborador_id && val === item.colaborador_id) {
+                            toast.error("O profissional auxiliar não pode ser o mesmo que o principal.");
+                            return;
+                          }
+                          setMissingProfs(missingProfs.map((x, idx) => idx === i ? { ...x, auxiliar_id: val } : x));
+                        }}
                       >
                         <SelectTrigger className="bg-white"><SelectValue placeholder="Nenhum" /></SelectTrigger>
                         <SelectContent>
@@ -1039,7 +1461,7 @@ export default function Agenda() {
             <DialogTitle>Confirmar exclusão de agendamento</DialogTitle>
           </DialogHeader>
           <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
-            Tem certeza que deseja excluir este agendamento? Esta ação removerá o agendamento permanentemente e estornará qualquer produto retornado ao estoque.
+            Tem certeza que deseja excluir este agendamento? Esta ação pode ser desfeita a qualquer momento a partir da tela de "Excluídos". Qualquer produto utilizado será retornado ao estoque.
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>
@@ -1069,6 +1491,197 @@ export default function Agenda() {
         modulo="agendamento"
         tituloModulo="Agenda"
         onRestoreSuccess={() => loadDay(data)}
+      />
+      <PasswordConfirmDialog
+        open={openEditSenha}
+        onOpenChange={setOpenEditSenha}
+        onConfirm={handleConfirmEditConcluido}
+        title="Autorização Necessária"
+        description="Este agendamento já foi concluído. Informe usuário e senha de um administrador com permissão específica para editá-lo."
+        requireCredentials={true}
+      />
+      <Dialog open={conflictConfirmOpen} onOpenChange={setConflictConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Conflito de Horário</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
+            {conflictMessage}.
+            <br /><br />
+            <b>Deseja incluí-lo mesmo assim?</b>
+          </div>
+          <DialogFooter className="gap-2 flex flex-col sm:flex-row">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setConflictConfirmOpen(false)}>Não</Button>
+            <Button className="bg-[#84A59D] hover:bg-[#6F9189] w-full sm:w-auto" onClick={async () => { setConflictConfirmOpen(false); await doSave(true); }}>Sim</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para informar produtos utilizados */}
+      <Dialog open={utilizedProductsOpen} onOpenChange={setUtilizedProductsOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl font-bold flex items-center gap-2 text-zinc-800">
+              <Package className="w-6 h-6 text-[#84A59D]" />
+              Produtos Utilizados no Serviço
+            </DialogTitle>
+          </DialogHeader>
+          {agForUtilized && selectedItemIndex !== null && (() => {
+            const item = agForUtilized.itens[selectedItemIndex];
+            const s = servicos.find(x => x.id === item.servico_id);
+            return (
+              <div className="py-4 space-y-4">
+                <div className="bg-[#F8FBFB] dark:bg-[#1a2322] p-3 rounded-xl border border-[#E8EFEF] dark:border-[#2e3e3b] flex justify-between items-center flex-wrap gap-2">
+                  <div>
+                    <div className="text-xs text-zinc-400 uppercase font-semibold">Serviço</div>
+                    <div className="font-semibold text-[#3A4F4A] dark:text-[#84A59D]">{item.nome || s?.nome}</div>
+                    <div className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">
+                      Cliente: <span className="font-semibold text-zinc-600 dark:text-zinc-400">{agForUtilized.cliente_nome}</span> · Atendimento: <span className="font-semibold text-zinc-600 dark:text-zinc-400">{String(agForUtilized.numero || 0).padStart(6, "0")} | S</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-zinc-400 uppercase font-semibold">Valor do Serviço</div>
+                    <div className="font-bold text-zinc-800 dark:text-zinc-200">{fmtBRL(item.valor)}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Planilha de Insumos</div>
+                  {tempUtilizedProducts.length === 0 ? (
+                    <div className="text-center py-8 border border-dashed border-zinc-200 rounded-xl text-zinc-400 text-sm">
+                      Nenhum produto cadastrado para este serviço.
+                    </div>
+                  ) : (
+                    <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-950">
+                      <table className="w-full text-sm">
+                        <thead className="bg-zinc-50 dark:bg-zinc-900 text-xs uppercase tracking-wider text-zinc-500 border-b border-zinc-200 dark:border-zinc-800">
+                          <tr>
+                            <th className="px-4 py-2.5 text-left font-semibold">Produto</th>
+                            <th className="px-4 py-2.5 text-center font-semibold w-24">Estoque</th>
+                            <th className="px-4 py-2.5 text-right font-semibold w-28">Custo Unit.</th>
+                            <th className="px-4 py-2.5 text-center font-semibold w-32">Qtd. Utilizada</th>
+                            <th className="px-4 py-2.5 text-right font-semibold w-28">Custo Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                          {tempUtilizedProducts.map((row, idx) => {
+                            const totalCost = Number(row.quantidade || 0) * Number(row.custo_unitario || 0);
+                            return (
+                              <tr key={row.produto_id} className="hover:bg-zinc-50/40 dark:hover:bg-zinc-900/40 transition-colors">
+                                <td className="px-4 py-3">
+                                  <span className="font-medium text-zinc-800 dark:text-zinc-200 block sm:inline">{row.nome}</span>
+                                  {!row.isLinked && (
+                                    <span className="sm:ml-2 inline-flex px-1.5 py-0.2 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded text-[9px] font-semibold uppercase">Extra</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-center text-zinc-500 font-mono text-xs">
+                                  {Number(Number(row.quantidade_estoque || 0).toFixed(3))} {row.unidade}
+                                </td>
+                                <td className="px-4 py-3 text-right text-zinc-600 dark:text-zinc-400 font-mono text-xs">
+                                  {fmtBRL(row.custo_unitario)}/{row.unidade}
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Input 
+                                      type="number" 
+                                      min="0" 
+                                      step="0.001"
+                                      placeholder="0.000"
+                                      value={row.quantidade} 
+                                      onChange={(e) => handleUpdateTempProductQty(idx, e.target.value)}
+                                      className="w-20 h-8 text-center bg-zinc-50 dark:bg-zinc-900 font-semibold border-zinc-200 font-mono text-xs"
+                                    />
+                                    <span className="text-xs text-zinc-450 min-w-[20px] text-left">{row.unidade}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-right font-bold text-zinc-700 dark:text-zinc-350 font-mono text-xs">
+                                  {fmtBRL(totalCost)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-1 sm:items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-zinc-400 font-semibold uppercase whitespace-nowrap">Outros Produtos:</span>
+                    <Select
+                      value={selectedProdToAdd}
+                      onValueChange={(val) => {
+                        if (val) {
+                          handleAddExtraProduct(val);
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-xs bg-white w-60 border-zinc-250"><SelectValue placeholder="Selecione um produto extra..." /></SelectTrigger>
+                      <SelectContent>
+                        {produtos
+                          .filter(p => !tempUtilizedProducts.some(row => row.produto_id === p.id))
+                          .map(p => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.nome} ({Number(Number(p.quantidade_estoque || 0).toFixed(3))} {p.unidade})
+                            </SelectItem>
+                          ))
+                        }
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] p-4 rounded-xl flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-5 h-5 text-[#84A59D]" />
+                    <div>
+                      <span className="text-xs text-zinc-400 font-semibold uppercase tracking-wider block">Custo Total do Consumo</span>
+                      <span className="text-[10px] text-zinc-400">Calculado automaticamente com base no consumo</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-mono text-xl font-extrabold text-[#3A4F4A] dark:text-[#84A59D]">
+                      {fmtBRL(
+                        tempUtilizedProducts.reduce(
+                          (sum, row) => sum + Number(row.quantidade || 0) * Number(row.custo_unitario || 0),
+                          0
+                        )
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setUtilizedProductsOpen(false)}>Cancelar</Button>
+            <Button onClick={saveUtilizedProducts} className="bg-[#84A59D] hover:bg-[#6F9189]">
+              Salvar Consumo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para autorização de alteração de consumo de produtos em agendamentos concluídos */}
+      <PasswordConfirmDialog
+        open={utilizedAuthOpen}
+        onOpenChange={setUtilizedAuthOpen}
+        onConfirm={async (email, password) => {
+          try {
+            await http.get(`/agendamentos/${agForUtilized.id}`, { params: { email, password } });
+            setUtilizedAuthCredentials({ email, password });
+            setUtilizedAuthOpen(false);
+            setTimeout(() => {
+              saveUtilizedProductsWithCreds({ email, password });
+            }, 100);
+          } catch (e) {
+            throw new Error(e.response?.data?.detail || "Erro de autorização. Verifique usuário, senha e permissões.");
+          }
+        }}
+        title="Autorização Necessária"
+        description="Este agendamento já foi concluído. Informe usuário e senha de um administrador com permissão específica para alterar o consumo de produtos."
+        requireCredentials={true}
       />
     </div>
   );

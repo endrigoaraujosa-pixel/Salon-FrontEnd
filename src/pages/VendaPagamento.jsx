@@ -6,9 +6,10 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
-import { ArrowLeft, Plus, Trash2, CheckCircle2, Edit2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, CheckCircle2, Edit2, AlertCircle } from "lucide-react";
 import StatusBadge from "../components/StatusBadge";
 import PasswordConfirmDialog from "../components/PasswordConfirmDialog";
+import { useAuth } from "../auth";
 import { toast } from "sonner";
 
 const FORMAS = [
@@ -25,6 +26,8 @@ const fmtDT = (s) => new Date(s).toLocaleString("pt-BR");
 export default function VendaPagamento() {
   const { id } = useParams();
   const nav = useNavigate();
+  const { user } = useAuth();
+  const temPermissaoPagamento = user?.role === "admin" || !!user?.perfil?.permissoes?.acoes?.realizar_pagamento;
   const [v, setV] = useState(null);
   const [novos, setNovos] = useState([{ valor: "", forma_pagamento: "dinheiro", observacao: "" }]);
   
@@ -95,6 +98,10 @@ export default function VendaPagamento() {
   };
 
   const executePayment = async (forceSaldo = false) => {
+    if (!temPermissaoPagamento) {
+      toast.error("Você não tem permissão para realizar pagamentos.");
+      return;
+    }
     for (const p of novos) {
       const valNum = Number(p.valor) || 0;
       if (valNum > saldo && p.forma_pagamento !== "dinheiro") {
@@ -228,17 +235,29 @@ export default function VendaPagamento() {
 
   // Iniciar processo de edição
   const startEdit = (payment) => {
+    if (!temPermissaoPagamento) {
+      toast.error("Você não tem permissão para realizar pagamentos.");
+      return;
+    }
     openEditDialog(payment);
   };
 
   // Iniciar processo de deleção
   const startDelete = (paymentId) => {
+    if (!temPermissaoPagamento) {
+      toast.error("Você não tem permissão para realizar pagamentos.");
+      return;
+    }
     setPendingAction({ type: 'delete', paymentId });
     setPasswordDialogOpen(true);
   };
 
   // Salvar edição
   const saveEdit = () => {
+    if (!temPermissaoPagamento) {
+      toast.error("Você não tem permissão para realizar pagamentos.");
+      return;
+    }
     if (!editingPayment?.valor || Number(editingPayment.valor) <= 0) {
       toast.error("Valor deve ser maior que zero");
       return;
@@ -266,68 +285,79 @@ export default function VendaPagamento() {
         <span>· <StatusBadge status={v.status} /></span>
       </div>
 
+      {!temPermissaoPagamento && (
+        <div className="mt-6 p-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 rounded-xl flex items-start gap-3 fade-in">
+          <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-rose-800 dark:text-rose-300">
+            <span className="font-semibold">Acesso Restrito:</span> Você não possui a permissão necessária para realizar pagamentos no sistema.
+          </div>
+        </div>
+      )}
+
       {/* Itens do carrinho */}
       {Array.isArray(v.itens) && v.itens.length > 1 ? (
-        <div className="mt-4 bg-white border border-zinc-200 rounded-xl overflow-hidden">
-          <div className="px-4 py-3 bg-zinc-50 border-b border-zinc-100">
-            <h3 className="text-sm font-semibold text-zinc-700">Itens da venda ({v.itens.length} produtos)</h3>
+        <div className="mt-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
+          <div className="px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-100 dark:border-zinc-800">
+            <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Itens da venda ({v.itens.length} produtos)</h3>
           </div>
-          <table className="w-full text-sm">
-            <thead className="text-xs uppercase tracking-wider text-zinc-400 bg-zinc-50/50">
-              <tr>
-                <th className="px-4 py-2 text-left">Produto</th>
-                <th className="px-4 py-2 text-center">Qtd</th>
-                <th className="px-4 py-2 text-right">Unit.</th>
-                <th className="px-4 py-2 text-right">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {v.itens.map((item, i) => (
-                <tr key={i} className="hover:bg-zinc-50/50">
-                  <td className="px-4 py-2.5 font-medium text-zinc-800">{item.produto_nome}</td>
-                  <td className="px-4 py-2.5 text-center text-zinc-600">{item.quantidade}</td>
-                  <td className="px-4 py-2.5 text-right text-zinc-600">{fmtBRL(item.preco_unitario)}</td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-[#3A4F4A]">{fmtBRL(item.subtotal)}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400 bg-zinc-50/50 dark:bg-zinc-900">
+                <tr>
+                  <th className="px-4 py-2 text-left">Produto</th>
+                  <th className="px-4 py-2 text-center">Qtd</th>
+                  <th className="px-4 py-2 text-right">Unit.</th>
+                  <th className="px-4 py-2 text-right">Subtotal</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                {v.itens.map((item, i) => (
+                  <tr key={i} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50 transition-colors">
+                    <td className="px-4 py-2.5 font-bold text-zinc-800 dark:text-zinc-100">{item.produto_nome}</td>
+                    <td className="px-4 py-2.5 text-center font-medium text-zinc-600 dark:text-zinc-300">{item.quantidade}</td>
+                    <td className="px-4 py-2.5 text-right font-medium text-zinc-600 dark:text-zinc-300">{fmtBRL(item.preco_unitario)}</td>
+                    <td className="px-4 py-2.5 text-right font-black text-[#3A4F4A] dark:text-emerald-400">{fmtBRL(item.subtotal)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
-        <div className="mt-2 text-sm text-zinc-500">
-          Qtd: <strong>{v.quantidade}</strong>
+        <div className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+          Qtd: <strong className="text-zinc-800 dark:text-zinc-200">{v.quantidade}</strong>
         </div>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 my-6">
-        <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-5">
-          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400">Total</div>
-          <div className="font-display text-2xl sm:text-3xl font-semibold mt-1">{fmtBRL(v.valor_total)}</div>
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
+          <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-zinc-400 dark:text-zinc-500">Total</div>
+          <div className="font-display text-2xl sm:text-3xl font-black mt-1 text-zinc-900 dark:text-zinc-50">{fmtBRL(v.valor_total)}</div>
         </div>
-        <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-5">
-          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400">Pago</div>
-          <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-emerald-600">{fmtBRL(v.total_pago)}</div>
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
+          <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-zinc-400 dark:text-zinc-500">Pago</div>
+          <div className="font-display text-2xl sm:text-3xl font-black mt-1 text-emerald-600 dark:text-emerald-400">{fmtBRL(v.total_pago)}</div>
         </div>
-        <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-5">
-          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400">Saldo</div>
-          <div className={`font-display text-2xl sm:text-3xl font-semibold mt-1 ${saldo > 0.01 ? "text-amber-600" : "text-emerald-600"}`}>{fmtBRL(saldo)}</div>
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
+          <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-zinc-400 dark:text-zinc-500">Saldo</div>
+          <div className={`font-display text-2xl sm:text-3xl font-black mt-1 ${saldo > 0.01 ? "text-amber-600 dark:text-amber-500" : "text-emerald-600 dark:text-emerald-400"}`}>{fmtBRL(saldo)}</div>
         </div>
       </div>
 
-      <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-6 mb-6">
-        <h3 className="font-display text-base sm:text-lg font-medium mb-4">Registrar pagamento</h3>
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 sm:p-7 mb-6 shadow-sm">
+        <h3 className="font-display text-base sm:text-lg font-bold mb-5 text-zinc-800 dark:text-zinc-100">Registrar pagamento</h3>
         <div className="space-y-4">
           {novos.map((p, i) => (
-            <div key={i} className="border border-zinc-150 sm:border-0 rounded-xl p-4 sm:p-0 bg-zinc-50/50 sm:bg-transparent space-y-3 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end relative">
+            <div key={i} className="border border-zinc-200 dark:border-zinc-800 sm:border-0 rounded-xl p-4 sm:p-0 bg-zinc-50 dark:bg-zinc-950 sm:bg-transparent sm:dark:bg-transparent space-y-3 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-4 sm:items-end relative">
               {novos.length > 1 && (
                 <div className="sm:hidden absolute top-2 right-2">
-                  <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:bg-rose-50" onClick={() => removeLine(i)}>
+                  <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30" onClick={() => removeLine(i)} disabled={!temPermissaoPagamento}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
               )}
               <div className="col-span-3">
-                <Label className="text-xs sm:text-sm">Valor</Label>
+                <Label className="text-xs sm:text-sm font-semibold text-zinc-700 dark:text-zinc-300">Valor *</Label>
                 <Input 
                   data-testid={`vpay-valor-${i}`} 
                   type="number" 
@@ -335,29 +365,31 @@ export default function VendaPagamento() {
                   value={p.valor} 
                   onChange={(e) => updateLine(i, "valor", e.target.value)}
                   placeholder={p.forma_pagamento === "dinheiro" && saldo > 0 ? `Troco se > ${fmtBRL(saldo)}` : "Digite o valor"}
-                  className="bg-white sm:bg-transparent mt-1"
+                  className="bg-white dark:bg-zinc-900 sm:bg-zinc-50 sm:dark:bg-zinc-950 border-zinc-300 dark:border-zinc-700 mt-1.5 focus:ring-[#84A59D] font-bold"
+                  disabled={!temPermissaoPagamento}
                 />
               </div>
               <div className="col-span-4">
-                <Label className="text-xs sm:text-sm">Forma</Label>
-                <Select value={p.forma_pagamento} onValueChange={(val) => updateLine(i, "forma_pagamento", val)}>
-                  <SelectTrigger data-testid={`vpay-forma-${i}`} className="bg-white sm:bg-transparent mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>{FORMAS.map((f) => <SelectItem key={f.v} value={f.v}>{f.l}</SelectItem>)}</SelectContent>
+                <Label className="text-xs sm:text-sm font-semibold text-zinc-700 dark:text-zinc-300">Forma de Pagamento *</Label>
+                <Select value={p.forma_pagamento} onValueChange={(val) => updateLine(i, "forma_pagamento", val)} disabled={!temPermissaoPagamento}>
+                  <SelectTrigger data-testid={`vpay-forma-${i}`} className="bg-white dark:bg-zinc-900 sm:bg-zinc-50 sm:dark:bg-zinc-950 border-zinc-300 dark:border-zinc-700 mt-1.5 font-bold" disabled={!temPermissaoPagamento}><SelectValue /></SelectTrigger>
+                  <SelectContent className="dark:bg-zinc-900 dark:border-zinc-800">{FORMAS.map((f) => <SelectItem key={f.v} value={f.v} className="dark:focus:bg-zinc-800 dark:text-zinc-200">{f.l}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="col-span-4">
-                <Label className="text-xs sm:text-sm">Observação</Label>
+                <Label className="text-xs sm:text-sm font-semibold text-zinc-700 dark:text-zinc-300">Observação</Label>
                 <Input 
                   value={p.observacao} 
                   onChange={(e) => updateLine(i, "observacao", e.target.value)}
-                  placeholder={p.forma_pagamento === "dinheiro" && Number(p.valor) > saldo ? `Troco: ${fmtBRL(Number(p.valor) - saldo)}` : ""}
-                  className="bg-white sm:bg-transparent mt-1"
+                  placeholder={p.forma_pagamento === "dinheiro" && Number(p.valor) > saldo ? `Troco: ${fmtBRL(Number(p.valor) - saldo)}` : "Opcional"}
+                  className="bg-white dark:bg-zinc-900 sm:bg-zinc-50 sm:dark:bg-zinc-950 border-zinc-300 dark:border-zinc-700 mt-1.5"
+                  disabled={!temPermissaoPagamento}
                 />
               </div>
               <div className="hidden sm:block col-span-1 text-center">
                 {novos.length > 1 && (
-                  <Button size="icon" variant="ghost" onClick={() => removeLine(i)}>
-                    <Trash2 className="w-4 h-4 text-rose-500" />
+                  <Button size="icon" variant="ghost" onClick={() => removeLine(i)} disabled={!temPermissaoPagamento}>
+                    <Trash2 className="w-5 h-5 text-rose-500 hover:text-rose-600" />
                   </Button>
                 )}
               </div>
@@ -367,48 +399,49 @@ export default function VendaPagamento() {
 
         {/* Aviso de troco */}
         {trocoTotal > 0 && (
-          <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3 fade-in animate-pulse-subtle">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-emerald-800">
-              <span className="font-semibold">Troco calculado:</span>
-              <span className="text-lg font-bold ml-2 text-emerald-700">{fmtBRL(trocoTotal)}</span>
-              <p className="text-xs text-emerald-600 mt-1">O valor registrado no sistema será de {fmtBRL(saldo)} (quitando o saldo), e o troco de {fmtBRL(trocoTotal)} deve ser devolvido ao cliente.</p>
+          <div className="mt-5 p-5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-xl flex items-start gap-4 fade-in animate-pulse-subtle">
+            <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-500 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-emerald-900 dark:text-emerald-100">
+              <span className="font-bold">Troco calculado:</span>
+              <span className="text-xl font-black ml-2 text-emerald-700 dark:text-emerald-400">{fmtBRL(trocoTotal)}</span>
+              <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400/80 mt-1.5">
+                O valor registrado no sistema será de {fmtBRL(saldo)} (quitando o saldo), e o troco de {fmtBRL(trocoTotal)} deve ser devolvido ao cliente.
+              </p>
             </div>
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6">
-          <Button variant="outline" size="sm" onClick={addLine} className="justify-center"><Plus className="w-3 h-3 mr-1" /> Adicionar forma</Button>
-          <Button data-testid="vpay-finish" onClick={executePayment} className="bg-[#84A59D] hover:bg-[#6F9189] justify-center"><CheckCircle2 className="w-4 h-4 mr-1" /> Registrar e Finalizar</Button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6 pt-6 border-t border-zinc-100 dark:border-zinc-800">
+          <Button variant="outline" onClick={addLine} className="h-11 justify-center border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-bold dark:text-zinc-200" disabled={!temPermissaoPagamento}><Plus className="w-4 h-4 mr-1.5" /> Adicionar forma</Button>
+          <Button data-testid="vpay-finish" onClick={executePayment} className="h-11 bg-[#84A59D] hover:bg-[#6F9189] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white font-bold justify-center shadow-md" disabled={!temPermissaoPagamento}><CheckCircle2 className="w-5 h-5 mr-2" /> Registrar e Finalizar</Button>
         </div>
       </div>
 
-      <div className="bg-white border border-zinc-200 rounded-xl mt-6">
-        <div className="px-6 py-4 border-b border-zinc-100"><h3 className="font-display text-lg font-medium">Pagamentos anteriores</h3></div>
-        {pagamentos.length === 0 ? <div className="p-6 text-center text-sm text-zinc-400">Nenhum pagamento</div> : (
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl mt-6 shadow-sm overflow-hidden">
+        <div className="px-6 py-5 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+          <h3 className="font-display text-lg font-bold text-zinc-800 dark:text-zinc-100">Pagamentos anteriores</h3>
+        </div>
+        {pagamentos.length === 0 ? <div className="p-8 text-center text-sm font-medium text-zinc-400 dark:text-zinc-500">Nenhum pagamento registrado</div> : (
           <>
             {/* Mobile View */}
-            <div className="divide-y divide-zinc-100 sm:hidden">
+            <div className="divide-y divide-zinc-100 dark:divide-zinc-800 sm:hidden">
               {pagamentos.map((p) => (
-                <div key={p.id} className="p-4 flex flex-col gap-2">
+                <div key={p.id} className="p-5 flex flex-col gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-400">{fmtDT(p.data_hora)}</span>
-                    <span className="font-semibold text-[#3A4F4A]">{fmtBRL(p.valor)}</span>
+                    <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">{fmtDT(p.data_hora)}</span>
+                    <span className="font-black text-[#3A4F4A] dark:text-emerald-400 text-lg">{fmtBRL(p.valor)}</span>
                   </div>
-                  <div className="text-sm font-medium text-zinc-800">
+                  <div className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
                     {FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}
                   </div>
                   {p.observacao && (
-                    <div className="text-xs text-zinc-500 italic bg-zinc-50 p-2 rounded-lg mt-1">
+                    <div className="text-xs text-zinc-600 dark:text-zinc-400 italic bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl mt-1 border border-zinc-100 dark:border-zinc-800">
                       "{p.observacao}"
                     </div>
                   )}
-                  <div className="flex items-center justify-end gap-2 border-t border-zinc-50 pt-2 mt-1">
-                    <Button size="sm" variant="outline" className="h-8 border-zinc-200 text-blue-600 hover:bg-blue-50" onClick={() => startEdit(p)}>
-                      <Edit2 className="w-3.5 h-3.5 mr-1" /> Editar
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-8 border-zinc-200 text-rose-600 hover:bg-rose-50" onClick={() => startDelete(p.id)}>
-                      <Trash2 className="w-3.5 h-3.5 mr-1" /> Excluir
+                  <div className="flex items-center justify-end gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-3 mt-2">
+                    <Button size="sm" variant="outline" className="h-9 border-zinc-200 dark:border-zinc-700 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30" onClick={() => startDelete(p.id)}>
+                      <Trash2 className="w-4 h-4 mr-1.5" /> Excluir
                     </Button>
                   </div>
                 </div>
@@ -418,10 +451,28 @@ export default function VendaPagamento() {
             {/* Desktop View */}
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500"><tr><th className="px-4 py-3 text-left">Data</th><th className="px-4 py-3 text-left">Forma</th><th className="px-4 py-3 text-right">Valor</th><th className="px-4 py-3 text-left">Observação</th><th className="px-4 py-3 text-right">Ações</th></tr></thead>
-                <tbody className="divide-y divide-zinc-100">
+                <thead className="bg-zinc-50 dark:bg-zinc-950 text-xs uppercase tracking-widest font-bold text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-800">
+                  <tr>
+                    <th className="px-6 py-4 text-left">Data</th>
+                    <th className="px-6 py-4 text-left">Forma</th>
+                    <th className="px-6 py-4 text-right">Valor</th>
+                    <th className="px-6 py-4 text-left">Observação</th>
+                    <th className="px-6 py-4 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                   {pagamentos.map((p) => (
-                    <tr key={p.id}><td className="px-4 py-3 text-zinc-700">{fmtDT(p.data_hora)}</td><td className="px-4 py-3">{FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}</td><td className="px-4 py-3 text-right font-medium">{fmtBRL(p.valor)}</td><td className="px-4 py-3 text-sm text-zinc-600">{p.observacao}</td><td className="px-4 py-3 text-right space-x-2"><Button size="icon" variant="ghost" onClick={() => startEdit(p)}><Edit2 className="w-4 h-4 text-blue-500" /></Button><Button size="icon" variant="ghost" onClick={() => startDelete(p.id)}><Trash2 className="w-4 h-4 text-rose-500" /></Button></td></tr>
+                    <tr key={p.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                      <td className="px-6 py-4 text-zinc-700 dark:text-zinc-300 font-medium">{fmtDT(p.data_hora)}</td>
+                      <td className="px-6 py-4 text-zinc-900 dark:text-zinc-100 font-bold">{FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}</td>
+                      <td className="px-6 py-4 text-right font-black text-[#3A4F4A] dark:text-emerald-400">{fmtBRL(p.valor)}</td>
+                      <td className="px-6 py-4 text-sm text-zinc-600 dark:text-zinc-400 italic">{p.observacao}</td>
+                      <td className="px-6 py-4 text-right space-x-2">
+                        <Button size="icon" variant="ghost" onClick={() => startDelete(p.id)} className="hover:bg-rose-50 dark:hover:bg-rose-900/30">
+                          <Trash2 className="w-4 h-4 text-rose-500 dark:text-rose-400" />
+                        </Button>
+                      </td>
+                    </tr>
                   ))}
                 </tbody>
               </table>

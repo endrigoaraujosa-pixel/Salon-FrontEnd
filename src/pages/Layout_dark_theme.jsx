@@ -6,19 +6,19 @@ import { Button } from "../components/ui/button";
 import ThemeToggle from "../components/ThemeToggle";
 
 const nav = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/agenda", label: "Agenda", icon: Calendar },
-  { to: "/clientes", label: "Clientes", icon: Users },
-  { to: "/colaboradores", label: "Colaboradores", icon: UserCog },
-  { to: "/servicos", label: "Serviços", icon: Scissors },
-  { to: "/produtos", label: "Produtos", icon: Package },
-  { to: "/vendas-diretas", label: "Vendas", icon: ShoppingBag },
-  { to: "/despesas", label: "Despesas", icon: DollarSign },
-  { to: "/outras-receitas", label: "Outras Receitas", icon: TrendingUp },
-  { to: "/comissoes", label: "Comissões", icon: Wallet },
-  { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
-  { to: "/configuracoes/taxas-cartao", label: "Configurações", icon: UserCog, adminOnly: true },
-  { to: "/usuarios", label: "Usuários", icon: UsersRound, adminOnly: true },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true, permKey: "dashboard" },
+  { to: "/agenda", label: "Agenda", icon: Calendar, permKey: "agenda" },
+  { to: "/clientes", label: "Clientes", icon: Users, permKey: "clientes" },
+  { to: "/colaboradores", label: "Colaboradores", icon: UserCog, permKey: "colaboradores" },
+  { to: "/servicos", label: "Serviços", icon: Scissors, permKey: "servicos" },
+  { to: "/produtos", label: "Produtos", icon: Package, permKey: "produtos" },
+  { to: "/vendas-diretas", label: "Vendas", icon: ShoppingBag, permKey: "vendas" },
+  { to: "/despesas", label: "Despesas", icon: DollarSign, permKey: "despesas" },
+  { to: "/outras-receitas", label: "Outras Receitas", icon: TrendingUp, permKey: "receitas" },
+  { to: "/comissoes", label: "Comissões", icon: Wallet, permKey: "comissoes" },
+  { to: "/relatorios", label: "Relatórios", icon: BarChart3, permKey: "relatorios" },
+  { to: "/configuracoes", label: "Configurações", icon: UserCog, permKey: "configuracoes" },
+  { to: "/usuarios", label: "Usuários", icon: UsersRound, permKey: "usuarios" },
 ];
 
 export default function Layout() {
@@ -40,7 +40,12 @@ export default function Layout() {
           <span className="font-display text-lg font-semibold tracking-tight">Salon Studio</span>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {nav.filter((n) => !n.adminOnly || user?.role === "admin").map((n) => (
+          {nav.filter((n) => {
+            if (user?.role === "admin") return true;
+            const perfil = user?.perfil;
+            if (!perfil || !perfil.permissoes || !perfil.permissoes.menus) return false;
+            return !!perfil.permissoes.menus[n.permKey];
+          }).map((n) => (
             <NavLink
               key={n.to}
               to={n.to}

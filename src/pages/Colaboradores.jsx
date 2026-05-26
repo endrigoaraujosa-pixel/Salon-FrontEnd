@@ -10,7 +10,7 @@ import { UserCog, Plus, Edit2, Trash2, History } from "lucide-react";
 import { toast } from "sonner";
 import AuditModal from "../components/AuditModal";
 
-const blank = { nome: "", cargo: "", telefone: "", comissao_principal: 40, comissao_auxiliar: 20, ativo: true };
+const blank = { nome: "", cargo: "", telefone: "", comissao_sozinho: 40, comissao_ajuda: 30, comissao_auxiliar: 20, ativo: true };
 
 export default function Colaboradores() {
   const [list, setList] = useState([]);
@@ -24,10 +24,16 @@ export default function Colaboradores() {
 
   const save = async () => {
     try {
-      const payload = { ...form, comissao_principal: Number(form.comissao_principal), comissao_auxiliar: Number(form.comissao_auxiliar) };
+      const payload = { 
+        ...form, 
+        comissao_principal: Number(form.comissao_sozinho || 0), 
+        comissao_sozinho: Number(form.comissao_sozinho || 0), 
+        comissao_ajuda: Number(form.comissao_ajuda || 0), 
+        comissao_auxiliar: Number(form.comissao_auxiliar || 0) 
+      };
       if (form.id) await http.put(`/colaboradores/${form.id}`, payload); else await http.post("/colaboradores", payload);
       toast.success("Salvo"); setOpen(false); setForm(blank); load();
-    } catch { toast.error("Erro ao salvar"); }
+    } catch (e) { toast.error(e.response?.data?.detail || "Erro ao salvar"); }
   };
   
   const del = (id) => {
@@ -44,11 +50,19 @@ export default function Colaboradores() {
       setDeletingId(null);
       load();
     } catch (e) {
-      toast.error("Erro ao remover");
+      toast.error(e.response?.data?.detail || "Erro ao remover");
     }
   };
 
-  const edit = (c) => { setForm(c); setOpen(true); };
+  const edit = (c) => { 
+    setForm({
+      ...c,
+      comissao_sozinho: c.comissao_sozinho !== undefined && c.comissao_sozinho !== null ? c.comissao_sozinho : (c.comissao_principal || 40),
+      comissao_ajuda: c.comissao_ajuda !== undefined && c.comissao_ajuda !== null ? c.comissao_ajuda : 30,
+      comissao_auxiliar: c.comissao_auxiliar !== undefined && c.comissao_auxiliar !== null ? c.comissao_auxiliar : 20
+    }); 
+    setOpen(true); 
+  };
 
   return (
     <div className="p-6 lg:p-8 fade-in">
@@ -59,13 +73,14 @@ export default function Colaboradores() {
             <DialogHeader><DialogTitle>{form.id ? "Editar" : "Novo"} colaborador</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div><Label>Nome *</Label><Input data-testid="colab-nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><Label>Cargo</Label><Input value={form.cargo} onChange={(e) => setForm({ ...form, cargo: e.target.value })} /></div>
                 <div><Label>Telefone</Label><Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} /></div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Comissão principal (%)</Label><Input type="number" value={form.comissao_principal} onChange={(e) => setForm({ ...form, comissao_principal: e.target.value })} /></div>
-                <div><Label>Comissão auxiliar (%)</Label><Input type="number" value={form.comissao_auxiliar} onChange={(e) => setForm({ ...form, comissao_auxiliar: e.target.value })} /></div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div><Label>Sozinho (%)</Label><Input type="number" value={form.comissao_sozinho} onChange={(e) => setForm({ ...form, comissao_sozinho: e.target.value })} /></div>
+                <div><Label>Com assistente (%)</Label><Input type="number" value={form.comissao_ajuda} onChange={(e) => setForm({ ...form, comissao_ajuda: e.target.value })} /></div>
+                <div><Label>Auxiliar (%)</Label><Input type="number" value={form.comissao_auxiliar} onChange={(e) => setForm({ ...form, comissao_auxiliar: e.target.value })} /></div>
               </div>
               <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: v })} /><Label>Ativo</Label></div>
             </div>
@@ -98,7 +113,9 @@ export default function Colaboradores() {
               </div>
               <div className="mt-4 text-sm text-zinc-600 space-y-1">
                 <div>📞 {c.telefone || "—"}</div>
-                <div>Comissão: <b>{c.comissao_principal}%</b> / aux <b>{c.comissao_auxiliar}%</b></div>
+                <div>Comissão sozinho: <b>{c.comissao_sozinho !== null && c.comissao_sozinho !== undefined ? c.comissao_sozinho : c.comissao_principal}%</b></div>
+                <div>Comissão c/ assistente: <b>{c.comissao_ajuda || 30}%</b></div>
+                <div>Comissão auxiliar: <b>{c.comissao_auxiliar}%</b></div>
               </div>
               <div className="mt-4 pt-3 border-t border-zinc-100 flex gap-2">
                 <Button size="sm" variant="outline" onClick={() => edit(c)}><Edit2 className="w-3 h-3 mr-1" /> Editar</Button>
@@ -116,7 +133,7 @@ export default function Colaboradores() {
             <DialogTitle>Confirmar exclusão</DialogTitle>
           </DialogHeader>
           <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
-            Tem certeza que deseja excluir este colaborador? Esta ação não pode ser desfeita e pode afetar agendas.
+            Tem certeza que deseja excluir este colaborador? Esta ação pode ser desfeita a qualquer momento a partir da tela de "Excluídos".
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>

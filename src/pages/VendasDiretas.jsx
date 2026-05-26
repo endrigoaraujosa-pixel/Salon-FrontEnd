@@ -76,11 +76,11 @@ export default function VendasDiretas() {
     http.get("/produtos").then((r) => setProdutos(r.data));
     http.get("/colaboradores").then((r) => setColaboradores(r.data));
     http.get("/clientes").then((r) => setClientes(r.data));
-    http.get("/categorias", {
-      params: {
-        ativo: true
-      }
-    }).then((r) => setCategorias(r.data || []));
+    http.get("/categorias").then((r) => {
+      const all = r.data || [];
+      // Filtramos ativos no frontend para evitar problemas de parsing boolean (true/'true'/1) no backend SQLite
+      setCategorias(all.filter(c => c.ativo !== false && c.ativo !== 0 && c.ativo !== '0'));
+    });
   }, []);
 
   useEffect(() => {
@@ -147,7 +147,7 @@ export default function VendasDiretas() {
     if (itemExistenteIdx !== -1) {
       const novaQtd = novaVendaItens[itemExistenteIdx].quantidade + qtd;
       if (novaQtd > prod.quantidade_estoque) {
-        toast.error(`Estoque insuficiente. Disponível: ${prod.quantidade_estoque}`);
+        toast.error(`Estoque insuficiente. Disponível: ${Number(Number(prod.quantidade_estoque || 0).toFixed(3))}`);
         return;
       }
       const copia = [...novaVendaItens];
@@ -155,7 +155,7 @@ export default function VendasDiretas() {
       setNovaVendaItens(copia);
     } else {
       if (qtd > prod.quantidade_estoque) {
-        toast.error(`Estoque insuficiente. Disponível: ${prod.quantidade_estoque}`);
+        toast.error(`Estoque insuficiente. Disponível: ${Number(Number(prod.quantidade_estoque || 0).toFixed(3))}`);
         return;
       }
       setNovaVendaItens([
@@ -181,7 +181,7 @@ export default function VendasDiretas() {
       return;
     }
     if (prod && novaQtd > prod.quantidade_estoque) {
-      toast.error(`Estoque insuficiente. Disponível: ${prod.quantidade_estoque}`);
+      toast.error(`Estoque insuficiente. Disponível: ${Number(Number(prod.quantidade_estoque || 0).toFixed(3))}`);
       return;
     }
     const copia = [...novaVendaItens];
@@ -359,38 +359,40 @@ export default function VendasDiretas() {
               <Plus className="w-4 h-4 mr-1" /> Nova venda
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-3xl w-full p-0 gap-0 flex flex-col overflow-hidden bg-white shadow-2xl rounded-2xl border-0" style={{ maxHeight: '92vh' }}>
+          <DialogContent className="sm:max-w-5xl w-full p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl border-0" style={{ maxHeight: '85vh' }}>
             {/* fixed header */}
-            <div className="px-6 pt-5 pb-4 border-b border-zinc-100 shrink-0 bg-zinc-50/50">
+            <div className="px-6 sm:px-8 pt-6 pb-5 border-b border-zinc-100 dark:border-zinc-800 shrink-0 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-md">
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2.5 text-base font-bold text-zinc-800">
-                  <div className="p-1.5 bg-[#EAF0EE] text-[#3A4F4A] rounded-lg">
-                    <Plus className="w-5 h-5" />
+                <DialogTitle className="flex items-center gap-3 text-lg font-bold text-zinc-800 dark:text-zinc-100">
+                  <div className="p-2 bg-[#EAF0EE] dark:bg-emerald-900/30 text-[#3A4F4A] dark:text-emerald-400 rounded-xl shadow-sm">
+                    <Plus className="w-6 h-6" />
                   </div>
                   <div>
-                    <span className="block font-display text-base font-bold text-zinc-950">Nova Venda Direta</span>
-                    <span className="text-[10px] text-zinc-400 font-medium">Preencha os dados e adicione os itens ao carrinho</span>
+                    <span className="block font-display text-xl font-extrabold text-zinc-950 dark:text-zinc-50">Nova Venda Direta</span>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">Preencha os dados e adicione os itens ao carrinho</span>
                   </div>
                 </DialogTitle>
               </DialogHeader>
             </div>
 
             {/* Scrollable body */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 min-h-[300px] bg-zinc-50/20">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-6 space-y-6 bg-zinc-50/30 dark:bg-zinc-950/50">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
                 {/* 1. Category */}
-                <div>
-                  <Label className="text-xs text-zinc-500 font-semibold mb-1 block">1. Categoria do Produto</Label>
+                <div className="space-y-2">
+                  <Label className="text-sm text-zinc-600 dark:text-zinc-300 font-bold block tracking-wide">1. Categoria do Produto</Label>
                   <SearchableSelect
                     placeholder="Todas as categorias"
                     searchPlaceholder="Pesquisar categoria..."
                     options={[
                       { value: "all", label: "Todas as categorias" },
                       { value: "none", label: "Sem categoria" },
-                      ...categorias.filter(c => c.tipo === "produto" || c.tipo === "ambos").map(c => ({
-                        value: c.id,
-                        label: c.nome
-                      }))
+                      ...categorias
+                        .filter(c => c.tipo && (c.tipo.toLowerCase() === "produto" || c.tipo.toLowerCase() === "ambos"))
+                        .map(c => ({
+                          value: c.id,
+                          label: c.nome
+                        }))
                     ]}
                     value={selectedAddCategory}
                     onValueChange={(val) => { setSelectedAddCategory(val); setForm({ ...form, produto_id: "" }); }}
@@ -398,8 +400,8 @@ export default function VendasDiretas() {
                 </div>
 
                 {/* 2. Product */}
-                <div>
-                  <Label className="text-xs text-zinc-500 font-semibold mb-1 block">2. Selecionar Produto</Label>
+                <div className="space-y-2">
+                  <Label className="text-sm text-zinc-600 dark:text-zinc-300 font-bold block tracking-wide">2. Selecionar Produto</Label>
                   <SearchableSelect
                     placeholder="Selecione o produto..."
                     searchPlaceholder="Pesquisar produto pelo nome..."
@@ -415,7 +417,7 @@ export default function VendasDiretas() {
                       })
                       .map((p) => ({
                         value: p.id,
-                        label: `${p.nome} — ${fmtBRL(p.preco_venda)} (Estoque: ${p.quantidade_estoque})`
+                        label: `${p.nome} — ${fmtBRL(p.preco_venda)} (Estoque: ${Number(Number(p.quantidade_estoque || 0).toFixed(3))})`
                       }))
                     }
                     value={form.produto_id}
@@ -425,9 +427,9 @@ export default function VendasDiretas() {
               </div>
 
               {/* Qtd and Add button */}
-              <div className="flex flex-col sm:flex-row items-end gap-3 bg-white p-3 border border-zinc-100 rounded-xl shadow-xs">
-                <div className="w-full sm:w-1/3">
-                  <Label className="text-xs text-zinc-500 font-semibold mb-1 block">Quantidade *</Label>
+              <div className="flex flex-col sm:flex-row items-end gap-4 bg-white dark:bg-zinc-900 p-5 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
+                <div className="w-full sm:w-1/3 space-y-2">
+                  <Label className="text-sm text-zinc-600 dark:text-zinc-300 font-bold block tracking-wide">Quantidade *</Label>
                   <Input
                     data-testid="venda-qtd"
                     type="number"
@@ -435,24 +437,24 @@ export default function VendasDiretas() {
                     step="0.01"
                     value={form.quantidade}
                     onChange={(e) => setForm({ ...form, quantidade: e.target.value })}
-                    className="h-10 border-zinc-200"
+                    className="h-11 border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 text-base font-semibold focus:ring-2 focus:ring-[#84A59D]"
                   />
                 </div>
                 <div className="w-full sm:flex-1">
                   <Button
                     type="button"
                     onClick={handleAddNovaVendaItem}
-                    className="w-full bg-[#EAF0EE] text-[#3A4F4A] hover:bg-[#DCE6E3] border border-[#84A59D]/20 h-10 font-bold"
+                    className="w-full bg-[#84A59D] hover:bg-[#6F9189] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white shadow-md h-11 font-bold text-sm tracking-wide transition-all hover:scale-[1.01]"
                   >
-                    <Plus className="w-4 h-4 mr-1.5" /> Adicionar Produto
+                    <Plus className="w-5 h-5 mr-2" /> Adicionar Produto
                   </Button>
                 </div>
               </div>
 
               {/* Vendedor & Cliente select */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-4 border border-zinc-100 rounded-xl shadow-xs">
-                <div>
-                  <Label className="text-xs text-zinc-500 font-semibold mb-1 block">Responsável pela Venda *</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-white dark:bg-zinc-900 p-5 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
+                <div className="space-y-2">
+                  <Label className="text-sm text-zinc-600 dark:text-zinc-300 font-bold block tracking-wide">Responsável pela Venda *</Label>
                   <SearchableSelect
                     placeholder="Selecione o profissional..."
                     searchPlaceholder="Pesquisar profissional pelo nome..."
@@ -464,8 +466,8 @@ export default function VendasDiretas() {
                     onValueChange={(v) => setForm({ ...form, colaborador_id: v })}
                   />
                 </div>
-                <div>
-                  <Label className="text-xs text-zinc-500 font-semibold mb-1 block">Cliente (opcional)</Label>
+                <div className="space-y-2">
+                  <Label className="text-sm text-zinc-600 dark:text-zinc-300 font-bold block tracking-wide">Cliente (opcional)</Label>
                   <SearchableSelect
                     placeholder="Selecione o cliente..."
                     searchPlaceholder="Pesquisar cliente pelo nome..."
@@ -481,37 +483,39 @@ export default function VendasDiretas() {
 
               {/* Temporary Cart items list */}
               {novaVendaItens.length > 0 ? (
-                <div className="space-y-2.5">
-                  <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">Itens no Carrinho</h3>
-                  <div className="space-y-2.5">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-extrabold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block pl-1 border-l-4 border-[#84A59D] dark:border-emerald-500">
+                    Itens no Carrinho
+                  </h3>
+                  <div className="space-y-1.5">
                     {novaVendaItens.map((item, idx) => (
-                      <div key={idx} className="rounded-xl border border-zinc-200 bg-white p-4 transition-all duration-200 hover:border-zinc-300 hover:shadow-sm">
+                      <div key={idx} className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 transition-all duration-200 hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-sm">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div className="min-w-0 flex-1">
-                            <p className="font-bold text-sm text-zinc-900 leading-snug break-words">{item.produto_nome}</p>
-                            <p className="text-xs text-zinc-400 mt-1 font-medium">
+                            <p className="font-bold text-sm text-zinc-900 dark:text-zinc-100 leading-tight truncate">{item.produto_nome}</p>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 font-semibold">
                               {fmtBRL(item.preco_unitario)} / un
                             </p>
                           </div>
 
-                          <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 pt-3 sm:pt-0 border-zinc-100">
+                          <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 pt-2.5 sm:pt-0 border-zinc-100 dark:border-zinc-800">
                             {/* Incr / Decr */}
-                            <div className="flex items-center gap-1 bg-zinc-100/80 border border-zinc-200 p-0.5 rounded-xl shadow-xs">
+                            <div className="flex items-center gap-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-0.5 rounded-lg shadow-xs">
                               <button
                                 type="button"
                                 onClick={() => handleIncrementNovaVendaQtd(idx, -1)}
-                                className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-zinc-600 hover:bg-zinc-200 hover:text-zinc-800 transition-colors shadow-xs"
+                                className="w-7 h-7 rounded-md bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-white transition-colors"
                                 title="Diminuir"
                               >
                                 <Minus className="w-3.5 h-3.5" />
                               </button>
-                              <span className="w-12 text-center text-xs font-extrabold text-zinc-700 py-1">
+                              <span className="w-10 text-center text-xs font-black text-zinc-800 dark:text-zinc-200">
                                 {item.quantidade}
                               </span>
                               <button
                                 type="button"
                                 onClick={() => handleIncrementNovaVendaQtd(idx, 1)}
-                                className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-zinc-600 hover:bg-zinc-200 hover:text-zinc-800 transition-colors shadow-xs"
+                                className="w-7 h-7 rounded-md bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-white transition-colors"
                                 title="Aumentar"
                               >
                                 <Plus className="w-3.5 h-3.5" />
@@ -519,9 +523,9 @@ export default function VendasDiretas() {
                             </div>
 
                             {/* Subtotal */}
-                            <div className="text-right min-w-[90px]">
-                              <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Subtotal</div>
-                              <div className="font-bold text-sm text-[#3A4F4A] font-mono leading-tight">
+                            <div className="text-right min-w-[80px]">
+                              <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-widest">Subtotal</div>
+                              <div className="font-bold text-sm text-[#3A4F4A] dark:text-emerald-400 font-mono leading-tight mt-0.5">
                                 {fmtBRL(item.preco_unitario * item.quantidade)}
                               </div>
                             </div>
@@ -530,7 +534,7 @@ export default function VendasDiretas() {
                             <button
                               type="button"
                               onClick={() => handleRemoveNovaVendaItem(idx)}
-                              className="p-2 rounded-xl text-rose-400 hover:bg-rose-50 hover:text-rose-600 transition-colors shrink-0"
+                              className="p-1.5 rounded-lg text-rose-500 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-900/50 dark:hover:text-rose-300 transition-colors shrink-0"
                               title="Remover produto"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -542,41 +546,41 @@ export default function VendasDiretas() {
                   </div>
                 </div>
               ) : (
-                <div className="border-2 border-dashed border-zinc-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center bg-white shadow-xs">
-                  <div className="p-3 bg-[#EAF0EE] text-[#3A4F4A] rounded-2xl mb-3">
-                    <ShoppingCart className="w-6 h-6" />
+                <div className="border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl p-10 flex flex-col items-center justify-center text-center bg-white dark:bg-zinc-900/50 shadow-sm">
+                  <div className="p-4 bg-[#EAF0EE] dark:bg-emerald-900/20 text-[#3A4F4A] dark:text-emerald-500 rounded-2xl mb-4">
+                    <ShoppingCart className="w-8 h-8" />
                   </div>
-                  <h4 className="font-display font-bold text-zinc-800 text-sm">O carrinho está vazio</h4>
-                  <p className="text-xs text-zinc-400 mt-1 max-w-[240px]">Escolha a categoria, o produto e a quantidade acima para adicionar.</p>
+                  <h4 className="font-display font-extrabold text-zinc-800 dark:text-zinc-200 text-lg">O carrinho está vazio</h4>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2 max-w-sm leading-relaxed">Selecione uma categoria, um produto e informe a quantidade acima para começar a adicionar itens.</p>
                 </div>
               )}
             </div>
 
             {/* fixed footer */}
-            <div className="px-6 py-5 border-t border-zinc-100 bg-zinc-50/50 shrink-0">
-              <div className="flex items-center justify-between bg-white border border-zinc-200 rounded-xl px-5 py-3.5 mb-4 shadow-xs">
-                <div className="text-xs text-zinc-500 font-medium">
-                  <span className="font-extrabold text-[#3A4F4A] text-sm bg-[#EAF0EE] px-2.5 py-1 rounded-lg">
+            <div className="px-6 sm:px-8 py-5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-md shrink-0">
+              <div className="flex items-center justify-between bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-6 py-4 mb-5 shadow-sm">
+                <div className="text-sm text-zinc-500 dark:text-zinc-400 font-semibold flex items-center gap-3">
+                  <span className="font-black text-[#3A4F4A] dark:text-zinc-900 text-base bg-[#EAF0EE] dark:bg-emerald-400 px-3.5 py-1.5 rounded-xl shadow-inner">
                     {novaVendaItens.length}
                   </span>
-                  <span className="ml-2">item(ns) selecionados</span>
+                  <span>item(ns) selecionados</span>
                 </div>
                 <div className="text-right">
-                  <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Total da Venda</div>
-                  <div className="font-extrabold text-2xl text-[#3A4F4A] leading-none mt-1">
+                  <div className="text-xs text-zinc-400 dark:text-zinc-500 font-extrabold uppercase tracking-widest">Total da Venda</div>
+                  <div className="font-black text-3xl text-[#3A4F4A] dark:text-emerald-400 leading-none mt-1">
                     {fmtBRL(novaVendaItens.reduce((acc, item) => acc + (item.preco_unitario * item.quantidade), 0))}
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2 justify-end">
-                <Button type="button" variant="outline" className="border-zinc-300 hover:bg-zinc-100" onClick={() => setOpen(false)}>Cancelar</Button>
+              <div className="flex flex-col sm:flex-row gap-3 justify-end">
+                <Button type="button" variant="outline" className="h-12 px-6 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-bold text-zinc-700 dark:text-zinc-300" onClick={() => setOpen(false)}>Cancelar</Button>
                 <Button
                   data-testid="save-venda-btn"
                   onClick={save}
                   disabled={novaVendaItens.length === 0}
-                  className="bg-[#84A59D] hover:bg-[#6F9189] text-white shadow-xs font-semibold"
+                  className="h-12 px-8 bg-[#84A59D] hover:bg-[#6F9189] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white shadow-lg font-bold text-base transition-transform hover:scale-[1.02]"
                 >
-                  <CreditCard className="w-4 h-4 mr-1.5" /> Criar e ir para pagamento
+                  <CreditCard className="w-5 h-5 mr-2" /> Criar e ir para pagamento
                 </Button>
               </div>
             </div>
@@ -859,19 +863,19 @@ export default function VendasDiretas() {
 
       {/* Dialog do Carrinho de Compras */}
       <Dialog open={carrinhoOpen} onOpenChange={(o) => { if (!o) { setCarrinhoOpen(false); setConfirmRemoveIdx(null); setEditingQtdIdx(null); } }}>
-        <DialogContent className="sm:max-w-2xl w-full p-0 gap-0 flex flex-col overflow-hidden bg-white shadow-2xl rounded-2xl border-0" style={{ maxHeight: '92vh' }}>
+        <DialogContent className="sm:max-w-4xl w-full p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl border-0" style={{ maxHeight: '85vh' }}>
 
           {/* Cabeçalho */}
-          <div className="px-6 pt-5 pb-4 border-b border-zinc-100 shrink-0 bg-zinc-50/50">
+          <div className="px-6 sm:px-8 pt-6 pb-5 border-b border-zinc-100 dark:border-zinc-800 shrink-0 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-md">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2.5 text-base font-bold text-zinc-800">
-                <div className="p-1.5 bg-[#EAF0EE] text-[#3A4F4A] rounded-lg">
-                  <ShoppingCart className="w-5 h-5" />
+              <DialogTitle className="flex items-center gap-3 text-lg font-bold text-zinc-800 dark:text-zinc-100">
+                <div className="p-2 bg-[#EAF0EE] dark:bg-emerald-900/30 text-[#3A4F4A] dark:text-emerald-400 rounded-xl shadow-sm">
+                  <ShoppingCart className="w-6 h-6" />
                 </div>
                 <div>
-                  <span className="block font-display text-base font-bold text-zinc-950">Carrinho da Venda</span>
+                  <span className="block font-display text-xl font-extrabold text-zinc-950 dark:text-zinc-50">Carrinho da Venda</span>
                   {carrinhoData && (
-                    <span className="font-mono text-[10px] bg-zinc-200 text-zinc-650 px-2 py-0.5 rounded-full font-bold">
+                    <span className="font-mono text-xs bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-2.5 py-0.5 rounded-full font-bold mt-1 inline-block">
                       VENDA #${String(carrinhoData.numero_venda).padStart(6, '0')}
                     </span>
                   )}
@@ -881,33 +885,33 @@ export default function VendasDiretas() {
 
             {/* Banner de bloqueio */}
             {carrinhoData?.bloqueado && (
-              <div className="mt-3 flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-amber-700">
-                <Lock className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+              <div className="mt-4 flex items-start gap-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-xl px-5 py-4 text-amber-700 dark:text-amber-500 shadow-sm">
+                <Lock className="w-5 h-5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-500" />
                 <div>
-                  <span className="font-semibold text-xs block">Carrinho Bloqueado</span>
-                  <span className="text-xs leading-relaxed opacity-90">${carrinhoData.mensagem_bloqueio}</span>
+                  <span className="font-bold text-sm block">Carrinho Bloqueado</span>
+                  <span className="text-sm leading-relaxed opacity-90 mt-0.5 block">{carrinhoData.mensagem_bloqueio}</span>
                 </div>
               </div>
             )}
           </div>
 
           {/* Corpo rolável */}
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 min-h-[220px] bg-zinc-50/20">
+          <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-6 space-y-6 bg-zinc-50/30 dark:bg-zinc-950/50">
             {carrinhoLoading ? (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#84A59D]" />
-                <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Buscando itens do carrinho...</p>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#84A59D] dark:border-emerald-500" />
+                <p className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Buscando itens do carrinho...</p>
               </div>
             ) : carrinhoData ? (
               <>
                 {/* Informar ou Trocar Cliente da Venda */}
-                <div className="p-4 bg-white border border-zinc-150 rounded-xl shadow-xs space-y-2">
+                <div className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider block">
+                    <Label className="text-sm font-extrabold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">
                       Cliente da Venda
                     </Label>
                     {carrinhoData.cliente_nome && (
-                      <span className="text-[10px] bg-[#EAF0EE] text-[#3A4F4A] px-2 py-0.5 rounded-full font-bold">
+                      <span className="text-xs bg-[#EAF0EE] dark:bg-emerald-900/30 text-[#3A4F4A] dark:text-emerald-400 px-2.5 py-1 rounded-lg font-bold">
                         Atual: {carrinhoData.cliente_nome}
                       </span>
                     )}
@@ -930,8 +934,8 @@ export default function VendasDiretas() {
 
                 {/* Busca rápida de produtos para adicionar ao carrinho */}
                 {!carrinhoData.bloqueado && (
-                  <div className="p-4 bg-white border border-zinc-150 rounded-xl shadow-xs space-y-2">
-                    <Label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Adicionar Produto ao Carrinho</Label>
+                  <div className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm space-y-3">
+                    <Label className="text-sm font-extrabold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">Adicionar Produto ao Carrinho</Label>
                     <div className="relative">
                       <SearchableSelect
                         placeholder="Pesquise por nome do produto para adicionar..."
@@ -940,7 +944,7 @@ export default function VendasDiretas() {
                           .filter(p => p.quantidade_estoque > 0)
                           .map(p => ({
                             value: p.id,
-                            label: `${p.nome} — ${fmtBRL(p.preco_venda)} (Estoque: ${p.quantidade_estoque})`
+                            label: `${p.nome} — ${fmtBRL(p.preco_venda)} (Estoque: ${Number(Number(p.quantidade_estoque || 0).toFixed(3))})`
                           }))
                         }
                         value=""
@@ -971,13 +975,13 @@ export default function VendasDiretas() {
                 )}
 
                 {/* Lista de itens */}
-                <div className="space-y-2.5">
+                <div className="space-y-1.5">
                   {(carrinhoData.itens || []).map((item, idx) => (
                     <div
                       key={idx}
-                      className={`rounded-xl border p-4 transition-all duration-200 ${confirmRemoveIdx === idx
-                          ? 'border-rose-200 bg-rose-50/50 shadow-xs'
-                          : 'border-zinc-200 bg-white hover:border-zinc-300 hover:shadow-sm'
+                      className={`rounded-xl border px-4 py-3 transition-all duration-200 ${confirmRemoveIdx === idx
+                          ? 'border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/20'
+                          : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-sm'
                         }`}
                     >
                       {/* Grid adaptável para mobile e desktop */}
@@ -985,23 +989,23 @@ export default function VendasDiretas() {
 
                         {/* Info Produto */}
                         <div className="min-w-0 flex-1">
-                          <p className="font-bold text-sm text-zinc-900 leading-snug break-words">{item.produto_nome}</p>
-                          <p className="text-xs text-zinc-400 mt-1 font-medium">
+                          <p className="font-bold text-sm text-zinc-900 dark:text-zinc-100 leading-tight truncate">{item.produto_nome}</p>
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 font-semibold">
                             {fmtBRL(item.preco_unitario)} / un
                           </p>
                         </div>
 
                         {/* Controles do carrinho (Qtd + Subtotal + Excluir) */}
-                        <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 pt-3 sm:pt-0 border-zinc-100">
+                        <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 pt-2.5 sm:pt-0 border-zinc-100 dark:border-zinc-800">
 
                           {/* Botões táteis de incrementar / decrementar quantidade */}
                           {!carrinhoData.bloqueado ? (
-                            <div className="flex items-center gap-1 bg-zinc-100/80 border border-zinc-200 p-0.5 rounded-xl shadow-xs">
+                            <div className="flex items-center gap-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-0.5 rounded-lg shadow-xs">
                               {/* Botão Menos */}
                               <button
                                 disabled={carrinhoSaving}
                                 onClick={() => handleIncrementQtd(idx, -1)}
-                                className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-zinc-650 hover:bg-zinc-200 hover:text-zinc-800 disabled:opacity-50 transition-colors shadow-xs"
+                                className="w-7 h-7 rounded-md bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-white disabled:opacity-50 transition-colors"
                                 title="Diminuir"
                               >
                                 <Minus className="w-3.5 h-3.5" />
@@ -1013,7 +1017,7 @@ export default function VendasDiretas() {
                                   type="number" min="0.01" step="0.01"
                                   value={editingQtdVal}
                                   onChange={e => setEditingQtdVal(e.target.value)}
-                                  className="w-14 h-8 text-xs font-bold text-center border-none bg-transparent p-0 focus-visible:ring-0 focus:outline-none"
+                                  className="w-12 h-7 text-xs font-black text-center border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus:ring-[#84A59D] p-0"
                                   autoFocus
                                   onBlur={() => handleSaveQtd(idx)}
                                   onKeyDown={e => {
@@ -1024,7 +1028,7 @@ export default function VendasDiretas() {
                               ) : (
                                 <span
                                   onClick={() => { setEditingQtdIdx(idx); setEditingQtdVal(String(item.quantidade)); }}
-                                  className="w-12 text-center text-xs font-extrabold text-zinc-700 cursor-pointer hover:bg-white hover:rounded-lg py-1 transition-all"
+                                  className="w-10 text-center text-xs font-black text-zinc-800 dark:text-zinc-200 cursor-pointer hover:bg-white dark:hover:bg-zinc-800 hover:rounded-md py-1 transition-all"
                                   title="Clique para digitar quantidade"
                                 >
                                   {item.quantidade}
@@ -1035,7 +1039,7 @@ export default function VendasDiretas() {
                               <button
                                 disabled={carrinhoSaving}
                                 onClick={() => handleIncrementQtd(idx, 1)}
-                                className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-zinc-655 hover:bg-zinc-200 hover:text-zinc-850 disabled:opacity-50 transition-colors shadow-xs"
+                                className="w-7 h-7 rounded-md bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-white disabled:opacity-50 transition-colors"
                                 title="Aumentar"
                               >
                                 <Plus className="w-3.5 h-3.5" />
@@ -1043,21 +1047,21 @@ export default function VendasDiretas() {
                             </div>
                           ) : (
                             <div className="text-right">
-                              <span className="text-[10px] text-zinc-400 font-bold block uppercase tracking-wider">Qtd</span>
-                              <span className="font-extrabold text-sm text-zinc-700">{item.quantidade}</span>
+                              <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-extrabold block uppercase tracking-widest">Qtd</span>
+                              <span className="font-bold text-sm text-zinc-800 dark:text-zinc-200">{item.quantidade}</span>
                             </div>
                           )}
 
                           {/* Subtotal */}
-                          <div className="text-right min-w-[90px]">
-                            <div className="text-[10px] text-zinc-450 font-bold uppercase tracking-wider">Subtotal</div>
-                            <div className="font-bold text-sm text-[#3A4F4A] font-mono leading-tight">{fmtBRL(item.subtotal)}</div>
+                          <div className="text-right min-w-[80px]">
+                            <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-widest">Subtotal</div>
+                            <div className="font-bold text-sm text-[#3A4F4A] dark:text-emerald-400 font-mono leading-tight mt-0.5">{fmtBRL(item.subtotal)}</div>
                           </div>
 
                           {/* Botão de Excluir */}
                           {!carrinhoData.bloqueado && (
                             confirmRemoveIdx === idx ? (
-                              <div className="flex items-center gap-1 shrink-0">
+                              <div className="flex items-center gap-1.5 shrink-0">
                                 <button
                                   disabled={carrinhoSaving}
                                   onClick={() => handleRemoveCartItem(idx)}
@@ -1067,7 +1071,7 @@ export default function VendasDiretas() {
                                 </button>
                                 <button
                                   onClick={() => setConfirmRemoveIdx(null)}
-                                  className="text-[10px] font-bold px-2 py-1.5 rounded-lg bg-zinc-200 text-zinc-650 hover:bg-zinc-350 transition-colors shrink-0"
+                                  className="text-[10px] font-bold px-2 py-1.5 rounded-lg bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors shrink-0"
                                 >
                                   Não
                                 </button>
@@ -1076,7 +1080,7 @@ export default function VendasDiretas() {
                               <button
                                 disabled={(carrinhoData.itens || []).length <= 1}
                                 onClick={() => setConfirmRemoveIdx(idx)}
-                                className="p-2 rounded-xl text-rose-400 hover:bg-rose-50 hover:text-rose-600 transition-colors disabled:opacity-20 disabled:cursor-not-allowed shrink-0"
+                                className="p-1.5 rounded-lg text-rose-500 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-900/50 dark:hover:text-rose-300 transition-colors shrink-0 disabled:opacity-20 disabled:cursor-not-allowed"
                                 title="Remover item"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -1094,25 +1098,25 @@ export default function VendasDiretas() {
           </div>
 
           {/* Rodapé com totais */}
-          <div className="px-6 py-5 border-t border-zinc-100 bg-zinc-50/50 shrink-0">
-            <div className="flex items-center justify-between bg-white border border-zinc-200 rounded-xl px-5 py-3.5 mb-4 shadow-xs">
-              <div className="text-xs text-zinc-500 font-medium">
-                <span className="font-extrabold text-[#3A4F4A] text-sm bg-[#EAF0EE] px-2.5 py-1 rounded-lg">{(carrinhoData?.itens || []).length}</span>
-                <span className="ml-2">item(ns) lançados</span>
+          <div className="px-6 sm:px-8 py-5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-md shrink-0">
+            <div className="flex items-center justify-between bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-6 py-4 mb-5 shadow-sm">
+              <div className="text-sm text-zinc-500 dark:text-zinc-400 font-semibold flex items-center gap-3">
+                <span className="font-black text-[#3A4F4A] dark:text-zinc-900 text-base bg-[#EAF0EE] dark:bg-emerald-400 px-3.5 py-1.5 rounded-xl shadow-inner">{(carrinhoData?.itens || []).length}</span>
+                <span>item(ns) lançados</span>
               </div>
               <div className="text-right">
-                <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Valor Total da Venda</div>
-                <div className="font-extrabold text-2xl text-[#3A4F4A] leading-none mt-1">{fmtBRL(carrinhoData?.valor_total || 0)}</div>
+                <div className="text-xs text-zinc-400 dark:text-zinc-500 font-extrabold uppercase tracking-widest">Valor Total da Venda</div>
+                <div className="font-black text-3xl text-[#3A4F4A] dark:text-emerald-400 leading-none mt-1">{fmtBRL(carrinhoData?.valor_total || 0)}</div>
               </div>
             </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" className="border-zinc-300 hover:bg-zinc-100" onClick={() => setCarrinhoOpen(false)}>Fechar</Button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-end">
+              <Button type="button" variant="outline" className="h-12 px-6 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-bold text-zinc-700 dark:text-zinc-300" onClick={() => setCarrinhoOpen(false)}>Fechar</Button>
               {carrinhoData && !carrinhoData.bloqueado && (
                 <Button
                   onClick={() => { setCarrinhoOpen(false); nav(`/vendas-diretas/${carrinhoVendaId}/pagamento`) }}
-                  className="bg-[#84A59D] hover:bg-[#6F9189] text-white shadow-xs font-semibold"
+                  className="h-12 px-8 bg-[#84A59D] hover:bg-[#6F9189] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white shadow-lg font-bold text-base transition-transform hover:scale-[1.02]"
                 >
-                  <CreditCard className="w-4 h-4 mr-1.5" /> Ir para Pagamento
+                  <CreditCard className="w-5 h-5 mr-2" /> Ir para Pagamento
                 </Button>
               )}
             </div>
@@ -1128,7 +1132,7 @@ export default function VendasDiretas() {
             <DialogTitle>Confirmar exclusão de venda</DialogTitle>
           </DialogHeader>
           <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
-            Tem certeza que deseja excluir esta venda direta? O produto será retornado ao estoque e os pagamentos vinculados serão estornados. Esta ação não pode ser desfeita.
+            Tem certeza que deseja excluir esta venda direta? O produto será retornado ao estoque e os pagamentos vinculados serão estornados. Esta ação pode ser desfeita a qualquer momento a partir da tela de "Excluídos".
           </div>
           <DialogFooter className="gap-2 flex flex-col sm:flex-row">
             <Button variant="outline" className="w-full sm:w-auto" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>

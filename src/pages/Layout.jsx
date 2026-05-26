@@ -1,25 +1,30 @@
 import React from "react";
 import { NavLink, useNavigate, Outlet } from "react-router-dom";
 import { useAuth } from "../auth";
-import { LayoutDashboard, Calendar, Users, Scissors, Package, UserCog, LogOut, ShoppingBag, Wallet, BarChart3, UsersRound, DollarSign, TrendingUp, Menu, X, Tags } from "lucide-react";
+import { 
+  LayoutDashboard, Calendar, Users, Scissors, Package, UserCog, 
+  LogOut, ShoppingBag, Wallet, BarChart3, UsersRound, DollarSign, 
+  TrendingUp, Menu, X, Tags, ClipboardList 
+} from "lucide-react";
 import { Button } from "../components/ui/button";
 import ThemeToggle from "../components/ThemeToggle";
 
 const nav = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/agenda", label: "Agenda", icon: Calendar },
-  { to: "/clientes", label: "Clientes", icon: Users },
-  { to: "/colaboradores", label: "Colaboradores", icon: UserCog },
-  { to: "/servicos", label: "Serviços", icon: Scissors },
-  { to: "/produtos", label: "Produtos", icon: Package },
-  { to: "/categorias", label: "Categorias", icon: Tags },
-  { to: "/vendas-diretas", label: "Vendas", icon: ShoppingBag },
-  { to: "/despesas", label: "Despesas", icon: DollarSign, adminOnly: true },
-  { to: "/outras-receitas", label: "Outras Receitas", icon: TrendingUp, adminOnly: true },
-  { to: "/comissoes", label: "Comissões", icon: Wallet, adminOnly: true },
-  { to: "/relatorios", label: "Relatórios", icon: BarChart3, adminOnly: true },
-  { to: "/configuracoes/taxas-cartao", label: "Configurações", icon: UserCog, adminOnly: true },
-  { to: "/usuarios", label: "Usuários", icon: UsersRound, adminOnly: true },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true, permKey: "dashboard" },
+  { to: "/agenda", label: "Agenda", icon: Calendar, permKey: "agenda" },
+  { to: "/clientes", label: "Clientes", icon: Users, permKey: "clientes" },
+  { to: "/colaboradores", label: "Colaboradores", icon: UserCog, permKey: "colaboradores" },
+  { to: "/servicos", label: "Serviços", icon: Scissors, permKey: "servicos" },
+  { to: "/produtos", label: "Produtos", icon: Package, permKey: "produtos" },
+  { to: "/estoque", label: "Estoque", icon: ClipboardList, permKey: "estoque" },
+  { to: "/categorias", label: "Categorias", icon: Tags, permKey: "produtos" },
+  { to: "/vendas-diretas", label: "Vendas", icon: ShoppingBag, permKey: "vendas" },
+  { to: "/despesas", label: "Despesas", icon: DollarSign, permKey: "despesas" },
+  { to: "/outras-receitas", label: "Outras Receitas", icon: TrendingUp, permKey: "receitas" },
+  { to: "/comissoes", label: "Comissões", icon: Wallet, permKey: "comissoes" },
+  { to: "/relatorios", label: "Relatórios", icon: BarChart3, permKey: "relatorios" },
+  { to: "/configuracoes", label: "Configurações", icon: UserCog, permKey: "configuracoes" },
+  { to: "/usuarios", label: "Usuários", icon: UsersRound, permKey: "usuarios" },
 ];
 
 export default function Layout() {
@@ -30,6 +35,34 @@ export default function Layout() {
   const doLogout = async () => {
     await logout();
     navigate("/login");
+  };
+
+  const renderNavItems = (isMobile = false) => {
+    return nav.filter((n) => {
+      if (user?.role === "admin") return true;
+      const perfil = user?.perfil;
+      if (!perfil || !perfil.permissoes || !perfil.permissoes.menus) return false;
+      return !!perfil.permissoes.menus[n.permKey];
+    }).map((n) => (
+      <NavLink
+        key={n.to}
+        to={n.to}
+        end={n.end}
+        onClick={() => {
+          if (isMobile) setMenuOpen(false);
+        }}
+        data-testid={`nav-${n.label.toLowerCase()}`}
+        className={({ isActive }) =>
+          `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+            isActive 
+              ? "bg-[#EAF0EE] text-[#3A4F4A] dark:bg-[#3A4F4A] dark:text-[#EAF0EE]" 
+              : "text-muted-foreground hover:bg-muted dark:hover:bg-muted"
+          }`
+        }
+      >
+        <n.icon className="w-4 h-4" /> {n.label}
+      </NavLink>
+    ));
   };
 
   return (
@@ -68,22 +101,7 @@ export default function Layout() {
             </div>
             
             <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-              {nav.filter((n) => !n.adminOnly || user?.role === "admin").map((n) => (
-                <NavLink
-                  key={n.to}
-                  to={n.to}
-                  end={n.end}
-                  onClick={() => setMenuOpen(false)}
-                  data-testid={`nav-${n.label.toLowerCase()}`}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isActive ? "bg-[#EAF0EE] text-[#3A4F4A] dark:bg-[#3A4F4A] dark:text-[#EAF0EE]" : "text-muted-foreground hover:bg-muted dark:hover:bg-muted"
-                    }`
-                  }
-                >
-                  <n.icon className="w-4 h-4" /> {n.label}
-                </NavLink>
-              ))}
+              {renderNavItems(true)}
             </nav>
             
             <div className="p-2 border-t border-border shrink-0 bg-muted/20 dark:bg-muted/10">
@@ -121,21 +139,7 @@ export default function Layout() {
         </div>
         
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {nav.filter((n) => !n.adminOnly || user?.role === "admin").map((n) => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              end={n.end}
-              data-testid={`nav-${n.label.toLowerCase()}`}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive ? "bg-[#EAF0EE] text-[#3A4F4A] dark:bg-[#3A4F4A] dark:text-[#EAF0EE]" : "text-muted-foreground hover:bg-muted dark:hover:bg-muted"
-                }`
-              }
-            >
-              <n.icon className="w-4 h-4" /> {n.label}
-            </NavLink>
-          ))}
+          {renderNavItems(false)}
         </nav>
         
         <div className="p-2 border-t border-border shrink-0 bg-muted/20 dark:bg-muted/10">
