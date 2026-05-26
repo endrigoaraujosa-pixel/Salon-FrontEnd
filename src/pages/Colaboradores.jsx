@@ -33,7 +33,7 @@ export default function Colaboradores() {
       };
       if (form.id) await http.put(`/colaboradores/${form.id}`, payload); else await http.post("/colaboradores", payload);
       toast.success("Salvo"); setOpen(false); setForm(blank); load();
-    } catch { toast.error("Erro ao salvar"); }
+    } catch (e) { toast.error(e.response?.data?.detail || "Erro ao salvar"); }
   };
   
   const del = (id) => {
@@ -50,7 +50,7 @@ export default function Colaboradores() {
       setDeletingId(null);
       load();
     } catch (e) {
-      toast.error("Erro ao remover");
+      toast.error(e.response?.data?.detail || "Erro ao remover");
     }
   };
 

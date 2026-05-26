@@ -399,7 +399,7 @@ export default function Produtos() {
       setDeletingId(null);
       load();
     } catch (e) {
-      toast.error("Erro ao remover");
+      toast.error(e.response?.data?.detail || "Erro ao remover");
     }
   };
 

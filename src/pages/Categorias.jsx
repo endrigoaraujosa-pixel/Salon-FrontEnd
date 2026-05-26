@@ -43,7 +43,7 @@ export default function Categorias() {
       setForm(blank);
       load();
     } catch (e) {
-      toast.error("Erro ao salvar categoria");
+      toast.error(e.response?.data?.detail || "Erro ao salvar categoria");
     }
   };
 
@@ -61,7 +61,7 @@ export default function Categorias() {
       setDeletingId(null);
       load();
     } catch (e) {
-      toast.error("Erro ao remover categoria");
+      toast.error(e.response?.data?.detail || "Erro ao remover categoria");
     }
   };
 

@@ -25,6 +25,10 @@ import OutrasReceitas from "./pages/OutrasReceitas";
 import Configuracoes from "./pages/Configuracoes";
 import ConfiguracoesTaxas from "./pages/ConfiguracoesTaxas";
 import ConfiguracoesFornecedores from "./pages/ConfiguracoesFornecedores";
+import PerfisAcesso from "./pages/PerfisAcesso";
+import EntradaProdutos from "./pages/EntradaProdutos";
+import Inventario from "./pages/Inventario";
+import Estoque from "./pages/Estoque";
 
 const Protected = ({ children }) => {
   const { user, loading } = useAuth();
@@ -56,6 +60,9 @@ function App() {
               <Route path="/colaboradores" element={<AdminRoute><Colaboradores /></AdminRoute>} />
               <Route path="/servicos" element={<Servicos />} />
               <Route path="/produtos" element={<Produtos />} />
+              <Route path="/estoque" element={<Estoque />} />
+              <Route path="/estoque/entrada" element={<EntradaProdutos />} />
+              <Route path="/estoque/inventario" element={<Inventario />} />
               <Route path="/categorias" element={<Categorias />} />
               <Route path="/agendamentos/:id/pagamento" element={<Pagamento />} />
               <Route path="/vendas-diretas" element={<VendasDiretas />} />
@@ -67,6 +74,7 @@ function App() {
               <Route path="/configuracoes" element={<AdminRoute><Configuracoes /></AdminRoute>} />
               <Route path="/configuracoes/taxas-cartao" element={<AdminRoute><ConfiguracoesTaxas /></AdminRoute>} />
               <Route path="/configuracoes/fornecedores" element={<AdminRoute><ConfiguracoesFornecedores /></AdminRoute>} />
+              <Route path="/configuracoes/perfis-acesso" element={<AdminRoute><PerfisAcesso /></AdminRoute>} />
               <Route path="/usuarios" element={<AdminRoute><Usuarios /></AdminRoute>} />
             </Route>
           </Routes>

@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../components/Page";
 import { Card } from "../components/ui/card";
-import { CreditCard, Users, Sliders, ChevronRight } from "lucide-react";
+import { CreditCard, Users, Sliders, ChevronRight, ShieldCheck } from "lucide-react";
 
 export default function Configuracoes() {
   const navigate = useNavigate();
@@ -25,6 +25,15 @@ export default function Configuracoes() {
       active: true,
       color: "text-[#84A59D]",
       bgColor: "bg-[#EAF0EE] dark:bg-[#3A4F4A]/20"
+    },
+    {
+      title: "Perfis de Acesso",
+      description: "Gerencie perfis de acesso (Administrador, Funcionário) e configure permissões de menus, ações e visibilidade financeira.",
+      icon: ShieldCheck,
+      route: "/configuracoes/perfis-acesso",
+      active: true,
+      color: "text-blue-500",
+      bgColor: "bg-blue-55 dark:bg-blue-950/20"
     },
     {
       title: "Outras Configurações",

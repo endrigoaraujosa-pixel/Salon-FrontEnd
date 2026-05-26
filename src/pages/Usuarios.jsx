@@ -12,11 +12,12 @@ import { toast } from "sonner";
 import { useAuth } from "../auth";
 import AuditModal from "../components/AuditModal";
 
-const blank = { name: "", email: "", senha: "", role: "funcionario", ativo: true, pode_alterar_concluido: false, pode_excluir_agendamento: false, pode_excluir_pagamento: false };
+const blank = { name: "", email: "", senha: "", role: "funcionario", perfil_acesso_id: "func-profile-uuid-0000000000000000000", ativo: true, pode_alterar_concluido: false, pode_excluir_agendamento: false, pode_excluir_pagamento: false };
 
 export default function Usuarios() {
   const { user: me } = useAuth();
   const [list, setList] = useState([]);
+  const [perfis, setPerfis] = useState([]);
   const [open, setOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
@@ -25,7 +26,10 @@ export default function Usuarios() {
   const [auditOpen, setAuditOpen] = useState(false);
 
   const load = () => http.get("/users").then((r) => setList(r.data)).catch((e) => toast.error(e.response?.data?.detail || "Erro ao carregar"));
-  useEffect(() => { load(); }, []);
+  useEffect(() => { 
+    load(); 
+    http.get("/perfis-acesso").then((r) => setPerfis(r.data)).catch(() => {});
+  }, []);
 
   const save = async () => {
     if (!form.name || !form.email) { toast.error("Nome e email obrigatórios"); return; }
@@ -43,6 +47,7 @@ export default function Usuarios() {
         name: form.name, 
         email: form.email, 
         role: form.role, 
+        perfil_acesso_id: form.perfil_acesso_id || "func-profile-uuid-0000000000000000000",
         ativo: form.ativo,
         pode_alterar_concluido: form.pode_alterar_concluido,
         pode_excluir_agendamento: form.pode_excluir_agendamento,
@@ -120,11 +125,16 @@ export default function Usuarios() {
               </div>
               <div>
                 <Label>Perfil *</Label>
-                <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
+                <Select value={form.perfil_acesso_id || "func-profile-uuid-0000000000000000000"} onValueChange={(v) => {
+                  const p = perfis.find(x => x.id === v);
+                  const chosenRole = p?.nome === "Administrador" ? "admin" : "funcionario";
+                  setForm({ ...form, perfil_acesso_id: v, role: chosenRole });
+                }}>
                   <SelectTrigger data-testid="user-role"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="funcionario">Funcionário</SelectItem>
+                    {perfis.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -178,11 +188,25 @@ export default function Usuarios() {
                   <td className="px-4 py-3 font-medium">{u.name} {u.id === me?.id && <span className="text-xs text-zinc-400 ml-1">(você)</span>}</td>
                   <td className="px-4 py-3 text-zinc-600">{u.email}</td>
                   <td className="px-4 py-3">
-                    {u.role === "admin" ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#EAF0EE] text-[#3A4F4A] text-xs font-medium"><Shield className="w-3 h-3" /> Admin</span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-700 text-xs font-medium">Funcionário</span>
-                    )}
+                    {(() => {
+                      const p = perfis.find(x => x.id === u.perfil_acesso_id);
+                      if (p) {
+                        return (
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                            p.id === 'admin-profile-uuid-0000000000000000000'
+                              ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600"
+                              : "bg-blue-50 dark:bg-blue-950/20 text-blue-500"
+                          }`}>
+                            <Shield className="w-3 h-3" /> {p.nome}
+                          </span>
+                        );
+                      }
+                      return u.role === "admin" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-600 text-xs font-semibold"><Shield className="w-3 h-3" /> Administrador</span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full bg-zinc-100 text-zinc-700 text-xs font-semibold">Funcionário</span>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.ativo ? "bg-emerald-100 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}>{u.ativo ? "Ativo" : "Inativo"}</span>

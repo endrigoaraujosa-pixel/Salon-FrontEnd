@@ -38,7 +38,7 @@ export default function Clientes() {
       else await http.post("/clientes", form);
       toast.success("Cliente salvo");
       setOpen(false); setForm(blank); load();
-    } catch (e) { toast.error("Erro ao salvar"); }
+    } catch (e) { toast.error(e.response?.data?.detail || "Erro ao salvar"); }
   };
 
   const del = (id) => {
@@ -55,7 +55,7 @@ export default function Clientes() {
       setDeletingId(null);
       load();
     } catch (e) {
-      toast.error("Erro ao remover");
+      toast.error(e.response?.data?.detail || "Erro ao remover");
     }
   };
 

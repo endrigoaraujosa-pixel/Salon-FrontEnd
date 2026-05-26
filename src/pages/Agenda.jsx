@@ -232,7 +232,7 @@ export default function Agenda() {
         }))
       };
 
-      const params = creds ? { params: creds } : undefined;
+      const params = creds ? { params: { ...creds, only_insumos: true } } : { params: { only_insumos: true } };
       const res = await http.put(`/agendamentos/${agForUtilized.id}`, payload, params);
       
       toast.success("Consumo de produtos atualizado com sucesso!");
@@ -250,10 +250,6 @@ export default function Agenda() {
   };
 
   const saveUtilizedProducts = async () => {
-    if (agForUtilized?.status === "concluido" && !utilizedAuthCredentials) {
-      setUtilizedAuthOpen(true);
-      return;
-    }
     await saveUtilizedProductsWithCreds(utilizedAuthCredentials);
   };
 
