@@ -112,7 +112,7 @@ export default function Comissoes() {
       const fetchedData = response.data;
       let filteredComissoes = fetchedData.comissoes || [];
       if (relatorioColabId !== "todos") {
-        filteredComissoes = filteredComissoes.filter(c => c.colaborador_id === Number(relatorioColabId));
+        filteredComissoes = filteredComissoes.filter(c => String(c.colaborador_id) === String(relatorioColabId));
       }
       
       if (relatorioStatus === "cancelado") {
@@ -138,7 +138,7 @@ export default function Comissoes() {
 
       const colabName = relatorioColabId === "todos" 
         ? "Todos os colaboradores" 
-        : colaboradores.find(c => c.id === Number(relatorioColabId))?.nome || "Colaborador";
+        : colaboradores.find(c => String(c.id) === String(relatorioColabId))?.nome || "Colaborador";
 
       const statusName = {
         todos: "Todos os status",
