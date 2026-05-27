@@ -12,12 +12,13 @@ import { toast } from "sonner";
 import { useAuth } from "../auth";
 import AuditModal from "../components/AuditModal";
 
-const blank = { name: "", email: "", senha: "", role: "funcionario", perfil_acesso_id: "func-profile-uuid-0000000000000000000", ativo: true, pode_alterar_concluido: false, pode_excluir_agendamento: false, pode_excluir_pagamento: false };
+const blank = { name: "", email: "", senha: "", role: "funcionario", perfil_acesso_id: "func-profile-uuid-0000000000000000000", colaborador_id: "", ativo: true, pode_alterar_concluido: false, pode_excluir_agendamento: false, pode_excluir_pagamento: false };
 
 export default function Usuarios() {
   const { user: me } = useAuth();
   const [list, setList] = useState([]);
   const [perfis, setPerfis] = useState([]);
+  const [colaboradores, setColaboradores] = useState([]);
   const [open, setOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
@@ -29,6 +30,7 @@ export default function Usuarios() {
   useEffect(() => { 
     load(); 
     http.get("/perfis-acesso").then((r) => setPerfis(r.data)).catch(() => {});
+    http.get("/colaboradores").then((r) => setColaboradores(r.data || [])).catch(() => {});
   }, []);
 
   const save = async () => {
@@ -48,6 +50,7 @@ export default function Usuarios() {
         email: form.email, 
         role: form.role, 
         perfil_acesso_id: form.perfil_acesso_id || "func-profile-uuid-0000000000000000000",
+        colaborador_id: form.colaborador_id || null,
         ativo: form.ativo,
         pode_alterar_concluido: form.pode_alterar_concluido,
         pode_excluir_agendamento: form.pode_excluir_agendamento,
@@ -142,6 +145,18 @@ export default function Usuarios() {
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label>Colaborador Vinculado</Label>
+                <Select value={form.colaborador_id || "nenhum"} onValueChange={(v) => setForm({ ...form, colaborador_id: v === "nenhum" ? null : v })} disabled={!isAdmin}>
+                  <SelectTrigger data-testid="user-colab"><SelectValue placeholder="Selecione o colaborador" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nenhum">Nenhum</SelectItem>
+                    {colaboradores.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex items-center gap-2">
                 <Switch checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: v })} disabled={!isAdmin} />
                 <Label>Ativo</Label>
@@ -186,13 +201,23 @@ export default function Usuarios() {
         <div className="bg-white border border-zinc-200 rounded-xl overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500">
-              <tr><th className="px-4 py-3 text-left">Nome</th><th className="px-4 py-3 text-left">Email</th><th className="px-4 py-3 text-left">Perfil</th><th className="px-4 py-3 text-left">Status</th><th></th></tr>
+              <tr>
+                <th className="px-4 py-3 text-left">Nome</th>
+                <th className="px-4 py-3 text-left">Email</th>
+                <th className="px-4 py-3 text-left">Colaborador Vinculado</th>
+                <th className="px-4 py-3 text-left">Perfil</th>
+                <th className="px-4 py-3 text-left">Status</th>
+                <th></th>
+              </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
               {list.map((u) => (
                 <tr key={u.id} className="hover:bg-zinc-50/60" data-testid={`user-row-${u.id}`}>
                   <td className="px-4 py-3 font-medium">{u.name} {u.id === me?.id && <span className="text-xs text-zinc-400 ml-1">(você)</span>}</td>
                   <td className="px-4 py-3 text-zinc-600">{u.email}</td>
+                  <td className="px-4 py-3 text-zinc-700 font-medium">
+                    {colaboradores.find(c => c.id === u.colaborador_id)?.nome || <span className="text-zinc-400 font-normal">—</span>}
+                  </td>
                   <td className="px-4 py-3">
                     {(() => {
                       const p = perfis.find(x => x.id === u.perfil_acesso_id);

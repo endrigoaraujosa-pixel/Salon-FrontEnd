@@ -89,8 +89,10 @@ export default function Comissoes() {
     http.get("/colaboradores")
       .then((r) => {
         setColaboradores(r.data || []);
-        if (isFunc && user?.name) {
-          const matched = r.data.find(c => c.nome.toLowerCase() === user.name.toLowerCase());
+        if (isFunc) {
+          const matched = user?.colaborador_id 
+            ? r.data.find(c => String(c.id) === String(user.colaborador_id))
+            : r.data.find(c => c.nome.toLowerCase() === user?.name?.toLowerCase());
           if (matched) {
             setRelatorioColabId(String(matched.id));
           }
