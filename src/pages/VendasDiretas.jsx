@@ -359,7 +359,7 @@ export default function VendasDiretas() {
               <Plus className="w-4 h-4 mr-1" /> Nova venda
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-5xl w-full p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl border-0" style={{ maxHeight: '85vh' }}>
+          <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-5xl w-full p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl border-0" style={{ maxHeight: '85vh' }}>
             {/* fixed header */}
             <div className="px-6 sm:px-8 pt-6 pb-5 border-b border-zinc-100 dark:border-zinc-800 shrink-0 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-md">
               <DialogHeader>
@@ -863,7 +863,7 @@ export default function VendasDiretas() {
 
       {/* Dialog do Carrinho de Compras */}
       <Dialog open={carrinhoOpen} onOpenChange={(o) => { if (!o) { setCarrinhoOpen(false); setConfirmRemoveIdx(null); setEditingQtdIdx(null); } }}>
-        <DialogContent className="sm:max-w-4xl w-full p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl border-0" style={{ maxHeight: '85vh' }}>
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-4xl w-full p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl border-0" style={{ maxHeight: '85vh' }}>
 
           {/* Cabeçalho */}
           <div className="px-6 sm:px-8 pt-6 pb-5 border-b border-zinc-100 dark:border-zinc-800 shrink-0 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-md">
@@ -1127,7 +1127,7 @@ export default function VendasDiretas() {
       {/* Dialog de confirmação de exclusão */}
 
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
           <DialogHeader>
             <DialogTitle>Confirmar exclusão de venda</DialogTitle>
           </DialogHeader>

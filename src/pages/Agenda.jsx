@@ -941,7 +941,7 @@ export default function Agenda() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="dialog-content sm:max-w-3xl" aria-describedby="dialog-agendamento">
+        <DialogContent className="dialog-content w-[95vw] max-w-[95vw] sm:max-w-3xl rounded-2xl dark:bg-zinc-900 dark:border-zinc-800 p-5 sm:p-6" aria-describedby="dialog-agendamento">
           <DialogHeader className="dialog-header">
             <DialogTitle className="dialog-title">{form?.id ? "Editar Agendamento" : "Novo Agendamento"}</DialogTitle>
           </DialogHeader>
@@ -1090,7 +1090,7 @@ export default function Agenda() {
       </Dialog>
 
       <Dialog open={openNewClient} onOpenChange={setOpenNewClient}>
-        <DialogContent className="dialog-content" style={{ maxWidth: "26rem" }} aria-describedby="dialog-novo-cliente">
+        <DialogContent className="dialog-content w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800" style={{ maxWidth: "26rem" }} aria-describedby="dialog-novo-cliente">
           <DialogHeader className="dialog-header">
             <DialogTitle className="dialog-title">Novo Cliente</DialogTitle>
           </DialogHeader>
@@ -1151,7 +1151,7 @@ export default function Agenda() {
       </Dialog>
 
       <Dialog open={openSenha} onOpenChange={(v) => { setOpenSenha(v); if (!v) setSenhaData({ agendamento_id: null, novo_status: null, email: "", senha: "" }); }}>
-        <DialogContent className="dialog-content" aria-describedby="dialog-senha">
+        <DialogContent className="dialog-content w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800" aria-describedby="dialog-senha">
           <DialogHeader className="dialog-header"><DialogTitle className="dialog-title">Confirmar alteracao de status</DialogTitle></DialogHeader>
           <div id="dialog-senha" className="sr-only">Dialogo para confirmar alteracao de agendamento concluido</div>
           <div className="dialog-body">
@@ -1173,7 +1173,7 @@ export default function Agenda() {
       </Dialog>
 
       <Dialog open={openResumo} onOpenChange={setOpenResumo}>
-        <DialogContent className="dialog-content sm:max-w-3xl md:max-w-4xl lg:max-w-5xl rounded-2xl p-8 overflow-y-auto max-h-[90vh]" aria-describedby="dialog-resumo">
+        <DialogContent className="dialog-content w-[95vw] max-w-[95vw] sm:max-w-3xl md:max-w-4xl lg:max-w-5xl rounded-2xl p-5 sm:p-8 overflow-y-auto max-h-[90vh]" aria-describedby="dialog-resumo">
           <DialogHeader className="dialog-header flex flex-row items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-4">
             <DialogTitle className="dialog-title flex items-center gap-2 justify-between w-full">
               <span className="flex items-center gap-3 text-xl font-semibold">
@@ -1382,7 +1382,7 @@ export default function Agenda() {
       </Dialog>
       {/* Dialog para informar profissionais ausentes ao concluir status */}
       <Dialog open={profsDialogOpen} onOpenChange={setProfsDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
           <DialogHeader>
             <DialogTitle className="font-display text-xl font-bold flex items-center gap-2 text-zinc-800">
               <CheckCircle2 className="w-6 h-6 text-[#84A59D]" />
@@ -1456,7 +1456,7 @@ export default function Agenda() {
 
       {/* Dialog de confirmação de exclusão */}
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
           <DialogHeader>
             <DialogTitle>Confirmar exclusão de agendamento</DialogTitle>
           </DialogHeader>
@@ -1472,7 +1472,7 @@ export default function Agenda() {
 
       {/* Dialog de confirmação de data passada */}
       <Dialog open={pastDateConfirmOpen} onOpenChange={setPastDateConfirmOpen}>
-        <DialogContent className="sm:max-w-md" aria-describedby="dialog-data-passada">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800" aria-describedby="dialog-data-passada">
           <DialogHeader>
             <DialogTitle>Agendamento em data passada</DialogTitle>
           </DialogHeader>
@@ -1501,7 +1501,7 @@ export default function Agenda() {
         requireCredentials={true}
       />
       <Dialog open={conflictConfirmOpen} onOpenChange={setConflictConfirmOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
           <DialogHeader>
             <DialogTitle>Conflito de Horário</DialogTitle>
           </DialogHeader>
@@ -1519,7 +1519,7 @@ export default function Agenda() {
 
       {/* Dialog para informar produtos utilizados */}
       <Dialog open={utilizedProductsOpen} onOpenChange={setUtilizedProductsOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-2xl p-4 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-xl font-bold flex items-center gap-2 text-zinc-800">
               <Package className="w-6 h-6 text-[#84A59D]" />
@@ -1552,8 +1552,8 @@ export default function Agenda() {
                       Nenhum produto cadastrado para este serviço.
                     </div>
                   ) : (
-                    <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-950">
-                      <table className="w-full text-sm">
+                    <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-x-auto bg-white dark:bg-zinc-950 w-full min-w-0">
+                      <table className="w-full text-sm min-w-[500px] sm:min-w-0">
                         <thead className="bg-zinc-50 dark:bg-zinc-900 text-xs uppercase tracking-wider text-zinc-500 border-b border-zinc-200 dark:border-zinc-800">
                           <tr>
                             <th className="px-4 py-2.5 text-left font-semibold">Produto</th>

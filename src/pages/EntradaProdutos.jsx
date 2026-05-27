@@ -527,7 +527,7 @@ export default function EntradaProdutos() {
 
       {/* Post Entry - Generation of Contas a Pagar Prompt */}
       <Dialog open={promptOpen} onOpenChange={setPromptOpen}>
-        <DialogContent className="max-w-md bg-white dark:bg-zinc-950 rounded-2xl border-0 shadow-2xl p-6">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-2xl p-5 sm:p-6">
           <DialogHeader className="flex flex-col items-center text-center">
             <div className="w-12 h-12 rounded-full bg-[#EAF0EE] dark:bg-[#1a2e2a] flex items-center justify-center mb-3">
               <HelpCircle className="w-6 h-6 text-[#3A4F4A] dark:text-[#84A59D]" />
@@ -564,7 +564,7 @@ export default function EntradaProdutos() {
 
       {/* Accounts Payable (Contas a Pagar / Despesa) Prefilled Modal */}
       <Dialog open={expenseDialogOpen} onOpenChange={setExpenseDialogOpen}>
-        <DialogContent className="max-w-lg bg-white dark:bg-zinc-950 rounded-2xl border-0 shadow-2xl p-0 overflow-hidden flex flex-col max-h-[90vh]">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-0 overflow-hidden flex flex-col max-h-[90vh]">
           {/* Header */}
           <div className="px-6 pt-5 pb-4 border-b border-zinc-100 dark:border-zinc-800 shrink-0 bg-zinc-50/50 dark:bg-zinc-900/20">
             <DialogHeader>

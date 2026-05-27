@@ -38,7 +38,8 @@ const defaultPermissions = {
     criar: false,
     editar: false,
     excluir: false,
-    realizar_pagamento: false
+    realizar_pagamento: false,
+    is_admin: false
   }
 };
 
@@ -260,7 +261,7 @@ export default function PerfisAcesso() {
                         <div className="bg-zinc-50 dark:bg-zinc-950/40 p-2.5 rounded-xl border border-zinc-150 dark:border-zinc-850/50">
                           <span className="text-zinc-400 dark:text-zinc-500 block text-[9px] uppercase font-bold">Ações & Operações</span>
                           <span className="font-bold text-zinc-800 dark:text-zinc-200 mt-1 block">
-                            {activeAcoesCount} de 3
+                            {activeAcoesCount} de 5
                           </span>
                         </div>
                       </div>
@@ -377,6 +378,26 @@ export default function PerfisAcesso() {
                     2. Ações & Alterações
                   </h4>
                   <div className="space-y-3">
+                    {/* Acesso de Administrador */}
+                    <div 
+                      onClick={() => handleToggleAcao("is_admin")}
+                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
+                        form.permissoes.acoes.is_admin 
+                          ? "bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-500 font-bold" 
+                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
+                      }`}
+                    >
+                      <div>
+                        <span className="text-xs font-bold block">Acesso de Administrador</span>
+                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Concede privilégios totais de administração</span>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
+                        form.permissoes.acoes.is_admin ? "bg-amber-500 border-amber-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
+                      }`}>
+                        {form.permissoes.acoes.is_admin && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </div>
+                    </div>
+
                     {/* Criar */}
                     <div 
                       onClick={() => handleToggleAcao("criar")}

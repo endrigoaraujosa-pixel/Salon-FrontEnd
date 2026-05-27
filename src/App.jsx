@@ -75,7 +75,7 @@ function App() {
               <Route path="/configuracoes/taxas-cartao" element={<AdminRoute><ConfiguracoesTaxas /></AdminRoute>} />
               <Route path="/configuracoes/fornecedores" element={<AdminRoute><ConfiguracoesFornecedores /></AdminRoute>} />
               <Route path="/configuracoes/perfis-acesso" element={<AdminRoute><PerfisAcesso /></AdminRoute>} />
-              <Route path="/usuarios" element={<AdminRoute><Usuarios /></AdminRoute>} />
+              <Route path="/usuarios" element={<Usuarios />} />
             </Route>
           </Routes>
         </BrowserRouter>
