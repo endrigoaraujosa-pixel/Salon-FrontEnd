@@ -153,7 +153,9 @@ export default function Comissoes() {
         const colabInsumos = c.detalhes?.reduce((s, d) => s + (d.custo_produtos || 0), 0) || 0;
         return sum + colabInsumos;
       }, 0);
-      const totalFaturamento = filteredComissoes.reduce((sum, c) => sum + c.total_principal + c.total_auxiliar, 0);
+      const totalFaturamento = relatorioColabId === "todos" && !isFunc
+        ? (fetchedData.faturamento_bruto_total || 0)
+        : filteredComissoes.reduce((sum, c) => sum + c.total_principal + c.total_auxiliar + (c.total_produtos || 0), 0);
 
       let htmlContent = `
 <!DOCTYPE html>
@@ -452,7 +454,7 @@ export default function Comissoes() {
     <div class="kpi-card">
       <div class="kpi-title">Faturamento Executado</div>
       <div class="kpi-value">${fmtBRL(totalFaturamento)}</div>
-      <div class="kpi-subtitle">Total bruto em serviços</div>
+      <div class="kpi-subtitle">Total bruto em serviços e vendas</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-title">Dedução de Insumos</div>
@@ -741,7 +743,9 @@ export default function Comissoes() {
     const colabInsumos = c.detalhes?.reduce((s, d) => s + (d.custo_produtos || 0), 0) || 0;
     return sum + colabInsumos;
   }, 0) || 0;
-  const totalFaturamentoServicos = data?.comissoes?.reduce((sum, c) => sum + c.total_principal + c.total_auxiliar, 0) || 0;
+  const totalFaturamentoServicos = isFunc
+    ? (data?.comissoes?.reduce((sum, c) => sum + c.total_principal + c.total_auxiliar + (c.total_produtos || 0), 0) || 0)
+    : (data?.faturamento_bruto_total || 0);
 
   return (
     <div className="p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">
@@ -821,7 +825,7 @@ export default function Comissoes() {
               <div className="space-y-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">{isFunc ? "Meu Faturamento" : "Faturamento Bruto"}</span>
                 <div className="font-display text-2xl font-black text-zinc-700 dark:text-zinc-100">{fmtBRL(totalFaturamentoServicos)}</div>
-                <span className="text-[10px] text-zinc-400 block font-medium">{isFunc ? "Executado em meus atendimentos" : "Executado em atendimentos"}</span>
+                <span className="text-[10px] text-zinc-400 block font-medium">{isFunc ? "Executado em meus atendimentos e vendas" : "Executado em atendimentos e vendas"}</span>
               </div>
               <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-xl">
                 <TrendingUp className="w-6 h-6 text-zinc-500 dark:text-zinc-400" />
