@@ -294,7 +294,7 @@ export default function ConfiguracoesFornecedores() {
 
       {/* FORNECEDOR CREATE/EDIT DIALOG */}
       <Dialog open={fornDialogOpen} onOpenChange={setFornDialogOpen}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 rounded-2xl shadow-xl p-6 border border-zinc-250 dark:border-zinc-800">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 rounded-2xl shadow-xl p-5 sm:p-6 border border-zinc-250 dark:border-zinc-800 max-h-[90vh] overflow-y-auto">
           <DialogHeader className="pb-3 border-b border-zinc-150 dark:border-zinc-800">
             <DialogTitle className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
               {fornEditingId ? "Editar Fornecedor" : "Novo Fornecedor"}
@@ -384,7 +384,7 @@ export default function ConfiguracoesFornecedores() {
 
       {/* CONFIRM DELETE FORNECEDOR */}
       <Dialog open={fornDeleteConfirmOpen} onOpenChange={setFornDeleteConfirmOpen}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 rounded-2xl shadow-xl p-6 border border-zinc-250 dark:border-zinc-800">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 rounded-2xl shadow-xl p-5 sm:p-6 border border-zinc-250 dark:border-zinc-800">
           <DialogHeader>
             <DialogTitle className="text-zinc-900 dark:text-zinc-50">Confirmar Exclusão</DialogTitle>
             <DialogDescription className="sr-only">

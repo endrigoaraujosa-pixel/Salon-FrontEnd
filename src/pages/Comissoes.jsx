@@ -999,21 +999,32 @@ export default function Comissoes() {
 
       {/* Dialog Detalhado de Comissões */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[80vw] max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[80vw] max-h-[90vh] p-4 sm:p-6 overflow-y-auto overflow-x-hidden rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
           <DialogHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
-            <DialogTitle className="font-display text-2xl font-extrabold tracking-tight text-[#3A4F4A] dark:text-zinc-100 flex items-center gap-2.5">
-              <Wallet className="w-6 h-6 text-[#84A59D]" />
-              Detalhamento de Comissoes: {selectedColab?.colaborador_nome}
+            <DialogTitle className="font-display text-lg sm:text-xl md:text-2xl font-extrabold tracking-tight text-[#3A4F4A] dark:text-zinc-100 flex items-center gap-2 sm:gap-2.5">
+              <Wallet className="w-5 h-5 sm:w-6 sm:h-6 text-[#84A59D] shrink-0" />
+              <span className="truncate">Detalhamento: {selectedColab?.colaborador_nome}</span>
             </DialogTitle>
             {selectedColab && (
-              <div className="text-[11px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider mt-1">
-                Políticas: Sozinho: <span className="text-zinc-650 dark:text-zinc-350 font-bold">{selectedColab.comissao_sozinho != null ? selectedColab.comissao_sozinho : selectedColab.comissao_principal}%</span> | Com ajuda: <span className="text-zinc-650 dark:text-zinc-350 font-bold">{selectedColab.comissao_ajuda || 30}%</span> | Auxiliar: <span className="text-zinc-650 dark:text-zinc-350 font-bold">{selectedColab.comissao_auxiliar}%</span>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[10px] sm:text-[11px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider mt-2">
+                <span>Políticas:</span>
+                <span className="bg-zinc-100 dark:bg-zinc-800/60 px-1.5 py-0.5 rounded text-zinc-650 dark:text-zinc-355 font-bold">
+                  Sozinho: {selectedColab.comissao_sozinho != null ? selectedColab.comissao_sozinho : selectedColab.comissao_principal}%
+                </span>
+                <span className="text-zinc-300 dark:text-zinc-700 hidden sm:inline">•</span>
+                <span className="bg-zinc-100 dark:bg-zinc-800/60 px-1.5 py-0.5 rounded text-zinc-650 dark:text-zinc-355 font-bold">
+                  Com ajuda: {selectedColab.comissao_ajuda || 30}%
+                </span>
+                <span className="text-zinc-300 dark:text-zinc-700 hidden sm:inline">•</span>
+                <span className="bg-zinc-100 dark:bg-zinc-800/60 px-1.5 py-0.5 rounded text-zinc-650 dark:text-zinc-355 font-bold">
+                  Auxiliar: {selectedColab.comissao_auxiliar}%
+                </span>
               </div>
             )}
           </DialogHeader>
 
           {selectedColab && (
-            <div className="space-y-6 py-4">
+            <div className="space-y-6 py-4 min-w-0 w-full">
               {/* Resumo Rápido da Janela */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-850 p-5 rounded-2xl shadow-inner">
                 <div className="space-y-1">
@@ -1140,7 +1151,7 @@ export default function Comissoes() {
 
       {/* Dialog de Confirmação: Insumos Pendentes */}
       <Dialog open={confirmInsumosOpen} onOpenChange={setConfirmInsumosOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[425px] p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
               <AlertTriangle className="w-5 h-5" />
@@ -1171,7 +1182,7 @@ export default function Comissoes() {
 
       {/* Dialog: Filtros para Relatório de Comissões */}
       <Dialog open={relatorioDialogOpen} onOpenChange={setRelatorioDialogOpen}>
-        <DialogContent className="max-w-md bg-white dark:bg-zinc-950 rounded-2xl border-0 shadow-2xl">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-150 dark:border-zinc-850 shadow-2xl">
           <DialogHeader className="border-b border-zinc-100 dark:border-zinc-850 pb-3">
             <DialogTitle className="flex items-center gap-2">
               <Printer className="w-5 h-5 text-[#84A59D]" />

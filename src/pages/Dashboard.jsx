@@ -344,7 +344,7 @@ export default function Dashboard() {
             ) : (
               <div className="border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm min-w-[750px] sm:min-w-0">
                     {/* HEADERS */}
                     {selectedMetric === "faturamento" && (
                       <thead className="bg-zinc-50 dark:bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold border-b border-zinc-200 dark:border-zinc-800">

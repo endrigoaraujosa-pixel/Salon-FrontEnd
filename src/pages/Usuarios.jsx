@@ -100,18 +100,22 @@ export default function Usuarios() {
     setOpen(true); 
   };
 
+  const isAdmin = me?.role === "admin";
+
   return (
     <div className="p-6 lg:p-8 fade-in">
       <PageHeader overline="Acessos" title="Usuários" action={
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setForm(blank); }}>
-          <DialogTrigger asChild>
-            <Button data-testid="add-user-btn" className="bg-[#84A59D] hover:bg-[#6F9189]"><Plus className="w-4 h-4 mr-1" /> Novo usuário</Button>
-          </DialogTrigger>
-          <DialogContent>
+          {isAdmin && (
+            <DialogTrigger asChild>
+              <Button data-testid="add-user-btn" className="bg-[#84A59D] hover:bg-[#6F9189]"><Plus className="w-4 h-4 mr-1" /> Novo usuário</Button>
+            </DialogTrigger>
+          )}
+          <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
             <DialogHeader><DialogTitle>{form.id ? "Editar" : "Novo"} usuário</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <div><Label>Nome *</Label><Input data-testid="user-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-              <div><Label>Email *</Label><Input data-testid="user-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} autoComplete="off" /></div>
+              <div><Label>Nome *</Label><Input data-testid="user-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} disabled={!isAdmin} /></div>
+              <div><Label>Email *</Label><Input data-testid="user-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} autoComplete="off" disabled={!isAdmin} /></div>
               <div>
                 <Label>{form.id ? "Nova senha (deixe vazio para manter)" : "Senha *"}</Label>
                 <Input 
@@ -127,9 +131,9 @@ export default function Usuarios() {
                 <Label>Perfil *</Label>
                 <Select value={form.perfil_acesso_id || "func-profile-uuid-0000000000000000000"} onValueChange={(v) => {
                   const p = perfis.find(x => x.id === v);
-                  const chosenRole = p?.nome === "Administrador" ? "admin" : "funcionario";
+                  const chosenRole = (p?.nome === "Administrador" || p?.permissoes?.acoes?.is_admin) ? "admin" : "funcionario";
                   setForm({ ...form, perfil_acesso_id: v, role: chosenRole });
-                }}>
+                }} disabled={!isAdmin}>
                   <SelectTrigger data-testid="user-role"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {perfis.map(p => (
@@ -139,21 +143,21 @@ export default function Usuarios() {
                 </Select>
               </div>
               <div className="flex items-center gap-2">
-                <Switch checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: v })} />
+                <Switch checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: v })} disabled={!isAdmin} />
                 <Label>Ativo</Label>
               </div>
               <div className="flex flex-col gap-2 bg-[#F8FBFB] dark:bg-[#1a2322] p-3 rounded-lg border border-[#E8EFEF] dark:border-[#2e3e3b] mt-2">
                 <div className="text-[11px] font-semibold text-[#3A4F4A] uppercase tracking-wider mb-1">Permissões Especiais</div>
                 <div className="flex items-center gap-2">
-                  <Switch checked={form.pode_alterar_concluido} onCheckedChange={(v) => setForm({ ...form, pode_alterar_concluido: v })} />
+                  <Switch checked={form.pode_alterar_concluido} onCheckedChange={(v) => setForm({ ...form, pode_alterar_concluido: v })} disabled={!isAdmin} />
                   <Label className="text-xs">Pode alterar/pagar agendamentos concluídos</Label>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <Switch checked={form.pode_excluir_agendamento} onCheckedChange={(v) => setForm({ ...form, pode_excluir_agendamento: v })} />
+                  <Switch checked={form.pode_excluir_agendamento} onCheckedChange={(v) => setForm({ ...form, pode_excluir_agendamento: v })} disabled={!isAdmin} />
                   <Label className="text-xs">Pode excluir agendamentos</Label>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <Switch checked={form.pode_excluir_pagamento} onCheckedChange={(v) => setForm({ ...form, pode_excluir_pagamento: v })} />
+                  <Switch checked={form.pode_excluir_pagamento} onCheckedChange={(v) => setForm({ ...form, pode_excluir_pagamento: v })} disabled={!isAdmin} />
                   <Label className="text-xs">Permitir exclusão de pagamentos e cancelamento de vendas</Label>
                 </div>
               </div>
@@ -165,16 +169,18 @@ export default function Usuarios() {
         </Dialog>
       } />
 
-      <div className="flex justify-end mb-4">
-        <Button 
-          variant="outline" 
-          onClick={() => setAuditOpen(true)}
-          className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-        >
-          <History className="w-3.5 h-3.5" />
-          <span>Excluídos</span>
-        </Button>
-      </div>
+      {isAdmin && (
+        <div className="flex justify-end mb-4">
+          <Button 
+            variant="outline" 
+            onClick={() => setAuditOpen(true)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          >
+            <History className="w-3.5 h-3.5" />
+            <span>Excluídos</span>
+          </Button>
+        </div>
+      )}
 
       {list.length === 0 ? <EmptyState icon={UsersRound} title="Nenhum usuário" hint="Cadastre usuários para dar acesso ao sistema." /> : (
         <div className="bg-white border border-zinc-200 rounded-xl overflow-x-auto">
@@ -213,7 +219,9 @@ export default function Usuarios() {
                   </td>
                   <td className="px-4 py-3 text-right space-x-1">
                     <Button size="sm" variant="ghost" onClick={() => edit(u)} data-testid={`edit-user-${u.id}`}><Edit2 className="w-4 h-4" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => del(u.id, u.email)} data-testid={`delete-user-${u.id}`}><Trash2 className="w-4 h-4 text-rose-500" /></Button>
+                    {isAdmin && (
+                      <Button size="sm" variant="ghost" onClick={() => del(u.id, u.email)} data-testid={`delete-user-${u.id}`}><Trash2 className="w-4 h-4 text-rose-500" /></Button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -224,7 +232,7 @@ export default function Usuarios() {
 
       {/* Dialog de confirmação de exclusão */}
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
           <DialogHeader>
             <DialogTitle>Confirmar exclusão</DialogTitle>
           </DialogHeader>
