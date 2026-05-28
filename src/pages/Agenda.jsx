@@ -1228,7 +1228,23 @@ export default function Agenda() {
                     </div>
                   </div>
                 </div>
- 
+
+                {/* Agendado por — info discreta */}
+                {(resumoAgendamento.criado_por_nome || resumoAgendamento.criado_em) && (
+                  <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 dark:text-zinc-600 italic select-none pt-0.5">
+                    <User className="w-3 h-3 flex-shrink-0" />
+                    <span>
+                      Agendado
+                      {resumoAgendamento.criado_por_nome && (
+                        <> por <strong className="font-semibold not-italic text-zinc-500 dark:text-zinc-500">{resumoAgendamento.criado_por_nome}</strong></>
+                      )}
+                      {resumoAgendamento.criado_em && (
+                        <> em {new Date(resumoAgendamento.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</>
+                      )}
+                    </span>
+                  </div>
+                )}
+
                 {/* Observações */}
                 <div className="space-y-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
                   <h4 className="text-xs uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-bold flex items-center gap-1.5">
