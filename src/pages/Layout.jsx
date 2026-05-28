@@ -183,28 +183,6 @@ export default function Layout() {
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {renderNavItems(false)}
         </nav>
-        
-        <div className="p-2 border-t border-border shrink-0 bg-muted/20 dark:bg-muted/10">
-          <div className="flex items-center justify-between gap-2 px-2 py-1">
-            <div className="min-w-0 flex-1">
-              <div className="font-medium text-xs text-foreground truncate" title={user?.name}>{user?.name}</div>
-              <div className="text-[10px] text-muted-foreground truncate" title={user?.email}>{user?.email}</div>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <ThemeToggle />
-              <Button 
-                onClick={doLogout} 
-                variant="ghost" 
-                size="icon" 
-                className="h-7 w-7 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 rounded-md" 
-                data-testid="logout-btn"
-                title="Sair"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-          </div>
-        </div>
       </aside>
 
       {/* Main Content Area */}
