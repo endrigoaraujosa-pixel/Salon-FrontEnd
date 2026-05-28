@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../components/Page";
 import { Card } from "../components/ui/card";
-import { CreditCard, Users, Sliders, ChevronRight, ShieldCheck } from "lucide-react";
+import { CreditCard, Users, Sliders, ChevronRight, ShieldCheck, Building } from "lucide-react";
 
 export default function Configuracoes() {
   const navigate = useNavigate();
@@ -19,7 +19,7 @@ export default function Configuracoes() {
     },
     {
       title: "Fornecedores",
-      description: "Gerencie a rede de parceiros e fornecedores de produtos e serviços para suas compras e custos.",
+      description: "Gerencie a network de parceiros e fornecedores de produtos e serviços para suas compras e custos.",
       icon: Users,
       route: "/configuracoes/fornecedores",
       active: true,
@@ -34,6 +34,15 @@ export default function Configuracoes() {
       active: true,
       color: "text-blue-500",
       bgColor: "bg-blue-55 dark:bg-blue-950/20"
+    },
+    {
+      title: "Empresas",
+      description: "Cadastre e edite as informações de sua empresa (Nome Fantasia, CNPJ, Inscrição Estadual, etc.).",
+      icon: Building,
+      route: "/configuracoes/empresa",
+      active: true,
+      color: "text-indigo-500",
+      bgColor: "bg-indigo-50 dark:bg-indigo-950/20"
     },
     {
       title: "Outras Configurações",

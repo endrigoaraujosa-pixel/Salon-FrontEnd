@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import ThemeToggle from "../components/ThemeToggle";
+import http from "../api";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true, permKey: "dashboard" },
@@ -31,6 +32,42 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const [nomeFantasia, setNomeFantasia] = React.useState("Salon Studio");
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
+    return localStorage.getItem("sidebar_collapsed") === "true";
+  });
+
+  const loadEmpresa = () => {
+    http.get("/configuracoes/empresa")
+      .then((res) => {
+        if (res.data && res.data.nome_fantasia) {
+          setNomeFantasia(res.data.nome_fantasia);
+        } else {
+          setNomeFantasia("Salon Studio");
+        }
+      })
+      .catch((err) => {
+        console.error("Erro ao obter empresa:", err);
+      });
+  };
+
+  React.useEffect(() => {
+    loadEmpresa();
+
+    // Listen to updates
+    window.addEventListener("empresa_updated", loadEmpresa);
+    return () => {
+      window.removeEventListener("empresa_updated", loadEmpresa);
+    };
+  }, []);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem("sidebar_collapsed", String(next));
+      return next;
+    });
+  };
 
   const doLogout = async () => {
     await logout();
@@ -73,7 +110,7 @@ export default function Layout() {
           <div className="w-8 h-8 rounded-lg brand-gradient flex items-center justify-center">
             <Scissors className="w-4 h-4 text-white" />
           </div>
-          <span className="font-display text-base font-semibold tracking-tight">Salon Studio</span>
+          <span className="font-display text-base font-semibold tracking-tight">{nomeFantasia}</span>
         </div>
         <Button variant="ghost" size="icon" onClick={() => setMenuOpen(true)} className="h-10 w-10">
           <Menu className="w-6 h-6" />
@@ -93,7 +130,7 @@ export default function Layout() {
                 <div className="w-8 h-8 rounded-lg brand-gradient flex items-center justify-center">
                   <Scissors className="w-4 h-4 text-white" />
                 </div>
-                <span className="font-display text-lg font-semibold tracking-tight">Salon Studio</span>
+                <span className="font-display text-lg font-semibold tracking-tight">{nomeFantasia}</span>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setMenuOpen(false)} className="h-8 w-8">
                 <X className="w-4 h-4" />
@@ -130,12 +167,17 @@ export default function Layout() {
       )}
 
       {/* Desktop Sticky Sidebar */}
-      <aside className="desktop-only-sidebar w-64 bg-card border-r border-border flex flex-col h-screen sticky top-0 shrink-0" data-testid="sidebar">
+      <aside 
+        className={`desktop-only-sidebar bg-card border-r border-border flex flex-col h-screen sticky top-0 shrink-0 transition-all duration-300 ease-in-out ${
+          sidebarCollapsed ? "w-0 opacity-0 overflow-hidden border-r-0" : "w-64 opacity-100"
+        }`} 
+        data-testid="sidebar"
+      >
         <div className="h-16 px-6 flex items-center gap-2 border-b border-border shrink-0">
           <div className="w-8 h-8 rounded-lg brand-gradient flex items-center justify-center">
             <Scissors className="w-4 h-4 text-white" />
           </div>
-          <span className="font-display text-lg font-semibold tracking-tight">Salon Studio</span>
+          <span className="font-display text-lg font-semibold tracking-tight">{nomeFantasia}</span>
         </div>
         
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -166,8 +208,50 @@ export default function Layout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-x-hidden min-h-screen">
-        <Outlet />
+      <main className="flex-1 overflow-x-hidden min-h-screen flex flex-col">
+        {/* Desktop Top Header Bar for Sidebar Toggle & Theme/User stats */}
+        <header className="hidden md:flex items-center justify-between h-16 px-6 bg-card border-b border-border z-20 sticky top-0 shrink-0 select-none">
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={toggleSidebar} 
+              className="h-10 w-10 text-muted-foreground hover:text-foreground"
+              title={sidebarCollapsed ? "Exibir Menu" : "Ocultar Menu"}
+            >
+              <Menu className="w-5 h-5" />
+            </Button>
+            {sidebarCollapsed && (
+              <div className="flex items-center gap-2 animate-in fade-in duration-200">
+                <div className="w-8 h-8 rounded-lg brand-gradient flex items-center justify-center">
+                  <Scissors className="w-4 h-4 text-white" />
+                </div>
+                <span className="font-display text-base font-semibold tracking-tight">{nomeFantasia}</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="text-right hidden lg:block">
+              <div className="font-medium text-xs text-foreground">{user?.name}</div>
+              <div className="text-[10px] text-muted-foreground">{user?.email}</div>
+            </div>
+            <ThemeToggle />
+            <Button 
+              onClick={doLogout} 
+              variant="ghost" 
+              size="icon" 
+              className="h-9 w-9 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 rounded-md"
+              title="Sair"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
+        </header>
+
+        <div className="flex-1">
+          <Outlet />
+        </div>
       </main>
     </div>
   );
