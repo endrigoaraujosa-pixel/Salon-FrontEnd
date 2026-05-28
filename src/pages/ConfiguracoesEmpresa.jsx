@@ -277,7 +277,7 @@ export default function ConfiguracoesEmpresa() {
                     id="endereco_cidade"
                     value={form.endereco_cidade} 
                     onChange={(e) => setForm({ ...form, endereco_cidade: e.target.value })}
-                    placeholder="São Paulo"
+                    placeholder="Recife"
                     className="bg-zinc-50 border-zinc-200 focus:bg-white dark:bg-zinc-950 dark:border-zinc-850 text-sm"
                   />
                 </div>
@@ -287,7 +287,7 @@ export default function ConfiguracoesEmpresa() {
                     id="endereco_uf"
                     value={form.endereco_uf} 
                     onChange={(e) => setForm({ ...form, endereco_uf: e.target.value.toUpperCase() })}
-                    placeholder="SP"
+                    placeholder="PE"
                     maxLength={2}
                     className="bg-zinc-50 border-zinc-200 focus:bg-white dark:bg-zinc-950 dark:border-zinc-850 text-sm text-center"
                   />
