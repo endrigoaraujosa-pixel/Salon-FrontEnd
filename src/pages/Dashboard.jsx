@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 
 const Stat = ({ icon: Icon, label, value, hint, tone = "default", onClick }) => (
   <div 
@@ -44,6 +45,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [d, setD] = useState(null);
+  const [selectedColab, setSelectedColab] = useState("todos");
   
   const today = new Date();
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -66,11 +68,18 @@ export default function Dashboard() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedServiceName, setSelectedServiceName] = useState("");
 
+  useEffect(() => {
+    if (user?.colaborador_id) {
+      setSelectedColab(user.colaborador_id);
+    }
+  }, [user]);
+
   const loadDashboard = () => {
     http.get("/dashboard", {
       params: {
         data_inicio: dataInicio,
-        data_fim: dataFim
+        data_fim: dataFim,
+        colaborador_id: selectedColab
       }
     })
     .then((r) => setD(r.data))
@@ -84,7 +93,8 @@ export default function Dashboard() {
         total_colaboradores: 0,
         atendimentos_mes: 0,
         top_servicos: [],
-        estoque_baixo: 0
+        estoque_baixo: 0,
+        colaboradores: []
       });
     });
   };
@@ -93,7 +103,7 @@ export default function Dashboard() {
     if (dataInicio && dataFim) {
       loadDashboard();
     }
-  }, [dataInicio, dataFim]);
+  }, [dataInicio, dataFim, selectedColab]);
 
   const handleOpenDetail = (metric, serviceName = "") => {
     setSelectedMetric(metric);
@@ -107,7 +117,8 @@ export default function Dashboard() {
         metric,
         data_inicio: dataInicio,
         data_fim: dataFim,
-        service_name: serviceName
+        service_name: serviceName,
+        colaborador_id: selectedColab
       }
     })
     .then((r) => {
@@ -197,6 +208,20 @@ export default function Dashboard() {
               className="pl-9 bg-zinc-50 border-zinc-200 focus:bg-white dark:bg-zinc-800 dark:border-zinc-700 dark:focus:bg-zinc-950 dark:text-zinc-100 transition-colors"
             />
           </div>
+        </div>
+        <div className="space-y-1.5 flex-1 min-w-[200px]">
+          <Label className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-wider">Colaborador</Label>
+          <Select value={selectedColab} onValueChange={(v) => setSelectedColab(v)}>
+            <SelectTrigger id="dashboard-colab-filter" data-testid="dashboard-colab-filter" className="bg-zinc-50 border-zinc-200 focus:bg-white dark:bg-zinc-800 dark:border-zinc-700 dark:focus:bg-zinc-950 dark:text-zinc-100 transition-colors rounded-lg font-medium">
+              <SelectValue placeholder="Selecione o colaborador" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Visualização Geral (Todos)</SelectItem>
+              {(d?.colaboradores || []).map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <Button onClick={loadDashboard} className="bg-[#84A59D] hover:bg-[#6F9189] dark:bg-[#84A59D] dark:hover:bg-[#6F9189] dark:text-zinc-950 shadow-sm text-white px-5 font-semibold">
           <Filter className="w-4 h-4 mr-1.5" /> Filtrar Período

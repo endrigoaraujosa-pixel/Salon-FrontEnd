@@ -29,6 +29,7 @@ import PerfisAcesso from "./pages/PerfisAcesso";
 import EntradaProdutos from "./pages/EntradaProdutos";
 import Inventario from "./pages/Inventario";
 import Estoque from "./pages/Estoque";
+import ConfiguracoesEmpresa from "./pages/ConfiguracoesEmpresa";
 
 const Protected = ({ children }) => {
   const { user, loading } = useAuth();
@@ -75,6 +76,7 @@ function App() {
               <Route path="/configuracoes/taxas-cartao" element={<AdminRoute><ConfiguracoesTaxas /></AdminRoute>} />
               <Route path="/configuracoes/fornecedores" element={<AdminRoute><ConfiguracoesFornecedores /></AdminRoute>} />
               <Route path="/configuracoes/perfis-acesso" element={<AdminRoute><PerfisAcesso /></AdminRoute>} />
+              <Route path="/configuracoes/empresa" element={<AdminRoute><ConfiguracoesEmpresa /></AdminRoute>} />
               <Route path="/usuarios" element={<Usuarios />} />
             </Route>
           </Routes>
