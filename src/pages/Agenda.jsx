@@ -914,9 +914,12 @@ export default function Agenda() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        title="Nova venda direta para este cliente"
+                        title={a.status === "concluido" ? "Não é permitido realizar vendas diretas para agendamento pago" : "Nova venda direta para este cliente"}
+                        disabled={a.status === "concluido"}
                         onClick={() => nav(`/vendas-diretas?cliente_id=${a.cliente_id}&from=agenda`)}
-                        className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                        className={`text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30 ${
+                          a.status === "concluido" ? "opacity-50 cursor-not-allowed text-zinc-400 hover:text-zinc-400 hover:bg-transparent" : ""
+                        }`}
                       >
                         <ShoppingCart className="w-4 h-4" />
                       </Button>
