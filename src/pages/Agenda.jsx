@@ -90,6 +90,7 @@ export default function Agenda() {
   const [utilizedAuthCredentials, setUtilizedAuthCredentials] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedInsumos, setSelectedInsumos] = useState("all");
+  const [selectedColaborador, setSelectedColaborador] = useState("all");
 
   const getInsumosStatus = (a) => {
     let hasRequired = false;
@@ -114,16 +115,29 @@ export default function Agenda() {
   const filteredAgendamentos = useMemo(() => {
     return agendamentos.filter(a => {
       if (selectedStatus !== "all" && a.status !== selectedStatus) return false;
-      
+
       if (selectedInsumos !== "all") {
         const insumosStatus = getInsumosStatus(a);
         if (selectedInsumos === "pending" && insumosStatus !== "pending") return false;
         if (selectedInsumos === "launched" && insumosStatus !== "launched") return false;
       }
-      
+
+      if (selectedColaborador !== "all") {
+        const itens = a.itens || [];
+        if (selectedColaborador === "none") {
+          // Show only appointments where ALL items have no collaborator
+          const hasAnyColab = itens.some(i => i.colaborador_id && i.colaborador_id !== "none");
+          if (hasAnyColab) return false;
+        } else {
+          // Show only appointments where at least one item belongs to this collaborator
+          const hasColab = itens.some(i => i.colaborador_id === selectedColaborador);
+          if (!hasColab) return false;
+        }
+      }
+
       return true;
     });
-  }, [agendamentos, selectedStatus, selectedInsumos, servicos]);
+  }, [agendamentos, selectedStatus, selectedInsumos, selectedColaborador, servicos]);
 
   const openUtilizedProducts = (agendamento, itemIndex) => {
     const item = agendamento.itens[itemIndex];
@@ -824,6 +838,21 @@ export default function Agenda() {
               </SelectContent>
             </Select>
           </div>
+          <div className="flex flex-col gap-1 w-52">
+            <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Colaborador</span>
+            <Select value={selectedColaborador} onValueChange={setSelectedColaborador}>
+              <SelectTrigger className="h-9 text-xs bg-white dark:bg-zinc-950 border-zinc-250 dark:border-zinc-850">
+                <SelectValue placeholder="Todos os Colaboradores" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Colaboradores</SelectItem>
+                <SelectItem value="none">Sem colaborador</SelectItem>
+                {colaboradores.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       )}
 
@@ -890,7 +919,7 @@ export default function Agenda() {
           )}
         </>
       ) : view === "timeline" ? (
-        <AgendaTimeline data={data} selectedStatus={selectedStatus} selectedInsumos={selectedInsumos} servicos={servicos} colaboradores={colaboradores} onCardClick={openResumoModal} />
+        <AgendaTimeline data={data} selectedStatus={selectedStatus} selectedInsumos={selectedInsumos} selectedColaborador={selectedColaborador} servicos={servicos} colaboradores={colaboradores} onCardClick={openResumoModal} />
       ) : (
         <>
           <div className="flex items-center gap-2 mb-4">
