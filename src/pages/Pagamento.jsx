@@ -6,7 +6,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
-import { ArrowLeft, Plus, Trash2, CheckCircle2, Edit2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, CheckCircle2, Edit2, AlertCircle, ShoppingCart } from "lucide-react";
 import StatusBadge from "../components/StatusBadge";
 import PasswordConfirmDialog from "../components/PasswordConfirmDialog";
 import { useAuth } from "../auth";
@@ -30,6 +30,7 @@ export default function Pagamento() {
   const temPermissaoPagamento = user?.role === "admin" || !!user?.perfil?.permissoes?.acoes?.realizar_pagamento;
   const [ag, setAg] = useState(null);
   const [novos, setNovos] = useState([{ valor: "", forma_pagamento: "dinheiro", observacao: "" }]);
+  const [pendingSales, setPendingSales] = useState([]);
   
   // Estados para edição de pagamento
   const [editingPayment, setEditingPayment] = useState(null);
@@ -43,14 +44,39 @@ export default function Pagamento() {
   const [profsDialogOpen, setProfsDialogOpen] = useState(false);
   const [missingProfs, setMissingProfs] = useState([]);
 
-  const load = () => http.get(`/agendamentos/${id}`).then((r) => setAg(r.data));
+  const getColabName = (colabId) => {
+    if (!colabId) return "";
+    const colab = colaboradores.find(c => c.id === colabId);
+    return colab ? colab.nome : "";
+  };
+
+  const load = () => {
+    http.get(`/agendamentos/${id}`).then((r) => {
+      setAg(r.data);
+      if (r.data?.cliente_id) {
+        http.get("/vendas-diretas", { params: { cliente_id: r.data.cliente_id, status: "pendente" } })
+          .then((res) => {
+            // Marca selecionado por padrão para listar tudo claro
+            setPendingSales(res.data.map(s => ({ ...s, selected: true })));
+          })
+          .catch(() => {});
+      }
+    });
+  };
+
   useEffect(() => { 
     load(); 
     http.get("/colaboradores").then((r) => setColaboradores(r.data)).catch(() => {});
   }, [id]);
 
+  const toggleSaleSelection = (saleId) => {
+    setPendingSales(prev => prev.map(s => s.id === saleId ? { ...s, selected: !s.selected } : s));
+  };
+
   if (!ag) return <div className="p-8 text-zinc-400">Carregando...</div>;
-  const saldo = (ag.valor_total || 0) - (ag.total_pago || 0);
+  const saldoAgendamento = (ag.valor_total || 0) - (ag.total_pago || 0);
+  const totalSalesSelected = pendingSales.filter(s => s.selected).reduce((sum, s) => sum + (s.valor_total - s.valor_pago), 0);
+  const saldo = saldoAgendamento + totalSalesSelected;
   const totalInformado = novos.filter((p) => Number(p.valor) > 0).reduce((sum, p) => sum + Number(p.valor), 0);
   const trocoTotal = totalInformado > saldo && novos.some(p => p.forma_pagamento === "dinheiro") ? totalInformado - saldo : 0;
 
@@ -121,9 +147,9 @@ export default function Pagamento() {
       }
     }
 
-    // Ajustar valor em dinheiro caso passe do saldo para registrar apenas o saldo real
+    // 1. Ajustar o dinheiro se exceder o saldo total (para troco)
     let saldoRestante = saldo;
-    let pagamentosAEnviar = [];
+    let adjustedPayments = [];
     let valorTroco = 0;
     let temTroco = false;
 
@@ -142,34 +168,81 @@ export default function Pagamento() {
         saldoRestante -= valorOriginal;
       }
 
-      pagamentosAEnviar.push({
+      adjustedPayments.push({
+        ...p,
         valor: valorAEnviar,
-        forma_pagamento: p.forma_pagamento,
         observacao: observacao
       });
     }
 
-    const payload = { 
-      pagamentos: pagamentosAEnviar, 
-      finalizar 
-    };
-    
+    // 2. Distribuir os pagamentos sequencialmente
+    let items = [
+      { type: 'agendamento', id: id, saldo: saldoAgendamento },
+      ...pendingSales.filter(s => s.selected).map(s => ({ type: 'sale', id: s.id, saldo: s.valor_total - s.valor_pago }))
+    ];
+
+    let paymentsPool = adjustedPayments.map(p => ({ ...p, valor: Number(p.valor) }));
+    let itemPayments = {};
+
+    for (let item of items) {
+      let remainingSaldo = item.saldo;
+      let itemPags = [];
+
+      for (let p of paymentsPool) {
+        if (p.valor <= 0) continue;
+        if (remainingSaldo <= 0) break;
+
+        let payAmount = Math.min(p.valor, remainingSaldo);
+        p.valor -= payAmount;
+        remainingSaldo -= payAmount;
+
+        itemPags.push({
+          valor: Number(payAmount.toFixed(2)),
+          forma_pagamento: p.forma_pagamento,
+          observacao: p.observacao || ""
+        });
+      }
+
+      itemPayments[item.type === 'agendamento' ? 'agendamento' : item.id] = {
+        pagamentos: itemPags,
+        finalizar: remainingSaldo <= 0.01
+      };
+    }
+
     try {
-      await http.post(`/agendamentos/${id}/pagamentos`, payload);
-      
+      // 3. Registrar os pagamentos no backend de forma totalmente separada (cada um com seu próprio registro)
+      const agPayInfo = itemPayments['agendamento'];
+      if (agPayInfo && agPayInfo.pagamentos.length > 0) {
+        await http.post(`/agendamentos/${id}/pagamentos`, {
+          pagamentos: agPayInfo.pagamentos,
+          finalizar: agPayInfo.finalizar
+        });
+      }
+
+      for (const sale of pendingSales.filter(s => s.selected)) {
+        const salePayInfo = itemPayments[sale.id];
+        if (salePayInfo && salePayInfo.pagamentos.length > 0) {
+          await http.post(`/vendas-diretas/${sale.id}/pagamentos`, {
+            pagamentos: salePayInfo.pagamentos,
+            finalizar: salePayInfo.finalizar
+          });
+        }
+      }
+
       if (temTroco) {
         toast.success(`Pagamento registrado com sucesso! Devolva o troco de ${fmtBRL(valorTroco)}`);
       } else {
-        toast.success(finalizar ? "Atendimento finalizado com sucesso!" : `Pagamento registrado! Restante pendente: ${fmtBRL(saldo - totalInformado)}`);
+        toast.success(finalizar ? "Atendimento e vendas finalizados com sucesso!" : `Pagamento registrado! Restante pendente: ${fmtBRL(saldo - totalInformado)}`);
       }
-      
-      if (finalizar) nav("/agenda"); 
-      else { 
-        setNovos([{ valor: "", forma_pagamento: "dinheiro", observacao: "" }]); 
-        load(); 
+
+      if (finalizar) {
+        nav("/agenda");
+      } else {
+        setNovos([{ valor: "", forma_pagamento: "dinheiro", observacao: "" }]);
+        load();
       }
-    } catch (e) { 
-      toast.error(e.response?.data?.detail || "Erro ao registrar pagamento"); 
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Erro ao registrar pagamento");
     }
   };
 
@@ -367,20 +440,129 @@ export default function Pagamento() {
         </div>
       )}
 
+      {/* Serviços Realizados */}
+      {ag.itens && Array.isArray(ag.itens) && ag.itens.length > 0 && (
+        <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-5 mt-5 fade-in">
+          <h3 className="font-display text-base sm:text-lg font-semibold text-zinc-800 dark:text-zinc-200 mb-4 flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-[#84A59D]" />
+            Serviços Realizados neste Atendimento
+          </h3>
+          <div className="space-y-3.5">
+            {ag.itens.map((item, idx) => {
+              const colabNome = getColabName(item.colaborador_id);
+              const auxNome = getColabName(item.auxiliar_id);
+              return (
+                <div key={idx} className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800/40 last:border-0 last:pb-0">
+                  <div className="flex items-start gap-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700 flex-shrink-0 mt-2"></span>
+                    <div>
+                      <div className="text-sm sm:text-base font-semibold text-zinc-800 dark:text-zinc-200">{item.nome || "Serviço"}</div>
+                      {(colabNome || auxNome) && (
+                        <div className="text-xs sm:text-sm text-zinc-450 dark:text-zinc-500 font-normal mt-0.5">
+                          {colabNome && `Profissional: ${colabNome}`}
+                          {auxNome && ` (Auxiliar: ${auxNome})`}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-sm sm:text-base font-bold text-zinc-700 dark:text-zinc-200 text-right min-w-[90px]">
+                    {fmtBRL(item.valor)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 my-6">
         <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-5">
-          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400">Total</div>
-          <div className="font-display text-2xl sm:text-3xl font-semibold mt-1">{fmtBRL(ag.valor_total)}</div>
+          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400">Serviço (A Pagar)</div>
+          <div className="font-display text-2xl sm:text-3xl font-semibold mt-1">{fmtBRL(saldoAgendamento)}</div>
         </div>
         <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-5">
-          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400">Pago</div>
-          <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-emerald-600">{fmtBRL(ag.total_pago)}</div>
+          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400">Vendas Diretas</div>
+          <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-[#84A59D]">{fmtBRL(totalSalesSelected)}</div>
         </div>
         <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-5">
-          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400">Saldo</div>
-          <div className={`font-display text-2xl sm:text-3xl font-semibold mt-1 ${saldo > 0.01 ? "text-amber-600" : "text-emerald-600"}`}>{fmtBRL(saldo)}</div>
+          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400">Total Unificado</div>
+          <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-[#84A59D]">{fmtBRL(saldo)}</div>
         </div>
       </div>
+
+      {pendingSales.length > 0 && (
+        <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-6 mb-6 fade-in">
+          <h3 className="font-display text-base font-semibold text-zinc-800 dark:text-zinc-200 mb-3 flex items-center gap-2">
+            <ShoppingCart className="w-5 h-5 text-[#84A59D]" />
+            Vendas Diretas Pendentes deste Cliente
+          </h3>
+          <p className="text-xs text-zinc-500 mb-4">
+            Este cliente possui vendas diretas de produtos com pagamento pendente. Você pode selecioná-las para incluir neste pagamento unificado.
+          </p>
+          <div className="space-y-3">
+            {pendingSales.map((s) => (
+              <div 
+                key={s.id} 
+                className={`p-3.5 sm:p-4 rounded-xl border transition-all space-y-3 ${
+                  s.selected 
+                    ? "bg-zinc-50 dark:bg-zinc-900/40 border-[#84A59D] dark:border-[#84A59D]/60 shadow-sm" 
+                    : "bg-white dark:bg-transparent border-zinc-200 dark:border-zinc-800 opacity-60"
+                }`}
+              >
+                {/* Cabeçalho da Venda */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="checkbox" 
+                      checked={!!s.selected} 
+                      onChange={() => toggleSaleSelection(s.id)}
+                      className="w-4 h-4 rounded text-[#84A59D] focus:ring-[#84A59D] border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 cursor-pointer"
+                    />
+                    <div className="font-semibold text-sm sm:text-base text-zinc-800 dark:text-zinc-200">
+                      Venda #{s.numero_venda ? String(s.numero_venda).padStart(6, "0") : "Direta"}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-sm sm:text-base text-zinc-700 dark:text-zinc-200">
+                      {fmtBRL(s.valor_total - s.valor_pago)}
+                    </div>
+                    <div className="text-[10px] sm:text-xs text-zinc-450 mt-0.5">
+                      Total: {fmtBRL(s.valor_total)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Itens Detalhados Alinhados */}
+                {s.itens && Array.isArray(s.itens) && s.itens.length > 0 ? (
+                  <div className="pt-2.5 border-t border-zinc-100 dark:border-zinc-800/50 pl-7 space-y-2">
+                    {s.itens.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 font-medium">
+                        <div className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700 flex-shrink-0"></span>
+                          <span>{item.produto_nome}</span>
+                        </div>
+                        <div className="flex items-center gap-4 text-right">
+                          <span className="text-zinc-400 dark:text-zinc-500 font-normal">{item.quantidade}x {fmtBRL(item.preco_unitario)}</span>
+                          <span className="text-zinc-700 dark:text-zinc-200 font-semibold min-w-[70px]">{fmtBRL(item.subtotal || (item.quantidade * item.preco_unitario))}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/50 pl-7 text-xs sm:text-sm text-zinc-500 dark:text-zinc-450 font-medium">
+                    {s.produto_nome} ({s.quantidade} {s.quantidade === 1 ? 'item' : 'itens'})
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+            <span className="text-xs font-semibold text-zinc-500">Subtotal das Vendas Diretas:</span>
+            <span className="text-sm font-bold text-[#84A59D]">{fmtBRL(totalSalesSelected)}</span>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-6 mb-6">
         <h3 className="font-display text-base sm:text-lg font-medium mb-4">Registrar pagamento</h3>
@@ -437,12 +619,12 @@ export default function Pagamento() {
         
         {/* Aviso de troco */}
         {trocoTotal > 0 && (
-          <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3 fade-in animate-pulse-subtle">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-emerald-800">
+          <div className="mt-4 p-4 bg-zinc-50 dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-xl flex items-start gap-3 fade-in animate-pulse-subtle">
+            <CheckCircle2 className="w-5 h-5 text-[#84A59D] flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-zinc-800 dark:text-zinc-200">
               <span className="font-semibold">Troco calculado:</span>
-              <span className="text-lg font-bold ml-2 text-emerald-700">{fmtBRL(trocoTotal)}</span>
-              <p className="text-xs text-emerald-600 mt-1">O valor registrado no sistema será de {fmtBRL(saldo)} (quitando o saldo), e o troco de {fmtBRL(trocoTotal)} deve ser devolvido ao cliente.</p>
+              <span className="text-lg font-bold ml-2 text-[#84A59D]">{fmtBRL(trocoTotal)}</span>
+              <p className="text-xs text-zinc-500 mt-1">O valor registrado no sistema será de {fmtBRL(saldo)} (quitando o saldo), e o troco de {fmtBRL(trocoTotal)} deve ser devolvido ao cliente.</p>
             </div>
           </div>
         )}
@@ -454,11 +636,11 @@ export default function Pagamento() {
       </div>
 
       <div className="bg-white border border-zinc-200 rounded-xl">
-        <div className="px-6 py-4 border-b border-zinc-100"><h3 className="font-display text-lg font-medium">Pagamentos anteriores</h3></div>
+        <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800"><h3 className="font-display text-lg font-medium">Pagamentos anteriores</h3></div>
         {ag.pagamentos.length === 0 ? <div className="p-6 text-center text-sm text-zinc-400">Nenhum pagamento</div> : (
           <>
             {/* Mobile View */}
-            <div className="divide-y divide-zinc-100 sm:hidden">
+            <div className="divide-y divide-zinc-100 dark:divide-zinc-800 sm:hidden">
               {ag.pagamentos.map((p) => (
                 <div key={p.id} className="p-4 flex flex-col gap-2">
                   <div className="flex items-center justify-between">
@@ -473,8 +655,8 @@ export default function Pagamento() {
                       "{p.observacao}"
                     </div>
                   )}
-                  <div className="flex items-center justify-end gap-2 border-t border-zinc-50 pt-2 mt-1">
-                    <Button size="sm" variant="outline" className="h-8 border-zinc-200 text-rose-600 hover:bg-rose-50" onClick={() => startDelete(p.id)}>
+                  <div className="flex items-center justify-end gap-2 border-t border-zinc-50 dark:border-zinc-800/60 pt-2 mt-1">
+                    <Button size="sm" variant="outline" className="h-8 border-zinc-200 dark:border-zinc-700 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20" onClick={() => startDelete(p.id)}>
                       <Trash2 className="w-3.5 h-3.5 mr-1" /> Excluir
                     </Button>
                   </div>
@@ -486,7 +668,7 @@ export default function Pagamento() {
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500"><tr><th className="px-4 py-3 text-left">Data</th><th className="px-4 py-3 text-left">Forma</th><th className="px-4 py-3 text-right">Valor</th><th className="px-4 py-3 text-left">Observação</th><th className="px-4 py-3 text-right">Ações</th></tr></thead>
-                <tbody className="divide-y divide-zinc-100">
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                   {ag.pagamentos.map((p) => (
                     <tr key={p.id}><td className="px-4 py-3 text-zinc-700">{fmtDT(p.data_hora)}</td><td className="px-4 py-3">{FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}</td><td className="px-4 py-3 text-right font-medium">{fmtBRL(p.valor)}</td><td className="px-4 py-3 text-sm text-zinc-600">{p.observacao}</td><td className="px-4 py-3 text-right space-x-2"><Button size="icon" variant="ghost" onClick={() => startDelete(p.id)}><Trash2 className="w-4 h-4 text-rose-500" /></Button></td></tr>
                   ))}
