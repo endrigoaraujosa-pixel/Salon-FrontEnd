@@ -28,8 +28,12 @@ export default function Clientes() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [rankingType, setRankingType] = useState("consumo");
+  const [empresa, setEmpresa] = useState(null);
 
-  const load = () => http.get("/clientes").then((r) => setList(r.data));
+  const load = () => {
+    http.get("/clientes").then((r) => setList(r.data));
+    http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data)).catch(() => {});
+  };
   useEffect(() => { load(); }, []);
 
   const save = async () => {
@@ -276,7 +280,7 @@ export default function Clientes() {
             <tr>
               <td>
                 <div class="subtitle">Sistema de Gestão</div>
-                <div class="logo-section">Salon Studio</div>
+                <div class="logo-section">${empresa?.nome_fantasia || "Salon Studio"}</div>
               </td>
               <td class="report-title-section">
                 <h1 class="report-title">${rankingTitleText}</h1>
@@ -306,7 +310,7 @@ export default function Clientes() {
           </table>
           
           <div class="footer">
-            Salon Studio &copy; ${new Date().getFullYear()} &bull; Relatório Gerencial de Clientes &bull; Página 1 de 1
+            ${empresa?.nome_fantasia || "Salon Studio"} &copy; ${new Date().getFullYear()} &bull; Relatório Gerencial de Clientes &bull; Página 1 de 1
           </div>
           
           <script>

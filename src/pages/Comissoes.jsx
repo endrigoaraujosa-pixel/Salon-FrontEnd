@@ -7,6 +7,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "../components/ui/tooltip";
 import { 
   Wallet, 
   CheckCircle2, 
@@ -21,7 +22,8 @@ import {
   Clock,
   Filter,
   AlertTriangle,
-  Printer
+  Printer,
+  HelpCircle
 } from "lucide-react";
 import { Checkbox } from "../components/ui/checkbox";
 import { toast } from "sonner";
@@ -48,6 +50,7 @@ export default function Comissoes() {
   const [dataInicio, setDataInicio] = useState(formatDateString(firstDay));
   const [dataFim, setDataFim] = useState(formatDateString(lastDay));
   const [statusFilter, setStatusFilter] = useState("pendente"); // 'pendente' | 'pago' | 'todos'
+  const [colaboradorFilter, setColaboradorFilter] = useState("todos");
   const [data, setData] = useState(null);
   
   // Estado para visualização de detalhes do profissional
@@ -66,13 +69,15 @@ export default function Comissoes() {
   const [relatorioColabId, setRelatorioColabId] = useState("todos");
   const [relatorioStatus, setRelatorioStatus] = useState("todos");
   const [relatorioExibirDetalhamento, setRelatorioExibirDetalhamento] = useState(false);
+  const [empresa, setEmpresa] = useState(null);
 
   const load = () => {
     http.get("/comissoes", { 
       params: { 
         data_inicio: dataInicio, 
         data_fim: dataFim,
-        status: statusFilter
+        status: statusFilter,
+        colaborador_id: colaboradorFilter
       } 
     })
     .then((r) => setData(r.data))
@@ -83,7 +88,7 @@ export default function Comissoes() {
     if (dataInicio && dataFim) {
       load();
     }
-  }, [dataInicio, dataFim, statusFilter]);
+  }, [dataInicio, dataFim, statusFilter, colaboradorFilter]);
 
   useEffect(() => {
     http.get("/colaboradores")
@@ -99,6 +104,7 @@ export default function Comissoes() {
         }
       })
       .catch(() => {});
+    http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data)).catch(() => {});
   }, [isFunc, user]);
 
   const generatePDF = async () => {
@@ -149,8 +155,10 @@ export default function Comissoes() {
         cancelado: "Cancelado"
       }[relatorioStatus];
 
-      const totalComissoes = filteredComissoes.reduce((sum, c) => sum + c.valor_comissao, 0);
-      const totalAtendimentos = filteredComissoes.reduce((sum, c) => sum + c.atendimentos, 0);
+       const totalComissoes = filteredComissoes.reduce((sum, c) => sum + c.valor_comissao, 0);
+      const totalAtendimentos = relatorioColabId === "todos" && !isFunc && fetchedData.atendimentos_total_count !== undefined
+        ? fetchedData.atendimentos_total_count
+        : filteredComissoes.reduce((sum, c) => sum + c.atendimentos, 0);
       const totalInsumos = filteredComissoes.reduce((sum, c) => {
         const colabInsumos = c.detalhes?.reduce((s, d) => s + (d.custo_produtos || 0), 0) || 0;
         return sum + colabInsumos;
@@ -428,7 +436,7 @@ export default function Comissoes() {
       <p>Gerado a partir das movimentações de atendimentos e vendas.</p>
     </div>
     <div class="header-right">
-      <div class="brand">Salon Studio</div>
+      <div class="brand">${empresa?.nome_fantasia || "Salon Studio"}</div>
       <div>Gerado em ${currentDate} às ${currentTime}</div>
     </div>
   </div>
@@ -740,14 +748,20 @@ export default function Comissoes() {
 
   // Cálculos consolidados dos KPI Cards
   const totalComissoesGeral = data?.comissoes?.reduce((sum, c) => sum + c.valor_comissao, 0) || 0;
-  const totalAtendimentosGeral = data?.comissoes?.reduce((sum, c) => sum + c.atendimentos, 0) || 0;
+  const totalAtendimentosGeral = data?.atendimentos_total_count !== undefined 
+    ? data.atendimentos_total_count 
+    : (data?.comissoes?.reduce((sum, c) => sum + c.atendimentos, 0) || 0);
   const totalInsumosGeral = data?.comissoes?.reduce((sum, c) => {
     const colabInsumos = c.detalhes?.reduce((s, d) => s + (d.custo_produtos || 0), 0) || 0;
     return sum + colabInsumos;
   }, 0) || 0;
-  const totalFaturamentoServicos = isFunc
+  // Faturamento Bruto: usa o valor calculado pelo backend (evita dupla-contagem de atendimentos
+  // onde o mesmo colaborador é principal E auxiliar). Para filtro por colaborador específico,
+  // soma os valores dos itens do colaborador diretamente.
+  const totalFaturamentoServicos = (isFunc || colaboradorFilter !== "todos")
     ? (data?.comissoes?.reduce((sum, c) => sum + c.total_principal + c.total_auxiliar + (c.total_produtos || 0), 0) || 0)
     : (data?.faturamento_bruto_total || 0);
+  const totalComissoesProdutos = data?.comissoes?.reduce((sum, c) => sum + (c.comissao_produtos || 0), 0) || 0;
 
   return (
     <div className="p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">
@@ -813,6 +827,23 @@ export default function Comissoes() {
           </Select>
         </div>
 
+        {!isFunc && (
+          <div className="space-y-1.5 w-60">
+            <Label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Profissional</Label>
+            <Select value={colaboradorFilter} onValueChange={setColaboradorFilter}>
+              <SelectTrigger className="bg-zinc-50 border-zinc-200 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-100">
+                <SelectValue placeholder="Todos os colaboradores" />
+              </SelectTrigger>
+              <SelectContent className="dark:bg-zinc-900 dark:border-zinc-800">
+                <SelectItem value="todos" className="dark:text-zinc-200">Todos os colaboradores</SelectItem>
+                {colaboradores.map(c => (
+                  <SelectItem key={c.id} value={String(c.id)} className="dark:text-zinc-200">{c.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         <Button onClick={load} className="bg-[#84A59D] hover:bg-[#6F9189] dark:bg-[#84A59D] dark:hover:bg-[#6F9189] dark:text-zinc-950 shadow-sm text-white px-5">
           <Filter className="w-4 h-4 mr-1.5" /> Filtrar Período
         </Button>
@@ -825,7 +856,19 @@ export default function Comissoes() {
             {/* Card 1: Faturamento Geral de Serviços */}
             <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center justify-between hover:scale-[1.01] transition-transform">
               <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">{isFunc ? "Meu Faturamento" : "Faturamento Bruto"}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{isFunc ? "Meu Faturamento" : "Faturamento Bruto"}</span>
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3 h-3 text-zinc-350 dark:text-zinc-500 cursor-help shrink-0" />
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-[260px] text-center leading-relaxed">
+                        Valor real recebido pelo salão — cada atendimento é contado <strong>uma única vez</strong>. A soma da coluna &quot;Serviços Executados&quot; pode ser maior pois atendimentos com auxiliar são distribuídos para dois profissionais.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
                 <div className="font-display text-2xl font-black text-zinc-700 dark:text-zinc-100">{fmtBRL(totalFaturamentoServicos)}</div>
                 <span className="text-[10px] text-zinc-400 block font-medium">{isFunc ? "Executado em meus atendimentos e vendas" : "Executado em atendimentos e vendas"}</span>
               </div>
@@ -852,9 +895,9 @@ export default function Comissoes() {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#3A4F4A] dark:text-emerald-400 block">{isFunc ? "Minha Comissão Líquida" : "Comissão Líquida"}</span>
                 <div className="font-display text-2xl font-black text-[#3A4F4A] dark:text-emerald-300">{fmtBRL(totalComissoesGeral)}</div>
                 <span className="text-[10px] text-[#84A59D] dark:text-emerald-400/80 block font-semibold uppercase tracking-wide">
-                  {statusFilter === "pendente" && "A pagar no período"}
-                  {statusFilter === "pago" && "Paga no período"}
-                  {statusFilter === "todos" && "Pendente + Paga"}
+                  {statusFilter === "pendente" && `A pagar (Servs: ${fmtBRL(totalComissoesGeral - totalComissoesProdutos)} · Prods: ${fmtBRL(totalComissoesProdutos)})`}
+                  {statusFilter === "pago" && `Paga (Servs: ${fmtBRL(totalComissoesGeral - totalComissoesProdutos)} · Prods: ${fmtBRL(totalComissoesProdutos)})`}
+                  {statusFilter === "todos" && `Pendente + Paga (Servs: ${fmtBRL(totalComissoesGeral - totalComissoesProdutos)} · Prods: ${fmtBRL(totalComissoesProdutos)})`}
                 </span>
               </div>
               <div className="bg-[#EAF5F4] dark:bg-emerald-900/30 p-3 rounded-xl">
@@ -883,7 +926,21 @@ export default function Comissoes() {
                   <tr>
                     <th className="px-6 py-4 text-left font-bold">Profissional</th>
                     <th className="px-6 py-4 text-center font-bold">Atendimentos</th>
-                    <th className="px-6 py-4 text-right font-bold">Serviços Executados</th>
+                    <th className="px-6 py-4 text-right font-bold">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span>Serviços Executados</span>
+                        <TooltipProvider delayDuration={200}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <HelpCircle className="w-3 h-3 text-zinc-350 dark:text-zinc-500 cursor-help shrink-0" />
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[280px] text-center leading-relaxed">
+                              Soma dos serviços em que o profissional participou como <strong>Principal</strong> ou <strong>Auxiliar</strong>. Atendimentos com auxiliar somam o mesmo valor para dois profissionais — por isso o total desta coluna pode superar o Faturamento Bruto.
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </th>
                     <th className="px-6 py-4 text-right font-bold">Consumo / Vendas</th>
                     <th className="px-6 py-4 text-right font-bold">Comissão Líquida</th>
                     <th className="px-6 py-4 text-center font-bold">{user?.role === "admin" ? "Situação / Ação" : "Situação"}</th>
@@ -952,7 +1009,7 @@ export default function Comissoes() {
                             -{fmtBRL(colabCustoInsumos)}
                           </div>
                           <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium mt-0.5">
-                            Vendas: {fmtBRL(c.total_produtos || 0)}
+                            Vendas: {fmtBRL(c.total_produtos || 0)} (Comissão: {fmtBRL(c.comissao_produtos || 0)})
                           </div>
                         </td>
 
@@ -1043,7 +1100,12 @@ export default function Comissoes() {
                 </div>
                 <div className="space-y-1">
                   <span className="text-[9px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Venda Produtos</span>
-                  <div className="font-semibold text-base text-zinc-700 dark:text-zinc-200">{fmtBRL(selectedColab.total_produtos)}</div>
+                  <div className="font-semibold text-base text-zinc-700 dark:text-zinc-200">
+                    {fmtBRL(selectedColab.total_produtos)}
+                    <span className="text-xs text-zinc-400 dark:text-zinc-500 ml-1">
+                      (Comissão: {fmtBRL(selectedColab.comissao_produtos || 0)})
+                    </span>
+                  </div>
                 </div>
                 <div className="space-y-1 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/40 rounded-xl p-3 flex flex-col justify-center col-span-2 md:col-span-1 shadow-sm">
                   <span className="text-[9px] uppercase font-extrabold text-emerald-800 dark:text-emerald-400 tracking-wider">Comissão Líquida</span>

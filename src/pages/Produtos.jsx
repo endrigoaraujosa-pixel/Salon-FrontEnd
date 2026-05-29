@@ -31,6 +31,7 @@ export default function Produtos() {
   const [selectedReportCategories, setSelectedReportCategories] = useState([]);
   const [includePrices, setIncludePrices] = useState(true);
   const [reportCategorySearch, setReportCategorySearch] = useState("");
+  const [empresa, setEmpresa] = useState(null);
 
   const openReportModal = () => {
     const allIds = [
@@ -274,7 +275,7 @@ export default function Produtos() {
       <p>Filtros aplicados: ${groups.length} categorias selecionadas ${searchQuery ? `• Busca: "${searchQuery}"` : ""}</p>
     </div>
     <div class="header-right">
-      <div class="brand">Salon Studio</div>
+      <div class="brand">${empresa?.nome_fantasia || "Salon Studio"}</div>
       <div>Gerado em ${currentDate} às ${currentTime}</div>
     </div>
   </div>
@@ -358,6 +359,7 @@ export default function Produtos() {
   const load = () => {
     http.get("/produtos").then((r) => setList(r.data));
     http.get("/categorias").then((r) => setCategorias(r.data));
+    http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data)).catch(() => {});
   };
   useEffect(() => { load(); }, []);
 

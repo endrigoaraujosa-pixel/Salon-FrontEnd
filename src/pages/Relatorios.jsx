@@ -95,6 +95,7 @@ export default function Relatorios() {
   const [produtosList, setProdutosList] = useState([]);
   const [servicosList, setServicosList] = useState([]);
   const [clientesList, setClientesList] = useState([]);
+  const [empresa, setEmpresa] = useState(null);
   
   // Filtros específicos de Vendas de Produtos
   const [filterColaborador, setFilterColaborador] = useState("todos");
@@ -127,6 +128,7 @@ export default function Relatorios() {
     http.get("/servicos").then((r) => setServicosList(r.data)).catch(() => {});
     http.get("/clientes").then((r) => setClientesList(r.data)).catch(() => {});
     http.get("/categorias").then((r) => setCategoriesList(r.data || [])).catch(() => {});
+    http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -533,7 +535,7 @@ export default function Relatorios() {
               <div className="hidden print:block mb-8 border-b-2 border-zinc-900 pb-4">
                 <div className="flex justify-between items-end">
                   <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-zinc-900">STUDIO APP</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-zinc-900">{empresa?.nome_fantasia || "STUDIO APP"}</h1>
                     <p className="text-xs text-zinc-500">Demonstrativo de Resultado do Exercício (DRE)</p>
                   </div>
                   <div className="text-right text-xs text-zinc-500">
@@ -1192,13 +1194,20 @@ export default function Relatorios() {
 
                   {/* Header de Impressão (visível apenas na impressão) */}
                   <div className="hidden print:block border-b border-zinc-300 pb-4 mb-4">
-                    <h1 className="text-xl font-bold text-zinc-800">Relatório Executivo de Venda de Produtos</h1>
-                    <p className="text-xs text-zinc-500 mt-1">
-                      Período selecionado: <b>{new Date(from + 'T12:00:00').toLocaleDateString('pt-BR')}</b> até <b>{new Date(to + 'T12:00:00').toLocaleDateString('pt-BR')}</b>
-                    </p>
-                    <p className="text-[10px] text-zinc-400">
-                      Gerado em: {new Date().toLocaleString('pt-BR')} | Perfil: Administrador
-                    </p>
+                    <div className="flex justify-between items-end">
+                      <div>
+                        {empresa?.nome_fantasia && (
+                          <div className="text-xs font-bold uppercase tracking-wider text-[#84A59D] mb-1">{empresa.nome_fantasia}</div>
+                        )}
+                        <h1 className="text-xl font-bold text-zinc-800">Relatório Executivo de Venda de Produtos</h1>
+                        <p className="text-xs text-zinc-500 mt-1">
+                          Período selecionado: <b>{new Date(from + 'T12:00:00').toLocaleDateString('pt-BR')}</b> até <b>{new Date(to + 'T12:00:00').toLocaleDateString('pt-BR')}</b>
+                        </p>
+                      </div>
+                      <div className="text-right text-[10px] text-zinc-400 pb-1">
+                        Gerado em: {new Date().toLocaleString('pt-BR')} | Perfil: Administrador
+                      </div>
+                    </div>
                   </div>
 
                   {/* 1. Cards de Totalizadores Gerais */}
@@ -1525,13 +1534,20 @@ export default function Relatorios() {
 
                   {/* Header de Impressão (visível apenas na impressão) */}
                   <div className="hidden print:block border-b border-zinc-300 pb-4 mb-4">
-                    <h1 className="text-xl font-bold text-zinc-800">Relatório Executivo de Prestação de Serviços</h1>
-                    <p className="text-xs text-zinc-500 mt-1">
-                      Período selecionado: <b>{new Date(from + 'T12:00:00').toLocaleDateString('pt-BR')}</b> até <b>{new Date(to + 'T12:00:00').toLocaleDateString('pt-BR')}</b>
-                    </p>
-                    <p className="text-[10px] text-zinc-400">
-                      Gerado em: {new Date().toLocaleString('pt-BR')} | Perfil: Administrador
-                    </p>
+                    <div className="flex justify-between items-end">
+                      <div>
+                        {empresa?.nome_fantasia && (
+                          <div className="text-xs font-bold uppercase tracking-wider text-[#84A59D] mb-1">{empresa.nome_fantasia}</div>
+                        )}
+                        <h1 className="text-xl font-bold text-zinc-800">Relatório Executivo de Prestação de Serviços</h1>
+                        <p className="text-xs text-zinc-500 mt-1">
+                          Período selecionado: <b>{new Date(from + 'T12:00:00').toLocaleDateString('pt-BR')}</b> até <b>{new Date(to + 'T12:00:00').toLocaleDateString('pt-BR')}</b>
+                        </p>
+                      </div>
+                      <div className="text-right text-[10px] text-zinc-400 pb-1">
+                        Gerado em: {new Date().toLocaleString('pt-BR')} | Perfil: Administrador
+                      </div>
+                    </div>
                   </div>
 
                   {/* 1. Cards de Totalizadores Gerais */}
