@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import http from "../api";
 import { PageHeader, EmptyState } from "../components/Page";
 import { Button } from "../components/ui/button";
@@ -10,7 +10,7 @@ import VendaReceiptModal from "../components/VendaReceiptModal";
 import AuditModal from "../components/AuditModal";
 import { ShoppingBag, ShoppingCart, Plus, Minus, Trash2, CreditCard, Calendar, Lock, Search, History } from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import SearchableSelect from "../components/SearchableSelect";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -64,7 +64,10 @@ export default function VendasDiretas() {
   const [filterClienteId, setFilterClienteId] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [novaVendaItens, setNovaVendaItens] = useState([]);
+  const [fromAgenda, setFromAgenda] = useState(false);
+  const dialogOpenedOnce = useRef(false); // guard to skip reset-on-close at initial mount
   const nav = useNavigate();
+  const location = useLocation();
 
   const load = () => {
     http.get("/vendas-diretas").then((r) => setList(r.data));
@@ -83,11 +86,36 @@ export default function VendasDiretas() {
     });
   }, []);
 
+  // Open new sale dialog pre-filled with client when navigated from Agenda
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const clienteIdFromUrl = params.get("cliente_id");
+    const fromAgendaParam = params.get("from") === "agenda";
+    if (clienteIdFromUrl) {
+      setForm(f => ({ ...f, cliente_id: clienteIdFromUrl }));
+      setFromAgenda(fromAgendaParam);
+      setOpen(true);
+      // Remove the query param from the URL without re-navigation
+      nav("/vendas-diretas", { replace: true });
+    }
+  }, [location.search]);
+
   useEffect(() => {
     if (!open) {
+      // Skip the very first execution (initial mount with open=false)
+      // to avoid overwriting state set by the location effect
+      if (!dialogOpenedOnce.current) return;
+      const wasFromAgenda = fromAgenda;
       setNovaVendaItens([]);
       setSelectedAddCategory("all");
+      setFromAgenda(false);
       setForm({ produto_id: "", quantidade: 1, colaborador_id: "", cliente_id: "" });
+      // Se veio da agenda e fechou o modal sem salvar, volta para a agenda
+      if (wasFromAgenda) {
+        nav("/agenda");
+      }
+    } else {
+      dialogOpenedOnce.current = true;
     }
   }, [open]);
 
@@ -118,9 +146,10 @@ export default function VendasDiretas() {
       console.log("Resposta:", data);
 
       toast.success("Venda criada! Registre o pagamento.");
+      const wasFromAgenda = fromAgenda;
       setOpen(false);
       load();
-      nav(`/vendas-diretas/${data.id}/pagamento`);
+      nav(`/vendas-diretas/${data.id}/pagamento`, { state: { fromAgenda: wasFromAgenda } });
     } catch (e) {
       console.error("Erro:", e);
       toast.error(e.response?.data?.detail || "Erro ao criar venda");
@@ -467,17 +496,28 @@ export default function VendasDiretas() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm text-zinc-600 dark:text-zinc-300 font-bold block tracking-wide">Cliente (opcional)</Label>
-                  <SearchableSelect
-                    placeholder="Selecione o cliente..."
-                    searchPlaceholder="Pesquisar cliente pelo nome..."
-                    options={clientes.map((c) => ({
-                      value: c.id,
-                      label: c.telefone ? `${c.nome} — ${c.telefone}` : c.nome
-                    }))}
-                    value={form.cliente_id || ""}
-                    onValueChange={(v) => setForm({ ...form, cliente_id: v })}
-                  />
+                  <Label className="text-sm text-zinc-600 dark:text-zinc-300 font-bold block tracking-wide">
+                    Cliente {fromAgenda ? "*" : "(opcional)"}
+                  </Label>
+                  {fromAgenda ? (
+                    <div className="flex items-center gap-2 h-11 px-4 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg">
+                      <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 truncate">
+                        {clientes.find(c => c.id === form.cliente_id)?.nome || "Cliente vinculado"}
+                      </span>
+                      <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full shrink-0">Da Agenda</span>
+                    </div>
+                  ) : (
+                    <SearchableSelect
+                      placeholder="Selecione o cliente..."
+                      searchPlaceholder="Pesquisar cliente pelo nome..."
+                      options={clientes.map((c) => ({
+                        value: c.id,
+                        label: c.telefone ? `${c.nome} — ${c.telefone}` : c.nome
+                      }))}
+                      value={form.cliente_id || ""}
+                      onValueChange={(v) => setForm({ ...form, cliente_id: v })}
+                    />
+                  )}
                 </div>
               </div>
 

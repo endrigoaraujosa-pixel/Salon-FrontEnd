@@ -8,7 +8,7 @@ import { Textarea } from "../components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import StatusBadge, { STATUS_LABELS } from "../components/StatusBadge";
-import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle } from "lucide-react";
+import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import AgendaTimeline from "../components/AgendaTimeline";
@@ -910,6 +910,17 @@ export default function Agenda() {
                       <SelectContent>{Object.entries(STATUS_LABELS).filter(([k]) => k && k.trim()).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
                     </Select>
                     <Button size="sm" variant="ghost" onClick={() => nav(`/agendamentos/${a.id}/pagamento`)} title="Pagamento"><CreditCard className="w-4 h-4" /></Button>
+                    {me && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        title="Nova venda direta para este cliente"
+                        onClick={() => nav(`/vendas-diretas?cliente_id=${a.cliente_id}&from=agenda`)}
+                        className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                      >
+                        <ShoppingCart className="w-4 h-4" />
+                      </Button>
+                    )}
                     <Button size="sm" variant="ghost" onClick={() => openEdit(a)}><Edit2 className="w-4 h-4" /></Button>
                     <Button size="sm" variant="ghost" onClick={() => del(a.id)}><Trash2 className="w-4 h-4 text-rose-500" /></Button>
                   </div>
