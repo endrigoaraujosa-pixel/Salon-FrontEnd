@@ -11,6 +11,7 @@ import { Package, Plus, Edit2, Trash2, AlertTriangle, Percent, History, Printer 
 import { Checkbox } from "../components/ui/checkbox";
 import { toast } from "sonner";
 import AuditModal from "../components/AuditModal";
+import SearchableSelect from "../components/SearchableSelect";
 
 const blank = { nome: "", categoria: "", categoria_id: "", unidade_medida: "un", quantidade_estoque: 0, estoque_minimo: 5, custo_unitario: 0, preco_venda: 0, fornecedor: "", ativo: true, comissao: 0 };
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -476,7 +477,10 @@ export default function Produtos() {
                   <div>
                     <Label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Categoria *</Label>
                     <div className="mt-1">
-                      <Select
+                      <SearchableSelect
+                        options={categorias
+                          .filter(c => c.tipo === "produto" || c.tipo === "ambos")
+                          .map(c => ({ value: c.id, label: c.nome }))}
                         value={form.categoria_id || ""}
                         onValueChange={(val) => {
                           const cat = categorias.find(c => c.id === val);
@@ -486,16 +490,10 @@ export default function Produtos() {
                             categoria: cat ? cat.nome : ""
                           });
                         }}
-                      >
-                        <SelectTrigger className="bg-transparent">
-                          <SelectValue placeholder="Selecione a categoria *" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categorias.filter(c => c.tipo === "produto" || c.tipo === "ambos").map(c => (
-                            <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder="Selecione a categoria *"
+                        searchPlaceholder="Pesquisar categoria..."
+                        emptyText="Nenhuma categoria encontrada."
+                      />
                     </div>
                   </div>
                   
@@ -604,21 +602,21 @@ export default function Produtos() {
         </div>
         <div className="w-full md:w-64">
           <Label className="text-xs text-zinc-500 mb-1 block">Filtrar por Categoria</Label>
-          <Select
+          <SearchableSelect
+            options={[
+              { value: "all", label: "Todas as categorias" },
+              { value: "none", label: "Sem categoria" },
+              ...categorias
+                .filter(c => c.tipo === "produto" || c.tipo === "ambos")
+                .map(c => ({ value: c.id, label: c.nome }))
+            ]}
             value={selectedCategoryFilter}
             onValueChange={setSelectedCategoryFilter}
-          >
-            <SelectTrigger className="bg-white">
-              <SelectValue placeholder="Todas as categorias" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as categorias</SelectItem>
-              <SelectItem value="none">Sem categoria</SelectItem>
-              {categorias.filter(c => c.tipo === "produto" || c.tipo === "ambos").map(c => (
-                <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            placeholder="Todas as categorias"
+            searchPlaceholder="Pesquisar categoria..."
+            emptyText="Nenhuma categoria encontrada."
+            className="bg-white"
+          />
         </div>
         <Button 
           variant="outline" 
