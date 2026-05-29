@@ -10,6 +10,7 @@ import { toast } from "sonner";
 export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [empresa, setEmpresa] = useState(null);
 
   useEffect(() => {
     if (open && vendaId) {
@@ -18,6 +19,12 @@ export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
       setData(null);
     }
   }, [open, vendaId]);
+
+  useEffect(() => {
+    if (open) {
+      http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data)).catch(() => {});
+    }
+  }, [open]);
 
   const loadVenda = async (id) => {
     setLoading(true);
@@ -131,6 +138,11 @@ export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
               
               {/* Receipt Header */}
               <div className="text-center space-y-2 border-b border-dashed border-zinc-300 dark:border-zinc-700 pb-6 print:border-zinc-800">
+                {empresa?.nome_fantasia && (
+                  <div className="text-xs font-extrabold uppercase tracking-wider text-zinc-550 dark:text-zinc-400 print:text-black mb-1">
+                    {empresa.nome_fantasia}
+                  </div>
+                )}
                 <div className="inline-flex items-center justify-center w-12 h-12 bg-zinc-100 dark:bg-zinc-800 print:bg-transparent print:border print:border-zinc-800 rounded-full mb-2">
                   <ShoppingBag className="w-6 h-6 text-[#3A4F4A] dark:text-emerald-500 print:text-black" />
                 </div>

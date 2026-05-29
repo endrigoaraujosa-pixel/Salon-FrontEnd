@@ -34,11 +34,13 @@ export default function Servicos() {
   const [selectedReportCategories, setSelectedReportCategories] = useState([]);
   const [includeInsumos, setIncludeInsumos] = useState(false);
   const [reportCategorySearch, setReportCategorySearch] = useState("");
+  const [empresa, setEmpresa] = useState(null);
 
   const load = () => {
     http.get("/servicos").then((r) => setList(r.data));
     http.get("/produtos").then((r) => setProdutos(r.data));
     http.get("/categorias").then((r) => setCategorias(r.data));
+    http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data)).catch(() => {});
   };
 
   useEffect(() => { load(); }, []);
@@ -436,7 +438,7 @@ export default function Servicos() {
       <p>Filtros aplicados: ${groups.length} categorias selecionadas ${searchQuery ? `• Busca: "${searchQuery}"` : ""}</p>
     </div>
     <div class="header-right">
-      <div class="brand">Salon Studio</div>
+      <div class="brand">${empresa?.nome_fantasia || "Salon Studio"}</div>
       <div>Gerado em ${currentDate} às ${currentTime}</div>
     </div>
   </div>
