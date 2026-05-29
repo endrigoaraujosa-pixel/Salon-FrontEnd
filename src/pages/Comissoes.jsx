@@ -725,8 +725,9 @@ export default function Comissoes() {
 
   // Helper de avatar HSL dinâmico
   const getInitials = (nome) => {
-    if (!nome) return "P";
-    const parts = nome.split(" ");
+    if (!nome || typeof nome !== "string") return "P";
+    const parts = nome.trim().split(" ").filter(p => p.length > 0);
+    if (parts.length === 0) return "P";
     if (parts.length > 1) {
       return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     }
