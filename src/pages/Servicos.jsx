@@ -12,6 +12,7 @@ import { Scissors, Plus, Edit2, Trash2, Clock, Package, X, History, Folder, Chev
 import { Checkbox } from "../components/ui/checkbox";
 import { toast } from "sonner";
 import AuditModal from "../components/AuditModal";
+import SearchableSelect from "../components/SearchableSelect";
 
 const blank = { nome: "", categoria_id: "", duracao_minutos: 60, valor: 0, descricao: "", ativo: true, produtos_vinculados: [] };
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -156,21 +157,21 @@ export default function Servicos() {
   const toggleCategory = (catId) => {
     setCollapsedCategories(prev => ({
       ...prev,
-      [catId]: !prev[catId]
+      [catId]: prev[catId] === false ? true : false
     }));
   };
 
   const expandAll = () => {
-    setCollapsedCategories({});
+    const expanded = {};
+    categorias.forEach(c => {
+      expanded[c.id] = false;
+    });
+    expanded["none"] = false;
+    setCollapsedCategories(expanded);
   };
 
   const collapseAll = () => {
-    const collapsed = {};
-    categorias.forEach(c => {
-      collapsed[c.id] = true;
-    });
-    collapsed["none"] = true;
-    setCollapsedCategories(collapsed);
+    setCollapsedCategories({});
   };
 
   const openReportModal = () => {
@@ -572,19 +573,16 @@ export default function Servicos() {
               <div className="col-span-2"><Label>Nome *</Label><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
               <div className="col-span-2">
                 <Label>Categoria *</Label>
-                <Select
+                <SearchableSelect
+                  options={categorias
+                    .filter(c => c.tipo === "servico" || c.tipo === "ambos")
+                    .map(c => ({ value: c.id, label: c.nome }))}
                   value={form.categoria_id || ""}
                   onValueChange={(val) => setForm({ ...form, categoria_id: val })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a categoria *" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categorias.filter(c => c.tipo === "servico" || c.tipo === "ambos").map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Selecione a categoria *"
+                  searchPlaceholder="Pesquisar categoria..."
+                  emptyText="Nenhuma categoria encontrada."
+                />
               </div>
               <div><Label>Duração (min)</Label><Input type="number" value={form.duracao_minutos} onChange={(e) => setForm({ ...form, duracao_minutos: e.target.value })} /></div>
               <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={form.valor} onChange={(e) => setForm({ ...form, valor: e.target.value })} /></div>
@@ -595,12 +593,15 @@ export default function Servicos() {
               <div className="flex items-center justify-between mb-2">
                 <Label>Produtos Vinculados</Label>
                 <div className="w-64">
-                  <Select onValueChange={(val) => addProduto(val)}>
-                    <SelectTrigger className="h-8"><SelectValue placeholder="Adicionar produto..." /></SelectTrigger>
-                    <SelectContent>
-                      {produtos.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={produtos.map(p => ({ value: p.id, label: p.nome }))}
+                    value=""
+                    onValueChange={(val) => addProduto(val)}
+                    placeholder="Adicionar produto..."
+                    searchPlaceholder="Pesquisar produto..."
+                    emptyText="Nenhum produto encontrado."
+                    className="h-8"
+                  />
                 </div>
               </div>
               <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg p-3 space-y-2 bg-zinc-50 dark:bg-zinc-900/50 max-h-48 overflow-y-auto">
@@ -651,21 +652,21 @@ export default function Servicos() {
         </div>
         <div className="w-full md:w-64">
           <Label className="text-xs text-zinc-500 mb-1 block">Filtrar por Categoria</Label>
-          <Select
+          <SearchableSelect
+            options={[
+              { value: "all", label: "Todas as categorias" },
+              { value: "none", label: "Sem categoria" },
+              ...categorias
+                .filter(c => c.tipo === "servico" || c.tipo === "ambos")
+                .map(c => ({ value: c.id, label: c.nome }))
+            ]}
             value={selectedCategoryFilter}
             onValueChange={setSelectedCategoryFilter}
-          >
-            <SelectTrigger className="bg-white">
-              <SelectValue placeholder="Todas as categorias" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as categorias</SelectItem>
-              <SelectItem value="none">Sem categoria</SelectItem>
-              {categorias.filter(c => c.tipo === "servico" || c.tipo === "ambos").map(c => (
-                <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            placeholder="Todas as categorias"
+            searchPlaceholder="Pesquisar categoria..."
+            emptyText="Nenhuma categoria encontrada."
+            className="bg-white"
+          />
         </div>
         <Button 
           variant="outline" 
@@ -716,7 +717,7 @@ export default function Servicos() {
       ) : (
         <div className="space-y-6 max-w-7xl">
           {groupedServices.map((group) => {
-            const isCollapsed = !!collapsedCategories[group.id];
+            const isCollapsed = collapsedCategories[group.id] !== false;
             return (
               <div 
                 key={group.id} 
