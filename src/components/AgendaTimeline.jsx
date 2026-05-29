@@ -17,7 +17,7 @@ const HOUR_END = 24;
 const ROW_HEIGHT = 64; // Increased for a more spacious premium feel
 const HOUR_WIDTH = 120; // Slightly wider hour blocks for better readability
 
-export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, servicos, onCardClick }) {
+export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, selectedColaborador, servicos, onCardClick }) {
   const [colaboradores, setColaboradores] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
   const [now, setNow] = useState(new Date());
@@ -46,16 +46,27 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
   const filteredAgendamentos = useMemo(() => {
     return agendamentos.filter(a => {
       if (selectedStatus && selectedStatus !== "all" && a.status !== selectedStatus) return false;
-      
+
       if (selectedInsumos && selectedInsumos !== "all") {
         const insumosStatus = getInsumosStatus(a);
         if (selectedInsumos === "pending" && insumosStatus !== "pending") return false;
         if (selectedInsumos === "launched" && insumosStatus !== "launched") return false;
       }
-      
+
+      if (selectedColaborador && selectedColaborador !== "all") {
+        const itens = a.itens || [];
+        if (selectedColaborador === "none") {
+          const hasAnyColab = itens.some(i => i.colaborador_id && i.colaborador_id !== "none");
+          if (hasAnyColab) return false;
+        } else {
+          const hasColab = itens.some(i => i.colaborador_id === selectedColaborador);
+          if (!hasColab) return false;
+        }
+      }
+
       return true;
     });
-  }, [agendamentos, selectedStatus, selectedInsumos, servicos]);
+  }, [agendamentos, selectedStatus, selectedInsumos, selectedColaborador, servicos]);
 
   useEffect(() => {
     http.get("/colaboradores").then((r) => setColaboradores(r.data.filter((c) => c.ativo)));
@@ -107,10 +118,18 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
     }
   }, [data, isSelectedDayToday]);
 
-  // Agrupar agendamentos por colaborador principal
+  // Group appointments by primary collaborator
+  // Also compute which collaborator rows to show based on the filter
+  const visibleColaboradores = useMemo(() => {
+    if (selectedColaborador && selectedColaborador !== "all" && selectedColaborador !== "none") {
+      return colaboradores.filter(c => c.id === selectedColaborador);
+    }
+    return colaboradores;
+  }, [colaboradores, selectedColaborador]);
+
   const byColab = useMemo(() => {
     const map = {};
-    colaboradores.forEach((c) => { map[c.id] = []; });
+    visibleColaboradores.forEach((c) => { map[c.id] = []; });
     filteredAgendamentos.forEach((a) => {
       const principais = a.profissionais?.filter((p) => p.tipo === "principal") || [];
       principais.forEach((p) => {
@@ -118,7 +137,7 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
       });
     });
     return map;
-  }, [colaboradores, filteredAgendamentos]);
+  }, [visibleColaboradores, filteredAgendamentos]);
 
   const agendamentosSemProf = useMemo(() => {
     return filteredAgendamentos.filter((a) => !a.profissionais?.length);
@@ -193,9 +212,9 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
             )}
 
             {/* Linhas: colaboradores */}
-            {colaboradores.length === 0 ? (
+            {visibleColaboradores.length === 0 ? (
               <div className="px-4 py-12 text-center text-sm text-zinc-400 select-none">Nenhum profissional ativo cadastrado.</div>
-            ) : colaboradores.map((c) => (
+            ) : visibleColaboradores.map((c) => (
               <div key={c.id} className="flex border-b border-zinc-100 relative" style={{ height: `${ROW_HEIGHT}px` }} data-testid={`timeline-row-${c.id}`}>
                 <div className="w-[220px] flex-shrink-0 px-4 py-3 border-r border-zinc-200 flex items-center bg-white sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] select-none">
                   <div>
