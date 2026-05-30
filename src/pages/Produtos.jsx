@@ -7,7 +7,7 @@ import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
-import { Package, Plus, Edit2, Trash2, AlertTriangle, Percent, History, Printer } from "lucide-react";
+import { Package, Plus, Edit2, Trash2, AlertTriangle, Percent, History, Printer, Folder, ChevronDown, ChevronRight } from "lucide-react";
 import { Checkbox } from "../components/ui/checkbox";
 import { toast } from "sonner";
 import AuditModal from "../components/AuditModal";
@@ -27,6 +27,7 @@ export default function Produtos() {
   const [searchQuery, setSearchQuery] = useState("");
   const [auditOpen, setAuditOpen] = useState(false);
 
+  const [collapsedCategories, setCollapsedCategories] = useState({});
   const [reportOpen, setReportOpen] = useState(false);
   const [selectedReportCategories, setSelectedReportCategories] = useState([]);
   const [includePrices, setIncludePrices] = useState(true);
@@ -408,6 +409,26 @@ export default function Produtos() {
 
   const edit = (p) => { setForm(p); setOpen(true); };
 
+  const toggleCategory = (catId) => {
+    setCollapsedCategories(prev => ({
+      ...prev,
+      [catId]: prev[catId] === false ? true : false
+    }));
+  };
+
+  const expandAll = () => {
+    const expanded = {};
+    categorias.forEach(c => {
+      expanded[c.id] = false;
+    });
+    expanded["none"] = false;
+    setCollapsedCategories(expanded);
+  };
+
+  const collapseAll = () => {
+    setCollapsedCategories({});
+  };
+
   const filteredList = list.filter((p) => {
     const matchesSearch = p.nome.toLowerCase().includes(searchQuery.toLowerCase()) || 
       (p.fornecedor && p.fornecedor.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -417,6 +438,27 @@ export default function Produtos() {
       p.categoria_id === selectedCategoryFilter;
     return matchesSearch && matchesCategory;
   });
+
+  const groupedProducts = [];
+  categorias.forEach(c => {
+    const products = filteredList.filter(p => p.categoria_id === c.id);
+    if (products.length > 0) {
+      groupedProducts.push({
+        id: c.id,
+        nome: c.nome,
+        products: products
+      });
+    }
+  });
+
+  const uncategorized = filteredList.filter(p => !p.categoria_id || !categorias.some(c => c.id === p.categoria_id));
+  if (uncategorized.length > 0) {
+    groupedProducts.push({
+      id: "none",
+      nome: "Sem Categoria",
+      products: uncategorized
+    });
+  }
 
   return (
     <div className="p-6 lg:p-8 fade-in">
@@ -431,15 +473,15 @@ export default function Produtos() {
           </div>
         } 
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <Button 
               onClick={openReportModal} 
               variant="outline" 
-              className="flex items-center gap-1.5 h-10 font-bold border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/60"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 h-10 font-bold border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/60"
             >
               <Printer className="w-4 h-4" /> Emitir PDF
             </Button>
-            <Button onClick={() => { setForm(blank); setOpen(true); }} className="bg-[#84A59D] hover:bg-[#6F9189] text-white flex items-center gap-1.5 h-10 font-bold shadow-sm">
+            <Button onClick={() => { setForm(blank); setOpen(true); }} className="flex-1 sm:flex-initial bg-[#84A59D] hover:bg-[#6F9189] text-white flex items-center justify-center gap-1.5 h-10 font-bold shadow-sm">
               <Plus className="w-4 h-4" /> Novo produto
             </Button>
           </div>
@@ -529,7 +571,7 @@ export default function Produtos() {
 
                 <div className="p-3.5 bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] rounded-xl space-y-2">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-[#3A4F4A] dark:text-[#84A59D]">
-                    <Percent className="w-3.5 h-3.5" />
+                     <Percent className="w-3.5 h-3.5" />
                     <span>Comissão por Venda</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
@@ -583,9 +625,9 @@ export default function Produtos() {
           </div>
 
           {/* fixed footer */}
-          <div className="px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20 shrink-0 flex gap-2 justify-end">
-            <Button type="button" variant="outline" className="border-zinc-300 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-900" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={save} className="bg-[#84A59D] hover:bg-[#6F9189] text-white shadow-xs font-semibold px-6">
+          <div className="px-6 py-4 border-t border-zinc-150 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20 shrink-0 flex flex-col sm:flex-row gap-2.5 sm:justify-end">
+            <Button type="button" variant="outline" className="w-full sm:w-auto h-10 border-zinc-300 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-900 font-semibold" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button onClick={save} className="w-full sm:w-auto bg-[#84A59D] hover:bg-[#6F9189] text-white shadow-xs font-bold h-10 px-6">
               Salvar Produto
             </Button>
           </div>
@@ -594,16 +636,16 @@ export default function Produtos() {
 
       <div className="mb-6 flex flex-col md:flex-row md:items-end gap-4 max-w-4xl">
         <div className="flex-1">
-          <Label className="text-xs text-zinc-500 mb-1 block">Pesquisar produto</Label>
+          <Label className="text-xs font-semibold text-zinc-500 mb-1 block">Pesquisar produto</Label>
           <Input
             placeholder="Pesquisar por nome ou fornecedor..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white"
+            className="w-full h-10 bg-white dark:bg-zinc-950"
           />
         </div>
         <div className="w-full md:w-64">
-          <Label className="text-xs text-zinc-500 mb-1 block">Filtrar por Categoria</Label>
+          <Label className="text-xs font-semibold text-zinc-500 mb-1 block">Filtrar por Categoria</Label>
           <SearchableSelect
             options={[
               { value: "all", label: "Todas as categorias" },
@@ -617,72 +659,195 @@ export default function Produtos() {
             placeholder="Todas as categorias"
             searchPlaceholder="Pesquisar categoria..."
             emptyText="Nenhuma categoria encontrada."
-            className="bg-white"
+            className="bg-white dark:bg-zinc-950 h-10"
           />
         </div>
         <Button 
           variant="outline" 
           onClick={() => setAuditOpen(true)}
-          className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800 h-10 w-full md:w-auto"
+          className="flex items-center justify-center gap-1.5 text-sm font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800 h-10 w-full md:w-auto shrink-0"
         >
-          <History className="w-3.5 h-3.5" />
+          <History className="w-4 h-4" />
           <span>Excluídos</span>
         </Button>
       </div>
+      {/* Painel de Ações para Expandir/Recolher categorias */}
+      <div className="mb-6 flex flex-wrap items-center gap-2 bg-zinc-50 dark:bg-zinc-900/20 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 max-w-4xl">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={expandAll} 
+          className="h-8 text-xs font-semibold text-zinc-650 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+        >
+          Expandir todas
+        </Button>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={collapseAll} 
+          className="h-8 text-xs font-semibold text-zinc-650 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+        >
+          Recolher todas
+        </Button>
+      </div>
 
-      {filteredList.length === 0 ? (
+      {groupedProducts.length === 0 ? (
         <EmptyState
           icon={Package}
           title={searchQuery || selectedCategoryFilter !== "all" ? "Nenhum produto encontrado" : "Nenhum produto"}
           hint={searchQuery || selectedCategoryFilter !== "all" ? "Tente ajustar seus filtros de busca." : "Adicione produtos para controlar seu estoque."}
         />
       ) : (
-        <div className="bg-white border border-zinc-200 rounded-xl overflow-x-auto shadow-sm">
-          <table className="w-full text-sm">
-            <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500">
-              <tr>
-                <th className="px-4 py-3 text-left font-semibold">Produto</th>
-                <th className="px-4 py-3 text-left font-semibold">Categoria</th>
-                <th className="px-4 py-3 text-right font-semibold">Estoque</th>
-                <th className="px-4 py-3 text-right font-semibold">Preço</th>
-                <th className="px-4 py-3 text-center font-semibold">Comissão</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {filteredList.map((p) => {
-                const baixo = p.quantidade_estoque <= p.estoque_minimo;
-                return (
-                  <tr key={p.id} className="hover:bg-zinc-50/60 transition-colors">
-                    <td className="px-4 py-3 font-medium">{p.nome}</td>
-                    <td className="px-4 py-3 text-zinc-600">{p.categoria || "-"}</td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={`inline-flex items-center gap-1 ${baixo ? "text-amber-700 font-bold" : "text-zinc-700"}`}>
-                        {baixo && <AlertTriangle className="w-3 h-3" />}
-                        {Number(Number(p.quantidade_estoque || 0).toFixed(3))} {p.unidade_medida}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium">{fmtBRL(p.preco_venda)}</td>
-                    <td className="px-4 py-3 text-center">
-                      {p.comissao > 0 ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          {p.comissao}%
-                        </span>
-                      ) : (
-                        <span className="text-zinc-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => edit(p)}><Edit2 className="w-4 h-4" /></Button>
-                        <Button size="sm" variant="ghost" onClick={() => del(p.id)}><Trash2 className="w-4 h-4 text-rose-500" /></Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="space-y-6 max-w-7xl">
+          {groupedProducts.map((group) => {
+            const isCollapsed = collapsedCategories[group.id] !== false;
+            return (
+              <div 
+                key={group.id} 
+                className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-zinc-50/20 dark:bg-zinc-900/10 p-4 transition-all"
+              >
+                {/* Header de Categoria Collapsible */}
+                <div 
+                  onClick={() => toggleCategory(group.id)} 
+                  className="flex items-center justify-between cursor-pointer select-none group/header"
+                >
+                  <div className="flex items-center gap-2">
+                    <Folder className="w-5 h-5 text-[#84A59D] dark:text-[#84A59D]/80" />
+                    <h3 className="font-display font-semibold text-base sm:text-lg text-zinc-850 dark:text-zinc-100 group-hover/header:text-[#84A59D] transition-colors">
+                      {group.nome}
+                    </h3>
+                    <span className="px-2 py-0.5 text-[10px] sm:text-xs font-semibold bg-[#84A59D]/10 dark:bg-[#84A59D]/20 text-[#84A59D] rounded-full">
+                      {group.products.length} {group.products.length === 1 ? "produto" : "produtos"}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-1.5 text-zinc-400 group-hover/header:text-zinc-650 dark:group-hover/header:text-zinc-200 transition-colors">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:inline">{isCollapsed ? "Expandir" : "Recolher"}</span>
+                    {isCollapsed ? (
+                      <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 transition-transform" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 transition-transform" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Grid / Tabela de Produtos da Categoria */}
+                {!isCollapsed && (
+                  <div className="mt-4 pt-3 border-t border-zinc-150 dark:border-zinc-850 fade-in">
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-xs">
+                      <table className="w-full text-sm">
+                        <thead className="bg-zinc-50 dark:bg-zinc-900 text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-semibold">Produto</th>
+                            <th className="px-4 py-3 text-right font-semibold">Estoque</th>
+                            <th className="px-4 py-3 text-right font-semibold">Preço</th>
+                            <th className="px-4 py-3 text-center font-semibold">Comissão</th>
+                            <th className="px-4 py-3"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-700 dark:text-zinc-300">
+                          {group.products.map((p) => {
+                            const baixo = p.quantidade_estoque <= p.estoque_minimo;
+                            return (
+                              <tr key={p.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors">
+                                <td className="px-4 py-3">
+                                  <div className="font-semibold text-zinc-900 dark:text-zinc-100">{p.nome}</div>
+                                  {p.fornecedor && <div className="text-[11px] text-zinc-400 mt-0.5">{p.fornecedor}</div>}
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <span className={`inline-flex items-center gap-1 ${baixo ? "text-amber-700 dark:text-amber-500 font-bold" : "text-zinc-700 dark:text-zinc-300"}`}>
+                                    {baixo && <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
+                                    {Number(Number(p.quantidade_estoque || 0).toFixed(3))} {p.unidade_medida}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-right font-semibold text-zinc-900 dark:text-zinc-100 font-mono">{fmtBRL(p.preco_venda)}</td>
+                                <td className="px-4 py-3 text-center">
+                                  {p.comissao > 0 ? (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30">
+                                      {p.comissao}%
+                                    </span>
+                                  ) : (
+                                    <span className="text-zinc-400 dark:text-zinc-650">-</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <div className="flex justify-end gap-1">
+                                    <Button size="sm" variant="ghost" onClick={() => edit(p)} className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><Edit2 className="w-4 h-4" /></Button>
+                                    <Button size="sm" variant="ghost" onClick={() => del(p.id)} className="text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"><Trash2 className="w-4 h-4" /></Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Card List View */}
+                    <div className="block md:hidden space-y-4">
+                      {group.products.map((p) => {
+                        const baixo = p.quantidade_estoque <= p.estoque_minimo;
+                        return (
+                          <div 
+                            key={p.id}
+                            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4.5 rounded-xl shadow-xs flex flex-col gap-3.5"
+                          >
+                            <div>
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <h4 className="font-extrabold text-zinc-900 dark:text-zinc-50 text-[16px] sm:text-lg tracking-tight leading-snug">{p.nome}</h4>
+                                  {p.fornecedor && <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium mt-0.5">{p.fornecedor}</p>}
+                                </div>
+                                {p.comissao > 0 && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30 shrink-0">
+                                    Comissão {p.comissao}%
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 py-2 border-y border-zinc-100 dark:border-zinc-800 text-xs">
+                              <div className="space-y-0.5">
+                                <span className="text-[9px] uppercase font-bold tracking-wider text-zinc-400 dark:text-zinc-500 block">Estoque</span>
+                                <span className={`inline-flex items-center gap-1 font-bold text-sm ${baixo ? "text-amber-700 dark:text-amber-500" : "text-zinc-800 dark:text-zinc-250"}`}>
+                                  {baixo && <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
+                                  {Number(Number(p.quantidade_estoque || 0).toFixed(3))} {p.unidade_medida}
+                                </span>
+                              </div>
+                              <div className="space-y-0.5">
+                                <span className="text-[9px] uppercase font-bold tracking-wider text-zinc-400 dark:text-zinc-500 block">Preço de Venda</span>
+                                <span className="font-extrabold text-sm text-[#3A4F4A] dark:text-[#84A59D] font-mono">{fmtBRL(p.preco_venda)}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => edit(p)}
+                                className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" /> Editar
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => del(p.id)}
+                                className="h-9 px-3 border-zinc-200 dark:border-zinc-700 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center justify-center"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -690,14 +855,14 @@ export default function Produtos() {
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
           <DialogHeader>
-            <DialogTitle>Confirmar exclusão</DialogTitle>
+            <DialogTitle className="text-zinc-900 dark:text-zinc-50">Confirmar exclusão</DialogTitle>
           </DialogHeader>
-          <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
+          <div className="py-4 text-sm text-zinc-650 dark:text-zinc-400">
             Tem certeza que deseja excluir este produto? Esta ação pode ser desfeita a qualquer momento a partir da tela de "Excluídos".
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>
-            <Button onClick={confirmDelete} className="bg-rose-500 hover:bg-rose-600 text-white">Excluir</Button>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2.5 mt-2 pt-2 border-t border-zinc-150 dark:border-zinc-850">
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)} className="w-full sm:w-auto border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-350">Cancelar</Button>
+            <Button onClick={confirmDelete} className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white font-bold">Excluir</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -796,16 +961,16 @@ export default function Produtos() {
             </div>
           </div>
           
-          <DialogFooter className="gap-2">
+          <DialogFooter className="flex flex-col sm:flex-row gap-2.5 mt-2 pt-2 border-t border-zinc-150 dark:border-zinc-850">
             <Button variant="outline" onClick={() => setReportOpen(false)} className="w-full sm:w-auto h-10 font-semibold border-zinc-300 dark:border-zinc-800">
               Cancelar
             </Button>
             <Button 
               onClick={generatePDF} 
               disabled={selectedReportCategories.length === 0}
-              className="bg-[#84A59D] hover:bg-[#6F9189] text-white w-full sm:w-auto h-10 font-bold"
+              className="bg-[#84A59D] hover:bg-[#6F9189] text-white w-full sm:w-auto h-10 font-bold flex items-center justify-center gap-1.5"
             >
-              <Printer className="w-4 h-4 mr-1.5" />
+              <Printer className="w-4 h-4" />
               Gerar PDF
             </Button>
           </DialogFooter>

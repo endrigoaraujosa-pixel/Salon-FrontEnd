@@ -595,10 +595,10 @@ export default function Relatorios() {
               </div>
 
               <div className="grid lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-6 space-y-4 shadow-sm print-full-width">
-                  <div className="flex items-center justify-between border-b border-zinc-100 pb-2 dark:border-zinc-800">
+                <div className="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-4 sm:p-6 space-y-4 shadow-sm print-full-width">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800 gap-3">
                     <h3 className="font-display text-lg font-medium text-zinc-800 dark:text-zinc-100">Demonstração de Resultado</h3>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                       <Button 
                         onClick={() => window.print()}
                         variant="outline" 
@@ -835,36 +835,66 @@ export default function Relatorios() {
                       </p>
                     </DialogHeader>
 
-                    {/* Drilldown Table */}
-                    <div className="my-5 overflow-x-auto border border-zinc-200 dark:border-zinc-800 rounded-xl max-h-[60vh] overflow-y-auto shadow-sm">
+                    {/* Drilldown List/Table */}
+                    <div className="my-5">
                       {drilldownData.length === 0 ? (
-                        <div className="py-12 text-center text-zinc-400 text-sm">
+                        <div className="py-12 text-center text-zinc-400 text-sm border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 shadow-sm">
                           Nenhum lançamento encontrado para este item no período.
                         </div>
                       ) : (
-                        <table className="w-full text-xs sm:text-sm text-left border-collapse">
-                          <thead className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-[10px] sm:text-xs uppercase font-bold text-zinc-500 tracking-wider">
-                            <tr>
-                              <th className="px-5 py-4">Data</th>
-                              <th className="px-5 py-4">Lançamento / Descrição</th>
-                              <th className="px-5 py-4">Categoria</th>
-                              <th className="px-5 py-4 text-center">Status</th>
-                              <th className="px-5 py-4 text-right">Valor</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-medium">
+                        <>
+                          {/* Desktop Table View */}
+                          <div className="hidden md:block overflow-x-auto border border-zinc-200 dark:border-zinc-800 rounded-xl max-h-[60vh] overflow-y-auto shadow-sm">
+                            <table className="w-full text-xs sm:text-sm text-left border-collapse">
+                              <thead className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-[10px] sm:text-xs uppercase font-bold text-zinc-500 tracking-wider">
+                                <tr>
+                                  <th className="px-5 py-4">Data</th>
+                                  <th className="px-5 py-4">Lançamento / Descrição</th>
+                                  <th className="px-5 py-4">Categoria</th>
+                                  <th className="px-5 py-4 text-center">Status</th>
+                                  <th className="px-5 py-4 text-right">Valor</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-medium">
+                                {drilldownData.map((item, idx) => (
+                                  <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
+                                    <td className="px-5 py-4 whitespace-nowrap text-zinc-500 font-mono">
+                                      {item.data ? new Date(item.data + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}
+                                    </td>
+                                    <td className="px-5 py-4 font-semibold text-zinc-800 dark:text-zinc-100">{item.descricao}</td>
+                                    <td className="px-5 py-4">
+                                      <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-[10px] text-zinc-600 dark:text-zinc-300">
+                                        {item.categoria}
+                                      </span>
+                                    </td>
+                                    <td className="px-5 py-4 text-center">
+                                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                        item.status === 'Pago' || item.status === 'pago' || item.status === 'Recebido' || item.status === 'concluido'
+                                          ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40'
+                                          : item.status === 'Cancelado' || item.status === 'cancelado'
+                                          ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/40'
+                                          : 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/40'
+                                      }`}>
+                                        {item.status === 'concluido' ? 'Concluído' : item.status}
+                                      </span>
+                                    </td>
+                                    <td className="px-5 py-4 text-right font-mono font-semibold text-zinc-900 dark:text-zinc-100">
+                                      {fmtBRL(item.valor)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* Mobile Cards View */}
+                          <div className="block md:hidden space-y-3 max-h-[60vh] overflow-y-auto pr-1">
                             {drilldownData.map((item, idx) => (
-                              <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
-                                <td className="px-5 py-4 whitespace-nowrap text-zinc-500 font-mono">
-                                  {item.data ? new Date(item.data + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}
-                                </td>
-                                <td className="px-5 py-4 font-semibold text-zinc-800 dark:text-zinc-100">{item.descricao}</td>
-                                <td className="px-5 py-4">
-                                  <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-[10px] text-zinc-600 dark:text-zinc-300">
-                                    {item.categoria}
+                              <div key={idx} className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 space-y-2.5 shadow-sm">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] font-mono font-bold text-zinc-400 dark:text-zinc-500">
+                                    {item.data ? new Date(item.data + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}
                                   </span>
-                                </td>
-                                <td className="px-5 py-4 text-center">
                                   <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
                                     item.status === 'Pago' || item.status === 'pago' || item.status === 'Recebido' || item.status === 'concluido'
                                       ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40'
@@ -874,14 +904,24 @@ export default function Relatorios() {
                                   }`}>
                                     {item.status === 'concluido' ? 'Concluído' : item.status}
                                   </span>
-                                </td>
-                                <td className="px-5 py-4 text-right font-mono font-semibold text-zinc-900 dark:text-zinc-100">
-                                  {fmtBRL(item.valor)}
-                                </td>
-                              </tr>
+                                </div>
+                                
+                                <div className="font-semibold text-xs text-zinc-800 dark:text-zinc-100 line-clamp-2">
+                                  {item.descricao}
+                                </div>
+                                
+                                <div className="flex items-center justify-between pt-2 border-t border-zinc-150 dark:border-zinc-800 text-xs">
+                                  <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-[10px] text-zinc-650 dark:text-zinc-350 font-medium">
+                                    {item.categoria}
+                                  </span>
+                                  <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                                    {fmtBRL(item.valor)}
+                                  </span>
+                                </div>
+                              </div>
                             ))}
-                          </tbody>
-                        </table>
+                          </div>
+                        </>
                       )}
                     </div>
 

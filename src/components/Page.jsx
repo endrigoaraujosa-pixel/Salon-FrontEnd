@@ -2,12 +2,16 @@ import React from "react";
 
 export function PageHeader({ overline, title, action }) {
   return (
-    <header className="mb-6 flex items-end justify-between gap-4">
+    <header className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
       <div>
         {overline && <div className="text-xs uppercase tracking-wider text-zinc-400">{overline}</div>}
         <h1 className="font-display text-3xl md:text-4xl font-semibold tracking-tight mt-1">{title}</h1>
       </div>
-      {action}
+      {action && (
+        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+          {action}
+        </div>
+      )}
     </header>
   );
 }

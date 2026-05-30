@@ -367,171 +367,289 @@ export default function Dashboard() {
                 Nenhum dado encontrado para o período e indicador selecionado.
               </div>
             ) : (
-              <div className="border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm min-w-[750px] sm:min-w-0">
-                    {/* HEADERS */}
-                    {selectedMetric === "faturamento" && (
-                      <thead className="bg-zinc-50 dark:bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold border-b border-zinc-200 dark:border-zinc-800">
-                        <tr>
-                          <th className="px-4 py-3 text-left font-bold">Data/Hora</th>
-                          <th className="px-4 py-3 text-left font-bold">Documento</th>
-                          <th className="px-4 py-3 text-left font-bold">Tipo</th>
-                          <th className="px-4 py-3 text-left font-bold">Cliente</th>
-                          <th className="px-4 py-3 text-left font-bold">Itens / Descrição</th>
-                          <th className="px-4 py-3 text-left font-bold">Forma Pagamento</th>
-                          <th className="px-4 py-3 text-right font-bold">Valor</th>
-                        </tr>
-                      </thead>
-                    )}
+              <>
+                {/* Mobile Card List (Visible on mobile, hidden on desktop) */}
+                <div className="block md:hidden space-y-3.5 max-h-[55vh] overflow-y-auto pr-1">
+                  {selectedMetric === "faturamento" && detailData.map((item, idx) => (
+                    <div key={idx} className="bg-white dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-800/80 rounded-xl p-4 space-y-2.5 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono font-bold">{fmtDateTime(item.data_hora)}</span>
+                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{fmtBRL(item.valor)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 truncate">Venda #{item.numero}</span>
+                        <span className={`inline-flex px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider flex-shrink-0 ${
+                          item.tipo === 'servico' 
+                            ? 'bg-blue-50 text-blue-700 border border-blue-150 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/60' 
+                            : 'bg-purple-50 text-purple-700 border border-purple-150 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-900/60'
+                        }`}>
+                          {item.tipo === 'servico' ? 'Serviço' : 'Venda Direta'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-zinc-650 dark:text-zinc-350">
+                        <span className="font-semibold text-zinc-500">Cliente:</span> {item.cliente}
+                      </div>
+                      <div className="text-xs text-zinc-600 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800/40 leading-relaxed break-words">
+                        <span className="font-semibold text-zinc-400 dark:text-zinc-500">Itens:</span> {item.itens}
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-zinc-400 dark:text-zinc-550 uppercase font-mono">
+                        <span>Forma: {item.forma_pagamento?.replace('_', ' ')}</span>
+                      </div>
+                    </div>
+                  ))}
 
-                    {(selectedMetric === "agendamentos" || selectedMetric === "atendimentos" || selectedMetric === "ticket_medio") && (
-                      <thead className="bg-zinc-50 dark:bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold border-b border-zinc-200 dark:border-zinc-800">
-                        <tr>
-                          <th className="px-4 py-3 text-left font-bold">Data/Hora</th>
-                          <th className="px-4 py-3 text-left font-bold">Número</th>
-                          <th className="px-4 py-3 text-left font-bold">Cliente</th>
-                          <th className="px-4 py-3 text-left font-bold">Serviços Executados</th>
-                          <th className="px-4 py-3 text-center font-bold">Duração</th>
-                          <th className="px-4 py-3 text-center font-bold">Status</th>
-                          <th className="px-4 py-3 text-right font-bold">Valor</th>
-                        </tr>
-                      </thead>
-                    )}
+                  {(selectedMetric === "agendamentos" || selectedMetric === "atendimentos" || selectedMetric === "ticket_medio") && detailData.map((item, idx) => (
+                    <div key={idx} className="bg-white dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-800/80 rounded-xl p-4 space-y-2.5 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono font-bold">{fmtDateTime(item.data_hora)}</span>
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                          item.status === 'concluido' 
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-150 dark:bg-emerald-950/40 dark:text-emerald-450 dark:border-emerald-900/60'
+                            : item.status === 'cancelado'
+                            ? 'bg-rose-50 text-rose-700 border border-rose-150 dark:bg-rose-950/40 dark:text-rose-455 dark:border-rose-900/60'
+                            : 'bg-amber-50 text-amber-700 border border-amber-150 dark:bg-amber-950/40 dark:text-amber-455 dark:border-amber-900/60'
+                        }`}>
+                          {item.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
+                          Atendimento #{item.numero ? String(item.numero).padStart(6, '0') : '—'}
+                        </span>
+                        <span className="text-sm font-bold text-zinc-750 dark:text-zinc-100">
+                          {fmtBRL(item.status === 'concluido' ? item.valor_pago : item.valor_total)}
+                        </span>
+                      </div>
+                      <div className="text-xs text-zinc-650 dark:text-zinc-350">
+                        <span className="font-semibold text-zinc-500">Cliente:</span> {item.cliente_nome}
+                      </div>
+                      <div className="text-xs text-zinc-600 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800/40 leading-relaxed">
+                        <span className="font-semibold text-zinc-400 dark:text-zinc-500">Serviços:</span> {renderItensCell(item.itens)}
+                      </div>
+                      <div className="text-[11px] text-zinc-400 dark:text-zinc-550 font-mono">
+                        Duração: {item.duracao_minutos} min
+                      </div>
+                    </div>
+                  ))}
 
-                    {selectedMetric === "clientes" && (
-                      <thead className="bg-zinc-50 dark:bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold border-b border-zinc-200 dark:border-zinc-800">
-                        <tr>
-                          <th className="px-4 py-3 text-left font-bold">Nome</th>
-                          <th className="px-4 py-3 text-left font-bold">Telefone</th>
-                          <th className="px-4 py-3 text-left font-bold">Email</th>
-                          <th className="px-4 py-3 text-left font-bold">Data Nascimento</th>
-                          <th className="px-4 py-3 text-left font-bold">Cadastrado Em</th>
-                        </tr>
-                      </thead>
-                    )}
+                  {selectedMetric === "clientes" && detailData.map((item, idx) => (
+                    <div key={idx} className="bg-white dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-800/80 rounded-xl p-4 space-y-2 shadow-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 truncate">{item.nome}</span>
+                        <span className="text-[10px] text-zinc-400 dark:text-zinc-550 font-mono flex-shrink-0">Desde: {fmtDate(item.criado_em)}</span>
+                      </div>
+                      <div className="text-xs text-zinc-650 dark:text-zinc-350 space-y-1 pt-1.5 border-t border-zinc-100 dark:border-zinc-800/30">
+                        <div><span className="font-semibold text-zinc-500">Telefone:</span> {item.telefone || '—'}</div>
+                        <div><span className="font-semibold text-zinc-500">Email:</span> {item.email || '—'}</div>
+                        <div><span className="font-semibold text-zinc-500">Nascimento:</span> {item.data_nascimento || '—'}</div>
+                      </div>
+                    </div>
+                  ))}
 
-                    {selectedMetric === "estoque" && (
-                      <thead className="bg-zinc-50 dark:bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold border-b border-zinc-200 dark:border-zinc-800">
-                        <tr>
-                          <th className="px-4 py-3 text-left font-bold">Produto</th>
-                          <th className="px-4 py-3 text-left font-bold">Categoria</th>
-                          <th className="px-4 py-3 text-right font-bold">Preço Venda</th>
-                          <th className="px-4 py-3 text-center font-bold">Estoque Atual</th>
-                          <th className="px-4 py-3 text-center font-bold">Estoque Mínimo</th>
-                        </tr>
-                      </thead>
-                    )}
+                  {selectedMetric === "estoque" && detailData.map((item, idx) => (
+                    <div key={idx} className="bg-white dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-800/80 rounded-xl p-4 space-y-2 shadow-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 truncate">{item.nome}</span>
+                        <span className="text-xs text-zinc-400 dark:text-zinc-500 font-medium flex-shrink-0">{item.categoria || '—'}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-zinc-650 dark:text-zinc-350">
+                        <span>Preço Venda: {fmtBRL(item.preco_venda)}</span>
+                        <span className="font-semibold">Mínimo: {item.estoque_minimo}</span>
+                      </div>
+                      <div className="bg-rose-50/40 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 p-2.5 rounded-lg flex items-center justify-between text-xs">
+                        <span className="text-rose-600 dark:text-rose-400 font-bold">Estoque Atual:</span>
+                        <span className="font-mono font-bold text-rose-600 dark:text-rose-400">{Number(Number(item.quantidade_estoque || 0).toFixed(3))}</span>
+                      </div>
+                    </div>
+                  ))}
 
-                    {selectedMetric === "top_servico" && (
-                      <thead className="bg-zinc-50 dark:bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold border-b border-zinc-200 dark:border-zinc-800">
-                        <tr>
-                          <th className="px-4 py-3 text-left font-bold">Data/Hora</th>
-                          <th className="px-4 py-3 text-left font-bold">Número Agendamento</th>
-                          <th className="px-4 py-3 text-left font-bold">Cliente</th>
-                          <th className="px-4 py-3 text-left font-bold">Serviço</th>
-                          <th className="px-4 py-3 text-center font-bold">Status</th>
-                          <th className="px-4 py-3 text-right font-bold">Valor</th>
-                        </tr>
-                      </thead>
-                    )}
-
-                    {/* BODY */}
-                    <tbody className="divide-y divide-zinc-150 dark:divide-zinc-800">
-                      {selectedMetric === "faturamento" && detailData.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-800/30 transition-colors">
-                          <td className="px-4 py-3 text-zinc-550 dark:text-zinc-450 font-mono text-xs whitespace-nowrap">{fmtDateTime(item.data_hora)}</td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="text-zinc-650 dark:text-zinc-400 font-mono text-xs font-bold">{item.numero}</span>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-                              item.tipo === 'servico' 
-                                ? 'bg-blue-50 text-blue-700 border border-blue-150 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/60' 
-                                : 'bg-purple-50 text-purple-700 border border-purple-150 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-900/60'
-                            }`}>
-                              {item.tipo === 'servico' ? 'Serviço' : 'Venda Direta'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-zinc-750 dark:text-zinc-200 font-semibold">{item.cliente}</td>
-                          <td className="px-4 py-3 text-zinc-600 dark:text-zinc-350 max-w-[250px] truncate" title={item.itens}>{item.itens}</td>
-                          <td className="px-4 py-3 text-zinc-500 dark:text-zinc-450 uppercase text-xs font-mono">{item.forma_pagamento?.replace('_', ' ')}</td>
-                          <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-450">{fmtBRL(item.valor)}</td>
-                        </tr>
-                      ))}
-
-                      {(selectedMetric === "agendamentos" || selectedMetric === "atendimentos" || selectedMetric === "ticket_medio") && detailData.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-800/30 transition-colors">
-                          <td className="px-4 py-3 text-zinc-550 dark:text-zinc-450 font-mono text-xs whitespace-nowrap">{fmtDateTime(item.data_hora)}</td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="text-zinc-650 dark:text-zinc-400 font-mono text-xs font-bold">
-                              {item.numero ? String(item.numero).padStart(6, '0') : '—'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-zinc-750 dark:text-zinc-200 font-semibold">{item.cliente_nome}</td>
-                          <td className="px-4 py-3 text-zinc-600 dark:text-zinc-350 max-w-[250px] truncate" title={renderItensCell(item.itens)}>
-                            {renderItensCell(item.itens)}
-                          </td>
-                          <td className="px-4 py-3 text-center font-mono font-medium text-zinc-550 dark:text-zinc-450">{item.duracao_minutos} min</td>
-                          <td className="px-4 py-3 text-center whitespace-nowrap font-semibold">
-                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                              item.status === 'concluido' 
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-150 dark:bg-emerald-950/40 dark:text-emerald-450 dark:border-emerald-900/60'
-                                : item.status === 'cancelado'
-                                ? 'bg-rose-50 text-rose-700 border border-rose-150 dark:bg-rose-950/40 dark:text-rose-455 dark:border-rose-900/60'
-                                : 'bg-amber-50 text-amber-700 border border-amber-150 dark:bg-amber-950/40 dark:text-amber-455 dark:border-amber-900/60'
-                            }`}>
-                              {item.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right font-bold text-zinc-800 dark:text-zinc-150">
-                            {fmtBRL(item.status === 'concluido' ? item.valor_pago : item.valor_total)}
-                          </td>
-                        </tr>
-                      ))}
-
-                      {selectedMetric === "clientes" && detailData.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-800/30 transition-colors">
-                          <td className="px-4 py-3 text-zinc-800 dark:text-zinc-200 font-semibold">{item.nome}</td>
-                          <td className="px-4 py-3 text-zinc-650 dark:text-zinc-455 font-mono text-xs">{item.telefone || '—'}</td>
-                          <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 text-xs">{item.email || '—'}</td>
-                          <td className="px-4 py-3 text-zinc-550 dark:text-zinc-450 text-xs">{item.data_nascimento || '—'}</td>
-                          <td className="px-4 py-3 text-zinc-500 dark:text-zinc-500 font-mono text-xs">{fmtDate(item.criado_em)}</td>
-                        </tr>
-                      ))}
-
-                      {selectedMetric === "estoque" && detailData.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-800/30 transition-colors">
-                          <td className="px-4 py-3 text-zinc-800 dark:text-zinc-200 font-semibold">{item.nome}</td>
-                          <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 text-xs">{item.categoria || '—'}</td>
-                          <td className="px-4 py-3 text-right text-zinc-650 dark:text-zinc-350">{fmtBRL(item.preco_venda)}</td>
-                          <td className="px-4 py-3 text-center font-mono font-bold text-rose-500 dark:text-rose-455 bg-rose-50/35 dark:bg-rose-950/20">{Number(Number(item.quantidade_estoque || 0).toFixed(3))}</td>
-                          <td className="px-4 py-3 text-center font-mono font-medium text-zinc-500 dark:text-zinc-450">{item.estoque_minimo}</td>
-                        </tr>
-                      ))}
-
-                      {selectedMetric === "top_servico" && detailData.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-800/30 transition-colors">
-                          <td className="px-4 py-3 text-zinc-550 dark:text-zinc-450 font-mono text-xs whitespace-nowrap">{fmtDateTime(item.data_hora)}</td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="text-zinc-650 dark:text-zinc-400 font-mono text-xs font-bold">
-                              {item.numero ? String(item.numero).padStart(6, '0') : '—'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-zinc-750 dark:text-zinc-200 font-semibold">{item.cliente_nome}</td>
-                          <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300 font-medium">{item.servico_nome}</td>
-                          <td className="px-4 py-3 text-center whitespace-nowrap font-semibold">
-                            <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-150 dark:bg-emerald-950/40 dark:text-emerald-450 dark:border-emerald-900/60">
-                              {item.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-450">{fmtBRL(item.valor)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  {selectedMetric === "top_servico" && detailData.map((item, idx) => (
+                    <div key={idx} className="bg-white dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-800/80 rounded-xl p-4 space-y-2.5 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">{fmtDateTime(item.data_hora)}</span>
+                        <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-150 dark:bg-emerald-950/40 dark:text-emerald-450 dark:border-emerald-900/60 flex-shrink-0">
+                          {item.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 truncate">Atendimento #{item.numero ? String(item.numero).padStart(6, '0') : '—'}</span>
+                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{fmtBRL(item.valor)}</span>
+                      </div>
+                      <div className="text-xs text-zinc-650 dark:text-zinc-350 space-y-1 pt-1.5 border-t border-zinc-100 dark:border-zinc-800/30">
+                        <div><span className="font-semibold text-zinc-500">Cliente:</span> {item.cliente_nome}</div>
+                        <div><span className="font-semibold text-zinc-500">Serviço:</span> {item.servico_nome}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
+
+                {/* Desktop Table (Hidden on mobile, visible on desktop) */}
+                <div className="hidden md:block border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm min-w-[750px] sm:min-w-0">
+                      {/* HEADERS */}
+                      {selectedMetric === "faturamento" && (
+                        <thead className="bg-zinc-50 dark:bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold border-b border-zinc-200 dark:border-zinc-800">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-bold">Data/Hora</th>
+                            <th className="px-4 py-3 text-left font-bold">Documento</th>
+                            <th className="px-4 py-3 text-left font-bold">Tipo</th>
+                            <th className="px-4 py-3 text-left font-bold">Cliente</th>
+                            <th className="px-4 py-3 text-left font-bold">Itens / Descrição</th>
+                            <th className="px-4 py-3 text-left font-bold">Forma Pagamento</th>
+                            <th className="px-4 py-3 text-right font-bold">Valor</th>
+                          </tr>
+                        </thead>
+                      )}
+
+                      {(selectedMetric === "agendamentos" || selectedMetric === "atendimentos" || selectedMetric === "ticket_medio") && (
+                        <thead className="bg-zinc-50 dark:bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold border-b border-zinc-200 dark:border-zinc-800">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-bold">Data/Hora</th>
+                            <th className="px-4 py-3 text-left font-bold">Número</th>
+                            <th className="px-4 py-3 text-left font-bold">Cliente</th>
+                            <th className="px-4 py-3 text-left font-bold">Serviços Executados</th>
+                            <th className="px-4 py-3 text-center font-bold">Duração</th>
+                            <th className="px-4 py-3 text-center font-bold">Status</th>
+                            <th className="px-4 py-3 text-right font-bold">Valor</th>
+                          </tr>
+                        </thead>
+                      )}
+
+                      {selectedMetric === "clientes" && (
+                        <thead className="bg-zinc-50 dark:bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold border-b border-zinc-200 dark:border-zinc-800">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-bold">Nome</th>
+                            <th className="px-4 py-3 text-left font-bold">Telefone</th>
+                            <th className="px-4 py-3 text-left font-bold">Email</th>
+                            <th className="px-4 py-3 text-left font-bold">Data Nascimento</th>
+                            <th className="px-4 py-3 text-left font-bold">Cadastrado Em</th>
+                          </tr>
+                        </thead>
+                      )}
+
+                      {selectedMetric === "estoque" && (
+                        <thead className="bg-zinc-50 dark:bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold border-b border-zinc-200 dark:border-zinc-800">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-bold">Produto</th>
+                            <th className="px-4 py-3 text-left font-bold">Categoria</th>
+                            <th className="px-4 py-3 text-right font-bold">Preço Venda</th>
+                            <th className="px-4 py-3 text-center font-bold">Estoque Atual</th>
+                            <th className="px-4 py-3 text-center font-bold">Estoque Mínimo</th>
+                          </tr>
+                        </thead>
+                      )}
+
+                      {selectedMetric === "top_servico" && (
+                        <thead className="bg-zinc-50 dark:bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold border-b border-zinc-200 dark:border-zinc-800">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-bold">Data/Hora</th>
+                            <th className="px-4 py-3 text-left font-bold">Número Agendamento</th>
+                            <th className="px-4 py-3 text-left font-bold">Cliente</th>
+                            <th className="px-4 py-3 text-left font-bold">Serviço</th>
+                            <th className="px-4 py-3 text-center font-bold">Status</th>
+                            <th className="px-4 py-3 text-right font-bold">Valor</th>
+                          </tr>
+                        </thead>
+                      )}
+
+                      {/* BODY */}
+                      <tbody className="divide-y divide-zinc-150 dark:divide-zinc-800">
+                        {selectedMetric === "faturamento" && detailData.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-800/30 transition-colors">
+                            <td className="px-4 py-3 text-zinc-550 dark:text-zinc-450 font-mono text-xs whitespace-nowrap">{fmtDateTime(item.data_hora)}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="text-zinc-650 dark:text-zinc-400 font-mono text-xs font-bold">{item.numero}</span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`inline-flex px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                                item.tipo === 'servico' 
+                                  ? 'bg-blue-50 text-blue-700 border border-blue-150 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/60' 
+                                  : 'bg-purple-50 text-purple-700 border border-purple-150 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-900/60'
+                              }`}>
+                                {item.tipo === 'servico' ? 'Serviço' : 'Venda Direta'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-zinc-750 dark:text-zinc-200 font-semibold">{item.cliente}</td>
+                            <td className="px-4 py-3 text-zinc-600 dark:text-zinc-350 max-w-[250px] truncate" title={item.itens}>{item.itens}</td>
+                            <td className="px-4 py-3 text-zinc-500 dark:text-zinc-450 uppercase text-xs font-mono">{item.forma_pagamento?.replace('_', ' ')}</td>
+                            <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-450">{fmtBRL(item.valor)}</td>
+                          </tr>
+                        ))}
+
+                        {(selectedMetric === "agendamentos" || selectedMetric === "atendimentos" || selectedMetric === "ticket_medio") && detailData.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-800/30 transition-colors">
+                            <td className="px-4 py-3 text-zinc-550 dark:text-zinc-450 font-mono text-xs whitespace-nowrap">{fmtDateTime(item.data_hora)}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="text-zinc-650 dark:text-zinc-400 font-mono text-xs font-bold">
+                                {item.numero ? String(item.numero).padStart(6, '0') : '—'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-zinc-750 dark:text-zinc-200 font-semibold">{item.cliente_nome}</td>
+                            <td className="px-4 py-3 text-zinc-600 dark:text-zinc-350 max-w-[250px] truncate" title={renderItensCell(item.itens)}>
+                              {renderItensCell(item.itens)}
+                            </td>
+                            <td className="px-4 py-3 text-center font-mono font-medium text-zinc-550 dark:text-zinc-450">{item.duracao_minutos} min</td>
+                            <td className="px-4 py-3 text-center whitespace-nowrap font-semibold">
+                              <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                item.status === 'concluido' 
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-150 dark:bg-emerald-950/40 dark:text-emerald-450 dark:border-emerald-900/60'
+                                  : item.status === 'cancelado'
+                                  ? 'bg-rose-50 text-rose-700 border border-rose-150 dark:bg-rose-950/40 dark:text-rose-455 dark:border-rose-900/60'
+                                  : 'bg-amber-50 text-amber-700 border border-amber-150 dark:bg-amber-950/40 dark:text-amber-455 dark:border-amber-900/60'
+                              }`}>
+                                {item.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right font-bold text-zinc-800 dark:text-zinc-150">
+                              {fmtBRL(item.status === 'concluido' ? item.valor_pago : item.valor_total)}
+                            </td>
+                          </tr>
+                        ))}
+
+                        {selectedMetric === "clientes" && detailData.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-800/30 transition-colors">
+                            <td className="px-4 py-3 text-zinc-800 dark:text-zinc-200 font-semibold">{item.nome}</td>
+                            <td className="px-4 py-3 text-zinc-650 dark:text-zinc-455 font-mono text-xs">{item.telefone || '—'}</td>
+                            <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 text-xs">{item.email || '—'}</td>
+                            <td className="px-4 py-3 text-zinc-550 dark:text-zinc-450 text-xs">{item.data_nascimento || '—'}</td>
+                            <td className="px-4 py-3 text-zinc-500 dark:text-zinc-500 font-mono text-xs">{fmtDate(item.criado_em)}</td>
+                          </tr>
+                        ))}
+
+                        {selectedMetric === "estoque" && detailData.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-800/30 transition-colors">
+                            <td className="px-4 py-3 text-zinc-800 dark:text-zinc-200 font-semibold">{item.nome}</td>
+                            <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 text-xs">{item.categoria || '—'}</td>
+                            <td className="px-4 py-3 text-right text-zinc-650 dark:text-zinc-350">{fmtBRL(item.preco_venda)}</td>
+                            <td className="px-4 py-3 text-center font-mono font-bold text-rose-500 dark:text-rose-455 bg-rose-50/35 dark:bg-rose-950/20">{Number(Number(item.quantidade_estoque || 0).toFixed(3))}</td>
+                            <td className="px-4 py-3 text-center font-mono font-medium text-zinc-500 dark:text-zinc-450">{item.estoque_minimo}</td>
+                          </tr>
+                        ))}
+
+                        {selectedMetric === "top_servico" && detailData.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-800/30 transition-colors">
+                            <td className="px-4 py-3 text-zinc-550 dark:text-zinc-450 font-mono text-xs whitespace-nowrap">{fmtDateTime(item.data_hora)}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="text-zinc-650 dark:text-zinc-400 font-mono text-xs font-bold">
+                                {item.numero ? String(item.numero).padStart(6, '0') : '—'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-zinc-750 dark:text-zinc-200 font-semibold">{item.cliente_nome}</td>
+                            <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300 font-medium">{item.servico_nome}</td>
+                            <td className="px-4 py-3 text-center whitespace-nowrap font-semibold">
+                              <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-150 dark:bg-emerald-950/40 dark:text-emerald-450 dark:border-emerald-900/60">
+                                {item.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-450">{fmtBRL(item.valor)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
             )}
           </div>
 

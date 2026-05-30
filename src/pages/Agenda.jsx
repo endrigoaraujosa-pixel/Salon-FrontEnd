@@ -1217,18 +1217,20 @@ export default function Agenda() {
       </Dialog>
 
       <Dialog open={openResumo} onOpenChange={setOpenResumo}>
-        <DialogContent className="dialog-content w-[95vw] max-w-[95vw] sm:max-w-3xl md:max-w-4xl lg:max-w-5xl rounded-2xl p-5 sm:p-8 overflow-y-auto max-h-[90vh]" aria-describedby="dialog-resumo">
-          <DialogHeader className="dialog-header flex flex-row items-center justify-between border-b border-zinc-150 dark:border-zinc-800 pb-4">
-            <DialogTitle className="dialog-title flex items-center gap-2 justify-between w-full">
-              <span className="flex items-center gap-3 text-xl sm:text-2xl font-semibold text-zinc-800 dark:text-zinc-100">
-                <CalendarDays className="w-6 h-6 text-[#84A59D]" />
-                Resumo do Atendimento
-              </span>
-              {resumoAgendamento?.numero && (
-                <span className="text-sm sm:text-base font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] px-4 py-1.5 rounded-full mr-6">
-                  {String(resumoAgendamento.numero).padStart(6, "0")} | S
+        <DialogContent className="dialog-content w-[95vw] max-w-[95vw] sm:max-w-3xl md:max-w-4xl lg:max-w-5xl rounded-2xl p-5 sm:p-8 overflow-y-auto max-h-[90vh] dark:bg-zinc-900 dark:border-zinc-800" aria-describedby="dialog-resumo">
+          <DialogHeader className="dialog-header border-b border-zinc-150 dark:border-zinc-800 pb-4">
+            <DialogTitle className="dialog-title w-full">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-8">
+                <span className="flex items-center gap-2.5 text-xl sm:text-2xl font-extrabold text-zinc-800 dark:text-zinc-100">
+                  <CalendarDays className="w-6.5 h-6.5 text-[#84A59D] shrink-0" />
+                  Resumo do Atendimento
                 </span>
-              )}
+                {resumoAgendamento?.numero && (
+                  <span className="self-start sm:self-center text-xs sm:text-sm font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] dark:bg-zinc-800 dark:text-zinc-200 px-3 py-1 rounded-full shrink-0">
+                    Atendimento {String(resumoAgendamento.numero).padStart(6, "0")}
+                  </span>
+                )}
+              </div>
             </DialogTitle>
           </DialogHeader>
           <div id="dialog-resumo" className="sr-only">Resumo detalhado do agendamento selecionado</div>
@@ -1238,36 +1240,41 @@ export default function Agenda() {
               {/* Coluna Esquerda: Informações Gerais, Status Interativo e Notas */}
               <div className="space-y-6">
                 {/* Cliente e Status */}
-                {/* Cliente e Status */}
-                <div className="flex items-center justify-between bg-[#F8FBFB] dark:bg-[#1a2322] p-5 rounded-2xl border border-[#E8EFEF] dark:border-[#2e3e3b] shadow-xs">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-[#EAF0EE] flex items-center justify-center text-[#3A4F4A] font-semibold text-xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-[#F8FBFB] dark:bg-[#1a2322] p-5 rounded-2xl border border-[#E8EFEF] dark:border-[#2e3e3b] shadow-xs gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="w-12 h-12 rounded-full bg-[#EAF0EE] dark:bg-zinc-800 flex items-center justify-center text-[#3A4F4A] dark:text-[#EAF0EE] font-semibold text-xl shrink-0">
                       {resumoAgendamento.cliente_nome?.charAt(0).toUpperCase()}
                     </div>
-                    <div>
-                      <h3 className="font-display font-semibold text-zinc-800 dark:text-zinc-100 text-lg sm:text-xl">{resumoAgendamento.cliente_nome}</h3>
-                      <p className="text-xs text-zinc-400">Cliente cadastrado(a)</p>
+                    <div className="min-w-0">
+                      <h3 className="font-display font-bold text-zinc-800 dark:text-zinc-100 text-lg sm:text-xl truncate leading-tight">{resumoAgendamento.cliente_nome}</h3>
+                      <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium mt-0.5">Cliente cadastrado(a)</p>
                     </div>
                   </div>
-                  <StatusBadge status={resumoAgendamento.status} />
+                  <div className="shrink-0 self-start sm:self-center">
+                    <StatusBadge status={resumoAgendamento.status} />
+                  </div>
                 </div>
  
                 {/* Data e Hora */}
-                <div className="grid grid-cols-2 gap-5">
-                  <div className="bg-zinc-55 dark:bg-zinc-900 p-4 sm:p-5 rounded-xl border border-zinc-150 dark:border-zinc-800 flex items-center gap-3 shadow-xs">
-                    <CalIcon className="w-6 h-6 text-[#84A59D]" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-zinc-50 dark:bg-zinc-950 p-4 sm:p-5 rounded-xl border border-zinc-150 dark:border-zinc-800/80 flex items-center gap-3.5 shadow-xs">
+                    <div className="p-2.5 bg-[#EAF0EE] dark:bg-zinc-800 text-[#84A59D] rounded-xl shrink-0 flex items-center justify-center">
+                      <CalIcon className="w-5.5 h-5.5" />
+                    </div>
                     <div>
-                      <p className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 font-bold">Data</p>
-                      <p className="text-sm sm:text-base font-semibold text-zinc-700 dark:text-zinc-200">
+                      <p className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Data</p>
+                      <p className="text-sm sm:text-base font-bold text-zinc-700 dark:text-zinc-200 mt-0.5">
                         {new Date(resumoAgendamento.data_hora).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
                       </p>
                     </div>
                   </div>
-                  <div className="bg-zinc-55 dark:bg-zinc-900 p-4 sm:p-5 rounded-xl border border-zinc-150 dark:border-zinc-800 flex items-center gap-3 shadow-xs">
-                    <Clock className="w-6 h-6 text-[#84A59D]" />
+                  <div className="bg-zinc-50 dark:bg-zinc-950 p-4 sm:p-5 rounded-xl border border-zinc-150 dark:border-zinc-800/80 flex items-center gap-3.5 shadow-xs">
+                    <div className="p-2.5 bg-[#EAF0EE] dark:bg-zinc-800 text-[#84A59D] rounded-xl shrink-0 flex items-center justify-center">
+                      <Clock className="w-5.5 h-5.5" />
+                    </div>
                     <div>
-                      <p className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 font-bold">Horário</p>
-                      <p className="text-sm sm:text-base font-semibold text-zinc-700 dark:text-zinc-200">
+                      <p className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Horário</p>
+                      <p className="text-sm sm:text-base font-bold text-zinc-700 dark:text-zinc-200 mt-0.5">
                         {fmtHour(resumoAgendamento.data_hora)}
                       </p>
                     </div>
@@ -1276,12 +1283,12 @@ export default function Agenda() {
  
                 {/* Agendado por — info discreta */}
                 {(resumoAgendamento.criado_por_nome || resumoAgendamento.criado_em) && (
-                  <div className="flex items-center gap-1.5 text-xs text-zinc-400 dark:text-zinc-650 italic select-none pt-0.5">
-                    <User className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span>
+                  <div className="flex items-center gap-2 text-xs text-zinc-400 dark:text-zinc-500 italic select-none pt-1">
+                    <User className="w-4 h-4 text-[#84A59D] shrink-0" />
+                    <span className="leading-none">
                       Agendado
                       {resumoAgendamento.criado_por_nome && (
-                        <> por <strong className="font-semibold not-italic text-zinc-500 dark:text-zinc-500">{resumoAgendamento.criado_por_nome}</strong></>
+                        <> por <strong className="font-semibold not-italic text-zinc-650 dark:text-zinc-400">{resumoAgendamento.criado_por_nome}</strong></>
                       )}
                       {resumoAgendamento.criado_em && (
                         <> em {new Date(resumoAgendamento.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</>
@@ -1328,9 +1335,9 @@ export default function Agenda() {
                       const auxColab = colaboradores.find(c => c.id === item.auxiliar_id)?.nome;
                       return (
                         <div key={idx} className="bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] p-5 rounded-xl flex flex-col gap-3 shadow-xs">
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold text-base sm:text-lg text-zinc-800 dark:text-zinc-200">{item.nome || s?.nome || "Serviço"}</span>
-                            <span className="text-base sm:text-lg font-bold text-[#3A4F4A] dark:text-[#EAF0EE]">{fmtBRL(item.valor)}</span>
+                          <div className="flex items-start justify-between gap-3">
+                            <span className="font-bold text-base sm:text-lg text-zinc-800 dark:text-zinc-150 leading-tight min-w-0 break-words">{item.nome || s?.nome || "Serviço"}</span>
+                            <span className="text-base sm:text-lg font-extrabold text-[#3A4F4A] dark:text-[#EAF0EE] shrink-0">{fmtBRL(item.valor)}</span>
                           </div>
  
                           {/* Box de detalhamento de negociação do valor */}
@@ -1349,45 +1356,51 @@ export default function Agenda() {
                               const diferenca = valCobrado - valBase;
                               if (Math.abs(diferenca) > 0.01) {
                                 const isDesconto = diferenca < 0;
-                                return (
-                                  <div className="flex justify-between items-center pt-1.5 border-t border-dashed border-zinc-200 dark:border-zinc-800 text-xs mt-0.5">
-                                    <span className={isDesconto ? "text-rose-600 dark:text-rose-450 font-semibold" : "text-emerald-600 dark:text-emerald-450 font-semibold"}>
-                                      {isDesconto ? "Diferença (Desconto):" : "Diferença (Ajuste Negociado):"}
-                                    </span>
-                                    <span className={`font-mono font-bold ${isDesconto ? "text-rose-600 dark:text-rose-455" : "text-emerald-600 dark:text-emerald-455"}`}>
-                                      {isDesconto ? "-" : "+"}{fmtBRL(Math.abs(diferenca))}
-                                    </span>
-                                  </div>
-                                );
+                                  return (
+                                    <div className="flex justify-between items-center pt-1.5 border-t border-dashed border-zinc-200 dark:border-zinc-800 text-xs mt-0.5">
+                                      <span className={isDesconto ? "text-rose-600 dark:text-rose-450 font-semibold" : "text-emerald-600 dark:text-emerald-455 font-semibold"}>
+                                        {isDesconto ? "Diferença (Desconto):" : "Diferença (Ajuste Negociado):"}
+                                      </span>
+                                      <span className={`font-mono font-bold ${isDesconto ? "text-rose-600 dark:text-rose-455" : "text-emerald-600 dark:text-emerald-455"}`}>
+                                        {isDesconto ? "-" : "+"}{fmtBRL(Math.abs(diferenca))}
+                                      </span>
+                                    </div>
+                                  );
                               }
                               return null;
                             })()}
                           </div>
  
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs sm:text-sm text-zinc-500 mt-0.5">
-                            <span className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded"><Clock className="w-3.5 h-3.5 text-[#84A59D]" /> {s?.duracao_minutos} min</span>
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <span className="inline-flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-350 px-2.5 py-1 rounded-md text-xs font-semibold">
+                              <Clock className="w-4 h-4 text-[#84A59D]" /> {s?.duracao_minutos} min
+                            </span>
                             {mainColab && (
-                              <span className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded"><User className="w-3.5 h-3.5 text-[#84A59D]" /> Profissional: <strong>{mainColab}</strong></span>
+                              <span className="inline-flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-350 px-2.5 py-1 rounded-md text-xs font-semibold">
+                                <User className="w-4 h-4 text-[#84A59D]" /> Profissional: <strong className="font-bold text-zinc-800 dark:text-zinc-200">{mainColab}</strong>
+                              </span>
                             )}
                             {auxColab && (
-                              <span className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded"><Users className="w-3.5 h-3.5 text-[#84A59D]" /> Auxiliar: <strong>{auxColab}</strong></span>
+                              <span className="inline-flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-350 px-2.5 py-1 rounded-md text-xs font-semibold">
+                                <Users className="w-4 h-4 text-[#84A59D]" /> Auxiliar: <strong className="font-bold text-zinc-800 dark:text-zinc-200">{auxColab}</strong>
+                              </span>
                             )}
                           </div>
  
                           {/* Utilized Products Section */}
                           <div className="mt-3 pt-3 border-t border-dashed border-[#E8EFEF] dark:border-[#2e3e3b]">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs sm:text-sm font-semibold text-zinc-500 flex items-center gap-1">
-                                <Package className="w-3.5 h-3.5 text-[#84A59D]" /> Consumo de Produtos
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                              <span className="text-xs sm:text-sm font-semibold text-zinc-500 flex items-center gap-2">
+                                <Package className="w-4.5 h-4.5 text-[#84A59D]" /> Consumo de Produtos
                               </span>
                               <Button 
                                 onClick={() => {
                                   openUtilizedProducts(resumoAgendamento, idx);
                                 }}
                                 variant="ghost" 
-                                className="h-8 px-3 text-xs text-[#3A4F4A] hover:bg-[#EAF0EE] flex items-center gap-1 border border-zinc-200 bg-white"
+                                className="h-8 px-3 text-xs text-[#3A4F4A] dark:text-zinc-300 hover:bg-[#EAF0EE] dark:hover:bg-zinc-850 flex items-center gap-1.5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 w-full sm:w-auto justify-center font-semibold"
                               >
-                                <PlusCircle className="w-3.5 h-3.5" /> Informar Consumo
+                                <PlusCircle className="w-4 h-4" /> Informar Consumo
                               </Button>
                             </div>
                             {item.produtos_utilizados && item.produtos_utilizados.length > 0 ? (
@@ -1413,8 +1426,8 @@ export default function Agenda() {
                 </div>
  
                 {/* Valores Totais */}
-                <div className="total-box mt-auto p-4 sm:p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-55 dark:bg-zinc-900 shadow-sm flex items-center justify-between">
-                  <div className="total-label flex items-center gap-1.5 text-zinc-550 dark:text-zinc-400 font-semibold text-xs sm:text-sm">
+                <div className="total-box mt-auto p-4 sm:p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="total-label flex items-center gap-2 text-zinc-600 dark:text-zinc-400 font-semibold text-xs sm:text-sm">
                     <Clock className="w-4.5 h-4.5 text-[#84A59D]" />
                     Duração Total: {resumoAgendamento.itens?.reduce((sum, item) => sum + (servicos.find(x => x.id === item.servico_id)?.duracao_minutos || 0), 0)} min
                   </div>
@@ -1424,19 +1437,30 @@ export default function Agenda() {
  
             </div>
           )}
-          <DialogFooter className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800 w-full mt-5">
-            <Button variant="outline" onClick={() => setOpenResumo(false)} className="sm:flex-1 h-11 px-5 text-xs sm:text-sm font-medium">Fechar</Button>
+          <DialogFooter className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-4 border-t border-zinc-150 dark:border-zinc-800 w-full mt-5">
+            <Button 
+              variant="outline" 
+              onClick={() => setOpenResumo(false)} 
+              className="flex-1 sm:flex-initial h-11 px-6 text-sm font-medium border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+            >
+              Fechar
+            </Button>
             {resumoAgendamento && (
-              <>
-                <Button variant="outline" onClick={() => { setOpenResumo(false); openEdit(resumoAgendamento); }} className="sm:flex-1 h-11 px-5 border-[#84A59D] text-[#3A4F4A] hover:bg-[#EAF0EE] font-medium text-xs sm:text-sm">
-                  <Edit2 className="w-4 h-4 mr-2" /> Editar Atendimento
-                </Button>
-                {resumoAgendamento.status !== "concluido" && (
-                  <Button onClick={() => { setOpenResumo(false); nav(`/agendamentos/${resumoAgendamento.id}/pagamento`); }} className="btn-primary sm:flex-1 h-11 px-5 font-bold text-xs sm:text-sm">
-                    <CreditCard className="w-4 h-4 mr-2" /> Registrar Pagamento
-                  </Button>
-                )}
-              </>
+              <Button 
+                variant="outline" 
+                onClick={() => { setOpenResumo(false); openEdit(resumoAgendamento); }} 
+                className="flex-1 sm:flex-initial h-11 px-6 border-[#84A59D] text-[#3A4F4A] dark:text-[#EAF0EE] hover:bg-[#EAF0EE] dark:hover:bg-[#3A4F4A]/20 font-semibold text-sm flex items-center justify-center gap-2"
+              >
+                <Edit2 className="w-4 h-4" /> Editar Atendimento
+              </Button>
+            )}
+            {resumoAgendamento && resumoAgendamento.status !== "concluido" && (
+              <Button 
+                onClick={() => { setOpenResumo(false); nav(`/agendamentos/${resumoAgendamento.id}/pagamento`); }} 
+                className="flex-1 sm:flex-initial h-11 px-6 bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm"
+              >
+                <CreditCard className="w-4 h-4" /> Registrar Pagamento
+              </Button>
             )}
           </DialogFooter>
         </DialogContent>
