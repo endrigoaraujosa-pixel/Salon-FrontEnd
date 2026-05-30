@@ -921,7 +921,8 @@ export default function Comissoes() {
 
           {/* Tabela de Comissões Otimizada e Responsiva */}
           <div className="bg-white border border-zinc-200/80 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
+            {/* Tabela - Visível em Desktop */}
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-zinc-50/70 border-b border-zinc-200 dark:bg-zinc-900/70 dark:border-zinc-850 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-450 font-bold">
                   <tr>
@@ -1038,7 +1039,7 @@ export default function Comissoes() {
                                 onClick={() => togglePago(c)} 
                                 className={`text-[10px] font-bold hover:underline transition-colors uppercase tracking-wider ${
                                   c.pago 
-                                    ? "text-zinc-400 hover:text-rose-500 dark:text-zinc-500 dark:hover:text-rose-400" 
+                                    ? "text-zinc-400 hover:text-rose-500 dark:text-zinc-550 dark:hover:text-rose-455" 
                                     : "text-[#84A59D] hover:text-[#6F9189] dark:text-[#84A59D] dark:hover:text-[#6F9189]"
                                 }`}
                               >
@@ -1052,6 +1053,119 @@ export default function Comissoes() {
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Cards - Visível em Mobile */}
+            <div className="block lg:hidden divide-y divide-zinc-150 dark:divide-zinc-800">
+              {data.comissoes.length === 0 ? (
+                <div className="px-6 py-16 text-center text-zinc-400 dark:text-zinc-500">
+                  Nenhuma comissão correspondente aos filtros selecionados.
+                </div>
+              ) : (
+                data.comissoes.map((c, index) => {
+                  const colabCustoInsumos = c.detalhes?.reduce((sum, d) => sum + (d.custo_produtos || 0), 0) || 0;
+                  return (
+                    <div 
+                      key={`${c.colaborador_id}-${c.pago ? 'pago' : 'pendente'}-${index}`} 
+                      className="p-4 space-y-4 hover:bg-zinc-50/20 dark:hover:bg-zinc-850/10 transition-colors"
+                    >
+                      {/* Cabeçalho do Card: Avatar + Nome + Detalhes */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div 
+                            className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs font-mono shadow-sm bg-[#EAF0EE] text-[#3A4F4A] dark:bg-zinc-800 dark:text-zinc-200 border border-[#D5E2DF] dark:border-zinc-700 select-none shrink-0"
+                          >
+                            {getInitials(c.colaborador_nome)}
+                          </div>
+                          <div className="min-w-0">
+                            <button 
+                              onClick={() => handleOpenDetails(c)} 
+                              className="text-[#3A4F4A] hover:text-[#84A59D] dark:text-zinc-200 dark:hover:text-[#84A59D] hover:underline font-bold flex items-center gap-1 text-left text-sm"
+                            >
+                              <span className="truncate">{c.colaborador_nome}</span>
+                              <Eye className="w-3.5 h-3.5 text-zinc-450 dark:text-zinc-500 shrink-0" />
+                            </button>
+                            <div className="text-[10px] text-zinc-450 dark:text-zinc-550 font-medium mt-0.5">
+                              Solo: {c.comissao_sozinho != null ? c.comissao_sozinho : c.comissao_principal}% · c/ Aux: {c.comissao_ajuda || 30}% · Aux: {c.comissao_auxiliar}%
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0">
+                          {c.pago ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-150 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/60 text-[9px] font-bold uppercase tracking-wider">
+                              <CheckCircle2 className="w-2.5 h-2.5" /> Pago
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-150 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/60 text-[9px] font-bold uppercase tracking-wider">
+                              <Clock className="w-2.5 h-2.5" /> Pendente
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {c.detalhes?.some(d => d.insumos_pendentes) && !c.pago && (
+                        <div className="mt-1">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900/60 text-[9px] font-bold uppercase tracking-wider w-full justify-center">
+                            <AlertTriangle className="w-3.5 h-3.5" /> Insumos Pendentes
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Info Financeira em Grid */}
+                      <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                        <div className="bg-zinc-50/50 dark:bg-zinc-950/20 p-2.5 rounded-xl border border-zinc-100 dark:border-zinc-850">
+                          <span className="text-[9px] text-zinc-400 dark:text-zinc-550 uppercase font-bold block mb-0.5">Atendimentos</span>
+                          <span className="font-mono font-bold text-zinc-700 dark:text-zinc-300">{c.atendimentos} exec.</span>
+                        </div>
+                        <div className="bg-zinc-50/50 dark:bg-zinc-950/20 p-2.5 rounded-xl border border-zinc-100 dark:border-zinc-850">
+                          <span className="text-[9px] text-zinc-400 dark:text-zinc-550 uppercase font-bold block mb-0.5">Total Serviços</span>
+                          <span className="font-semibold text-zinc-700 dark:text-zinc-300">{fmtBRL(c.total_principal + c.total_auxiliar)}</span>
+                        </div>
+                        <div className="bg-zinc-50/50 dark:bg-zinc-950/20 p-2.5 rounded-xl border border-zinc-100 dark:border-zinc-850">
+                          <span className="text-[9px] text-zinc-400 dark:text-zinc-550 uppercase font-bold block mb-0.5">Insumos (Consumo)</span>
+                          <span className="font-semibold text-rose-500 dark:text-rose-450">-{fmtBRL(colabCustoInsumos)}</span>
+                        </div>
+                        <div className="bg-zinc-50/50 dark:bg-zinc-950/20 p-2.5 rounded-xl border border-zinc-100 dark:border-zinc-850">
+                          <span className="text-[9px] text-zinc-400 dark:text-zinc-550 uppercase font-bold block mb-0.5">Vendas Prods.</span>
+                          <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                            {fmtBRL(c.total_produtos || 0)} <span className="text-[9px] text-zinc-450 dark:text-zinc-500">(+{fmtBRL(c.comissao_produtos || 0)})</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Footer do Card: Ação e Comissão Líquida */}
+                      <div className="flex items-center justify-between bg-zinc-100/50 dark:bg-zinc-950/60 border border-zinc-150 dark:border-zinc-850 p-3 rounded-xl mt-2 gap-2">
+                        <div className="min-w-0">
+                          {c.pago && (
+                            <span className="text-[10px] text-zinc-400 dark:text-zinc-500 block truncate">
+                              Pago em: {fmtDate(c.data_pagamento)}
+                            </span>
+                          )}
+                          {user?.role === "admin" && c.valor_comissao > 0 && (
+                            <button 
+                              onClick={() => togglePago(c)} 
+                              className={`text-[10px] font-bold hover:underline transition-colors uppercase tracking-wider block ${
+                                c.pago 
+                                  ? "text-zinc-400 hover:text-rose-500 dark:text-zinc-550 dark:hover:text-rose-455" 
+                                  : "text-[#84A59D] hover:text-[#6F9189] dark:text-[#84A59D]"
+                              }`}
+                            >
+                              {c.pago ? "Desfazer Pagto" : "Marcar Pago"}
+                            </button>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-[9px] text-emerald-800 dark:text-emerald-500 uppercase font-extrabold block">Comissão Líquida</span>
+                          <span className="font-mono font-black text-emerald-650 dark:text-emerald-450 text-base">
+                            {fmtBRL(c.valor_comissao)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </>
@@ -1114,8 +1228,8 @@ export default function Comissoes() {
                 </div>
               </div>
 
-              {/* Tabela de Transações Individuais */}
-              <div className="border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
+              {/* Tabela de Transações Individuais - Layout Desktop */}
+              <div className="hidden lg:block border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[1000px] text-sm">
                     <thead className="bg-zinc-50 dark:bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold border-b border-zinc-200 dark:border-zinc-800">
@@ -1202,6 +1316,93 @@ export default function Comissoes() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+
+              {/* Lançamentos Detalhados - Layout Mobile */}
+              <div className="block lg:hidden space-y-4 max-h-[55vh] overflow-y-auto pr-1">
+                {selectedColab.detalhes.length === 0 ? (
+                  <div className="text-center py-12 text-zinc-400 dark:text-zinc-500 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
+                    Sem movimentações individuais neste bloco de comissões.
+                  </div>
+                ) : (
+                  selectedColab.detalhes.map((item, idx) => (
+                    <div key={idx} className="bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 space-y-3 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <span className={`inline-flex px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                          item.tipo === 'servico' 
+                            ? 'bg-blue-50 text-blue-700 border border-blue-150 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/60' 
+                            : 'bg-purple-50 text-purple-700 border border-purple-150 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-900/60'
+                        }`}>
+                          {item.tipo === 'servico' ? 'Serviço' : 'Produto'}
+                        </span>
+                        {item.pago ? (
+                          <span className="inline-flex px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/60 text-[9px] font-bold uppercase tracking-wider">
+                            Pago
+                          </span>
+                        ) : (
+                          <span className="inline-flex px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/60 text-[9px] font-bold uppercase tracking-wider">
+                            Pendente
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="font-semibold text-sm text-zinc-800 dark:text-zinc-100">
+                          {item.descricao}
+                        </div>
+                        {item.insumos_pendentes && (
+                          <div>
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900/60">
+                              <AlertTriangle className="w-2.5 h-2.5" /> Insumos Pendentes
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-y-3 gap-x-4 pt-3 border-t border-zinc-150 dark:border-zinc-800 text-xs">
+                        <div>
+                          <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase font-bold block mb-0.5">Data/Hora</span>
+                          <span className="font-mono text-zinc-650 dark:text-zinc-350">{fmtDateTime(item.data)}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase font-bold block mb-0.5">Documento</span>
+                          <span className="font-mono text-zinc-650 dark:text-zinc-350">
+                            {item.numero != null ? `${String(item.numero).padStart(6, "0")} | ${item.tipo === 'servico' ? 'S' : 'V'}` : "—"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase font-bold block mb-0.5">Papel / Valor</span>
+                          <span className="text-zinc-750 dark:text-zinc-350 font-medium">
+                            {item.papel} ({fmtBRL(item.valor_movimentacao)})
+                          </span>
+                        </div>
+                        {item.tipo === 'servico' && (
+                          <div>
+                            <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase font-bold block mb-0.5">Custo Insumo</span>
+                            <span className="text-rose-500 dark:text-rose-400 font-semibold">
+                              -{fmtBRL(item.custo_produtos || 0)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850 p-3 rounded-xl text-xs mt-2">
+                        <div>
+                          <span className="text-[10px] text-zinc-450 dark:text-zinc-550 uppercase font-bold block">Base / Taxa</span>
+                          <span className="text-zinc-700 dark:text-zinc-300 font-medium">
+                            {fmtBRL(item.tipo === 'servico' ? (item.base_comissao != null ? item.base_comissao : item.valor_movimentacao) : item.valor_movimentacao)} @ <b className="font-mono">{item.percentual_aplicado}%</b>
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-emerald-800 dark:text-emerald-500 uppercase font-extrabold block">Comissão</span>
+                          <span className="font-mono font-black text-emerald-600 dark:text-emerald-450 text-sm">
+                            {fmtBRL(item.valor_comissao)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}

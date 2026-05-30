@@ -439,33 +439,42 @@ export default function Pagamento() {
           </div>
         </div>
       )}
-
       {/* Serviços Realizados */}
       {ag.itens && Array.isArray(ag.itens) && ag.itens.length > 0 && (
-        <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-5 mt-5 fade-in">
-          <h3 className="font-display text-base sm:text-lg font-semibold text-zinc-800 dark:text-zinc-200 mb-4 flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-[#84A59D]" />
+        <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-5 sm:p-6 mt-5 shadow-sm fade-in">
+          <h3 className="font-display text-base sm:text-lg font-extrabold text-zinc-800 dark:text-zinc-100 mb-5 flex items-center gap-2">
+            <CheckCircle2 className="w-5.5 h-5.5 text-[#84A59D]" />
             Serviços Realizados neste Atendimento
           </h3>
-          <div className="space-y-3.5">
+          <div className="space-y-4">
             {ag.itens.map((item, idx) => {
               const colabNome = getColabName(item.colaborador_id);
               const auxNome = getColabName(item.auxiliar_id);
               return (
-                <div key={idx} className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800/40 last:border-0 last:pb-0">
-                  <div className="flex items-start gap-2.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700 flex-shrink-0 mt-2"></span>
-                    <div>
-                      <div className="text-sm sm:text-base font-semibold text-zinc-800 dark:text-zinc-200">{item.nome || "Serviço"}</div>
+                <div key={idx} className="flex items-center justify-between gap-4 pb-4 border-b border-zinc-100 dark:border-zinc-800/60 last:border-0 last:pb-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-2 h-2 rounded-full bg-[#84A59D] shrink-0"></div>
+                    <div className="min-w-0">
+                      <div className="text-base sm:text-lg font-bold text-zinc-800 dark:text-zinc-100 leading-tight">
+                        {item.nome || "Serviço"}
+                      </div>
                       {(colabNome || auxNome) && (
-                        <div className="text-xs sm:text-sm text-zinc-450 dark:text-zinc-500 font-normal mt-0.5">
-                          {colabNome && `Profissional: ${colabNome}`}
-                          {auxNome && ` (Auxiliar: ${auxNome})`}
+                        <div className="text-xs sm:text-sm text-zinc-450 dark:text-zinc-500 font-medium mt-1">
+                          {colabNome && (
+                            <span>
+                              Profissional: <strong className="text-zinc-650 dark:text-zinc-400 font-semibold">{colabNome}</strong>
+                            </span>
+                          )}
+                          {auxNome && (
+                            <span>
+                              {" "}· Auxiliar: <strong className="text-zinc-650 dark:text-zinc-400 font-semibold">{auxNome}</strong>
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
                   </div>
-                  <div className="text-sm sm:text-base font-bold text-zinc-700 dark:text-zinc-200 text-right min-w-[90px]">
+                  <div className="text-base sm:text-lg font-black text-zinc-800 dark:text-zinc-200 text-right font-mono shrink-0">
                     {fmtBRL(item.valor)}
                   </div>
                 </div>
@@ -476,22 +485,22 @@ export default function Pagamento() {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 my-6">
-        <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-5">
-          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400">Serviço (A Pagar)</div>
-          <div className="font-display text-2xl sm:text-3xl font-semibold mt-1">{fmtBRL(saldoAgendamento)}</div>
+        <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-5">
+          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Serviço (A Pagar)</div>
+          <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-zinc-800 dark:text-zinc-100">{fmtBRL(saldoAgendamento)}</div>
         </div>
-        <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-5">
-          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400">Vendas Diretas</div>
-          <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-[#84A59D]">{fmtBRL(totalSalesSelected)}</div>
+        <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-5">
+          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Vendas Diretas</div>
+          <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-[#84A59D] dark:text-emerald-400">{fmtBRL(totalSalesSelected)}</div>
         </div>
-        <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-5">
-          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400">Total Unificado</div>
-          <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-[#84A59D]">{fmtBRL(saldo)}</div>
+        <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-5">
+          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Total Unificado</div>
+          <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-[#84A59D] dark:text-emerald-400">{fmtBRL(saldo)}</div>
         </div>
       </div>
 
       {pendingSales.length > 0 && (
-        <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-6 mb-6 fade-in">
+        <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-6 mb-6 fade-in">
           <h3 className="font-display text-base font-semibold text-zinc-800 dark:text-zinc-200 mb-3 flex items-center gap-2">
             <ShoppingCart className="w-5 h-5 text-[#84A59D]" />
             Vendas Diretas Pendentes deste Cliente
@@ -506,7 +515,7 @@ export default function Pagamento() {
                 className={`p-3.5 sm:p-4 rounded-xl border transition-all space-y-3 ${
                   s.selected 
                     ? "bg-zinc-50 dark:bg-zinc-900/40 border-[#84A59D] dark:border-[#84A59D]/60 shadow-sm" 
-                    : "bg-white dark:bg-transparent border-zinc-200 dark:border-zinc-800 opacity-60"
+                    : "bg-white dark:bg-zinc-900/10 border-zinc-200 dark:border-zinc-800 opacity-60"
                 }`}
               >
                 {/* Cabeçalho da Venda */}
@@ -516,7 +525,7 @@ export default function Pagamento() {
                       type="checkbox" 
                       checked={!!s.selected} 
                       onChange={() => toggleSaleSelection(s.id)}
-                      className="w-4 h-4 rounded text-[#84A59D] focus:ring-[#84A59D] border-zinc-300 dark:border-zinc-700 dark:bg-zinc-800 cursor-pointer"
+                      className="w-4 h-4 rounded text-[#84A59D] focus:ring-[#84A59D] border-zinc-300 dark:border-zinc-700 dark:bg-zinc-850 cursor-pointer"
                     />
                     <div className="font-semibold text-sm sm:text-base text-zinc-800 dark:text-zinc-200">
                       Venda #{s.numero_venda ? String(s.numero_venda).padStart(6, "0") : "Direta"}
@@ -526,7 +535,7 @@ export default function Pagamento() {
                     <div className="font-bold text-sm sm:text-base text-zinc-700 dark:text-zinc-200">
                       {fmtBRL(s.valor_total - s.valor_pago)}
                     </div>
-                    <div className="text-[10px] sm:text-xs text-zinc-450 mt-0.5">
+                    <div className="text-[10px] sm:text-xs text-zinc-450 dark:text-zinc-550 mt-0.5">
                       Total: {fmtBRL(s.valor_total)}
                     </div>
                   </div>
@@ -534,9 +543,9 @@ export default function Pagamento() {
 
                 {/* Itens Detalhados Alinhados */}
                 {s.itens && Array.isArray(s.itens) && s.itens.length > 0 ? (
-                  <div className="pt-2.5 border-t border-zinc-100 dark:border-zinc-800/50 pl-7 space-y-2">
+                  <div className="pt-2.5 border-t border-zinc-105 dark:border-zinc-800/50 pl-7 space-y-2">
                     {s.itens.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 font-medium">
+                      <div key={idx} className="flex items-center justify-between text-xs sm:text-sm text-zinc-650 dark:text-zinc-300 font-medium">
                         <div className="flex items-center gap-2">
                           <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700 flex-shrink-0"></span>
                           <span>{item.produto_nome}</span>
@@ -549,7 +558,7 @@ export default function Pagamento() {
                     ))}
                   </div>
                 ) : (
-                  <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/50 pl-7 text-xs sm:text-sm text-zinc-500 dark:text-zinc-450 font-medium">
+                  <div className="pt-2 border-t border-zinc-105 dark:border-zinc-800/50 pl-7 text-xs sm:text-sm text-zinc-500 dark:text-zinc-450 font-medium">
                     {s.produto_nome} ({s.quantidade} {s.quantidade === 1 ? 'item' : 'itens'})
                   </div>
                 )}
@@ -558,26 +567,26 @@ export default function Pagamento() {
           </div>
 
           <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-500">Subtotal das Vendas Diretas:</span>
-            <span className="text-sm font-bold text-[#84A59D]">{fmtBRL(totalSalesSelected)}</span>
+            <span className="text-xs font-semibold text-zinc-550">Subtotal das Vendas Diretas:</span>
+            <span className="text-sm font-bold text-[#84A59D] dark:text-emerald-400">{fmtBRL(totalSalesSelected)}</span>
           </div>
         </div>
       )}
 
-      <div className="bg-white border border-zinc-200 rounded-xl p-4 sm:p-6 mb-6">
-        <h3 className="font-display text-base sm:text-lg font-medium mb-4">Registrar pagamento</h3>
+      <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-6 mb-6">
+        <h3 className="font-display text-base sm:text-lg font-medium text-zinc-800 dark:text-zinc-100 mb-4">Registrar pagamento</h3>
         <div className="space-y-4">
           {novos.map((p, i) => (
-            <div key={i} className="border border-zinc-150 sm:border-0 rounded-xl p-4 sm:p-0 bg-zinc-50/50 sm:bg-transparent space-y-3 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end relative">
+            <div key={i} className="border border-zinc-150 sm:border-0 rounded-xl p-4 sm:p-0 bg-zinc-50/50 sm:bg-transparent dark:bg-zinc-950/20 space-y-3 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end relative">
               {novos.length > 1 && (
                 <div className="sm:hidden absolute top-2 right-2">
-                  <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:bg-rose-50" onClick={() => removeLine(i)} disabled={!temPermissaoPagamento}>
+                  <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20" onClick={() => removeLine(i)} disabled={!temPermissaoPagamento}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
               )}
               <div className="col-span-3">
-                <Label className="text-xs sm:text-sm">Valor</Label>
+                <Label className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">Valor</Label>
                 <Input 
                   data-testid={`pay-valor-${i}`} 
                   type="number" 
@@ -585,24 +594,24 @@ export default function Pagamento() {
                   value={p.valor} 
                   onChange={(e) => updateLine(i, "valor", e.target.value)}
                   placeholder={p.forma_pagamento === "dinheiro" && saldo > 0 ? `Troco se > ${fmtBRL(saldo)}` : "Digite o valor"}
-                  className="bg-white sm:bg-transparent mt-1"
+                  className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1"
                   disabled={!temPermissaoPagamento}
                 />
               </div>
               <div className="col-span-4">
-                <Label className="text-xs sm:text-sm">Forma</Label>
+                <Label className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">Forma</Label>
                 <Select value={p.forma_pagamento} onValueChange={(v) => updateLine(i, "forma_pagamento", v)} disabled={!temPermissaoPagamento}>
-                  <SelectTrigger data-testid={`pay-forma-${i}`} className="bg-white sm:bg-transparent mt-1" disabled={!temPermissaoPagamento}><SelectValue /></SelectTrigger>
+                  <SelectTrigger data-testid={`pay-forma-${i}`} className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1" disabled={!temPermissaoPagamento}><SelectValue /></SelectTrigger>
                   <SelectContent>{FORMAS.map((f) => <SelectItem key={f.v} value={f.v}>{f.l}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="col-span-4">
-                <Label className="text-xs sm:text-sm">Observação</Label>
+                <Label className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">Observação</Label>
                 <Input 
                   value={p.observacao} 
                   onChange={(e) => updateLine(i, "observacao", e.target.value)}
                   placeholder={p.forma_pagamento === "dinheiro" && Number(p.valor) > saldo ? `Troco: ${fmtBRL(Number(p.valor) - saldo)}` : ""}
-                  className="bg-white sm:bg-transparent mt-1"
+                  className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1"
                   disabled={!temPermissaoPagamento}
                 />
               </div>
@@ -619,11 +628,11 @@ export default function Pagamento() {
         
         {/* Aviso de troco */}
         {trocoTotal > 0 && (
-          <div className="mt-4 p-4 bg-zinc-50 dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-xl flex items-start gap-3 fade-in animate-pulse-subtle">
+          <div className="mt-4 p-4 bg-zinc-50 dark:bg-zinc-950/40 border border-zinc-200 dark:border-zinc-800 rounded-xl flex items-start gap-3 fade-in animate-pulse-subtle">
             <CheckCircle2 className="w-5 h-5 text-[#84A59D] flex-shrink-0 mt-0.5" />
             <div className="text-sm text-zinc-800 dark:text-zinc-200">
               <span className="font-semibold">Troco calculado:</span>
-              <span className="text-lg font-bold ml-2 text-[#84A59D]">{fmtBRL(trocoTotal)}</span>
+              <span className="text-lg font-bold ml-2 text-[#84A59D] dark:text-emerald-450">{fmtBRL(trocoTotal)}</span>
               <p className="text-xs text-zinc-500 mt-1">O valor registrado no sistema será de {fmtBRL(saldo)} (quitando o saldo), e o troco de {fmtBRL(trocoTotal)} deve ser devolvido ao cliente.</p>
             </div>
           </div>
@@ -631,32 +640,32 @@ export default function Pagamento() {
         
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6">
           <Button variant="outline" size="sm" onClick={addLine} className="justify-center" disabled={!temPermissaoPagamento}><Plus className="w-3 h-3 mr-1" /> Adicionar forma</Button>
-          <Button data-testid="pay-finish-btn" onClick={submit} className="bg-[#84A59D] hover:bg-[#6F9189] justify-center" disabled={!temPermissaoPagamento}><CheckCircle2 className="w-4 h-4 mr-1" /> Registrar e Finalizar</Button>
+          <Button data-testid="pay-finish-btn" onClick={submit} className="bg-[#84A59D] hover:bg-[#6F9189] justify-center text-white" disabled={!temPermissaoPagamento}><CheckCircle2 className="w-4 h-4 mr-1" /> Registrar e Finalizar</Button>
         </div>
       </div>
 
-      <div className="bg-white border border-zinc-200 rounded-xl">
-        <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800"><h3 className="font-display text-lg font-medium">Pagamentos anteriores</h3></div>
+      <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800"><h3 className="font-display text-lg font-semibold text-zinc-800 dark:text-zinc-100">Pagamentos anteriores</h3></div>
         {ag.pagamentos.length === 0 ? <div className="p-6 text-center text-sm text-zinc-400">Nenhum pagamento</div> : (
           <>
             {/* Mobile View */}
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-800 sm:hidden">
+            <div className="divide-y divide-zinc-100 dark:divide-zinc-800 sm:hidden bg-white dark:bg-zinc-900">
               {ag.pagamentos.map((p) => (
                 <div key={p.id} className="p-4 flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-400">{fmtDT(p.data_hora)}</span>
-                    <span className="font-semibold text-[#3A4F4A]">{fmtBRL(p.valor)}</span>
+                    <span className="text-xs text-zinc-400 dark:text-zinc-500">{fmtDT(p.data_hora)}</span>
+                    <span className="font-semibold text-[#3A4F4A] dark:text-zinc-200">{fmtBRL(p.valor)}</span>
                   </div>
-                  <div className="text-sm font-medium text-zinc-800">
+                  <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
                     {FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}
                   </div>
                   {p.observacao && (
-                    <div className="text-xs text-zinc-500 italic bg-zinc-50 p-2 rounded-lg mt-1">
+                    <div className="text-xs text-zinc-500 dark:text-zinc-400 italic bg-zinc-50 dark:bg-zinc-950 p-2 rounded-lg mt-1">
                       "{p.observacao}"
                     </div>
                   )}
                   <div className="flex items-center justify-end gap-2 border-t border-zinc-50 dark:border-zinc-800/60 pt-2 mt-1">
-                    <Button size="sm" variant="outline" className="h-8 border-zinc-200 dark:border-zinc-700 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20" onClick={() => startDelete(p.id)}>
+                    <Button size="sm" variant="outline" className="h-8 border-zinc-200 dark:border-zinc-700 text-rose-600 dark:text-rose-450 hover:bg-rose-50 dark:hover:bg-rose-950/20" onClick={() => startDelete(p.id)}>
                       <Trash2 className="w-3.5 h-3.5 mr-1" /> Excluir
                     </Button>
                   </div>
@@ -667,10 +676,10 @@ export default function Pagamento() {
             {/* Desktop View */}
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500"><tr><th className="px-4 py-3 text-left">Data</th><th className="px-4 py-3 text-left">Forma</th><th className="px-4 py-3 text-right">Valor</th><th className="px-4 py-3 text-left">Observação</th><th className="px-4 py-3 text-right">Ações</th></tr></thead>
+                <thead className="bg-zinc-50 dark:bg-zinc-950 text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400"><tr><th className="px-4 py-3 text-left">Data</th><th className="px-4 py-3 text-left">Forma</th><th className="px-4 py-3 text-right">Valor</th><th className="px-4 py-3 text-left">Observação</th><th className="px-4 py-3 text-right">Ações</th></tr></thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                   {ag.pagamentos.map((p) => (
-                    <tr key={p.id}><td className="px-4 py-3 text-zinc-700">{fmtDT(p.data_hora)}</td><td className="px-4 py-3">{FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}</td><td className="px-4 py-3 text-right font-medium">{fmtBRL(p.valor)}</td><td className="px-4 py-3 text-sm text-zinc-600">{p.observacao}</td><td className="px-4 py-3 text-right space-x-2"><Button size="icon" variant="ghost" onClick={() => startDelete(p.id)}><Trash2 className="w-4 h-4 text-rose-500" /></Button></td></tr>
+                    <tr key={p.id} className="hover:bg-zinc-50/20 dark:hover:bg-zinc-800/10"><td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">{fmtDT(p.data_hora)}</td><td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">{FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}</td><td className="px-4 py-3 text-right font-semibold text-zinc-800 dark:text-zinc-200">{fmtBRL(p.valor)}</td><td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">{p.observacao}</td><td className="px-4 py-3 text-right space-x-2"><Button size="icon" variant="ghost" onClick={() => startDelete(p.id)}><Trash2 className="w-4 h-4 text-rose-500" /></Button></td></tr>
                   ))}
                 </tbody>
               </table>

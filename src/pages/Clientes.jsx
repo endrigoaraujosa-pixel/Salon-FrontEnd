@@ -344,7 +344,7 @@ export default function Clientes() {
           </span>
         }
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <Button 
               onClick={() => {
                 setStartDate("");
@@ -353,45 +353,81 @@ export default function Clientes() {
                 setReportOpen(true);
               }}
               variant="outline"
-              className="border-zinc-300 dark:border-zinc-800 font-semibold"
+              className="flex-1 sm:flex-initial border-zinc-300 dark:border-zinc-800 font-semibold h-10 text-sm flex items-center justify-center gap-1.5"
             >
-              <Printer className="w-4 h-4 mr-1.5" /> Emitir PDF
+              <Printer className="w-4 h-4" /> Emitir PDF
             </Button>
 
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setForm(blank); }}>
               <DialogTrigger asChild>
-                <Button data-testid="add-cliente-btn" className="bg-[#84A59D] hover:bg-[#6F9189]"><Plus className="w-4 h-4 mr-1" /> Novo cliente</Button>
+                <Button data-testid="add-cliente-btn" className="flex-1 sm:flex-initial bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold h-10 flex items-center justify-center gap-1.5">
+                  <Plus className="w-4 h-4" /> Novo cliente
+                </Button>
               </DialogTrigger>
               <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
-                <DialogHeader><DialogTitle>{form.id ? "Editar" : "Novo"} cliente</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle className="text-zinc-900 dark:text-zinc-50">{form.id ? "Editar" : "Novo"} cliente</DialogTitle></DialogHeader>
                 <div className="space-y-3">
-                  <div><Label>Nome *</Label><Input data-testid="cliente-nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><Label>Telefone</Label><Input data-testid="cliente-telefone" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} /></div>
-                    <div><Label>Email</Label><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+                  <div>
+                    <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Nome *</Label>
+                    <Input data-testid="cliente-nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} className="h-10 mt-1 dark:bg-zinc-950" />
                   </div>
-                  <div><Label>Data nascimento</Label><Input type="date" value={form.data_nascimento || ""} onChange={(e) => setForm({ ...form, data_nascimento: e.target.value })} /></div>
-                  <div><Label>Endereço</Label><Input value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} /></div>
-                  <div><Label>Observações</Label><Textarea rows={2} value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} /></div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Telefone</Label>
+                      <Input data-testid="cliente-telefone" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} className="h-10 mt-1 dark:bg-zinc-950" />
+                    </div>
+                    <div>
+                      <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Email</Label>
+                      <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="h-10 mt-1 dark:bg-zinc-950" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Data nascimento</Label>
+                    <Input type="date" value={form.data_nascimento || ""} onChange={(e) => setForm({ ...form, data_nascimento: e.target.value })} className="h-10 mt-1 dark:bg-zinc-950" />
+                  </div>
+                  <div>
+                    <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Endereço</Label>
+                    <Input value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} className="h-10 mt-1 dark:bg-zinc-950" />
+                  </div>
+                  <div>
+                    <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Observações</Label>
+                    <Textarea rows={2} value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} className="mt-1 dark:bg-zinc-950" />
+                  </div>
                 </div>
-                <DialogFooter><Button data-testid="save-cliente-btn" onClick={save} className="bg-[#84A59D] hover:bg-[#6F9189]">Salvar</Button></DialogFooter>
+                <DialogFooter className="flex flex-col sm:flex-row gap-2.5 mt-4 pt-4 border-t border-zinc-150 dark:border-zinc-800">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setOpen(false)}
+                    className="w-full sm:w-auto h-10 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 font-semibold"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button 
+                    data-testid="save-cliente-btn" 
+                    onClick={save} 
+                    className="w-full sm:w-auto bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold h-10"
+                  >
+                    Salvar
+                  </Button>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
         } 
       />
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-          <Input data-testid="search-clientes" placeholder="Buscar por nome ou telefone..." value={q} onChange={(e) => setQ(e.target.value)} className="pl-9" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="w-4.5 h-4.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <Input data-testid="search-clientes" placeholder="Buscar por nome ou telefone..." value={q} onChange={(e) => setQ(e.target.value)} className="pl-9 w-full h-10" />
         </div>
         <Button 
           variant="outline" 
           onClick={() => setAuditOpen(true)}
-          className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800"
+          className="flex items-center justify-center gap-1.5 text-sm font-semibold text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 w-full sm:w-auto h-10 shrink-0"
         >
-          <History className="w-3.5 h-3.5" />
+          <History className="w-4 h-4" />
           <span>Excluídos</span>
         </Button>
       </div>
@@ -399,41 +435,112 @@ export default function Clientes() {
       {filtered.length === 0 ? (
         <EmptyState icon={Users} title="Nenhum cliente" hint="Cadastre seu primeiro cliente para começar." />
       ) : (
-        <div className="bg-white border border-zinc-200 rounded-xl overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500">
-              <tr><th className="px-4 py-3 text-left">Nome</th><th className="px-4 py-3 text-left">Telefone</th><th className="px-4 py-3 text-left">Email</th><th className="px-4 py-3"></th></tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {filtered.map((c) => (
-                <tr key={c.id} className="hover:bg-zinc-50/60" data-testid={`cliente-row-${c.id}`}>
-                  <td className="px-4 py-3 font-medium">{c.nome}</td>
-                  <td className="px-4 py-3 text-zinc-600">{c.telefone || "-"}</td>
-                  <td className="px-4 py-3 text-zinc-600">{c.email || "-"}</td>
-                  <td className="px-4 py-3 text-right space-x-1">
-                    <Button size="sm" variant="ghost" onClick={() => nav(`/clientes/${c.id}/historico`)}><History className="w-4 h-4" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => edit(c)} data-testid={`edit-cliente-${c.id}`}><Edit2 className="w-4 h-4" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => del(c.id)} data-testid={`delete-cliente-${c.id}`}><Trash2 className="w-4 h-4 text-rose-500" /></Button>
-                  </td>
+        <>
+          {/* Visualização em Tabela para Desktop */}
+          <div className="hidden sm:block bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-xs">
+            <table className="w-full text-sm">
+              <thead className="bg-zinc-50 dark:bg-zinc-900 text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold">Nome</th>
+                  <th className="px-4 py-3 text-left font-semibold">Telefone</th>
+                  <th className="px-4 py-3 text-left font-semibold">Email</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-700 dark:text-zinc-300">
+                {filtered.map((c) => (
+                  <tr key={c.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors" data-testid={`cliente-row-${c.id}`}>
+                    <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100">{c.nome}</td>
+                    <td className="px-4 py-3 font-mono">{c.telefone || "-"}</td>
+                    <td className="px-4 py-3">{c.email || "-"}</td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => nav(`/clientes/${c.id}/historico`)} title="Histórico" className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><History className="w-4 h-4" /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => edit(c)} data-testid={`edit-cliente-${c.id}`} title="Editar" className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><Edit2 className="w-4 h-4" /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => del(c.id)} data-testid={`delete-cliente-${c.id}`} title="Excluir" className="text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"><Trash2 className="w-4 h-4" /></Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Visualização em Lista de Cards para Mobile */}
+          <div className="block sm:hidden space-y-4">
+            {filtered.map((c) => (
+              <div 
+                key={c.id} 
+                className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4.5 rounded-xl shadow-xs flex flex-col gap-3"
+                data-testid={`cliente-card-${c.id}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-[#EAF0EE] dark:bg-zinc-850 text-[#3A4F4A] dark:text-[#EAF0EE] font-extrabold text-lg flex items-center justify-center shrink-0">
+                    {c.nome?.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-extrabold text-zinc-900 dark:text-zinc-50 text-[18px] sm:text-xl truncate tracking-tight leading-snug">{c.nome}</h4>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 font-semibold mt-0.5">Cliente cadastrado(a)</p>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 text-xs text-zinc-650 dark:text-zinc-400 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-zinc-400 dark:text-zinc-500 w-16 uppercase tracking-wider text-[9px]">Telefone:</span>
+                    <span className="font-mono text-zinc-800 dark:text-zinc-200">{c.telefone || "Não informado"}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-zinc-400 dark:text-zinc-500 w-16 uppercase tracking-wider text-[9px]">Email:</span>
+                    <span className="truncate text-zinc-800 dark:text-zinc-200">{c.email || "Não informado"}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800 mt-1">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => nav(`/clientes/${c.id}/historico`)}
+                    className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+                  >
+                    <History className="w-3.5 h-3.5" /> Histórico
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => edit(c)}
+                    data-testid={`edit-cliente-card-${c.id}`}
+                    className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" /> Editar
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => del(c.id)}
+                    data-testid={`delete-cliente-card-${c.id}`}
+                    className="h-9 px-3 border-zinc-200 dark:border-zinc-700 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center justify-center"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Dialog de confirmação de exclusão */}
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
           <DialogHeader>
-            <DialogTitle>Confirmar exclusão</DialogTitle>
+            <DialogTitle className="text-zinc-900 dark:text-zinc-50">Confirmar exclusão</DialogTitle>
           </DialogHeader>
-          <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
+          <div className="py-4 text-sm text-zinc-650 dark:text-zinc-400">
             Tem certeza que deseja excluir este cliente? Esta ação pode ser desfeita a qualquer momento a partir da tela de "Excluídos".
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>Cancelar</Button>
-            <Button onClick={confirmDelete} className="bg-rose-500 hover:bg-rose-600 text-white">Excluir</Button>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2.5 mt-2 pt-2 border-t border-zinc-150 dark:border-zinc-850">
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)} className="w-full sm:w-auto border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-350">Cancelar</Button>
+            <Button onClick={confirmDelete} className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white font-bold">Excluir</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

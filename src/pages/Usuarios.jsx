@@ -198,32 +198,104 @@ export default function Usuarios() {
       )}
 
       {list.length === 0 ? <EmptyState icon={UsersRound} title="Nenhum usuário" hint="Cadastre usuários para dar acesso ao sistema." /> : (
-        <div className="bg-white border border-zinc-200 rounded-xl overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500">
-              <tr>
-                <th className="px-4 py-3 text-left">Nome</th>
-                <th className="px-4 py-3 text-left">Email</th>
-                <th className="px-4 py-3 text-left">Colaborador Vinculado</th>
-                <th className="px-4 py-3 text-left">Perfil</th>
-                <th className="px-4 py-3 text-left">Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {list.map((u) => (
-                <tr key={u.id} className="hover:bg-zinc-50/60" data-testid={`user-row-${u.id}`}>
-                  <td className="px-4 py-3 font-medium">{u.name} {u.id === me?.id && <span className="text-xs text-zinc-400 ml-1">(você)</span>}</td>
-                  <td className="px-4 py-3 text-zinc-600">{u.email}</td>
-                  <td className="px-4 py-3 text-zinc-700 font-medium">
-                    {colaboradores.find(c => c.id === u.colaborador_id)?.nome || <span className="text-zinc-400 font-normal">—</span>}
-                  </td>
-                  <td className="px-4 py-3">
+        <div className="space-y-4">
+          <div className="hidden md:block bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-x-auto shadow-sm">
+            <table className="w-full text-[15px]">
+              <thead className="bg-zinc-50 dark:bg-zinc-900/50 text-sm uppercase tracking-wider text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
+                <tr>
+                  <th className="px-4 py-3.5 text-left font-semibold">Nome</th>
+                  <th className="px-4 py-3.5 text-left font-semibold">Email</th>
+                  <th className="px-4 py-3.5 text-left font-semibold">Colaborador Vinculado</th>
+                  <th className="px-4 py-3.5 text-left font-semibold">Perfil</th>
+                  <th className="px-4 py-3.5 text-left font-semibold">Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+                {list.map((u) => (
+                  <tr key={u.id} className="hover:bg-zinc-50/60 dark:hover:bg-zinc-900/20" data-testid={`user-row-${u.id}`}>
+                    <td className="px-4 py-3.5 font-semibold text-zinc-900 dark:text-zinc-100">
+                      {u.name} {u.id === me?.id && <span className="text-xs text-zinc-400 dark:text-zinc-550 ml-1 font-normal">(você)</span>}
+                    </td>
+                    <td className="px-4 py-3.5 text-zinc-650 dark:text-zinc-400">{u.email}</td>
+                    <td className="px-4 py-3.5 text-zinc-700 dark:text-zinc-300 font-semibold">
+                      {colaboradores.find(c => c.id === u.colaborador_id)?.nome || <span className="text-zinc-400 dark:text-zinc-600 font-normal">—</span>}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      {(() => {
+                        const p = perfis.find(x => x.id === u.perfil_acesso_id);
+                        if (p) {
+                          return (
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+                              p.id === 'admin-profile-uuid-0000000000000000000'
+                                ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600"
+                                : "bg-blue-50 dark:bg-blue-950/20 text-blue-500"
+                            }`}>
+                              <Shield className="w-3.5 h-3.5" /> {p.nome}
+                            </span>
+                          );
+                        }
+                        return u.role === "admin" ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/20 text-amber-600 text-xs font-bold"><Shield className="w-3.5 h-3.5" /> Administrador</span>
+                        ) : (
+                          <span className="px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-bold">Funcionário</span>
+                        );
+                      })()}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${u.ativo ? "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-450" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400"}`}>{u.ativo ? "Ativo" : "Inativo"}</span>
+                    </td>
+                    <td className="px-4 py-3.5 text-right space-x-1">
+                      <Button size="sm" variant="ghost" onClick={() => edit(u)} data-testid={`edit-user-${u.id}`} className="hover:bg-zinc-100 dark:hover:bg-zinc-800"><Edit2 className="w-4 h-4" /></Button>
+                      {isAdmin && (
+                        <Button size="sm" variant="ghost" onClick={() => del(u.id, u.email)} data-testid={`delete-user-${u.id}`} className="hover:bg-rose-50 dark:hover:bg-rose-950/30"><Trash2 className="w-4 h-4 text-rose-500" /></Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card-Based View */}
+          <div className="grid grid-cols-1 gap-4 md:hidden">
+            {list.map((u) => (
+              <div 
+                key={u.id} 
+                className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4.5 space-y-4 shadow-sm"
+                data-testid={`user-card-${u.id}`}
+              >
+                {/* Header card: Name and Status */}
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h4 className="font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2 flex-wrap">
+                      <span className="text-[17px]">{u.name}</span>
+                      {u.id === me?.id && (
+                        <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-550 dark:text-zinc-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">
+                          você
+                        </span>
+                      )}
+                    </h4>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 break-all font-medium">{u.email}</p>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold shrink-0 ${
+                    u.ativo 
+                      ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450" 
+                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-450"
+                  }`}>
+                    {u.ativo ? "Ativo" : "Inativo"}
+                  </span>
+                </div>
+
+                {/* Perfil & Colaborador Info */}
+                <div className="grid grid-cols-2 gap-4 py-3 border-t border-b border-zinc-100 dark:border-zinc-800/80 text-sm">
+                  <div>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block mb-1.5">Perfil de Acesso</span>
                     {(() => {
                       const p = perfis.find(x => x.id === u.perfil_acesso_id);
                       if (p) {
                         return (
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
                             p.id === 'admin-profile-uuid-0000000000000000000'
                               ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600"
                               : "bg-blue-50 dark:bg-blue-950/20 text-blue-500"
@@ -233,25 +305,52 @@ export default function Usuarios() {
                         );
                       }
                       return u.role === "admin" ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-600 text-xs font-semibold"><Shield className="w-3 h-3" /> Administrador</span>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/20 text-amber-600 text-xs font-bold">
+                          <Shield className="w-3 h-3" /> Administrador
+                        </span>
                       ) : (
-                        <span className="px-2.5 py-0.5 rounded-full bg-zinc-100 text-zinc-700 text-xs font-semibold">Funcionário</span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-bold">
+                          Funcionário
+                        </span>
                       );
                     })()}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.ativo ? "bg-emerald-100 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}>{u.ativo ? "Ativo" : "Inativo"}</span>
-                  </td>
-                  <td className="px-4 py-3 text-right space-x-1">
-                    <Button size="sm" variant="ghost" onClick={() => edit(u)} data-testid={`edit-user-${u.id}`}><Edit2 className="w-4 h-4" /></Button>
-                    {isAdmin && (
-                      <Button size="sm" variant="ghost" onClick={() => del(u.id, u.email)} data-testid={`delete-user-${u.id}`}><Trash2 className="w-4 h-4 text-rose-500" /></Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block mb-1.5">Colaborador</span>
+                    <span className="font-bold text-zinc-800 dark:text-zinc-200">
+                      {colaboradores.find(c => c.id === u.colaborador_id)?.nome || <span className="text-zinc-400 dark:text-zinc-600 font-normal">—</span>}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actions Footer */}
+                <div className="flex items-center justify-end gap-2 pt-1.5">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => edit(u)} 
+                    data-testid={`edit-user-mobile-${u.id}`}
+                    className="h-10 px-4 border-zinc-250 dark:border-zinc-800 text-zinc-750 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center justify-center gap-1.5 text-sm font-semibold rounded-xl"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    <span>Editar</span>
+                  </Button>
+                  {isAdmin && (
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => del(u.id, u.email)} 
+                      data-testid={`delete-user-mobile-${u.id}`}
+                      className="h-10 px-4 border-zinc-250 dark:border-zinc-800 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center justify-center gap-1.5 text-sm font-semibold rounded-xl"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Excluir</span>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
