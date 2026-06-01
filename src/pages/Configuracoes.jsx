@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../components/Page";
 import { Card } from "../components/ui/card";
-import { CreditCard, Users, Sliders, ChevronRight, ShieldCheck, Building } from "lucide-react";
+import { CreditCard, Users, Sliders, ChevronRight, ShieldCheck, Building, MessageCircle } from "lucide-react";
 
 export default function Configuracoes() {
   const navigate = useNavigate();
@@ -43,6 +43,15 @@ export default function Configuracoes() {
       active: true,
       color: "text-indigo-500",
       bgColor: "bg-indigo-50 dark:bg-indigo-950/20"
+    },
+    {
+      title: "WhatsApp",
+      description: "Gerencie a rotina de envio automático de lembretes de agendamento via WhatsApp.",
+      icon: MessageCircle,
+      route: "/configuracoes/whatsapp",
+      active: true,
+      color: "text-emerald-600 dark:text-emerald-450",
+      bgColor: "bg-emerald-50 dark:bg-emerald-950/15"
     },
     {
       title: "Outras Configurações",

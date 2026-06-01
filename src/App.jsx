@@ -30,6 +30,8 @@ import EntradaProdutos from "./pages/EntradaProdutos";
 import Inventario from "./pages/Inventario";
 import Estoque from "./pages/Estoque";
 import ConfiguracoesEmpresa from "./pages/ConfiguracoesEmpresa";
+import ConfiguracoesWhatsApp from "./pages/ConfiguracoesWhatsApp";
+import AgendaWhatsAppHistorico from "./pages/AgendaWhatsAppHistorico";
 
 const Protected = ({ children }) => {
   const { user, loading } = useAuth();
@@ -77,6 +79,8 @@ function App() {
               <Route path="/configuracoes/fornecedores" element={<AdminRoute><ConfiguracoesFornecedores /></AdminRoute>} />
               <Route path="/configuracoes/perfis-acesso" element={<AdminRoute><PerfisAcesso /></AdminRoute>} />
               <Route path="/configuracoes/empresa" element={<AdminRoute><ConfiguracoesEmpresa /></AdminRoute>} />
+              <Route path="/configuracoes/whatsapp" element={<AdminRoute><ConfiguracoesWhatsApp /></AdminRoute>} />
+              <Route path="/agenda/whatsapp-historico" element={<AgendaWhatsAppHistorico />} />
               <Route path="/usuarios" element={<Usuarios />} />
             </Route>
           </Routes>
