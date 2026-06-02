@@ -159,10 +159,12 @@ export default function Comissoes() {
       const totalAtendimentos = relatorioColabId === "todos" && !isFunc && fetchedData.atendimentos_total_count !== undefined
         ? fetchedData.atendimentos_total_count
         : filteredComissoes.reduce((sum, c) => sum + c.atendimentos, 0);
-      const totalInsumos = filteredComissoes.reduce((sum, c) => {
-        const colabInsumos = c.detalhes?.reduce((s, d) => s + (d.custo_produtos || 0), 0) || 0;
-        return sum + colabInsumos;
-      }, 0);
+      const totalInsumos = relatorioColabId === "todos" && !isFunc && fetchedData.custo_insumos_total !== undefined
+        ? fetchedData.custo_insumos_total
+        : filteredComissoes.reduce((sum, c) => {
+            const colabInsumos = c.detalhes?.reduce((s, d) => s + (d.custo_produtos || 0), 0) || 0;
+            return sum + colabInsumos;
+          }, 0);
       const totalFaturamento = relatorioColabId === "todos" && !isFunc
         ? (fetchedData.faturamento_bruto_total || 0)
         : filteredComissoes.reduce((sum, c) => sum + c.total_principal + c.total_auxiliar + (c.total_produtos || 0), 0);
@@ -752,10 +754,15 @@ export default function Comissoes() {
   const totalAtendimentosGeral = data?.atendimentos_total_count !== undefined 
     ? data.atendimentos_total_count 
     : (data?.comissoes?.reduce((sum, c) => sum + c.atendimentos, 0) || 0);
-  const totalInsumosGeral = data?.comissoes?.reduce((sum, c) => {
-    const colabInsumos = c.detalhes?.reduce((s, d) => s + (d.custo_produtos || 0), 0) || 0;
-    return sum + colabInsumos;
-  }, 0) || 0;
+  const totalInsumosGeral = (isFunc || colaboradorFilter !== "todos")
+    ? (data?.comissoes?.reduce((sum, c) => {
+        const colabInsumos = c.detalhes?.reduce((s, d) => s + (d.custo_produtos || 0), 0) || 0;
+        return sum + colabInsumos;
+      }, 0) || 0)
+    : (data?.custo_insumos_total !== undefined ? data.custo_insumos_total : (data?.comissoes?.reduce((sum, c) => {
+        const colabInsumos = c.detalhes?.reduce((s, d) => s + (d.custo_produtos || 0), 0) || 0;
+        return sum + colabInsumos;
+      }, 0) || 0));
   // Faturamento Bruto: usa o valor calculado pelo backend (evita dupla-contagem de atendimentos
   // onde o mesmo colaborador é principal E auxiliar). Para filtro por colaborador específico,
   // soma os valores dos itens do colaborador diretamente.

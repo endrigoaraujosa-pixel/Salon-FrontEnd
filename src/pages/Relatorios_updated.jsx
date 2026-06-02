@@ -100,10 +100,16 @@ export default function Relatorios() {
                 <div className="bg-white border border-zinc-200 rounded-xl p-5">
                   <div className="text-xs uppercase tracking-wider text-zinc-400">Taxas de cartão</div>
                   <div className="font-display text-2xl font-semibold mt-1 text-rose-600">{fmtBRL(dre.taxas_cartao.total)}</div>
-                  <div className="text-xs text-zinc-500 mt-1">
-                    Crédito: {fmtBRL(dre.taxas_cartao.credito)}<br/>
-                    Débito: {fmtBRL(dre.taxas_cartao.debito)}
+                  <div className="text-xs text-zinc-500 mt-1 space-y-0.5">
+                    <div>Crédito: {fmtBRL(dre.taxas_cartao.credito)} {dre.taxas_cartao.credito_dias !== undefined && `(Prazo: ${dre.taxas_cartao.credito_dias}d)`}</div>
+                    <div>Débito: {fmtBRL(dre.taxas_cartao.debito)} {dre.taxas_cartao.debito_dias !== undefined && `(Prazo: ${dre.taxas_cartao.debito_dias}d)`}</div>
                   </div>
+                  {dre.taxas_cartao.pmr !== undefined && (
+                    <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-xs text-zinc-650 flex items-center justify-between font-semibold">
+                      <span>Prazo Médio de Recebimento (PMR)</span>
+                      <span className="text-zinc-850 dark:text-zinc-100 font-bold bg-zinc-50 dark:bg-zinc-950 px-2 py-0.5 border border-zinc-150 dark:border-zinc-800 rounded">{dre.taxas_cartao.pmr} dias</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

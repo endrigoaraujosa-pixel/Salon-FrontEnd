@@ -2,56 +2,46 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../components/Page";
 import { Card } from "../components/ui/card";
-import { CreditCard, Users, Sliders, ChevronRight, ShieldCheck, Building, MessageCircle } from "lucide-react";
+import { CreditCard, Users, Tag, ChevronRight } from "lucide-react";
 
-export default function Configuracoes() {
+export default function Cadastros() {
   const navigate = useNavigate();
 
   const options = [
     {
-      title: "Perfis de Acesso",
-      description: "Gerencie perfis de acesso (Administrador, Funcionário) e configure permissões de menus, ações e visibilidade financeira.",
-      icon: ShieldCheck,
-      route: "/configuracoes/perfis-acesso",
+      title: "Fornecedores",
+      description: "Gerencie a network de parceiros e fornecedores de produtos e serviços para suas compras e custos.",
+      icon: Users,
+      route: "/cadastros/fornecedores",
       active: true,
-      color: "text-blue-500",
-      bgColor: "bg-blue-55 dark:bg-blue-950/20"
+      color: "text-[#84A59D]",
+      bgColor: "bg-[#EAF0EE] dark:bg-[#3A4F4A]/20"
     },
     {
-      title: "Empresas",
-      description: "Cadastre e edite as informações de sua empresa (Nome Fantasia, CNPJ, Inscrição Estadual, etc.).",
-      icon: Building,
-      route: "/configuracoes/empresa",
+      title: "Tipos de Pagamento",
+      description: "Gerencie as formas de recebimento aceitas e configure as taxas de operadoras para cartões.",
+      icon: CreditCard,
+      route: "/cadastros/tipo-pagamento",
       active: true,
       color: "text-indigo-500",
       bgColor: "bg-indigo-50 dark:bg-indigo-950/20"
     },
     {
-      title: "WhatsApp",
-      description: "Gerencie a rotina de envio automático de lembretes de agendamento via WhatsApp.",
-      icon: MessageCircle,
-      route: "/configuracoes/whatsapp",
+      title: "Descontos",
+      description: "Cadastre e configure cupons e regras de descontos promocionais para vendas e agendamentos.",
+      icon: Tag,
+      route: "/cadastros/descontos",
       active: true,
-      color: "text-emerald-600 dark:text-emerald-450",
-      bgColor: "bg-emerald-50 dark:bg-emerald-950/15"
-    },
-    {
-      title: "Outras Configurações",
-      description: "Novas opções de customização e parâmetros do sistema serão disponibilizadas em breve.",
-      icon: Sliders,
-      route: null,
-      active: false,
-      color: "text-zinc-400 dark:text-zinc-500",
-      bgColor: "bg-zinc-100 dark:bg-zinc-900"
+      color: "text-amber-500",
+      bgColor: "bg-amber-50 dark:bg-amber-950/20"
     }
   ];
-
 
   return (
     <div className="p-6 lg:p-8 fade-in min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200">
       <PageHeader 
-        overline="Painel de Controle" 
-        title="Configurações do Sistema" 
+        overline="Cadastros do Sistema" 
+        title="Painel de Cadastros" 
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
@@ -85,7 +75,7 @@ export default function Configuracoes() {
 
             {opt.active ? (
               <div className="mt-4 text-xs font-semibold text-[#84A59D] hover:text-[#6F9189] flex items-center gap-1">
-                Acessar painel &rarr;
+                Acessar cadastro &rarr;
               </div>
             ) : (
               <div className="mt-4 text-xs font-semibold text-zinc-400 dark:text-zinc-500">

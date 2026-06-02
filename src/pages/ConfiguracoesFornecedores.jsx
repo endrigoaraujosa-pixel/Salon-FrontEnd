@@ -151,14 +151,14 @@ export default function ConfiguracoesFornecedores() {
       {/* Back Button */}
       <Button 
         variant="ghost" 
-        onClick={() => navigate("/configuracoes")} 
+        onClick={() => navigate("/cadastros")} 
         className="mb-4 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
       >
-        <ArrowLeft className="w-4 h-4 mr-1" /> Voltar para Configurações
+        <ArrowLeft className="w-4 h-4 mr-1" /> Voltar para Cadastros
       </Button>
 
       <PageHeader 
-        overline="Configurações" 
+        overline="Cadastros" 
         title="Cadastro de Fornecedores" 
         action={
           <Button 

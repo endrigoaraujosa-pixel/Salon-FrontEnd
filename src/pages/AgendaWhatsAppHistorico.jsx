@@ -18,6 +18,7 @@ export default function AgendaWhatsAppHistorico() {
 
   // Filters
   const [cliente, setCliente] = useState("");
+  const [numero, setNumero] = useState("");
   const [status, setStatus] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -43,6 +44,7 @@ export default function AgendaWhatsAppHistorico() {
     try {
       const params = {};
       if (cliente) params.cliente = cliente;
+      if (numero) params.numero = numero;
       if (status) params.status = status;
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
@@ -73,6 +75,7 @@ export default function AgendaWhatsAppHistorico() {
 
   const handleClearFilters = () => {
     setCliente("");
+    setNumero("");
     setStatus("");
     setStartDate("");
     setEndDate("");
@@ -197,8 +200,22 @@ export default function AgendaWhatsAppHistorico() {
       {/* Filters form */}
       <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm mt-6 mb-6">
         <form onSubmit={handleSearch} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             
+            {/* Service Number input */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Nº do Serviço</label>
+              <div className="relative">
+                <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-3" />
+                <Input 
+                  placeholder="Número..." 
+                  value={numero}
+                  onChange={(e) => setNumero(e.target.value)}
+                  className="pl-9 h-10 bg-zinc-50 border-zinc-200 dark:bg-zinc-950 dark:border-zinc-800"
+                />
+              </div>
+            </div>
+
             {/* Client input */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Cliente</label>
@@ -290,7 +307,8 @@ export default function AgendaWhatsAppHistorico() {
             <table className="w-full text-left border-collapse text-sm">
               <thead>
                 <tr className="bg-zinc-50 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 text-xs font-bold uppercase tracking-wider">
-                  <th className="p-4 pl-6">Cliente</th>
+                  <th className="p-4 pl-6 w-24">Nº Serviço</th>
+                  <th className="p-4">Cliente</th>
                   <th className="p-4">Tipo</th>
                   <th className="p-4">Data Agendamento</th>
                   <th className="p-4">Data Programada</th>
@@ -302,7 +320,10 @@ export default function AgendaWhatsAppHistorico() {
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                 {history.map((log) => (
                   <tr key={log.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20 transition-colors">
-                    <td className="p-4 pl-6 font-semibold text-zinc-900 dark:text-zinc-100">
+                    <td className="p-4 pl-6 font-mono text-xs font-bold text-zinc-500 dark:text-zinc-400">
+                      {log.agendamento_numero ? `#${String(log.agendamento_numero).padStart(6, '0')}` : '—'}
+                    </td>
+                    <td className="p-4 font-semibold text-zinc-900 dark:text-zinc-100">
                       <div>{log.cliente_nome}</div>
                       {log.cliente_telefone && (
                         <div className="text-xs text-zinc-500 dark:text-zinc-400 font-normal mt-0.5">{log.cliente_telefone}</div>
@@ -391,6 +412,16 @@ export default function AgendaWhatsAppHistorico() {
               
               {/* Message metadata */}
               <div className="grid grid-cols-2 gap-4 text-xs bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                <div>
+                  <span className="text-zinc-500 block">Nº do Serviço:</span>
+                  <span className="font-bold font-mono text-zinc-800 dark:text-zinc-200">
+                    {selectedLog.agendamento_numero ? `#${String(selectedLog.agendamento_numero).padStart(6, '0')}` : '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-zinc-500 block mb-1">Status:</span>
+                  {getStatusBadge(selectedLog.status)}
+                </div>
                 <div>
                   <span className="text-zinc-500 block">Cliente:</span>
                   <span className="font-bold text-zinc-800 dark:text-zinc-200">{selectedLog.cliente_nome}</span>

@@ -4,8 +4,10 @@ import { useAuth } from "../auth";
 import { 
   LayoutDashboard, Calendar, Users, Scissors, Package, UserCog, 
   LogOut, ShoppingBag, Wallet, BarChart3, UsersRound, DollarSign, 
-  TrendingUp, Menu, X, Tags, ClipboardList, MessageSquare 
+  TrendingUp, Menu, X, Tags, ClipboardList, MessageSquare,
+  FolderOpen
 } from "lucide-react";
+
 import { Button } from "../components/ui/button";
 import ThemeToggle from "../components/ThemeToggle";
 import http from "../api";
@@ -25,9 +27,11 @@ const nav = [
   { to: "/outras-receitas", label: "Outras Receitas", icon: TrendingUp, permKey: "receitas" },
   { to: "/comissoes", label: "Comissões", icon: Wallet, permKey: "comissoes" },
   { to: "/relatorios", label: "Relatórios", icon: BarChart3, permKey: "relatorios" },
+  { to: "/cadastros", label: "Cadastros", icon: FolderOpen, permKey: "cadastros" },
   { to: "/configuracoes", label: "Configurações", icon: UserCog, permKey: "configuracoes" },
   { to: "/usuarios", label: "Usuários", icon: UsersRound, permKey: "usuarios" },
 ];
+
 
 export default function Layout() {
   const { user, logout } = useAuth();
@@ -38,6 +42,7 @@ export default function Layout() {
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
     return localStorage.getItem("sidebar_collapsed") === "true";
   });
+
 
   const loadEmpresa = () => {
     http.get("/configuracoes/empresa")
@@ -123,6 +128,7 @@ export default function Layout() {
       </NavLink>
     ));
   };
+
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground">

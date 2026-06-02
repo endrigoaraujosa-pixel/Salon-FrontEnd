@@ -13,7 +13,7 @@ import {
   ArrowLeft, Check, CheckCircle2, XCircle, LayoutDashboard,
   Calendar, Users, Scissors, UserCheck, Package, 
   Layers, ShoppingCart, TrendingDown, DollarSign, 
-  Percent, BarChart3, Settings, UserPlus
+  Percent, BarChart3, Settings, UserPlus, FolderOpen
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -32,7 +32,8 @@ const defaultPermissions = {
     comissoes: false,
     relatorios: false,
     configuracoes: false,
-    usuarios: false
+    usuarios: false,
+    cadastros: false
   },
   acoes: {
     criar: false,
@@ -56,6 +57,7 @@ const menuMetadata = [
   { key: "receitas", label: "Outras Receitas", icon: DollarSign },
   { key: "comissoes", label: "Comissões", icon: Percent },
   { key: "relatorios", label: "Relatórios & DRE", icon: BarChart3 },
+  { key: "cadastros", label: "Painel de Cadastros", icon: FolderOpen },
   { key: "configuracoes", label: "Configurações Gerais", icon: Settings },
   { key: "usuarios", label: "Usuários do Sistema", icon: UserPlus }
 ];

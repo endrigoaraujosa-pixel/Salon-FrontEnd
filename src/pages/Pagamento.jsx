@@ -44,6 +44,14 @@ export default function Pagamento() {
   const [profsDialogOpen, setProfsDialogOpen] = useState(false);
   const [missingProfs, setMissingProfs] = useState([]);
 
+  // Novos estados para Descontos
+  const [descontos, setDescontos] = useState([]);
+  const [descontoId, setDescontoId] = useState("");
+  const [autorizarDialogOpen, setAutorizarDialogOpen] = useState(false);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [loadingDesconto, setLoadingDesconto] = useState(false);
+
   const getColabName = (colabId) => {
     if (!colabId) return "";
     const colab = colaboradores.find(c => c.id === colabId);
@@ -67,6 +75,9 @@ export default function Pagamento() {
   useEffect(() => { 
     load(); 
     http.get("/colaboradores").then((r) => setColaboradores(r.data)).catch(() => {});
+    http.get("/descontos")
+      .then(r => setDescontos(r.data.filter(d => d.ativo)))
+      .catch(() => {});
   }, [id]);
 
   const toggleSaleSelection = (saleId) => {
@@ -79,6 +90,88 @@ export default function Pagamento() {
   const saldo = saldoAgendamento + totalSalesSelected;
   const totalInformado = novos.filter((p) => Number(p.valor) > 0).reduce((sum, p) => sum + Number(p.valor), 0);
   const trocoTotal = totalInformado > saldo && novos.some(p => p.forma_pagamento === "dinheiro") ? totalInformado - saldo : 0;
+
+  let descontoMeta = ag?.desconto_aplicado;
+  if (typeof descontoMeta === 'string') {
+    try {
+      descontoMeta = JSON.parse(descontoMeta);
+    } catch (e) {}
+  }
+  const temDescontoAplicado = !!descontoMeta;
+  const valorOriginalAgendamento = temDescontoAplicado ? (ag.valor_total + (descontoMeta?.total_descontado || 0)) : ag.valor_total;
+
+  const isDescontoAplicavel = (desconto) => {
+    let vinculados = null;
+    if (desconto.itens_vinculados) {
+      try {
+        vinculados = typeof desconto.itens_vinculados === "string"
+          ? JSON.parse(desconto.itens_vinculados)
+          : desconto.itens_vinculados;
+      } catch (e) {}
+    }
+
+    if (!vinculados || ((!vinculados.services || vinculados.services.length === 0) && (!vinculados.products || vinculados.products.length === 0))) {
+      return true;
+    }
+
+    const itensAgendamento = Array.isArray(ag.itens) ? ag.itens : [];
+    return itensAgendamento.some(item => vinculados.services?.includes(item.servico_id));
+  };
+
+  const applyDiscountOnBackend = async (dId, authData = null) => {
+    setLoadingDesconto(true);
+    try {
+      if (authData) {
+        await http.post("/descontos/validar", {
+          id: dId,
+          email: authData.email,
+          password: authData.password
+        });
+      }
+
+      await http.post(`/agendamentos/${id}/aplicar-desconto`, { descontoId: dId });
+      toast.success(dId ? "Desconto aplicado com sucesso!" : "Desconto removido com sucesso!");
+      setDescontoId("");
+      setAutorizarDialogOpen(false);
+      load();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Erro ao aplicar desconto.");
+    } finally {
+      setLoadingDesconto(false);
+    }
+  };
+
+  const handleSelectDesconto = async (dId) => {
+    if (!dId) return;
+    const desc = descontos.find(d => d.id === dId);
+    if (!desc) return;
+
+    if (!isDescontoAplicavel(desc)) {
+      toast.error("Este desconto não é válido para os serviços deste agendamento.");
+      return;
+    }
+
+    // Se já existe desconto aplicado, pedir confirmação antes de substituir
+    if (temDescontoAplicado) {
+      const confirmar = window.confirm(
+        `Já existe o desconto "${descontoMeta?.codigo}" aplicado.\n\nDeseja substituir pelo desconto "${desc.codigo}"?`
+      );
+      if (!confirmar) return;
+    }
+
+    if (desc.requer_autorizacao) {
+      setDescontoId(dId);
+      setAuthEmail("");
+      setAuthPassword("");
+      setAutorizarDialogOpen(true);
+    } else {
+      await applyDiscountOnBackend(dId);
+    }
+  };
+
+  const handleRemoveDesconto = async () => {
+    await applyDiscountOnBackend(null);
+  };
 
   const addLine = () => setNovos([...novos, { valor: "", forma_pagamento: "dinheiro", observacao: "" }]);
   const removeLine = (i) => setNovos(novos.filter((_, x) => x !== i));
@@ -484,20 +577,59 @@ export default function Pagamento() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 my-6">
-        <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-5">
-          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Serviço (A Pagar)</div>
-          <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-zinc-800 dark:text-zinc-100">{fmtBRL(saldoAgendamento)}</div>
+      {/* Resumo Financeiro */}
+      {temDescontoAplicado ? (
+        <div className="my-6 space-y-3">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 items-center">
+              <div className="text-center sm:text-left">
+                <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-zinc-400 dark:text-zinc-500">Valor Original</div>
+                <div className="font-display text-xl sm:text-2xl font-black mt-1 text-zinc-500 dark:text-zinc-400 line-through">{fmtBRL(valorOriginalAgendamento)}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-rose-500 dark:text-rose-400">Desconto Aplicado</div>
+                <div className="font-display text-xl sm:text-2xl font-black mt-1 text-rose-600 dark:text-rose-400">- {fmtBRL(descontoMeta?.total_descontado)}</div>
+                <div className="text-[10px] text-rose-500/80 dark:text-rose-400/60 font-semibold mt-0.5">
+                  {descontoMeta?.codigo} ({descontoMeta?.tipo === 'porcentagem' ? `${descontoMeta?.valor_desconto}%` : fmtBRL(descontoMeta?.valor_desconto)})
+                </div>
+              </div>
+              <div className="text-center sm:text-right">
+                <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-emerald-600 dark:text-emerald-400">Valor a Pagar</div>
+                <div className="font-display text-2xl sm:text-3xl font-black mt-1 text-emerald-700 dark:text-emerald-400">{fmtBRL(ag.valor_total)}</div>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 shadow-sm">
+              <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Serviço (A Pagar)</div>
+              <div className="font-display text-xl sm:text-2xl font-semibold mt-1 text-zinc-800 dark:text-zinc-100">{fmtBRL(saldoAgendamento)}</div>
+            </div>
+            <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 shadow-sm">
+              <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Vendas Diretas</div>
+              <div className="font-display text-xl sm:text-2xl font-semibold mt-1 text-[#84A59D] dark:text-emerald-400">{fmtBRL(totalSalesSelected)}</div>
+            </div>
+            <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 shadow-sm">
+              <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Total Unificado</div>
+              <div className="font-display text-xl sm:text-2xl font-semibold mt-1 text-[#84A59D] dark:text-emerald-400">{fmtBRL(saldo)}</div>
+            </div>
+          </div>
         </div>
-        <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-5">
-          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Vendas Diretas</div>
-          <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-[#84A59D] dark:text-emerald-400">{fmtBRL(totalSalesSelected)}</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 my-6">
+          <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-5">
+            <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Serviço (A Pagar)</div>
+            <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-zinc-800 dark:text-zinc-100">{fmtBRL(saldoAgendamento)}</div>
+          </div>
+          <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-5">
+            <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Vendas Diretas</div>
+            <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-[#84A59D] dark:text-emerald-400">{fmtBRL(totalSalesSelected)}</div>
+          </div>
+          <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-5">
+            <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Total Unificado</div>
+            <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-[#84A59D] dark:text-emerald-400">{fmtBRL(saldo)}</div>
+          </div>
         </div>
-        <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-5">
-          <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Total Unificado</div>
-          <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-[#84A59D] dark:text-emerald-400">{fmtBRL(saldo)}</div>
-        </div>
-      </div>
+      )}
 
       {pendingSales.length > 0 && (
         <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-6 mb-6 fade-in">
@@ -569,6 +701,136 @@ export default function Pagamento() {
           <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
             <span className="text-xs font-semibold text-zinc-550">Subtotal das Vendas Diretas:</span>
             <span className="text-sm font-bold text-[#84A59D] dark:text-emerald-400">{fmtBRL(totalSalesSelected)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Seção de Descontos - info sempre visível, seletor apenas sem pagamentos */}
+      {temDescontoAplicado ? (
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 sm:p-6 mb-6 shadow-sm">
+          <h3 className="font-display text-base font-bold mb-3 text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
+            🏷️ Desconto Aplicado
+          </h3>
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-lg shrink-0">
+                  🏷️
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-emerald-800 dark:text-emerald-300">
+                    {descontoMeta?.codigo || "Desconto aplicado"}
+                    <span className="text-xs font-normal ml-1.5 text-emerald-600 dark:text-emerald-400">
+                      ({descontoMeta?.tipo === 'porcentagem' 
+                        ? `${descontoMeta?.valor_desconto}%` 
+                        : fmtBRL(descontoMeta?.valor_desconto)})
+                    </span>
+                  </div>
+                  {descontoMeta?.descricao && (
+                    <div className="text-xs text-emerald-700/70 dark:text-emerald-400/70 mt-0.5">{descontoMeta.descricao}</div>
+                  )}
+                  <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    Total descontado: <strong>{fmtBRL(descontoMeta?.total_descontado)}</strong>
+                    {descontoMeta?.incide_comissao === false && (
+                      <span className="ml-2 text-[10px] bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full">Não incide na comissão</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {ag.pagamentos?.length === 0 && (
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  onClick={handleRemoveDesconto}
+                  disabled={loadingDesconto}
+                  className="shrink-0"
+                >
+                  {loadingDesconto ? "Processando..." : "Remover"}
+                </Button>
+              )}
+            </div>
+            
+            {/* Detalhamento por serviço */}
+            <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-zinc-50 dark:bg-zinc-900 text-xs uppercase text-zinc-500 dark:text-zinc-400">
+                  <tr>
+                    <th className="px-4 py-2 text-left">Serviço</th>
+                    <th className="px-4 py-2 text-right">Original</th>
+                    <th className="px-4 py-2 text-right">Desconto</th>
+                    <th className="px-4 py-2 text-right">Final</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                  {ag.itens?.map((item, i) => (
+                    <tr key={i} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30">
+                      <td className="px-4 py-2 font-medium text-zinc-800 dark:text-zinc-200">{item.nome || "Serviço"}</td>
+                      <td className="px-4 py-2 text-right text-zinc-500 dark:text-zinc-400">
+                        {item.valor_original !== undefined && item.valor_original !== item.valor
+                          ? <span className="line-through">{fmtBRL(item.valor_original)}</span>
+                          : fmtBRL(item.valor)}
+                      </td>
+                      <td className="px-4 py-2 text-right text-rose-600 dark:text-rose-400 font-semibold">
+                        {item.valor_original !== undefined && item.valor_original !== item.valor
+                          ? `- ${fmtBRL(item.valor_original - item.valor)}` 
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-2 text-right font-bold text-zinc-900 dark:text-zinc-100">{fmtBRL(item.valor)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Trocar por outro desconto - só sem pagamentos */}
+            {ag.pagamentos?.length === 0 && (
+              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                <Label className="text-xs text-zinc-500 dark:text-zinc-400">Substituir por outro desconto:</Label>
+                <div className="flex gap-2 mt-1">
+                  <Select onValueChange={handleSelectDesconto} disabled={loadingDesconto}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione outro desconto..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {descontos.filter(d => isDescontoAplicavel(d) && d.id !== descontoMeta?.desconto_id).map(d => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.codigo} - {d.descricao || ""} ({d.tipo === 'porcentagem' ? `${d.valor}%` : fmtBRL(d.valor)}) {d.requer_autorizacao ? "🔒" : ""}
+                        </SelectItem>
+                      ))}
+                      {descontos.filter(d => isDescontoAplicavel(d) && d.id !== descontoMeta?.desconto_id).length === 0 && (
+                        <SelectItem disabled value="none">Nenhum outro desconto disponível</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : ag.pagamentos?.length === 0 && (
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 sm:p-6 mb-6 shadow-sm">
+          <h3 className="font-display text-base font-bold mb-3 text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
+            🏷️ Desconto
+          </h3>
+          <div className="space-y-2">
+            <Label className="text-xs text-zinc-500">Selecione um desconto para aplicar a este agendamento:</Label>
+            <div className="flex gap-2">
+              <Select onValueChange={handleSelectDesconto} disabled={loadingDesconto}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Selecione um desconto..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {descontos.filter(isDescontoAplicavel).map(d => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.codigo} - {d.descricao || ""} ({d.tipo === 'porcentagem' ? `${d.valor}%` : fmtBRL(d.valor)}) {d.requer_autorizacao ? "🔒" : ""}
+                    </SelectItem>
+                  ))}
+                  {descontos.filter(isDescontoAplicavel).length === 0 && (
+                    <SelectItem disabled value="none">Nenhum desconto disponível</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       )}
@@ -828,6 +1090,48 @@ export default function Pagamento() {
               setAutoPayConfirmOpen(false);
               await submit(true);
             }} className="bg-[#84A59D] hover:bg-[#6F9189] text-white">Confirmar Pagamento</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de autorização de desconto */}
+      <Dialog open={autorizarDialogOpen} onOpenChange={(open) => { setAutorizarDialogOpen(open); if (!open) setDescontoId(""); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Autorização de Desconto Restrito</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-xs text-zinc-500">Este desconto exige autorização de um usuário com permissões administrativas ou previamente autorizado.</p>
+            <div>
+              <Label htmlFor="auth-email">Usuário (E-mail)</Label>
+              <Input
+                id="auth-email"
+                type="email"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                placeholder="email@exemplo.com"
+              />
+            </div>
+            <div>
+              <Label htmlFor="auth-password">Senha</Label>
+              <Input
+                id="auth-password"
+                type="password"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                placeholder="******"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setAutorizarDialogOpen(false); setDescontoId(""); }} disabled={loadingDesconto}>Cancelar</Button>
+            <Button 
+              onClick={() => applyDiscountOnBackend(descontoId, { email: authEmail, password: authPassword })} 
+              className="bg-[#84A59D] hover:bg-[#6F9189]"
+              disabled={loadingDesconto || !authEmail || !authPassword}
+            >
+              {loadingDesconto ? "Autorizando..." : "Autorizar & Aplicar"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
