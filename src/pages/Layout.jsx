@@ -4,8 +4,10 @@ import { useAuth } from "../auth";
 import { 
   LayoutDashboard, Calendar, Users, Scissors, Package, UserCog, 
   LogOut, ShoppingBag, Wallet, BarChart3, UsersRound, DollarSign, 
-  TrendingUp, Menu, X, Tags, ClipboardList 
+  TrendingUp, Menu, X, Tags, ClipboardList, MessageSquare,
+  FolderOpen
 } from "lucide-react";
+
 import { Button } from "../components/ui/button";
 import ThemeToggle from "../components/ThemeToggle";
 import http from "../api";
@@ -13,6 +15,7 @@ import http from "../api";
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true, permKey: "dashboard" },
   { to: "/agenda", label: "Agenda", icon: Calendar, permKey: "agenda" },
+  { to: "/agenda/whatsapp-historico", label: "Histórico WhatsApp", icon: MessageSquare, permKey: "agenda" },
   { to: "/clientes", label: "Clientes", icon: Users, permKey: "clientes" },
   { to: "/colaboradores", label: "Colaboradores", icon: UserCog, permKey: "colaboradores" },
   { to: "/servicos", label: "Serviços", icon: Scissors, permKey: "servicos" },
@@ -24,18 +27,22 @@ const nav = [
   { to: "/outras-receitas", label: "Outras Receitas", icon: TrendingUp, permKey: "receitas" },
   { to: "/comissoes", label: "Comissões", icon: Wallet, permKey: "comissoes" },
   { to: "/relatorios", label: "Relatórios", icon: BarChart3, permKey: "relatorios" },
+  { to: "/cadastros", label: "Cadastros", icon: FolderOpen, permKey: "cadastros" },
   { to: "/configuracoes", label: "Configurações", icon: UserCog, permKey: "configuracoes" },
   { to: "/usuarios", label: "Usuários", icon: UsersRound, permKey: "usuarios" },
 ];
+
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [nomeFantasia, setNomeFantasia] = React.useState("Salon Studio");
+  const [whatsappAtivo, setWhatsappAtivo] = React.useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
     return localStorage.getItem("sidebar_collapsed") === "true";
   });
+
 
   const loadEmpresa = () => {
     http.get("/configuracoes/empresa")
@@ -51,13 +58,28 @@ export default function Layout() {
       });
   };
 
+  const loadWhatsappConfig = () => {
+    http.get("/configuracoes/whatsapp")
+      .then((res) => {
+        if (res.data) {
+          setWhatsappAtivo(res.data.ativo === 1);
+        }
+      })
+      .catch((err) => {
+        console.error("Erro ao obter config whatsapp:", err);
+      });
+  };
+
   React.useEffect(() => {
     loadEmpresa();
+    loadWhatsappConfig();
 
     // Listen to updates
     window.addEventListener("empresa_updated", loadEmpresa);
+    window.addEventListener("whatsapp_config_updated", loadWhatsappConfig);
     return () => {
       window.removeEventListener("empresa_updated", loadEmpresa);
+      window.removeEventListener("whatsapp_config_updated", loadWhatsappConfig);
     };
   }, []);
 
@@ -76,6 +98,11 @@ export default function Layout() {
 
   const renderNavItems = (isMobile = false) => {
     return nav.filter((n) => {
+      // Se for o histórico do WhatsApp e o serviço estiver inativo, oculta
+      if (n.to === "/agenda/whatsapp-historico" && !whatsappAtivo) {
+        return false;
+      }
+
       if (user?.role === "admin") return true;
       const perfil = user?.perfil;
       if (!perfil || !perfil.permissoes || !perfil.permissoes.menus) return false;
@@ -101,6 +128,7 @@ export default function Layout() {
       </NavLink>
     ));
   };
+
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground">

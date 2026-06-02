@@ -30,6 +30,13 @@ import EntradaProdutos from "./pages/EntradaProdutos";
 import Inventario from "./pages/Inventario";
 import Estoque from "./pages/Estoque";
 import ConfiguracoesEmpresa from "./pages/ConfiguracoesEmpresa";
+import ConfiguracoesWhatsApp from "./pages/ConfiguracoesWhatsApp";
+import AgendaWhatsAppHistorico from "./pages/AgendaWhatsAppHistorico";
+import CadastroTipoPagamento from "./pages/CadastroTipoPagamento";
+import CadastroDescontos from "./pages/CadastroDescontos";
+import Cadastros from "./pages/Cadastros";
+
+
 
 const Protected = ({ children }) => {
   const { user, loading } = useAuth();
@@ -42,6 +49,18 @@ const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Carregando...</div>;
   if (!user || user.role !== "admin") return <Navigate to="/" replace />;
+  return children;
+};
+
+const PermissionRoute = ({ children, permKey }) => {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Carregando...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === "admin") return children;
+  const perfil = user.perfil;
+  if (!perfil || !perfil.permissoes || !perfil.permissoes.menus || !perfil.permissoes.menus[permKey]) {
+    return <Navigate to="/" replace />;
+  }
   return children;
 };
 
@@ -77,6 +96,12 @@ function App() {
               <Route path="/configuracoes/fornecedores" element={<AdminRoute><ConfiguracoesFornecedores /></AdminRoute>} />
               <Route path="/configuracoes/perfis-acesso" element={<AdminRoute><PerfisAcesso /></AdminRoute>} />
               <Route path="/configuracoes/empresa" element={<AdminRoute><ConfiguracoesEmpresa /></AdminRoute>} />
+              <Route path="/configuracoes/whatsapp" element={<AdminRoute><ConfiguracoesWhatsApp /></AdminRoute>} />
+              <Route path="/cadastros" element={<PermissionRoute permKey="cadastros"><Cadastros /></PermissionRoute>} />
+              <Route path="/cadastros/fornecedores" element={<PermissionRoute permKey="cadastros"><ConfiguracoesFornecedores /></PermissionRoute>} />
+              <Route path="/cadastros/tipo-pagamento" element={<PermissionRoute permKey="cadastros"><CadastroTipoPagamento /></PermissionRoute>} />
+              <Route path="/cadastros/descontos" element={<PermissionRoute permKey="cadastros"><CadastroDescontos /></PermissionRoute>} />
+              <Route path="/agenda/whatsapp-historico" element={<AgendaWhatsAppHistorico />} />
               <Route path="/usuarios" element={<Usuarios />} />
             </Route>
           </Routes>
