@@ -56,7 +56,7 @@ export default function VendasDiretas() {
   const [confirmRemoveIdx, setConfirmRemoveIdx] = useState(null);
   const [editingQtdIdx, setEditingQtdIdx] = useState(null);
   const [editingQtdVal, setEditingQtdVal] = useState("");
-  const [form, setForm] = useState({ produto_id: "", quantidade: 1, colaborador_id: "", cliente_id: "" });
+  const [form, setForm] = useState({ produto_id: "", quantidade: 1, colaborador_id: "", cliente_id: "", data_venda: getTodayStr() });
   const [startDate, setStartDate] = useState(getTodayStr());
   const [endDate, setEndDate] = useState(getTodayStr());
   const [filterProdutoId, setFilterProdutoId] = useState("all");
@@ -109,7 +109,7 @@ export default function VendasDiretas() {
       setNovaVendaItens([]);
       setSelectedAddCategory("all");
       setFromAgenda(false);
-      setForm({ produto_id: "", quantidade: 1, colaborador_id: "", cliente_id: "" });
+      setForm({ produto_id: "", quantidade: 1, colaborador_id: "", cliente_id: "", data_venda: getTodayStr() });
       // Se veio da agenda e fechou o modal sem salvar, volta para a agenda
       if (wasFromAgenda) {
         nav("/agenda");
@@ -131,9 +131,17 @@ export default function VendasDiretas() {
       toast.error("Informe o profissional responsável pela venda.");
       return;
     }
+    if (form.data_venda) {
+      const today = getTodayStr();
+      if (form.data_venda > today) {
+        toast.error("A data da venda não pode ser uma data futura.");
+        return;
+      }
+    }
     try {
       const payload = {
         colaborador_id: form.colaborador_id,
+        data_venda: form.data_venda,
         itens: novaVendaItens.map(item => ({
           produto_id: item.produto_id,
           quantidade: Number(item.quantidade)
@@ -481,7 +489,7 @@ export default function VendasDiretas() {
               </div>
 
               {/* Vendedor & Cliente select */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-white dark:bg-zinc-900 p-5 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 bg-white dark:bg-zinc-900 p-5 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
                 <div className="space-y-2">
                   <Label className="text-sm text-zinc-600 dark:text-zinc-300 font-bold block tracking-wide">Responsável pela Venda *</Label>
                   <SearchableSelect
@@ -518,6 +526,16 @@ export default function VendasDiretas() {
                       onValueChange={(v) => setForm({ ...form, cliente_id: v })}
                     />
                   )}
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm text-zinc-600 dark:text-zinc-300 font-bold block tracking-wide">Data da Venda *</Label>
+                  <Input
+                    type="date"
+                    max={getTodayStr()}
+                    value={form.data_venda || ""}
+                    onChange={(e) => setForm({ ...form, data_venda: e.target.value })}
+                    className="h-11 border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 text-sm font-semibold focus:ring-2 focus:ring-[#84A59D]"
+                  />
                 </div>
               </div>
 
