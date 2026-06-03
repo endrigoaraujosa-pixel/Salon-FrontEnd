@@ -8,7 +8,7 @@ import { Textarea } from "../components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import StatusBadge, { STATUS_LABELS } from "../components/StatusBadge";
-import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle, ShoppingCart } from "lucide-react";
+import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle, ShoppingCart, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import AgendaTimeline from "../components/AgendaTimeline";
@@ -41,6 +41,49 @@ const toDatetimeLocalInput = (dtStr) => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
+const AgendaCardSkeleton = () => (
+  <div className="agenda-card animate-pulse border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 rounded-xl flex items-center gap-4">
+    <div className="agenda-time flex flex-col items-center justify-center min-w-[64px] space-y-1">
+      <div className="h-6 w-10 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+      <div className="h-3.5 w-12 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+    </div>
+    <div className="agenda-content flex-1 space-y-2">
+      <div className="h-5 w-40 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+      <div className="h-4 w-60 bg-zinc-150 dark:bg-zinc-800/80 rounded"></div>
+      <div className="h-3 w-32 bg-zinc-100 dark:bg-zinc-900 rounded"></div>
+    </div>
+    <div className="agenda-price text-right min-w-[120px] space-y-2">
+      <div className="h-5.5 w-16 bg-zinc-200 dark:bg-zinc-800 rounded ml-auto"></div>
+      <div className="h-5 w-20 bg-zinc-150 dark:bg-zinc-850 rounded-full ml-auto"></div>
+    </div>
+    <div className="agenda-actions flex items-center gap-2">
+      <div className="h-8 w-24 bg-zinc-150 dark:bg-zinc-800 rounded"></div>
+      <div className="h-8 w-8 bg-zinc-150 dark:bg-zinc-800 rounded-full"></div>
+      <div className="h-8 w-8 bg-zinc-150 dark:bg-zinc-800 rounded-full"></div>
+    </div>
+  </div>
+);
+
+const CalendarSkeleton = () => (
+  <div className="month-grid animate-pulse">
+    <div className="weekday-header">Dom</div>
+    <div className="weekday-header">Seg</div>
+    <div className="weekday-header">Ter</div>
+    <div className="weekday-header">Qua</div>
+    <div className="weekday-header">Qui</div>
+    <div className="weekday-header">Sex</div>
+    <div className="weekday-header">Sáb</div>
+    {Array.from({ length: 35 }).map((_, idx) => (
+      <div key={idx} className="month-day bg-zinc-50 dark:bg-zinc-950/50 min-h-[80px] rounded-lg border border-zinc-100 dark:border-zinc-800/80 p-2 flex flex-col justify-between">
+        <div className="h-4 w-6 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+        {idx % 4 === 0 && (
+          <div className="h-5 w-16 bg-zinc-150 dark:bg-zinc-800 rounded mt-2"></div>
+        )}
+      </div>
+    ))}
+  </div>
+);
+
 export default function Agenda() {
   const { user: me } = useAuth();
   const today = useMemo(() => new Date(), []);
@@ -49,6 +92,8 @@ export default function Agenda() {
   const [monthCursor, setMonthCursor] = useState({ y: today.getFullYear(), m: today.getMonth() + 1 });
   const [agendamentos, setAgendamentos] = useState([]);
   const [monthEvents, setMonthEvents] = useState({});
+  const [loading, setLoading] = useState(true);
+  const isMounted = useRef(false);
   const [clientes, setClientes] = useState([]);
   const [servicos, setServicos] = useState([]);
   const [colaboradores, setColaboradores] = useState([]);
@@ -413,6 +458,7 @@ export default function Agenda() {
   };
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([
       loadDay(data),
       loadMonth(today.getFullYear(), today.getMonth() + 1),
@@ -421,15 +467,22 @@ export default function Agenda() {
       http.get("/colaboradores").then((r) => setColaboradores(r.data || [])),
       http.get("/categorias").then((r) => setCategorias(r.data || [])),
       http.get("/produtos").then((r) => setProdutos(r.data || [])),
-    ]);
+    ]).finally(() => {
+      setLoading(false);
+      isMounted.current = true;
+    });
   }, []);
 
   useEffect(() => {
-    loadDay(data);
+    if (!isMounted.current) return;
+    setLoading(true);
+    loadDay(data).finally(() => setLoading(false));
   }, [data]);
 
   useEffect(() => {
-    loadMonth(monthCursor.y, monthCursor.m);
+    if (!isMounted.current) return;
+    setLoading(true);
+    loadMonth(monthCursor.y, monthCursor.m).finally(() => setLoading(false));
   }, [monthCursor]);
 
   const handleConfirmEditConcluido = async (email, password) => {
@@ -856,7 +909,35 @@ export default function Agenda() {
         </div>
       )}
 
-      {view === "dia" ? (
+      {loading ? (
+        view === "dia" ? (
+          <div className="space-y-2">
+            <AgendaCardSkeleton />
+            <AgendaCardSkeleton />
+            <AgendaCardSkeleton />
+          </div>
+        ) : view === "timeline" ? (
+          <AgendaTimeline
+            data={data}
+            selectedStatus={selectedStatus}
+            selectedInsumos={selectedInsumos}
+            selectedColaborador={selectedColaborador}
+            servicos={servicos}
+            colaboradores={colaboradores}
+            onCardClick={openResumoModal}
+            loading={true}
+          />
+        ) : (
+          <>
+            <div className="flex items-center gap-2 mb-4">
+              <Button size="sm" variant="outline" disabled><ChevronLeft className="w-4 h-4" /></Button>
+              <span className="text-sm font-semibold text-center min-w-[150px] text-zinc-400 dark:text-zinc-550">{new Date(monthCursor.y, monthCursor.m - 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</span>
+              <Button size="sm" variant="outline" disabled><ChevronRight className="w-4 h-4" /></Button>
+            </div>
+            <CalendarSkeleton />
+          </>
+        )
+      ) : view === "dia" ? (
         <>
           {filteredAgendamentos.length === 0 ? (
             <EmptyState title="Sem agendamentos" description="Nenhum agendamento correspondente aos filtros aplicados" />
@@ -933,7 +1014,7 @@ export default function Agenda() {
           )}
         </>
       ) : view === "timeline" ? (
-        <AgendaTimeline data={data} selectedStatus={selectedStatus} selectedInsumos={selectedInsumos} selectedColaborador={selectedColaborador} servicos={servicos} colaboradores={colaboradores} onCardClick={openResumoModal} />
+        <AgendaTimeline data={data} selectedStatus={selectedStatus} selectedInsumos={selectedInsumos} selectedColaborador={selectedColaborador} servicos={servicos} colaboradores={colaboradores} onCardClick={openResumoModal} loading={false} />
       ) : (
         <>
           <div className="flex items-center gap-2 mb-4">

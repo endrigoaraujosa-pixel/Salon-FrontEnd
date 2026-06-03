@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import http from "../api";
-import { CalendarDays, Clock } from "lucide-react";
+import { CalendarDays, Clock, Loader2 } from "lucide-react";
 import { fmtHour } from "@/pages/Agenda";
 
 // Status -> cor (vertical stripe + bg suave)
@@ -17,11 +17,14 @@ const HOUR_END = 24;
 const ROW_HEIGHT = 64; // Increased for a more spacious premium feel
 const HOUR_WIDTH = 120; // Slightly wider hour blocks for better readability
 
-export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, selectedColaborador, servicos, onCardClick }) {
+export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, selectedColaborador, servicos, onCardClick, loading: parentLoading = false }) {
   const [colaboradores, setColaboradores] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
   const [now, setNow] = useState(new Date());
+  const [localLoading, setLocalLoading] = useState(true);
   const scrollContainerRef = useRef(null);
+
+  const loading = parentLoading || localLoading;
 
   const getInsumosStatus = (a) => {
     let hasRequired = false;
@@ -69,11 +72,17 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
   }, [agendamentos, selectedStatus, selectedInsumos, selectedColaborador, servicos]);
 
   useEffect(() => {
-    http.get("/colaboradores").then((r) => setColaboradores(r.data.filter((c) => c.ativo)));
+    setLocalLoading(true);
+    http.get("/colaboradores")
+      .then((r) => setColaboradores(r.data.filter((c) => c.ativo)))
+      .finally(() => setLocalLoading(false));
   }, []);
 
   useEffect(() => {
-    http.get("/agendamentos", { params: { data } }).then((r) => setAgendamentos(r.data));
+    setLocalLoading(true);
+    http.get("/agendamentos", { params: { data } })
+      .then((r) => setAgendamentos(r.data))
+      .finally(() => setLocalLoading(false));
   }, [data]);
 
   // Track time in real-time
@@ -116,7 +125,7 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
         scrollContainerRef.current.scrollLeft = 8 * HOUR_WIDTH;
       }
     }
-  }, [data, isSelectedDayToday]);
+  }, [data, isSelectedDayToday, loading]);
 
   // Group appointments by primary collaborator
   // Also compute which collaborator rows to show based on the filter
@@ -176,129 +185,136 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
         </div>
       </div>
 
-      <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm flex flex-col">
-        {/* Scrollable Container */}
-        <div
-          ref={scrollContainerRef}
-          className="overflow-x-auto scrollbar-thin relative"
-        >
-          <div className="relative" style={{ minWidth: `${220 + totalWidth}px` }}>
+      {loading ? (
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm flex flex-col p-12 items-center justify-center min-h-[300px] gap-3">
+          <Loader2 className="w-10 h-10 text-[#84A59D] animate-spin" />
+          <span className="text-sm text-zinc-500 dark:text-zinc-400 font-semibold animate-pulse">Carregando timeline...</span>
+        </div>
+      ) : (
+        <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm flex flex-col">
+          {/* Scrollable Container */}
+          <div
+            ref={scrollContainerRef}
+            className="overflow-x-auto scrollbar-thin relative"
+          >
+            <div className="relative" style={{ minWidth: `${220 + totalWidth}px` }}>
 
-            {/* Header: horários */}
-            <div className="flex sticky top-0 bg-zinc-50 border-b border-zinc-200 z-10">
-              <div className="w-[220px] flex-shrink-0 px-4 py-3 text-xs uppercase tracking-wider text-zinc-500 font-semibold border-r border-zinc-200 bg-zinc-50 select-none">
-                Profissional
-              </div>
-              <div className="flex" style={{ width: `${totalWidth}px` }}>
-                {hours.map((h) => (
-                  <div key={h} className="border-r border-zinc-100 text-xs text-zinc-500 font-semibold px-2 py-3 bg-zinc-50 select-none text-center" style={{ width: `${HOUR_WIDTH}px` }}>
-                    {String(h).padStart(2, "0")}:00
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Linha vertical indicando o horário atual */}
-            {isSelectedDayToday && (
-              <div
-                className="absolute top-0 bottom-0 z-20 w-0.5 bg-rose-500 pointer-events-none transition-all duration-300"
-                style={{ left: `${220 + currentTimeLeft}px` }}
-              >
-                {/* Glowing indicators */}
-                <div className="absolute top-0 -ml-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 shadow-md shadow-rose-500/50 animate-pulse" />
-                <div className="absolute top-[40px] -ml-1 w-2.5 h-2.5 rounded-full bg-rose-500 shadow-md shadow-rose-500/50" />
-                <div className="absolute bottom-0 -ml-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 shadow-md shadow-rose-500/50" />
-              </div>
-            )}
-
-            {/* Linhas: colaboradores */}
-            {visibleColaboradores.length === 0 ? (
-              <div className="px-4 py-12 text-center text-sm text-zinc-400 select-none">Nenhum profissional ativo cadastrado.</div>
-            ) : visibleColaboradores.map((c) => (
-              <div key={c.id} className="flex border-b border-zinc-100 relative" style={{ height: `${ROW_HEIGHT}px` }} data-testid={`timeline-row-${c.id}`}>
-                <div className="w-[220px] flex-shrink-0 px-4 py-3 border-r border-zinc-200 flex items-center bg-white sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] select-none">
-                  <div>
-                    <div className="font-semibold text-zinc-700 text-sm truncate max-w-[180px]">{c.nome}</div>
-                    <div className="text-[11px] text-zinc-400 truncate max-w-[180px]">{c.cargo || "Profissional"}</div>
-                  </div>
+              {/* Header: horários */}
+              <div className="flex sticky top-0 bg-zinc-50 border-b border-zinc-200 z-10">
+                <div className="w-[220px] flex-shrink-0 px-4 py-3 text-xs uppercase tracking-wider text-zinc-500 font-semibold border-r border-zinc-200 bg-zinc-50 select-none">
+                  Profissional
                 </div>
-                <div className="relative" style={{ width: `${totalWidth}px` }}>
-                  {/* Linhas verticais por hora */}
+                <div className="flex" style={{ width: `${totalWidth}px` }}>
                   {hours.map((h) => (
-                    <div key={h} className="absolute top-0 bottom-0 border-r border-zinc-100 pointer-events-none" style={{ left: `${(h - HOUR_START) * HOUR_WIDTH}px`, width: `${HOUR_WIDTH}px` }} />
+                    <div key={h} className="border-r border-zinc-100 text-xs text-zinc-500 font-semibold px-2 py-3 bg-zinc-50 select-none text-center" style={{ width: `${HOUR_WIDTH}px` }}>
+                      {String(h).padStart(2, "0")}:00
+                    </div>
                   ))}
-                  {/* Blocos de agendamento */}
-                  {byColab[c.id]?.map((a) => {
-                    const { left, width } = calcBlock(a);
-                    const colors = STATUS_COLORS[a.status] || STATUS_COLORS.agendado;
-                    const time = fmtHour(a.data_hora);
-                    return (
-                      <div
-                        key={a.id}
-                        data-testid={`timeline-block-${a.id}`}
-                        className="absolute top-1.5 bottom-1.5 rounded-lg overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer select-none"
-                        style={{ left: `${left}px`, width: `${width}px`, background: colors.bg, borderLeft: `4px solid ${colors.stripe}` }}
-                        title={`${time} · ${a.cliente_nome} · ${a.itens?.map((i) => i.nome).join(", ")}`}
-                        onClick={() => onCardClick?.(a)}
-                      >
-                        <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden" style={{ color: colors.text }}>
-                          <div className="text-[11px] font-bold leading-tight truncate">{time} · {a.cliente_nome}</div>
-                          <div className="text-[10px] opacity-80 leading-tight truncate mt-0.5 font-medium">{a.itens?.map((i) => i.nome).join(", ")}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
                 </div>
+              </div>
+
+              {/* Linha vertical indicando o horário atual */}
+              {isSelectedDayToday && (
+                <div
+                  className="absolute top-0 bottom-0 z-20 w-0.5 bg-rose-500 pointer-events-none transition-all duration-300"
+                  style={{ left: `${220 + currentTimeLeft}px` }}
+                >
+                  {/* Glowing indicators */}
+                  <div className="absolute top-0 -ml-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 shadow-md shadow-rose-500/50 animate-pulse" />
+                  <div className="absolute top-[40px] -ml-1 w-2.5 h-2.5 rounded-full bg-rose-500 shadow-md shadow-rose-500/50" />
+                  <div className="absolute bottom-0 -ml-1.5 w-3.5 h-3.5 rounded-full bg-rose-500 shadow-md shadow-rose-500/50" />
+                </div>
+              )}
+
+              {/* Linhas: colaboradores */}
+              {visibleColaboradores.length === 0 ? (
+                <div className="px-4 py-12 text-center text-sm text-zinc-400 select-none">Nenhum profissional ativo cadastrado.</div>
+              ) : visibleColaboradores.map((c) => (
+                <div key={c.id} className="flex border-b border-zinc-100 relative" style={{ height: `${ROW_HEIGHT}px` }} data-testid={`timeline-row-${c.id}`}>
+                  <div className="w-[220px] flex-shrink-0 px-4 py-3 border-r border-zinc-200 flex items-center bg-white sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] select-none">
+                    <div>
+                      <div className="font-semibold text-zinc-700 text-sm truncate max-w-[180px]">{c.nome}</div>
+                      <div className="text-[11px] text-zinc-400 truncate max-w-[180px]">{c.cargo || "Profissional"}</div>
+                    </div>
+                  </div>
+                  <div className="relative" style={{ width: `${totalWidth}px` }}>
+                    {/* Linhas verticais por hora */}
+                    {hours.map((h) => (
+                      <div key={h} className="absolute top-0 bottom-0 border-r border-zinc-100 pointer-events-none" style={{ left: `${(h - HOUR_START) * HOUR_WIDTH}px`, width: `${HOUR_WIDTH}px` }} />
+                    ))}
+                    {/* Blocos de agendamento */}
+                    {byColab[c.id]?.map((a) => {
+                      const { left, width } = calcBlock(a);
+                      const colors = STATUS_COLORS[a.status] || STATUS_COLORS.agendado;
+                      const time = fmtHour(a.data_hora);
+                      return (
+                        <div
+                          key={a.id}
+                          data-testid={`timeline-block-${a.id}`}
+                          className="absolute top-1.5 bottom-1.5 rounded-lg overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer select-none"
+                          style={{ left: `${left}px`, width: `${width}px`, background: colors.bg, borderLeft: `4px solid ${colors.stripe}` }}
+                          title={`${time} · ${a.cliente_nome} · ${a.itens?.map((i) => i.nome).join(", ")}`}
+                          onClick={() => onCardClick?.(a)}
+                        >
+                          <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden" style={{ color: colors.text }}>
+                            <div className="text-[11px] font-bold leading-tight truncate">{time} · {a.cliente_nome}</div>
+                            <div className="text-[10px] opacity-80 leading-tight truncate mt-0.5 font-medium">{a.itens?.map((i) => i.nome).join(", ")}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {/* Agendamentos sem profissional */}
+              {agendamentosSemProf.length > 0 && (
+                <div className="flex border-b border-zinc-100 relative bg-zinc-50/50" style={{ height: `${ROW_HEIGHT}px` }}>
+                  <div className="w-[220px] flex-shrink-0 px-4 py-3 border-r border-zinc-200 flex items-center bg-zinc-50/50 sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] select-none">
+                    <div className="text-xs text-zinc-400 font-semibold italic">Sem profissional definido</div>
+                  </div>
+                  <div className="relative" style={{ width: `${totalWidth}px` }}>
+                    {/* Linhas verticais por hora */}
+                    {hours.map((h) => (
+                      <div key={h} className="absolute top-0 bottom-0 border-r border-zinc-100 pointer-events-none" style={{ left: `${(h - HOUR_START) * HOUR_WIDTH}px`, width: `${HOUR_WIDTH}px` }} />
+                    ))}
+                    {agendamentosSemProf.map((a) => {
+                      const { left, width } = calcBlock(a);
+                      const colors = STATUS_COLORS[a.status] || STATUS_COLORS.agendado;
+                      const time = fmtHour(a.data_hora);
+                      return (
+                        <div
+                          key={a.id}
+                          className="absolute top-1.5 bottom-1.5 rounded-lg overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 select-none"
+                          style={{ left: `${left}px`, width: `${width}px`, background: colors.bg, borderLeft: `4px solid ${colors.stripe}` }}
+                          title={`${time} · ${a.cliente_nome}`}
+                          onClick={() => onCardClick?.(a)}
+                        >
+                          <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden" style={{ color: colors.text }}>
+                            <div className="text-[11px] font-bold leading-tight truncate">{time} · {a.cliente_nome}</div>
+                            <div className="text-[10px] opacity-80 leading-tight truncate mt-0.5 font-medium">Sem Profissional</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Legenda */}
+          <div className="flex flex-wrap gap-4 px-4 py-3 border-t border-zinc-200 bg-zinc-50/40 select-none">
+            <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center mr-2">Legenda:</div>
+            {Object.entries(STATUS_COLORS).map(([k, c]) => (
+              <div key={k} className="flex items-center gap-1.5 text-xs text-zinc-600 font-medium">
+                <span className="w-3.5 h-3.5 rounded" style={{ background: c.bg, borderLeft: `3px solid ${c.stripe}` }} />
+                <span className="capitalize">{k.replace("_", " ")}</span>
               </div>
             ))}
-
-            {/* Agendamentos sem profissional */}
-            {agendamentosSemProf.length > 0 && (
-              <div className="flex border-b border-zinc-100 relative bg-zinc-50/50" style={{ height: `${ROW_HEIGHT}px` }}>
-                <div className="w-[220px] flex-shrink-0 px-4 py-3 border-r border-zinc-200 flex items-center bg-zinc-50/50 sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] select-none">
-                  <div className="text-xs text-zinc-400 font-semibold italic">Sem profissional definido</div>
-                </div>
-                <div className="relative" style={{ width: `${totalWidth}px` }}>
-                  {/* Linhas verticais por hora */}
-                  {hours.map((h) => (
-                    <div key={h} className="absolute top-0 bottom-0 border-r border-zinc-100 pointer-events-none" style={{ left: `${(h - HOUR_START) * HOUR_WIDTH}px`, width: `${HOUR_WIDTH}px` }} />
-                  ))}
-                  {agendamentosSemProf.map((a) => {
-                    const { left, width } = calcBlock(a);
-                    const colors = STATUS_COLORS[a.status] || STATUS_COLORS.agendado;
-                    const time = fmtHour(a.data_hora);
-                    return (
-                      <div
-                        key={a.id}
-                        className="absolute top-1.5 bottom-1.5 rounded-lg overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 select-none"
-                        style={{ left: `${left}px`, width: `${width}px`, background: colors.bg, borderLeft: `4px solid ${colors.stripe}` }}
-                        title={`${time} · ${a.cliente_nome}`}
-                        onClick={() => onCardClick?.(a)}
-                      >
-                        <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden" style={{ color: colors.text }}>
-                          <div className="text-[11px] font-bold leading-tight truncate">{time} · {a.cliente_nome}</div>
-                          <div className="text-[10px] opacity-80 leading-tight truncate mt-0.5 font-medium">Sem Profissional</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         </div>
-
-        {/* Legenda */}
-        <div className="flex flex-wrap gap-4 px-4 py-3 border-t border-zinc-200 bg-zinc-50/40 select-none">
-          <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center mr-2">Legenda:</div>
-          {Object.entries(STATUS_COLORS).map(([k, c]) => (
-            <div key={k} className="flex items-center gap-1.5 text-xs text-zinc-600 font-medium">
-              <span className="w-3.5 h-3.5 rounded" style={{ background: c.bg, borderLeft: `3px solid ${c.stripe}` }} />
-              <span className="capitalize">{k.replace("_", " ")}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
     </div>
   );
 }
