@@ -8,18 +8,32 @@ const getBaseURL = () => {
   return `http://${hostname}:5000/api`;
 };
 
+const getTenantId = () => {
+  const hostname = window.location.hostname;
+  return hostname.split('.')[0];
+};
+
+const tenantId = getTenantId();
+
 const baseURL = getBaseURL();
 const api = axios.create({
   baseURL,
   headers: {
     "Content-Type": "application/json",
+    "x-tenant-id": tenantId
   },
   withCredentials: true,
 });
 
+const blackList = [
+  "/auth/refresh",
+  "/auth/login",
+  "/auth/logout"
+];
+
 // Interceptor para adicionar token
 api.interceptors.request.use(
-  (config) => {
+  (config) => {    
     const token = localStorage.getItem("salon_token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
