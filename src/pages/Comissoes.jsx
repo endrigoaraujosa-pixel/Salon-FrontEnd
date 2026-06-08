@@ -972,11 +972,25 @@ export default function Comissoes() {
                         {/* 1. Profissional */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
-                            <div 
-                              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs font-mono shadow-sm bg-[#EAF0EE] text-[#3A4F4A] dark:bg-zinc-800 dark:text-zinc-200 border border-[#D5E2DF] dark:border-zinc-700 select-none shrink-0"
-                            >
-                              {getInitials(c.colaborador_nome)}
-                            </div>
+                            {(() => {
+                              const colabObj = colaboradores.find(col => col.id === c.colaborador_id);
+                              if (colabObj?.foto) {
+                                return (
+                                  <img 
+                                    src={colabObj.foto} 
+                                    alt={c.colaborador_nome} 
+                                    className="w-16 h-16 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-800 shadow-sm"
+                                  />
+                                );
+                              }
+                              return (
+                                <div 
+                                  className="w-16 h-16 rounded-full flex items-center justify-center font-bold text-base font-mono shadow-sm bg-[#EAF0EE] text-[#3A4F4A] dark:bg-zinc-800 dark:text-zinc-200 border border-[#D5E2DF] dark:border-zinc-700 select-none shrink-0"
+                                >
+                                  {getInitials(c.colaborador_nome)}
+                                </div>
+                              );
+                            })()}
                             <div>
                               <button 
                                 onClick={() => handleOpenDetails(c)} 
@@ -1079,11 +1093,25 @@ export default function Comissoes() {
                       {/* Cabeçalho do Card: Avatar + Nome + Detalhes */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div 
-                            className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs font-mono shadow-sm bg-[#EAF0EE] text-[#3A4F4A] dark:bg-zinc-800 dark:text-zinc-200 border border-[#D5E2DF] dark:border-zinc-700 select-none shrink-0"
-                          >
-                            {getInitials(c.colaborador_nome)}
-                          </div>
+                          {(() => {
+                            const colabObj = colaboradores.find(col => col.id === c.colaborador_id);
+                            if (colabObj?.foto) {
+                              return (
+                                <img 
+                                  src={colabObj.foto} 
+                                  alt={c.colaborador_nome} 
+                                  className="w-16 h-16 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-800 shadow-sm"
+                                />
+                              );
+                            }
+                            return (
+                              <div 
+                                className="w-16 h-16 rounded-full flex items-center justify-center font-bold text-base font-mono shadow-sm bg-[#EAF0EE] text-[#3A4F4A] dark:bg-zinc-800 dark:text-zinc-200 border border-[#D5E2DF] dark:border-zinc-700 select-none shrink-0"
+                              >
+                                {getInitials(c.colaborador_nome)}
+                              </div>
+                            );
+                          })()}
                           <div className="min-w-0">
                             <button 
                               onClick={() => handleOpenDetails(c)} 
@@ -1182,8 +1210,24 @@ export default function Comissoes() {
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[80vw] max-h-[90vh] p-4 sm:p-6 overflow-y-auto overflow-x-hidden rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
           <DialogHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
-            <DialogTitle className="font-display text-lg sm:text-xl md:text-2xl font-extrabold tracking-tight text-[#3A4F4A] dark:text-zinc-100 flex items-center gap-2 sm:gap-2.5">
-              <Wallet className="w-5 h-5 sm:w-6 sm:h-6 text-[#84A59D] shrink-0" />
+            <DialogTitle className="font-display text-lg sm:text-xl md:text-2xl font-extrabold tracking-tight text-[#3A4F4A] dark:text-zinc-100 flex items-center gap-2 sm:gap-3">
+              {(() => {
+                const colabObj = colaboradores.find(col => col.id === selectedColab?.colaborador_id);
+                if (colabObj?.foto) {
+                  return (
+                    <img 
+                      src={colabObj.foto} 
+                      alt={selectedColab?.colaborador_nome} 
+                      className="w-16 h-16 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-800 shadow-sm"
+                    />
+                  );
+                }
+                return (
+                  <div className="w-16 h-16 rounded-full bg-[#EAF0EE] dark:bg-zinc-850 text-[#3A4F4A] dark:text-[#EAF0EE] font-bold text-base shrink-0 flex items-center justify-center border border-zinc-200 dark:border-zinc-700">
+                    {getInitials(selectedColab?.colaborador_nome)}
+                  </div>
+                );
+              })()}
               <span className="truncate">Detalhamento: {selectedColab?.colaborador_nome}</span>
             </DialogTitle>
             {selectedColab && (

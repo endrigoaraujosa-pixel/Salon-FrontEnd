@@ -231,10 +231,21 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
                 <div className="px-4 py-12 text-center text-sm text-zinc-400 select-none">Nenhum profissional ativo cadastrado.</div>
               ) : visibleColaboradores.map((c) => (
                 <div key={c.id} className="flex border-b border-zinc-100 relative" style={{ height: `${ROW_HEIGHT}px` }} data-testid={`timeline-row-${c.id}`}>
-                  <div className="w-[220px] flex-shrink-0 px-4 py-3 border-r border-zinc-200 flex items-center bg-white sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] select-none">
-                    <div>
-                      <div className="font-semibold text-zinc-700 text-sm truncate max-w-[180px]">{c.nome}</div>
-                      <div className="text-[11px] text-zinc-400 truncate max-w-[180px]">{c.cargo || "Profissional"}</div>
+                  <div className="w-[220px] flex-shrink-0 px-4 py-3 border-r border-zinc-200 flex items-center gap-3 bg-white sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] select-none">
+                    {c.foto ? (
+                      <img 
+                        src={c.foto} 
+                        alt={c.nome} 
+                        className="w-10 h-10 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-800"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-[#EAF0EE] dark:bg-zinc-800 text-[#3A4F4A] dark:text-[#EAF0EE] font-semibold text-sm shrink-0 flex items-center justify-center border border-zinc-100 dark:border-zinc-800">
+                        {c.nome?.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="font-semibold text-zinc-700 text-sm truncate max-w-[130px]">{c.nome}</div>
+                      <div className="text-[11px] text-zinc-400 truncate max-w-[130px]">{c.cargo || "Profissional"}</div>
                     </div>
                   </div>
                   <div className="relative" style={{ width: `${totalWidth}px` }}>

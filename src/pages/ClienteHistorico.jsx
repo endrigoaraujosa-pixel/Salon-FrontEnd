@@ -56,6 +56,7 @@ export default function ClienteHistorico() {
   const [produtos, setProdutos] = useState([]);
   const [selectedAgendamento, setSelectedAgendamento] = useState(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState(null);
 
   useEffect(() => { 
     http.get(`/clientes/${id}/historico`).then((r) => {
@@ -165,19 +166,34 @@ export default function ClienteHistorico() {
 
       {/* Header com Informações do Cliente */}
       <div className="bg-gradient-to-r from-zinc-50 to-zinc-100/50 dark:from-zinc-900 dark:to-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-6 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-sm w-full">
-        <div className="min-w-0 flex-1">
-          <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Histórico do Cliente</span>
-          <h1 className="font-display text-2xl sm:text-4xl font-semibold tracking-tight mt-1 text-zinc-800 dark:text-zinc-100 truncate">{cliente.nome}</h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2 flex flex-wrap gap-x-4 gap-y-1">
-            {cliente.telefone && <span>📞 {cliente.telefone}</span>}
-            {cliente.email && <span>✉️ {cliente.email}</span>}
-          </p>
-          {cliente.observacoes && (
-            <div className="mt-4 p-3 bg-white/80 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed max-w-xl shadow-xs">
-              <span className="font-bold text-zinc-700 dark:text-zinc-200 block mb-1">📝 Observações e Preferências:</span>
-              {cliente.observacoes}
+        <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center gap-5">
+          {cliente.foto ? (
+            <img 
+              src={cliente.foto} 
+              alt={cliente.nome} 
+              onClick={() => setPreviewPhoto(cliente.foto)}
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-800 shadow-xs cursor-pointer hover:opacity-90 transition-opacity" 
+              title="Clique para ampliar"
+            />
+          ) : (
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[#EAF0EE] dark:bg-zinc-800 text-[#3A4F4A] dark:text-[#EAF0EE] font-semibold text-2xl sm:text-3xl flex items-center justify-center shrink-0 border border-zinc-100 dark:border-zinc-800">
+              {cliente.nome?.charAt(0).toUpperCase()}
             </div>
           )}
+          <div className="min-w-0">
+            <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Histórico do Cliente</span>
+            <h1 className="font-display text-2xl sm:text-4xl font-semibold tracking-tight mt-1 text-zinc-800 dark:text-zinc-100 truncate">{cliente.nome}</h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2 flex flex-wrap gap-x-4 gap-y-1">
+              {cliente.telefone && <span>📞 {cliente.telefone}</span>}
+              {cliente.email && <span>✉️ {cliente.email}</span>}
+            </p>
+            {cliente.observacoes && (
+              <div className="mt-4 p-3 bg-white/80 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed max-w-xl shadow-xs">
+                <span className="font-bold text-zinc-700 dark:text-zinc-200 block mb-1">📝 Observações e Preferências:</span>
+                {cliente.observacoes}
+              </div>
+            )}
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full md:w-auto shrink-0">
           <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 min-w-[110px] sm:min-w-[140px] shadow-sm">
@@ -446,9 +462,19 @@ export default function ClienteHistorico() {
                 {/* Cliente e Status */}
                 <div className="flex items-center justify-between bg-[#F8FBFB] dark:bg-[#1a2322] p-5 rounded-2xl border border-[#E8EFEF] dark:border-[#2e3e3b] shadow-xs">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-[#EAF0EE] flex items-center justify-center text-[#3A4F4A] font-semibold text-xl">
-                      {cliente.nome?.charAt(0).toUpperCase()}
-                    </div>
+                    {cliente.foto ? (
+                      <img 
+                        src={cliente.foto} 
+                        alt={cliente.nome} 
+                        onClick={() => setPreviewPhoto(cliente.foto)}
+                        className="w-12 h-12 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-800 cursor-pointer hover:opacity-90 transition-opacity" 
+                        title="Clique para ampliar"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-[#EAF0EE] dark:bg-zinc-800 flex items-center justify-center text-[#3A4F4A] dark:text-[#EAF0EE] font-semibold text-xl shrink-0 border border-zinc-100 dark:border-zinc-800">
+                        {cliente.nome?.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <div>
                       <h3 className="font-display font-semibold text-zinc-800 dark:text-zinc-100 text-lg">{cliente.nome}</h3>
                       <p className="text-xs text-zinc-400">Cliente cadastrado(a)</p>
@@ -594,6 +620,19 @@ export default function ClienteHistorico() {
           <DialogFooter className="pt-4 border-t border-zinc-100 dark:border-zinc-800 w-full mt-4">
             <Button variant="outline" onClick={() => setDetailModalOpen(false)} className="w-full h-10 font-medium">Fechar Detalhes</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Lightbox para visualização de foto ampliada */}
+      <Dialog open={!!previewPhoto} onOpenChange={() => setPreviewPhoto(null)}>
+        <DialogContent className="sm:max-w-md p-6 bg-zinc-900 dark:bg-zinc-950 border border-zinc-800 dark:border-zinc-900 shadow-2xl flex flex-col items-center justify-center rounded-2xl [&>button]:text-zinc-400 [&>button]:hover:text-zinc-150">
+          {previewPhoto && (
+            <img 
+              src={previewPhoto} 
+              alt="Foto de Perfil Ampliada" 
+              className="max-w-full max-h-[75vh] rounded-xl object-contain shadow-md"
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

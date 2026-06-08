@@ -107,6 +107,7 @@ export default function Agenda() {
   const [carregandoSenha, setCarregandoSenha] = useState(false);
   const [openResumo, setOpenResumo] = useState(false);
   const [resumoAgendamento, setResumoAgendamento] = useState(null);
+  const [previewPhoto, setPreviewPhoto] = useState(null);
   const [profsDialogOpen, setProfsDialogOpen] = useState(false);
   const [missingProfs, setMissingProfs] = useState([]);
   const [pendingAgendamento, setPendingAgendamento] = useState(null);
@@ -1323,9 +1324,25 @@ export default function Agenda() {
                 {/* Cliente e Status */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-[#F8FBFB] dark:bg-[#1a2322] p-5 rounded-2xl border border-[#E8EFEF] dark:border-[#2e3e3b] shadow-xs gap-4">
                   <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-12 h-12 rounded-full bg-[#EAF0EE] dark:bg-zinc-800 flex items-center justify-center text-[#3A4F4A] dark:text-[#EAF0EE] font-semibold text-xl shrink-0">
-                      {resumoAgendamento.cliente_nome?.charAt(0).toUpperCase()}
-                    </div>
+                    {(() => {
+                      const client = clientes.find(c => c.id === resumoAgendamento.cliente_id);
+                      if (client?.foto) {
+                        return (
+                          <img 
+                            src={client.foto} 
+                            alt={resumoAgendamento.cliente_nome} 
+                            onClick={() => setPreviewPhoto(client.foto)}
+                            className="w-20 h-20 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-800 shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                            title="Clique para ampliar"
+                          />
+                        );
+                      }
+                      return (
+                        <div className="w-20 h-20 rounded-full bg-[#EAF0EE] dark:bg-zinc-800 flex items-center justify-center text-[#3A4F4A] dark:text-[#EAF0EE] font-semibold text-3xl shrink-0 border border-zinc-100 dark:border-zinc-800">
+                          {resumoAgendamento.cliente_nome?.charAt(0).toUpperCase()}
+                        </div>
+                      );
+                    })()}
                     <div className="min-w-0">
                       <h3 className="font-display font-bold text-zinc-800 dark:text-zinc-100 text-lg sm:text-xl truncate leading-tight">{resumoAgendamento.cliente_nome}</h3>
                       <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium mt-0.5">Cliente cadastrado(a)</p>
@@ -1864,6 +1881,19 @@ export default function Agenda() {
         description="Este agendamento já foi concluído. Informe usuário e senha de um administrador com permissão específica para alterar o consumo de produtos."
         requireCredentials={true}
       />
+
+      {/* Lightbox para visualização de foto ampliada */}
+      <Dialog open={!!previewPhoto} onOpenChange={() => setPreviewPhoto(null)}>
+        <DialogContent className="sm:max-w-md p-6 bg-zinc-900 dark:bg-zinc-950 border border-zinc-800 dark:border-zinc-900 shadow-2xl flex flex-col items-center justify-center rounded-2xl [&>button]:text-zinc-400 [&>button]:hover:text-zinc-150">
+          {previewPhoto && (
+            <img 
+              src={previewPhoto} 
+              alt="Foto de Perfil Ampliada" 
+              className="max-w-full max-h-[75vh] rounded-xl object-contain shadow-md"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

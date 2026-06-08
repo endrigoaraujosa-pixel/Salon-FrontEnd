@@ -10,7 +10,7 @@ import { UserCog, Plus, Edit2, Trash2, History } from "lucide-react";
 import { toast } from "sonner";
 import AuditModal from "../components/AuditModal";
 
-const blank = { nome: "", cargo: "", telefone: "", comissao_sozinho: 40, comissao_ajuda: 30, comissao_auxiliar: 20, ativo: true };
+const blank = { nome: "", cargo: "", telefone: "", comissao_sozinho: 40, comissao_ajuda: 30, comissao_auxiliar: 20, ativo: true, foto: null };
 
 export default function Colaboradores() {
   const [list, setList] = useState([]);
@@ -19,6 +19,51 @@ export default function Colaboradores() {
   const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState(blank);
   const [auditOpen, setAuditOpen] = useState(false);
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("A imagem deve ter no máximo 5MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 256;
+        const MAX_HEIGHT = 256;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const base64 = canvas.toDataURL("image/jpeg", 0.7);
+        setForm(prev => ({ ...prev, foto: base64 }));
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const load = () => http.get("/colaboradores").then((r) => setList(r.data));
   useEffect(() => { load(); }, []);
 
@@ -72,6 +117,40 @@ export default function Colaboradores() {
           <DialogContent>
             <DialogHeader><DialogTitle>{form.id ? "Editar" : "Novo"} colaborador</DialogTitle></DialogHeader>
             <div className="space-y-3">
+              <div className="flex flex-col items-center justify-center gap-2 pb-2">
+                <div className="relative group cursor-pointer" onClick={() => document.getElementById("colab-avatar-upload").click()}>
+                  <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-zinc-200 dark:border-zinc-800 flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+                    {form.foto ? (
+                      <img src={form.foto} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-zinc-400 dark:text-zinc-500 font-bold text-2xl">
+                        {form.nome ? form.nome.charAt(0).toUpperCase() : <Plus className="w-8 h-8" />}
+                      </span>
+                    )}
+                  </div>
+                  <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-white text-xs font-semibold">Alterar</span>
+                  </div>
+                </div>
+                <input
+                  id="colab-avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoChange}
+                />
+                {form.foto && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-xs h-7 px-2"
+                    onClick={() => setForm(prev => ({ ...prev, foto: null }))}
+                  >
+                    Remover foto
+                  </Button>
+                )}
+              </div>
               <div><Label>Nome *</Label><Input data-testid="colab-nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><Label>Cargo</Label><Input value={form.cargo} onChange={(e) => setForm({ ...form, cargo: e.target.value })} /></div>
@@ -105,9 +184,18 @@ export default function Colaboradores() {
           {list.map((c) => (
             <div key={c.id} className="bg-white border border-zinc-200 rounded-xl p-5" data-testid={`colab-card-${c.id}`}>
               <div className="flex items-start justify-between">
-                <div>
-                  <div className="font-display text-lg font-medium">{c.nome}</div>
-                  <div className="text-sm text-zinc-500">{c.cargo || "—"}</div>
+                <div className="flex items-center gap-4">
+                  <div className="w-20 h-20 rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-2xl text-[#3A4F4A] dark:text-zinc-355 font-bold shrink-0 border border-zinc-100 dark:border-zinc-800">
+                    {c.foto ? (
+                      <img src={c.foto} alt={c.nome} className="w-full h-full object-cover" />
+                    ) : (
+                      c.nome?.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div>
+                    <div className="font-display text-lg font-semibold">{c.nome}</div>
+                    <div className="text-sm text-zinc-500">{c.cargo || "—"}</div>
+                  </div>
                 </div>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${c.ativo ? "bg-emerald-100 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}>{c.ativo ? "Ativo" : "Inativo"}</span>
               </div>

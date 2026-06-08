@@ -11,7 +11,24 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import AuditModal from "../components/AuditModal";
 
-const blank = { nome: "", telefone: "", email: "", data_nascimento: "", endereco: "", observacoes: "" };
+const blank = { nome: "", telefone: "", email: "", data_nascimento: "", endereco: "", observacoes: "", foto: null };
+
+const formatPhone = (val) => {
+  if (!val) return "";
+  const digits = val.replace(/\D/g, "");
+  const cleanDigits = digits.slice(0, 11);
+  
+  if (cleanDigits.length <= 2) {
+    return cleanDigits;
+  }
+  if (cleanDigits.length <= 6) {
+    return `(${cleanDigits.slice(0, 2)}) ${cleanDigits.slice(2)}`;
+  }
+  if (cleanDigits.length <= 10) {
+    return `(${cleanDigits.slice(0, 2)}) ${cleanDigits.slice(2, 6)}-${cleanDigits.slice(6)}`;
+  }
+  return `(${cleanDigits.slice(0, 2)}) ${cleanDigits.slice(2, 7)}-${cleanDigits.slice(7)}`;
+};
 
 export default function Clientes() {
   const [list, setList] = useState([]);
@@ -22,6 +39,50 @@ export default function Clientes() {
   const [form, setForm] = useState(blank);
   const [auditOpen, setAuditOpen] = useState(false);
   const nav = useNavigate();
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("A imagem deve ter no máximo 5MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 256;
+        const MAX_HEIGHT = 256;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const base64 = canvas.toDataURL("image/jpeg", 0.7);
+        setForm(prev => ({ ...prev, foto: base64 }));
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Relatório de Clientes / Ranking
   const [reportOpen, setReportOpen] = useState(false);
@@ -37,6 +98,25 @@ export default function Clientes() {
   useEffect(() => { load(); }, []);
 
   const save = async () => {
+    if (form.telefone) {
+      const cleanInput = form.telefone.replace(/\D/g, "");
+      if (cleanInput.length > 0) {
+        if (cleanInput.length < 10) {
+          toast.error("O número de telefone deve conter o DDD e pelo menos 8 ou 9 dígitos.");
+          return;
+        }
+
+        const duplicate = list.find(c => 
+          c.id !== form.id && 
+          (c.telefone || "").replace(/\D/g, "") === cleanInput
+        );
+        if (duplicate) {
+          toast.error(`Já existe um cliente cadastrado com este número de telefone (${duplicate.nome}).`);
+          return;
+        }
+      }
+    }
+
     try {
       if (form.id) await http.put(`/clientes/${form.id}`, form);
       else await http.post("/clientes", form);
@@ -63,7 +143,7 @@ export default function Clientes() {
     }
   };
 
-  const edit = (c) => { setForm(c); setOpen(true); };
+  const edit = (c) => { setForm({ ...c, telefone: formatPhone(c.telefone || "") }); setOpen(true); };
 
   const generatePDF = async () => {
     try {
@@ -367,6 +447,40 @@ export default function Clientes() {
               <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
                 <DialogHeader><DialogTitle className="text-zinc-900 dark:text-zinc-50">{form.id ? "Editar" : "Novo"} cliente</DialogTitle></DialogHeader>
                 <div className="space-y-3">
+                  <div className="flex flex-col items-center justify-center gap-2 pb-2">
+                    <div className="relative group cursor-pointer" onClick={() => document.getElementById("client-avatar-upload").click()}>
+                      <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-zinc-200 dark:border-zinc-800 flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+                        {form.foto ? (
+                          <img src={form.foto} alt="Preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-zinc-400 dark:text-zinc-500 font-bold text-2xl">
+                            {form.nome ? form.nome.charAt(0).toUpperCase() : <Users className="w-8 h-8" />}
+                          </span>
+                        )}
+                      </div>
+                      <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-white text-xs font-semibold">Alterar</span>
+                      </div>
+                    </div>
+                    <input
+                      id="client-avatar-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePhotoChange}
+                    />
+                    {form.foto && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-xs h-7 px-2"
+                        onClick={() => setForm(prev => ({ ...prev, foto: null }))}
+                      >
+                        Remover foto
+                      </Button>
+                    )}
+                  </div>
                   <div>
                     <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Nome *</Label>
                     <Input data-testid="cliente-nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} className="h-10 mt-1 dark:bg-zinc-950" />
@@ -374,7 +488,13 @@ export default function Clientes() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Telefone</Label>
-                      <Input data-testid="cliente-telefone" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} className="h-10 mt-1 dark:bg-zinc-950" />
+                      <Input 
+                        data-testid="cliente-telefone" 
+                        value={form.telefone} 
+                        onChange={(e) => setForm({ ...form, telefone: formatPhone(e.target.value) })} 
+                        placeholder="(XX) XXXXX-XXXX" 
+                        className="h-10 mt-1 dark:bg-zinc-950" 
+                      />
                     </div>
                     <div>
                       <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Email</Label>
@@ -450,7 +570,18 @@ export default function Clientes() {
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-700 dark:text-zinc-300">
                 {filtered.map((c) => (
                   <tr key={c.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors" data-testid={`cliente-row-${c.id}`}>
-                    <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100">{c.nome}</td>
+                    <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-16 h-16 rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xl text-zinc-650 dark:text-zinc-300 font-bold shrink-0 border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                          {c.foto ? (
+                            <img src={c.foto} alt={c.nome} className="w-full h-full object-cover" />
+                          ) : (
+                            c.nome?.charAt(0).toUpperCase()
+                          )}
+                        </div>
+                        <span>{c.nome}</span>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 font-mono">{c.telefone || "-"}</td>
                     <td className="px-4 py-3">{c.email || "-"}</td>
                     <td className="px-4 py-3 text-right">
@@ -475,8 +606,12 @@ export default function Clientes() {
                 data-testid={`cliente-card-${c.id}`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-[#EAF0EE] dark:bg-zinc-850 text-[#3A4F4A] dark:text-[#EAF0EE] font-extrabold text-lg flex items-center justify-center shrink-0">
-                    {c.nome?.charAt(0).toUpperCase()}
+                  <div className="w-20 h-20 rounded-full overflow-hidden bg-[#EAF0EE] dark:bg-zinc-850 text-[#3A4F4A] dark:text-[#EAF0EE] font-extrabold text-2xl flex items-center justify-center shrink-0 border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                    {c.foto ? (
+                      <img src={c.foto} alt={c.nome} className="w-full h-full object-cover" />
+                    ) : (
+                      c.nome?.charAt(0).toUpperCase()
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <h4 className="font-extrabold text-zinc-900 dark:text-zinc-50 text-[18px] sm:text-xl truncate tracking-tight leading-snug">{c.nome}</h4>
