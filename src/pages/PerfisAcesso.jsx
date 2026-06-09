@@ -219,7 +219,7 @@ export default function PerfisAcesso() {
             {perfis.map((p) => {
               const activeMenusCount = Object.values(p.permissoes?.menus || {}).filter(Boolean).length;
               const activeAcoesCount = Object.values(p.permissoes?.acoes || {}).filter(Boolean).length;
-              const isBaseProfile = p.id === 'admin-profile-uuid-0000000000000000000' || p.id === 'func-profile-uuid-0000000000000000000';
+              const isBaseProfile = p.id === 'admin-profile-uuid-00000000000000000' || p.id === 'func-profile-uuid-000000000000000000';
 
               return (
                 <Card 
@@ -231,7 +231,7 @@ export default function PerfisAcesso() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className={`p-2 rounded-lg ${
-                            p.id === 'admin-profile-uuid-0000000000000000000'
+                            p.id === 'admin-profile-uuid-00000000000000000'
                               ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600"
                               : "bg-blue-50 dark:bg-blue-950/20 text-blue-500"
                           }`}>
