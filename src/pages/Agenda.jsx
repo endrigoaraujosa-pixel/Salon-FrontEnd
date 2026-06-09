@@ -5,10 +5,10 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import StatusBadge, { STATUS_LABELS } from "../components/StatusBadge";
-import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle, ShoppingCart, Loader2 } from "lucide-react";
+import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle, ShoppingCart, Loader2, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import AgendaTimeline from "../components/AgendaTimeline";
@@ -86,6 +86,7 @@ const CalendarSkeleton = () => (
 
 export default function Agenda() {
   const { user: me } = useAuth();
+  const isAdmin = me?.role === "admin";
   const today = useMemo(() => new Date(), []);
   const [data, setData] = useState(toDateInput(today));
   const [view, setView] = useState("dia");
@@ -107,6 +108,7 @@ export default function Agenda() {
   const [carregandoSenha, setCarregandoSenha] = useState(false);
   const [openResumo, setOpenResumo] = useState(false);
   const [resumoAgendamento, setResumoAgendamento] = useState(null);
+  const [previewPhoto, setPreviewPhoto] = useState(null);
   const [profsDialogOpen, setProfsDialogOpen] = useState(false);
   const [missingProfs, setMissingProfs] = useState([]);
   const [pendingAgendamento, setPendingAgendamento] = useState(null);
@@ -124,6 +126,499 @@ export default function Agenda() {
   const [authCredentials, setAuthCredentials] = useState(null);
   const [conflictConfirmOpen, setConflictConfirmOpen] = useState(false);
   const [conflictMessage, setConflictMessage] = useState("");
+
+  const [openRelatorioDialog, setOpenRelatorioDialog] = useState(false);
+  const [repDataInicio, setRepDataInicio] = useState(toDateInput(today));
+  const [repDataFim, setRepDataFim] = useState(toDateInput(today));
+  const [repStatus, setRepStatus] = useState("all");
+  const [repColaborador, setRepColaborador] = useState("all");
+  const [repResults, setRepResults] = useState([]);
+  const [repLoading, setRepLoading] = useState(false);
+  const [hasGeneratedReport, setHasGeneratedReport] = useState(false);
+  const [empresa, setEmpresa] = useState(null);
+
+  const handleOpenRelatorio = () => {
+    setRepDataInicio(toDateInput(today));
+    setRepDataFim(toDateInput(today));
+    setRepStatus("all");
+    setRepColaborador("all");
+    setRepResults([]);
+    setHasGeneratedReport(false);
+    setOpenRelatorioDialog(true);
+  };
+
+  const generateReportPDFWithData = (dataList) => {
+    try {
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        toast.error("Por favor, permita pop-ups para gerar o relatório.");
+        return;
+      }
+
+      const currentDate = new Date().toLocaleDateString("pt-BR");
+      const currentTime = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+      const colabName = repColaborador === "all" 
+        ? "Todos os colaboradores" 
+        : repColaborador === "none"
+          ? "Sem colaborador"
+          : colaboradores.find(c => String(c.id) === String(repColaborador))?.nome || "Colaborador";
+
+      const statusName = {
+        all: "Todos os status",
+        agendado: "Agendado",
+        confirmado: "Confirmado",
+        em_andamento: "Em andamento",
+        concluido: "Concluído",
+        cancelado: "Cancelado"
+      }[repStatus];
+
+      const totalRevenue = dataList.reduce((sum, a) => sum + (Number(a.valor_total) || 0), 0);
+
+      const groups = {};
+      dataList.forEach(a => {
+        const dateKey = a.data_hora.substring(0, 10);
+        if (!groups[dateKey]) {
+          groups[dateKey] = [];
+        }
+        groups[dateKey].push(a);
+      });
+      const sortedGroups = Object.keys(groups)
+        .sort()
+        .map(dateKey => ({
+          date: dateKey,
+          appointments: groups[dateKey]
+        }));
+
+      const kpiColumnsStyle = isAdmin ? "grid-template-columns: repeat(2, 1fr);" : "grid-template-columns: 1fr;";
+
+      let htmlContent = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Relatório de Agendamentos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Manrope', sans-serif;
+      color: #1f2937;
+      margin: 0;
+      padding: 30px;
+      background-color: #ffffff;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    h1, h2, h3, .font-display {
+      font-family: 'Outfit', sans-serif;
+      margin: 0;
+    }
+    .header {
+      border-bottom: 2px solid #84A59D;
+      padding-bottom: 15px;
+      margin-bottom: 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .header-left h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #3A4F4A;
+      letter-spacing: -0.02em;
+    }
+    .header-left p {
+      margin: 4px 0 0 0;
+      color: #6b7280;
+      font-size: 10px;
+    }
+    .header-right {
+      text-align: right;
+      color: #6b7280;
+      font-size: 10px;
+    }
+    .header-right .brand {
+      font-size: 14px;
+      font-weight: 700;
+      color: #84A59D;
+      font-family: 'Outfit', sans-serif;
+      margin-bottom: 3px;
+    }
+    
+    .filters-summary {
+      background-color: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 10px 15px;
+      margin-bottom: 20px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .filter-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .filter-label {
+      font-size: 9px;
+      font-weight: 700;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .filter-value {
+      font-size: 11px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    /* KPI grid */
+    .kpi-container {
+      display: grid;
+      ${kpiColumnsStyle}
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .kpi-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 12px 15px;
+      background-color: #ffffff;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    }
+    .kpi-card.highlight {
+      background-color: #fafdfd;
+      border-color: #e1eeed;
+    }
+    .kpi-title {
+      font-size: 9px;
+      font-weight: 700;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .kpi-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #374151;
+      margin-top: 4px;
+    }
+    .kpi-card.highlight .kpi-value {
+      color: #3A4F4A;
+    }
+    .kpi-subtitle {
+      font-size: 8px;
+      color: #9ca3af;
+      margin-top: 2px;
+    }
+
+    .date-section {
+      margin-bottom: 25px;
+      page-break-inside: avoid;
+    }
+    .date-header {
+      background-color: #f4f7f6;
+      border-left: 4px solid #84A59D;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: #3A4F4A;
+      border-radius: 0 6px 6px 0;
+    }
+    
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+    }
+    .report-table th {
+      background-color: #f9fafb;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #6b7280;
+      border-bottom: 1.5px solid #e5e7eb;
+      padding: 8px 12px;
+      font-weight: 700;
+      text-align: left;
+    }
+    .report-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #f3f4f6;
+      font-size: 10px;
+      vertical-align: top;
+    }
+    .report-table tr:hover {
+      background-color: #fcfcfc;
+    }
+    
+    .services-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .services-list li {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9.5px;
+      color: #4b5563;
+      margin-bottom: 2px;
+    }
+
+    .numeric {
+      text-align: right;
+    }
+    .center {
+      text-align: center;
+    }
+    .font-mono {
+      font-family: monospace;
+    }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-size: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+      text-align: center;
+    }
+    .status-agendado {
+      background-color: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #dbeafe;
+    }
+    .status-confirmado {
+      background-color: #f5f3ff;
+      color: #6d28d9;
+      border: 1px solid #ede9fe;
+    }
+    .status-em_andamento {
+      background-color: #fff7ed;
+      color: #c2410c;
+      border: 1px solid #ffedd5;
+    }
+    .status-concluido {
+      background-color: #ecfdf5;
+      color: #047857;
+      border: 1px solid #d1fae5;
+    }
+    .status-cancelado {
+      background-color: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fee2e2;
+    }
+
+    @media print {
+      body {
+        padding: 0;
+        font-size: 10px;
+      }
+      .kpi-card {
+        box-shadow: none;
+      }
+      .date-section {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <h1>Relatório de Agendamentos</h1>
+      <p>Gerado a partir da programação da agenda de atendimentos.</p>
+    </div>
+    <div class="header-right">
+      <div class="brand">${empresa?.nome_fantasia || "Salon Studio"}</div>
+      <div>Gerado em ${currentDate} às ${currentTime}</div>
+    </div>
+  </div>
+
+  <div class="filters-summary">
+    <div class="filter-item">
+      <span class="filter-label">Período</span>
+      <span class="filter-value">${new Date(repDataInicio + 'T12:00:00').toLocaleDateString('pt-BR')} a ${new Date(repDataFim + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+    </div>
+    <div class="filter-item">
+      <span class="filter-label">Colaborador</span>
+      <span class="filter-value">${colabName}</span>
+    </div>
+    <div class="filter-item">
+      <span class="filter-label">Status Agendamentos</span>
+      <span class="filter-value">${statusName}</span>
+    </div>
+    <div class="filter-item">
+      <span class="filter-label">Total Gerado</span>
+      <span class="filter-value">${dataList.length} registros</span>
+    </div>
+  </div>
+
+  <div class="kpi-container">
+    <div class="kpi-card">
+      <div class="kpi-title">Total de Atendimentos</div>
+      <div class="kpi-value">${dataList.length}</div>
+      <div class="kpi-subtitle">Agendamentos no período</div>
+    </div>
+    ${isAdmin ? `
+    <div class="kpi-card highlight">
+      <div class="kpi-title">Faturamento Previsto</div>
+      <div class="kpi-value">${fmtBRL(totalRevenue)}</div>
+      <div class="kpi-subtitle">Soma total dos atendimentos filtrados</div>
+    </div>
+    ` : ''}
+  </div>
+`;
+
+      sortedGroups.forEach((group) => {
+        htmlContent += `
+        <div class="date-section">
+          <div class="date-header">${formatSelectedDate(group.date)}</div>
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th style="width: 80px;">Horário</th>
+                <th>Cliente</th>
+                <th style="width: 110px;" class="center">Status</th>
+                <th style="width: ${isAdmin ? '320px' : '440px'};">Serviços Agendados${isAdmin ? ' (Valor Unitário)' : ''}</th>
+                ${isAdmin ? '<th style="width: 120px;" class="numeric">Valor Total</th>' : ''}
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        group.appointments.forEach((a) => {
+          const formattedHour = fmtHour(a.data_hora);
+          const statusBadge = `<span class="status-badge status-${a.status}">${a.status === 'em_andamento' ? 'em andamento' : a.status}</span>`;
+          
+          let servicesLi = `<ul class="services-list">`;
+          a.itens?.forEach((item) => {
+            const serv = servicos.find(s => s.id === item.servico_id);
+            const colab = colaboradores.find(c => c.id === item.colaborador_id);
+            const aux = item.auxiliar_id ? colaboradores.find(c => c.id === item.auxiliar_id) : null;
+            const colabText = colab ? ` <span style="font-size: 8px; color: #6b7280; font-weight: normal; margin-left: 5px;">(${colab.nome}${aux ? ` / Aux: ${aux.nome}` : ''})</span>` : '';
+            
+            servicesLi += `<li>
+              <span>${item.nome || serv?.nome || "Serviço"}${colabText}</span>
+              ${isAdmin ? `<span class="font-mono">${fmtBRL(item.valor)}</span>` : ''}
+            </li>`;
+          });
+          servicesLi += `</ul>`;
+
+          htmlContent += `
+            <tr>
+              <td class="font-mono font-semibold">${formattedHour}</td>
+              <td style="font-weight: 600;">${a.cliente_nome}</td>
+              <td class="center">${statusBadge}</td>
+              <td>${servicesLi}</td>
+              ${isAdmin ? `<td class="numeric font-mono font-bold" style="color: #3A4F4A;">${fmtBRL(a.valor_total)}</td>` : ''}
+            </tr>
+          `;
+        });
+
+        htmlContent += `
+            </tbody>
+          </table>
+        </div>
+        `;
+      });
+
+      htmlContent += `
+  <div style="margin-top: 35px; text-align: center; font-size: 8px; color: #9ca3af; border-top: 1px dashed #e5e7eb; padding-top: 15px; page-break-inside: avoid;">
+    <p style="margin: 0;">Relatório gerado automaticamente pelo sistema Studio App. Documento para fins de controle interno e conferência.</p>
+    <p style="margin: 2px 0 0 0;">© ${new Date().getFullYear()} Salon Studio - Todos os direitos reservados.</p>
+  </div>
+</body>
+</html>
+      `;
+
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.onload = () => {
+        printWindow.focus();
+        printWindow.print();
+      };
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao gerar o relatório em PDF.");
+    }
+  };
+
+  const handleGerarRelatorio = async () => {
+    if (!repDataInicio || !repDataFim) {
+      toast.error("Informe a data inicial e final.");
+      return;
+    }
+    setRepLoading(true);
+    try {
+      const res = await http.get("/agendamentos", {
+        params: {
+          data_inicio: repDataInicio,
+          data_fim: repDataFim
+        }
+      });
+      
+      let filtered = res.data || [];
+      
+      // Filtrar por status
+      if (repStatus !== "all") {
+        filtered = filtered.filter(a => a.status === repStatus);
+      }
+      
+      // Filtrar por colaborador
+      if (repColaborador !== "all") {
+        filtered = filtered.filter(a => {
+          const itens = a.itens || [];
+          if (repColaborador === "none") {
+            return !itens.some(i => i.colaborador_id && i.colaborador_id !== "none");
+          } else {
+            return itens.some(i => i.colaborador_id === repColaborador || i.auxiliar_id === repColaborador);
+          }
+        });
+      }
+      
+      setRepResults(filtered);
+      setHasGeneratedReport(true);
+
+      if (filtered.length === 0) {
+        toast.info("Nenhum registro encontrado para gerar o PDF.");
+        return;
+      }
+
+      generateReportPDFWithData(filtered);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Erro ao carregar dados do relatório");
+    } finally {
+      setRepLoading(false);
+    }
+  };
+
+  const groupedReportResults = useMemo(() => {
+    const groups = {};
+    repResults.forEach(a => {
+      const dateKey = a.data_hora.substring(0, 10);
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(a);
+    });
+    return Object.keys(groups)
+      .sort()
+      .map(dateKey => ({
+        date: dateKey,
+        appointments: groups[dateKey]
+      }));
+  }, [repResults]);
+
+  const reportTotalRevenue = useMemo(() => {
+    return repResults.reduce((sum, a) => sum + (Number(a.valor_total) || 0), 0);
+  }, [repResults]);
 
   const [produtos, setProdutos] = useState([]);
   const [utilizedProductsOpen, setUtilizedProductsOpen] = useState(false);
@@ -467,6 +962,7 @@ export default function Agenda() {
       http.get("/colaboradores").then((r) => setColaboradores(r.data || [])),
       http.get("/categorias").then((r) => setCategorias(r.data || [])),
       http.get("/produtos").then((r) => setProdutos(r.data || [])),
+      http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data || null)).catch(() => {})
     ]).finally(() => {
       setLoading(false);
       isMounted.current = true;
@@ -851,6 +1347,14 @@ export default function Agenda() {
           >
             <History className="w-3.5 h-3.5" />
             <span>Excluídos</span>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleOpenRelatorio}
+            className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800 h-9"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Relatório</span>
           </Button>
         </div>
         <button className="btn-primary w-full sm:w-auto justify-center" onClick={openNew}><Plus className="w-4 h-4 mr-2" /> Novo Agendamento</button>
@@ -1323,9 +1827,25 @@ export default function Agenda() {
                 {/* Cliente e Status */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-[#F8FBFB] dark:bg-[#1a2322] p-5 rounded-2xl border border-[#E8EFEF] dark:border-[#2e3e3b] shadow-xs gap-4">
                   <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-12 h-12 rounded-full bg-[#EAF0EE] dark:bg-zinc-800 flex items-center justify-center text-[#3A4F4A] dark:text-[#EAF0EE] font-semibold text-xl shrink-0">
-                      {resumoAgendamento.cliente_nome?.charAt(0).toUpperCase()}
-                    </div>
+                    {(() => {
+                      const client = clientes.find(c => c.id === resumoAgendamento.cliente_id);
+                      if (client?.foto) {
+                        return (
+                          <img 
+                            src={client.foto} 
+                            alt={resumoAgendamento.cliente_nome} 
+                            onClick={() => setPreviewPhoto(client.foto)}
+                            className="w-20 h-20 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-800 shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                            title="Clique para ampliar"
+                          />
+                        );
+                      }
+                      return (
+                        <div className="w-20 h-20 rounded-full bg-[#EAF0EE] dark:bg-zinc-800 flex items-center justify-center text-[#3A4F4A] dark:text-[#EAF0EE] font-semibold text-3xl shrink-0 border border-zinc-100 dark:border-zinc-800">
+                          {resumoAgendamento.cliente_nome?.charAt(0).toUpperCase()}
+                        </div>
+                      );
+                    })()}
                     <div className="min-w-0">
                       <h3 className="font-display font-bold text-zinc-800 dark:text-zinc-100 text-lg sm:text-xl truncate leading-tight">{resumoAgendamento.cliente_nome}</h3>
                       <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium mt-0.5">Cliente cadastrado(a)</p>
@@ -1864,6 +2384,267 @@ export default function Agenda() {
         description="Este agendamento já foi concluído. Informe usuário e senha de um administrador com permissão específica para alterar o consumo de produtos."
         requireCredentials={true}
       />
+
+      {/* Lightbox para visualização de foto ampliada */}
+      <Dialog open={!!previewPhoto} onOpenChange={() => setPreviewPhoto(null)}>
+        <DialogContent className="sm:max-w-md p-6 bg-zinc-900 dark:bg-zinc-950 border border-zinc-800 dark:border-zinc-900 shadow-2xl flex flex-col items-center justify-center rounded-2xl [&>button]:text-zinc-400 [&>button]:hover:text-zinc-150">
+          {previewPhoto && (
+            <img 
+              src={previewPhoto} 
+              alt="Foto de Perfil Ampliada" 
+              className="max-w-full max-h-[75vh] rounded-xl object-contain shadow-md"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Relatório de Agendamentos */}
+      <Dialog open={openRelatorioDialog} onOpenChange={setOpenRelatorioDialog}>
+        <DialogContent className="w-full max-w-full sm:max-w-4xl h-full sm:h-auto max-h-screen sm:max-h-[90vh] p-4 sm:p-7 rounded-none sm:rounded-2xl dark:bg-zinc-900 dark:border-zinc-800 flex flex-col gap-4 overflow-y-auto [&>button]:text-zinc-400 [&>button]:hover:text-zinc-150">
+          <DialogHeader className="pb-2 border-b border-zinc-100 dark:border-zinc-850">
+            <DialogTitle className="font-display text-xl font-bold flex items-center gap-2 text-zinc-800 dark:text-zinc-150">
+              <FileText className="w-6 h-6 text-[#84A59D]" />
+              Relatório de Agendamentos
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Defina os filtros para gerar o relatório consolidado de atendimentos agendados.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Filtros */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-150 dark:border-zinc-850">
+            <div className="flex flex-col gap-1">
+              <Label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-wider">Data Inicial</Label>
+              <Input
+                type="date"
+                value={repDataInicio}
+                onChange={(e) => setRepDataInicio(e.target.value)}
+                className="h-9 text-xs bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-wider">Data Final</Label>
+              <Input
+                type="date"
+                value={repDataFim}
+                onChange={(e) => setRepDataFim(e.target.value)}
+                className="h-9 text-xs bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-wider">Status do Serviço</Label>
+              <Select value={repStatus} onValueChange={setRepStatus}>
+                <SelectTrigger className="h-9 text-xs bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+                  <SelectValue placeholder="Todos os Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os Status</SelectItem>
+                  <SelectItem value="agendado">Agendado</SelectItem>
+                  <SelectItem value="confirmado">Confirmado</SelectItem>
+                  <SelectItem value="em_andamento">Em andamento</SelectItem>
+                  <SelectItem value="concluido">Concluído</SelectItem>
+                  <SelectItem value="cancelado">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-wider">Colaborador</Label>
+              <Select value={repColaborador} onValueChange={setRepColaborador}>
+                <SelectTrigger className="h-9 text-xs bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+                  <SelectValue placeholder="Todos os Colaboradores" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os Colaboradores</SelectItem>
+                  <SelectItem value="none">Sem colaborador</SelectItem>
+                  {colaboradores.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                if (!repDataInicio || !repDataFim) {
+                  toast.error("Informe a data inicial e final.");
+                  return;
+                }
+                setRepLoading(true);
+                try {
+                  const res = await http.get("/agendamentos", {
+                    params: {
+                      data_inicio: repDataInicio,
+                      data_fim: repDataFim
+                    }
+                  });
+                  let filtered = res.data || [];
+                  if (repStatus !== "all") {
+                    filtered = filtered.filter(a => a.status === repStatus);
+                  }
+                  if (repColaborador !== "all") {
+                    filtered = filtered.filter(a => {
+                      const itens = a.itens || [];
+                      if (repColaborador === "none") {
+                        return !itens.some(i => i.colaborador_id && i.colaborador_id !== "none");
+                      } else {
+                        return itens.some(i => i.colaborador_id === repColaborador || i.auxiliar_id === repColaborador);
+                      }
+                    });
+                  }
+                  setRepResults(filtered);
+                  setHasGeneratedReport(true);
+                  if (filtered.length === 0) {
+                    toast.info("Nenhum agendamento encontrado.");
+                  }
+                } catch (e) {
+                  toast.error(e.response?.data?.detail || "Erro ao carregar dados");
+                } finally {
+                  setRepLoading(false);
+                }
+              }}
+              disabled={repLoading}
+              className="text-xs h-9 order-2 sm:order-1"
+            >
+              Visualizar em Tela
+            </Button>
+            <Button
+              onClick={handleGerarRelatorio}
+              disabled={repLoading}
+              className="bg-[#84A59D] hover:bg-[#6F9189] text-white text-xs font-bold px-5 h-9 rounded-lg flex items-center justify-center gap-1.5 order-1 sm:order-2"
+            >
+              {repLoading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Carregando...
+                </>
+              ) : (
+                <>
+                  <Printer className="w-3.5 h-3.5" />
+                  Gerar Relatório (PDF)
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Área de Resultados */}
+          <div className="flex-1 min-h-[250px] flex flex-col overflow-hidden">
+            {!hasGeneratedReport ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-400 dark:text-zinc-550 select-none">
+                <FileText className="w-12 h-12 text-[#84A59D]/40 mb-2" />
+                <p className="text-sm font-semibold">Filtros definidos</p>
+                <p className="text-xs">Defina o período e filtros acima e clique em "Visualizar" ou "Gerar Relatório (PDF)".</p>
+              </div>
+            ) : repResults.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-400 dark:text-zinc-550 select-none">
+                <CalendarDays className="w-12 h-12 text-[#84A59D]/40 mb-2" />
+                <p className="text-sm font-semibold">Nenhum atendimento encontrado</p>
+                <p className="text-xs">Nenhum agendamento corresponde aos filtros no período selecionado.</p>
+              </div>
+            ) : (
+              <div className="space-y-4 flex flex-col flex-1 overflow-hidden">
+                {/* Resumo Consolidado */}
+                <div className={`grid ${isAdmin ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'} gap-3 bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] p-4 rounded-xl shadow-xs`}>
+                  <div className="flex flex-col justify-center">
+                    <span className="text-[10px] text-zinc-400 dark:text-zinc-550 font-bold uppercase tracking-wider block">Total de Atendimentos</span>
+                    <span className="text-lg font-extrabold text-zinc-850 dark:text-zinc-100">{repResults.length}</span>
+                  </div>
+                  {isAdmin && (
+                    <div className="flex flex-col justify-center sm:text-right">
+                      <span className="text-[10px] text-zinc-400 dark:text-zinc-550 font-bold uppercase tracking-wider block">Faturamento Previsto</span>
+                      <span className="text-lg font-mono font-extrabold text-[#3A4F4A] dark:text-[#84A59D]">
+                        {fmtBRL(reportTotalRevenue)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Lista agrupada com barra de rolagem */}
+                <div className="space-y-6 flex-1 overflow-y-auto pr-1">
+                  {groupedReportResults.map((group) => (
+                    <div key={group.date} className="space-y-2.5">
+                      {/* Cabeçalho da Data */}
+                      <div className="bg-zinc-100 dark:bg-zinc-850 px-3 py-1.5 rounded-lg border border-zinc-200/50 dark:border-zinc-800/60 sticky top-0 z-10">
+                        <span className="text-xs font-bold text-zinc-750 dark:text-zinc-300">
+                          {formatSelectedDate(group.date)}
+                        </span>
+                      </div>
+
+                      {/* Lista de Atendimentos */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {group.appointments.map((a) => (
+                          <div key={a.id} className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850 p-3.5 rounded-xl shadow-xs flex flex-col gap-2.5">
+                            {/* Cliente, Horário e Status */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                                <span className="text-xs font-bold text-zinc-450 dark:text-zinc-550 font-mono bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-1.5 py-0.5 rounded shrink-0">
+                                  {fmtHour(a.data_hora)}
+                                </span>
+                                <span className="text-sm font-bold text-zinc-800 dark:text-zinc-150 truncate">
+                                  {a.cliente_nome}
+                                </span>
+                              </div>
+                              <div className="self-start sm:self-auto">
+                                <StatusBadge status={a.status} />
+                              </div>
+                            </div>
+
+                            {/* Serviços Agendados */}
+                            <div className="bg-zinc-50 dark:bg-zinc-900/60 p-2.5 rounded-lg border border-zinc-150/60 dark:border-zinc-850/50 space-y-1.5">
+                              <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-wider block">Serviços</span>
+                              {a.itens?.map((item, idx) => {
+                                const serv = servicos.find(s => s.id === item.servico_id);
+                                return (
+                                  <div key={idx} className="flex justify-between items-start sm:items-center gap-2 text-xs text-zinc-650 dark:text-zinc-350">
+                                    <span className="font-medium truncate">
+                                      {item.nome || serv?.nome || "Serviço"}
+                                      {(() => {
+                                        const colab = colaboradores.find(c => c.id === item.colaborador_id);
+                                        const aux = item.auxiliar_id ? colaboradores.find(c => c.id === item.auxiliar_id) : null;
+                                        if (colab) {
+                                          return (
+                                            <span className="text-[10px] text-zinc-450 dark:text-zinc-500 ml-1.5 font-normal">
+                                              ({colab.nome}{aux ? ` / Aux: ${aux.nome}` : ""})
+                                            </span>
+                                          );
+                                        }
+                                        return null;
+                                      })()}
+                                    </span>
+                                    {isAdmin && (
+                                      <span className="font-semibold font-mono text-zinc-550 dark:text-zinc-400 shrink-0">{fmtBRL(item.valor)}</span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Valor Total do Atendimento */}
+                            {isAdmin && (
+                              <div className="flex justify-between items-center border-t border-dashed border-zinc-150 dark:border-zinc-800 pt-2">
+                                <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-wider">Valor Total</span>
+                                <span className="text-sm font-bold font-mono text-zinc-800 dark:text-zinc-250">{fmtBRL(a.valor_total)}</span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="pt-2 border-t border-zinc-100 dark:border-zinc-850 flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setOpenRelatorioDialog(false)} className="w-full sm:w-auto text-xs h-9">
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

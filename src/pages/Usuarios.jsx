@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { useAuth } from "../auth";
 import AuditModal from "../components/AuditModal";
 
-const blank = { name: "", email: "", senha: "", role: "funcionario", perfil_acesso_id: "func-profile-uuid-0000000000000000000", colaborador_id: "", ativo: true, pode_alterar_concluido: false, pode_excluir_agendamento: false, pode_excluir_pagamento: false };
+const blank = { name: "", email: "", senha: "", role: "funcionario", perfil_acesso_id: "func-profile-uuid-000000000000000000", colaborador_id: "", ativo: true, pode_alterar_concluido: false, pode_excluir_agendamento: false, pode_excluir_pagamento: false };
 
 export default function Usuarios() {
   const { user: me } = useAuth();
@@ -24,6 +24,7 @@ export default function Usuarios() {
   const [deletingId, setDeletingId] = useState(null);
   const [deletingEmail, setDeletingEmail] = useState("");
   const [form, setForm] = useState(blank);
+  const [confirmarSenha, setConfirmarSenha] = useState("");
   const [auditOpen, setAuditOpen] = useState(false);
 
   const load = () => http.get("/users").then((r) => setList(r.data)).catch((e) => toast.error(e.response?.data?.detail || "Erro ao carregar"));
@@ -44,12 +45,19 @@ export default function Usuarios() {
       return;
     }
 
+    if ((!form.id && form.senha) || (form.id && form.senha && form.senha.trim())) {
+      if (form.senha !== confirmarSenha) {
+        toast.error("As senhas informadas não coincidem");
+        return;
+      }
+    }
+
     try {
       const payload = { 
         name: form.name, 
         email: form.email, 
         role: form.role, 
-        perfil_acesso_id: form.perfil_acesso_id || "func-profile-uuid-0000000000000000000",
+        perfil_acesso_id: form.perfil_acesso_id || "func-profile-uuid-000000000000000000",
         colaborador_id: form.colaborador_id || null,
         ativo: form.ativo,
         pode_alterar_concluido: form.pode_alterar_concluido,
@@ -100,6 +108,7 @@ export default function Usuarios() {
 
   const edit = (u) => { 
     setForm({ ...u, senha: "" }); 
+    setConfirmarSenha("");
     setOpen(true); 
   };
 
@@ -108,7 +117,7 @@ export default function Usuarios() {
   return (
     <div className="p-6 lg:p-8 fade-in">
       <PageHeader overline="Acessos" title="Usuários" action={
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setForm(blank); }}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setForm(blank); setConfirmarSenha(""); } }}>
           {isAdmin && (
             <DialogTrigger asChild>
               <Button data-testid="add-user-btn" className="bg-[#84A59D] hover:bg-[#6F9189]"><Plus className="w-4 h-4 mr-1" /> Novo usuário</Button>
@@ -131,8 +140,19 @@ export default function Usuarios() {
                 />
               </div>
               <div>
+                <Label>{form.id ? "Confirmar nova senha" : "Confirmar senha *"}</Label>
+                <Input 
+                  data-testid="user-confirm-password" 
+                  type="password" 
+                  value={confirmarSenha} 
+                  onChange={(e) => setConfirmarSenha(e.target.value)} 
+                  placeholder={form.id ? "Confirme a nova senha" : "Confirme a senha"}
+                  autoComplete="new-password"
+                />
+              </div>
+              <div>
                 <Label>Perfil *</Label>
-                <Select value={form.perfil_acesso_id || "func-profile-uuid-0000000000000000000"} onValueChange={(v) => {
+                <Select value={form.perfil_acesso_id || "func-profile-uuid-000000000000000000"} onValueChange={(v) => {
                   const p = perfis.find(x => x.id === v);
                   const chosenRole = (p?.nome === "Administrador" || p?.permissoes?.acoes?.is_admin) ? "admin" : "funcionario";
                   setForm({ ...form, perfil_acesso_id: v, role: chosenRole });
@@ -227,7 +247,7 @@ export default function Usuarios() {
                         if (p) {
                           return (
                             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
-                              p.id === 'admin-profile-uuid-0000000000000000000'
+                              p.id === 'admin-profile-uuid-00000000000000000'
                                 ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600"
                                 : "bg-blue-50 dark:bg-blue-950/20 text-blue-500"
                             }`}>
@@ -296,7 +316,7 @@ export default function Usuarios() {
                       if (p) {
                         return (
                           <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                            p.id === 'admin-profile-uuid-0000000000000000000'
+                            p.id === 'admin-profile-uuid-00000000000000000'
                               ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600"
                               : "bg-blue-50 dark:bg-blue-950/20 text-blue-500"
                           }`}>
