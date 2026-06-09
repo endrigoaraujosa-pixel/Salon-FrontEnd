@@ -38,6 +38,10 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+      config.headers['x-is-mobile'] = 'true';
+    }
     // Adicionar um timestamp para evitar cache em requisições GET que podem falhar na primeira vez
     if (config.method === 'get') {
       config.params = { ...config.params, _t: Date.now() };
@@ -60,7 +64,17 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshResponse = await axios.post(`${baseURL}/auth/refresh`, {}, { withCredentials: true });
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const headers = {
+          "x-tenant-id": tenantId
+        };
+        if (isMobile) {
+          headers["x-is-mobile"] = "true";
+        }
+        const refreshResponse = await axios.post(`${baseURL}/auth/refresh`, {}, { 
+          withCredentials: true,
+          headers
+        });
         if (refreshResponse.data.token) {
           localStorage.setItem('salon_token', refreshResponse.data.token);
           originalRequest.headers.Authorization = `Bearer ${refreshResponse.data.token}`;
