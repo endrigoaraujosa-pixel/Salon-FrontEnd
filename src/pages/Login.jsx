@@ -61,11 +61,11 @@ export default function Login() {
           <div className="space-y-3">
             <div>
               <Label htmlFor="email">Email</Label>
-              <Input id="email" data-testid="login-email" type="email" value={user.email} onChange={(e) => setUser({ ...user, email: e.target.value })} required />
+              <Input id="email" data-testid="login-email" type="email" value={user.email} onChange={(e) => setUser({ ...user, email: e.target.value })} required autoComplete="username" />
             </div>
             <div>
               <Label htmlFor="password">Senha</Label>
-              <Input id="password" data-testid="login-password" type="password" value={user.password} onChange={(e) => setUser({ ...user, password: e.target.value })} required autoComplete="new-password" />
+              <Input id="password" data-testid="login-password" type="password" value={user.password} onChange={(e) => setUser({ ...user, password: e.target.value })} required autoComplete="current-password" />
             </div>
           </div>
           <Button data-testid="login-submit" type="submit" disabled={loading} className="w-full bg-[#84A59D] hover:bg-[#6F9189] text-white">
