@@ -229,7 +229,7 @@ export default function Dashboard() {
       </div>
 
       {/* KPI Cards Grid */}
-      <div className={`grid grid-cols-2 ${isAdmin ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-4`}>
+      <div className={`grid grid-cols-2 ${isAdmin ? "lg:grid-cols-5" : "lg:grid-cols-4"} gap-4`}>
         {isAdmin && (
           <Stat 
             icon={DollarSign} 
@@ -239,13 +239,6 @@ export default function Dashboard() {
             onClick={() => handleOpenDetail("faturamento")} 
           />
         )}
-        <Stat 
-          icon={Calendar} 
-          label="Agendamentos" 
-          value={d.agendamentos_hoje || 0} 
-          hint="No período filtrado"
-          onClick={() => handleOpenDetail("agendamentos")}
-        />
         {isAdmin && (
           <Stat 
             icon={TrendingUp} 
@@ -255,20 +248,25 @@ export default function Dashboard() {
             onClick={() => handleOpenDetail("ticket_medio")}
           />
         )}
-        {!isAdmin && (
-          <Stat 
-            icon={TrendingUp} 
-            label="Atendimentos Período" 
-            value={d.atendimentos_mes || 0} 
-            hint="Concluídos no período"
-            onClick={() => handleOpenDetail("atendimentos")}
-          />
-        )}
+        <Stat 
+          icon={Calendar} 
+          label="Agendamentos" 
+          value={d.agendamentos_hoje || 0} 
+          hint="No período filtrado"
+          onClick={() => handleOpenDetail("agendamentos")}
+        />
+        <Stat 
+          icon={TrendingUp} 
+          label="Atendimentos Período" 
+          value={d.atendimentos_mes || 0} 
+          hint="Concluídos no período"
+          onClick={() => handleOpenDetail("atendimentos")}
+        />
         <Stat 
           icon={Users} 
           label="Clientes" 
           value={d.total_clientes || 0} 
-          hint={isAdmin ? `${d.total_colaboradores || 0} profissionais` : undefined} 
+          hint={`${d.total_colaboradores || 0} profissionais`} 
           onClick={() => handleOpenDetail("clientes")}
         />
       </div>
