@@ -301,9 +301,9 @@ export default function VendaPagamento() {
         {
           valor: Number(editingPayment.valor),
           forma_pagamento: editingPayment.forma_pagamento,
-          observacao: editingPayment.observacao || ""
-        },
-        { params: { password } }
+          observacao: editingPayment.observacao || "",
+          password
+        }
       );
       toast.success("Pagamento atualizado com sucesso");
       setEditFormOpen(false);
@@ -321,7 +321,7 @@ export default function VendaPagamento() {
     try {
       await http.delete(
         `/vendas-diretas/${id}/pagamentos/${pendingAction.paymentId}`,
-        { params: { email, password } }
+        { data: { email, password } }
       );
       toast.success("Pagamento removido com sucesso");
       setPasswordDialogOpen(false);
