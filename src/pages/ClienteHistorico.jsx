@@ -589,7 +589,7 @@ export default function ClienteHistorico() {
                                   return (
                                     <div key={pidx} className="flex justify-between items-center text-xs text-zinc-650 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
                                       <span className="font-medium text-zinc-755">{prod?.nome || "Carregando..."}</span>
-                                      <span className="font-mono font-bold text-zinc-700 dark:text-zinc-300">{pu.quantidade} {prod?.unidade || "un"}</span>
+                                      <span className="font-mono font-bold text-zinc-700 dark:text-zinc-300">{Number(pu.quantidade || 0).toFixed(3)} {pu.unidade_medida_insumo || "un"}</span>
                                     </div>
                                   );
                                 })}

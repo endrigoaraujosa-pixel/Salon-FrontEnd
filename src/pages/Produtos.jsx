@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import AuditModal from "../components/AuditModal";
 import SearchableSelect from "../components/SearchableSelect";
 
-const blank = { nome: "", categoria: "", categoria_id: "", unidade_medida: "un", quantidade_estoque: 0, estoque_minimo: 5, custo_unitario: 0, preco_venda: 0, fornecedor: "", ativo: true, comissao: 0 };
+const blank = { nome: "", categoria: "", categoria_id: "", unidade_medida: "un", quantidade_estoque: 0, estoque_minimo: 5, custo_unitario: 0, preco_venda: 0, fornecedor: "", ativo: true, comissao: 0, quantidade_por_unidade: 0, unidade_medida_insumo: "un" };
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function Produtos() {
@@ -380,6 +380,8 @@ export default function Produtos() {
         custo_unitario: Number(form.custo_unitario),
         preco_venda: Number(form.preco_venda),
         comissao: Number(form.comissao || 0),
+        quantidade_por_unidade: Number(form.quantidade_por_unidade || 0),
+        unidade_medida_insumo: form.unidade_medida_insumo || "un",
       };
       if (form.id) await http.put(`/produtos/${form.id}`, p); else await http.post("/produtos", p);
       toast.success("Salvo"); setOpen(false); setForm(blank); load();
@@ -407,7 +409,15 @@ export default function Produtos() {
     }
   };
 
-  const edit = (p) => { setForm(p); setOpen(true); };
+  const edit = (p) => { 
+    setForm({
+      ...p,
+      quantidade_por_unidade: p.quantidade_por_unidade !== undefined && p.quantidade_por_unidade !== null
+        ? Number(p.quantidade_por_unidade).toFixed(3)
+        : ""
+    }); 
+    setOpen(true); 
+  };
 
   const toggleCategory = (catId) => {
     setCollapsedCategories(prev => ({
@@ -562,10 +572,81 @@ export default function Produtos() {
                   <div>
                     <Label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Custo Unitário (R$)</Label>
                     <Input type="number" step="0.01" value={form.custo_unitario} onChange={(e) => setForm({ ...form, custo_unitario: e.target.value })} placeholder="0,00" className="mt-1 font-mono" />
+                    <p className="text-[10px] text-zinc-400 mt-1">Custo total da embalagem de compra.</p>
                   </div>
                   <div>
                     <Label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Preço de Venda (R$) *</Label>
                     <Input type="number" step="0.01" value={form.preco_venda} onChange={(e) => setForm({ ...form, preco_venda: e.target.value })} placeholder="0,00" className="mt-1 font-mono font-bold text-[#3A4F4A] dark:text-[#EAF0EE]" />
+                  </div>
+                </div>
+
+                 {/* Quantidade por Unidade de Compra */}
+                <div className="p-3.5 bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] rounded-xl space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#3A4F4A] dark:text-[#84A59D]">
+                    <Package className="w-3.5 h-3.5" />
+                    <span>Configuração do Conteúdo da Embalagem (Insumos)</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400">Quantidade na Embalagem</Label>
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        value={form.quantidade_por_unidade}
+                        onChange={(e) => {
+                          let val = e.target.value;
+                          val = val.replace(/[^0-9.,]/g, "");
+                          const parts = val.split(/[.,]/);
+                          if (parts.length > 2) {
+                            val = parts[0] + "." + parts.slice(1).join("");
+                          } else if (val.includes(",")) {
+                            val = val.replace(",", ".");
+                          }
+                          setForm(prev => ({ ...prev, quantidade_por_unidade: val }));
+                        }}
+                        onBlur={(e) => {
+                          const val = e.target.value;
+                          if (val !== "" && !isNaN(val)) {
+                            setForm(prev => ({ ...prev, quantidade_por_unidade: Number(val).toFixed(3) }));
+                          }
+                        }}
+                        className="font-mono mt-1"
+                        placeholder="Ex: 400.000, 900.000, 1000.000"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400">Unidade de Consumo (g, ml, un...)</Label>
+                      <Input
+                        value={form.unidade_medida_insumo || ""}
+                        onChange={(e) => setForm({ ...form, unidade_medida_insumo: e.target.value })}
+                        className="mt-1"
+                        placeholder="Ex: g, ml, un"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-1.5 pt-1.5 border-t border-dashed border-[#E8EFEF] dark:border-[#2e3e3b] mt-2">
+                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                      Informe o conteúdo interno da embalagem (ex: 400g ou 900ml) para calcular o custo proporcional por grama/mililitro no lançamento de insumos.
+                    </p>
+                    {Number(form.quantidade_por_unidade) > 0 && Number(form.custo_unitario) > 0 && (
+                      <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#EAF0EE] dark:bg-[#1a2e2a] border border-[#84A59D]/30">
+                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400">Custo por {form.unidade_medida_insumo || "un"}:</span>
+                        <span className="text-[11px] font-bold font-mono text-[#3A4F4A] dark:text-[#84A59D]">
+                          {(() => {
+                            const val = Number(form.custo_unitario) / Number(form.quantidade_por_unidade);
+                            const hasMoreDecimals = (val * 100) % 1 !== 0;
+                            return val.toLocaleString("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: hasMoreDecimals ? 4 : 2
+                            });
+                          })()}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

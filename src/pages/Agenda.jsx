@@ -8,7 +8,7 @@ import { Textarea } from "../components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import StatusBadge, { STATUS_LABELS } from "../components/StatusBadge";
-import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle, ShoppingCart, Loader2, Printer } from "lucide-react";
+import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle, ShoppingCart, Loader2, Printer, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import AgendaTimeline from "../components/AgendaTimeline";
@@ -19,6 +19,17 @@ import PasswordConfirmDialog from "../components/PasswordConfirmDialog";
 import "./Agenda.css";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const fmtBRLProp = (n) => {
+  const val = Number(n || 0);
+  if (val === 0) return "R$ 0,00";
+  const hasMoreDecimals = (val * 100) % 1 !== 0;
+  return val.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: hasMoreDecimals ? 4 : 2
+  });
+};
 export const fmtHour = (s) => new Date(s.replace('Z', '')).toLocaleTimeString("pt-BR", { timeZone: "America/Recife", hour: "2-digit", minute: "2-digit" });
 
 const toDateInput = (d) => {
@@ -697,16 +708,28 @@ export default function Agenda() {
     const rows = allProductIds.map(pid => {
       const prod = produtos.find(p => p.id === pid);
       const saved = savedUtilized.find(pu => pu.produto_id === pid);
-      const savedCusto = (saved && saved.custo_unitario != null) ? Number(saved.custo_unitario) : null;
-      const finalCusto = (savedCusto !== null && savedCusto > 0) ? savedCusto : Number(prod?.custo_unitario || 0);
-      
+
+      // custo_unitario = cost of the whole package (never altered)
+      const custoUnitario = Number(prod?.custo_unitario || 0);
+      const quantidadePorUnidade = Number(prod?.quantidade_por_unidade || 0);
+
+      // custo_proporcional = cost per unit of measure (e.g. per gram/ml)
+      // Priority: value already saved in the appointment -> recalculate from product
+      const savedProporcional = (saved?.custo_proporcional != null) ? Number(saved.custo_proporcional) : null;
+      const custoProporcional = (savedProporcional !== null && savedProporcional > 0)
+        ? savedProporcional
+        : (quantidadePorUnidade > 0 ? custoUnitario / quantidadePorUnidade : custoUnitario);
+
       return {
         produto_id: pid,
         nome: prod?.nome || "Produto desconhecido",
         unidade: prod?.unidade_medida || "un",
+        unidade_medida_insumo: prod?.unidade_medida_insumo || "un",
         quantidade_estoque: prod?.quantidade_estoque || 0,
-        custo_unitario: finalCusto,
-        quantidade: saved ? String(saved.quantidade || 0) : "",
+        custo_unitario: custoUnitario,
+        quantidade_por_unidade: quantidadePorUnidade,
+        custo_proporcional: custoProporcional,
+        quantidade: saved ? Number(saved.quantidade || 0).toFixed(3) : "",
         isLinked: linkedProductIds.includes(pid)
       };
     });
@@ -726,14 +749,23 @@ export default function Agenda() {
     const prod = produtos.find(p => p.id === prodId);
     if (!prod) return;
 
+    const custoUnitario = Number(prod.custo_unitario || 0);
+    const quantidadePorUnidade = Number(prod.quantidade_por_unidade || 0);
+    const custoProporcional = quantidadePorUnidade > 0
+      ? custoUnitario / quantidadePorUnidade
+      : custoUnitario;
+
     setTempUtilizedProducts([
       ...tempUtilizedProducts,
       {
         produto_id: prodId,
         nome: prod.nome,
         unidade: prod.unidade_medida || "un",
+        unidade_medida_insumo: prod.unidade_medida_insumo || "un",
         quantidade_estoque: prod.quantidade_estoque,
-        custo_unitario: Number(prod.custo_unitario || 0),
+        custo_unitario: custoUnitario,
+        quantidade_por_unidade: quantidadePorUnidade,
+        custo_proporcional: custoProporcional,
         quantidade: "",
         isLinked: false
       }
@@ -758,7 +790,10 @@ export default function Agenda() {
       .map(row => ({
         produto_id: row.produto_id,
         quantidade: Number(row.quantidade || 0),
-        custo_unitario: row.custo_unitario
+        custo_unitario: row.custo_unitario,
+        quantidade_por_unidade: row.quantidade_por_unidade || 0,
+        custo_proporcional: row.custo_proporcional || row.custo_unitario,
+        unidade_medida_insumo: row.unidade_medida_insumo || "un"
       }));
 
     try {
@@ -786,7 +821,12 @@ export default function Agenda() {
         }))
       };
 
-      const params = creds ? { params: { ...creds, only_insumos: true } } : { params: { only_insumos: true } };
+      if (creds) {
+        payload.auth_email = creds.email;
+        payload.auth_password = creds.password;
+      }
+
+      const params = { params: { only_insumos: true } };
       const res = await http.put(`/agendamentos/${agForUtilized.id}`, payload, params);
       
       toast.success("Consumo de produtos atualizado com sucesso!");
@@ -983,7 +1023,7 @@ export default function Agenda() {
 
   const handleConfirmEditConcluido = async (email, password) => {
     try {
-      await http.get(`/agendamentos/${pendingEditAgendamento.id}`, { params: { email, password } });
+      await http.get(`/agendamentos/${pendingEditAgendamento.id}`, { headers: { 'x-auth-email': email, 'x-auth-password': password } });
       setAuthCredentials({ email, password });
       setForm({
         id: pendingEditAgendamento.id,
@@ -1004,7 +1044,8 @@ export default function Agenda() {
     try {
       const payload = ignorarConflito ? { ...form, ignorar_conflito: true } : form;
       if (form.id) {
-        await http.put(`/agendamentos/${form.id}`, payload, authCredentials ? { params: authCredentials } : undefined);
+        const bodyPayload = authCredentials ? { ...payload, auth_email: authCredentials.email, auth_password: authCredentials.password } : payload;
+        await http.put(`/agendamentos/${form.id}`, bodyPayload);
         toast.success("Agendamento atualizado");
       } else {
         await http.post("/agendamentos", payload);
@@ -2011,7 +2052,7 @@ export default function Agenda() {
                                   return (
                                     <div key={pidx} className="flex justify-between items-center text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-850 px-3 py-1.5 rounded-lg border border-zinc-150/40 dark:border-zinc-800/30">
                                       <span className="font-medium text-zinc-700 dark:text-zinc-300">{prod?.nome || "Carregando..."}</span>
-                                      <span className="font-mono font-bold text-zinc-800 dark:text-zinc-200">{pu.quantidade} {prod?.unidade || "un"}</span>
+                                      <span className="font-mono font-bold text-zinc-800 dark:text-zinc-200">{Number(pu.quantidade || 0).toFixed(3)} {pu.unidade_medida_insumo || "un"}</span>
                                     </div>
                                   );
                                 })}
@@ -2252,7 +2293,10 @@ export default function Agenda() {
                         </thead>
                         <tbody className="divide-y divide-zinc-150 dark:divide-zinc-800">
                           {tempUtilizedProducts.map((row, idx) => {
-                            const totalCost = Number(row.quantidade || 0) * Number(row.custo_unitario || 0);
+                            // Use custo_proporcional (cost per unit of measure) for calculation
+                            // Falls back to custo_unitario for legacy records without quantidade_por_unidade
+                            const custoProp = Number(row.custo_proporcional || row.custo_unitario || 0);
+                            const totalCost = Number(row.quantidade || 0) * custoProp;
                             return (
                               <tr key={row.produto_id} className="hover:bg-zinc-50/40 dark:hover:bg-zinc-900/40 transition-colors">
                                 <td className="px-5 py-4">
@@ -2274,24 +2318,46 @@ export default function Agenda() {
                                   </div>
                                 </td>
                                 <td className="px-5 py-4 text-center text-zinc-500 dark:text-zinc-400 font-mono text-xs">
-                                  {Number(Number(row.quantidade_estoque || 0).toFixed(3))} {row.unidade}
+                                  {Number(row.quantidade_estoque || 0).toFixed(3)} {row.unidade}
                                 </td>
                                 <td className="px-5 py-4 text-right text-zinc-600 dark:text-zinc-400 font-mono text-xs">
-                                  {fmtBRL(row.custo_unitario)}/{row.unidade}
+                                  <div className="font-bold text-zinc-800 dark:text-zinc-200">
+                                    {Number(row.quantidade_por_unidade) > 0 ? (
+                                      <span>Embalagem: {fmtBRL(row.custo_unitario)}/{Number(row.quantidade_por_unidade).toFixed(3)}{row.unidade_medida_insumo || row.unidade}</span>
+                                    ) : (
+                                      <span>{fmtBRL(row.custo_unitario)}/{row.unidade}</span>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="px-5 py-4 text-center">
                                   <div className="flex items-center justify-center">
                                     <div className="relative flex items-center w-28">
                                       <Input 
-                                        type="number" 
-                                        min="0" 
-                                        step="0.001"
+                                        type="text" 
+                                        inputMode="decimal"
                                         placeholder="0.000"
                                         value={row.quantidade} 
-                                        onChange={(e) => handleUpdateTempProductQty(idx, e.target.value)}
+                                        onChange={(e) => {
+                                          let val = e.target.value;
+                                          // Permitir apenas dígitos e um separador decimal
+                                          val = val.replace(/[^0-9.,]/g, "");
+                                          const parts = val.split(/[.,]/);
+                                          if (parts.length > 2) {
+                                            val = parts[0] + "." + parts.slice(1).join("");
+                                          } else if (val.includes(",")) {
+                                            val = val.replace(",", ".");
+                                          }
+                                          handleUpdateTempProductQty(idx, val);
+                                        }}
+                                        onBlur={(e) => {
+                                          const val = e.target.value;
+                                          if (val !== "" && !isNaN(val)) {
+                                            handleUpdateTempProductQty(idx, Number(val).toFixed(3));
+                                          }
+                                        }}
                                         className="w-full h-9 text-center bg-zinc-50 dark:bg-zinc-900 font-semibold border-zinc-200 dark:border-zinc-800 font-mono text-xs pr-10"
                                       />
-                                      <span className="absolute right-3 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase pointer-events-none select-none">{row.unidade}</span>
+                                      <span className="absolute right-3 text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase pointer-events-none select-none">{row.unidade_medida_insumo || row.unidade}</span>
                                     </div>
                                   </div>
                                 </td>
@@ -2345,7 +2411,7 @@ export default function Agenda() {
                     <span className="font-mono text-xl font-extrabold text-[#3A4F4A] dark:text-[#84A59D]">
                       {fmtBRL(
                         tempUtilizedProducts.reduce(
-                          (sum, row) => sum + Number(row.quantidade || 0) * Number(row.custo_unitario || 0),
+                          (sum, row) => sum + Number(row.quantidade || 0) * Number(row.custo_proporcional || row.custo_unitario || 0),
                           0
                         )
                       )}
@@ -2370,7 +2436,7 @@ export default function Agenda() {
         onOpenChange={setUtilizedAuthOpen}
         onConfirm={async (email, password) => {
           try {
-            await http.get(`/agendamentos/${agForUtilized.id}`, { params: { email, password } });
+            await http.get(`/agendamentos/${agForUtilized.id}`, { headers: { 'x-auth-email': email, 'x-auth-password': password } });
             setUtilizedAuthCredentials({ email, password });
             setUtilizedAuthOpen(false);
             setTimeout(() => {
