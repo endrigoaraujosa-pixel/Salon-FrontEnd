@@ -314,7 +314,15 @@ export default function Produtos() {
         g.products.forEach(p => {
           const baixoEstoque = p.quantidade_estoque <= p.estoque_minimo;
           const stockClass = baixoEstoque ? "stock-alert" : "stock-normal";
-          const stockLabel = `${Number(Number(p.quantidade_estoque || 0).toFixed(3))} ${p.unidade_medida || "un"}`;
+          let stockLabel = "";
+          const qtyVal = Number(Number(p.quantidade_estoque || 0).toFixed(3));
+          const qtyPerUnitVal = Number(p.quantidade_por_unidade || 0);
+          if (qtyPerUnitVal > 0) {
+            const eq = Number((qtyVal / qtyPerUnitVal).toFixed(2));
+            stockLabel = `${qtyVal} ${p.unidade_medida_insumo || "un"} (${eq} ${p.unidade_medida || "un"})`;
+          } else {
+            stockLabel = `${qtyVal} ${p.unidade_medida || "un"}`;
+          }
           
           htmlContent += `
               <tr>
@@ -374,13 +382,18 @@ export default function Produtos() {
         toast.error("A categoria é obrigatória. Selecione uma categoria cadastrada.");
         return;
       }
+      const qtyPerUnit = Number(form.quantidade_por_unidade || 0);
       const p = { ...form,
-        quantidade_estoque: Number(form.quantidade_estoque),
-        estoque_minimo: Number(form.estoque_minimo),
+        quantidade_estoque: qtyPerUnit > 0 
+          ? Number((Number(form.quantidade_estoque || 0) * qtyPerUnit).toFixed(3))
+          : Number(form.quantidade_estoque || 0),
+        estoque_minimo: qtyPerUnit > 0 
+          ? Number((Number(form.estoque_minimo || 0) * qtyPerUnit).toFixed(3))
+          : Number(form.estoque_minimo || 0),
         custo_unitario: Number(form.custo_unitario),
         preco_venda: Number(form.preco_venda),
         comissao: Number(form.comissao || 0),
-        quantidade_por_unidade: Number(form.quantidade_por_unidade || 0),
+        quantidade_por_unidade: qtyPerUnit,
         unidade_medida_insumo: form.unidade_medida_insumo || "un",
       };
       if (form.id) await http.put(`/produtos/${form.id}`, p); else await http.post("/produtos", p);
@@ -410,11 +423,16 @@ export default function Produtos() {
   };
 
   const edit = (p) => { 
+    const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
     setForm({
       ...p,
-      quantidade_por_unidade: p.quantidade_por_unidade !== undefined && p.quantidade_por_unidade !== null
-        ? Number(p.quantidade_por_unidade).toFixed(3)
-        : ""
+      quantidade_por_unidade: qtyPerUnit > 0 ? Number(qtyPerUnit).toFixed(3) : "",
+      quantidade_estoque: qtyPerUnit > 0 && p.quantidade_estoque 
+        ? Number((Number(p.quantidade_estoque) / qtyPerUnit).toFixed(3))
+        : p.quantidade_estoque || 0,
+      estoque_minimo: qtyPerUnit > 0 && p.estoque_minimo
+        ? Number((Number(p.estoque_minimo) / qtyPerUnit).toFixed(3))
+        : p.estoque_minimo || 0
     }); 
     setOpen(true); 
   };
@@ -681,11 +699,11 @@ export default function Produtos() {
               <div className="bg-white dark:bg-zinc-900/40 p-4 border border-zinc-150 dark:border-zinc-800 rounded-xl shadow-xs space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Quantidade em Estoque</Label>
+                    <Label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Quantidade em Estoque ({form.unidade_medida || "un"})</Label>
                     <Input type="number" value={form.quantidade_estoque} onChange={(e) => setForm({ ...form, quantidade_estoque: e.target.value })} placeholder="0" className="mt-1 font-mono" />
                   </div>
                   <div>
-                    <Label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Mínimo para Alerta</Label>
+                    <Label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Mínimo para Alerta ({form.unidade_medida || "un"})</Label>
                     <Input type="number" value={form.estoque_minimo} onChange={(e) => setForm({ ...form, estoque_minimo: e.target.value })} placeholder="5" className="mt-1 font-mono" />
                   </div>
                 </div>
@@ -839,7 +857,15 @@ export default function Produtos() {
                                 <td className="px-4 py-3 text-right">
                                   <span className={`inline-flex items-center gap-1 ${baixo ? "text-amber-700 dark:text-amber-500 font-bold" : "text-zinc-700 dark:text-zinc-300"}`}>
                                     {baixo && <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
-                                    {Number(Number(p.quantidade_estoque || 0).toFixed(3))} {p.unidade_medida}
+                                    {(() => {
+                                      const qty = Number(Number(p.quantidade_estoque || 0).toFixed(3));
+                                      const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
+                                      if (qtyPerUnit > 0) {
+                                        const eq = Number((qty / qtyPerUnit).toFixed(2));
+                                        return `${qty} ${p.unidade_medida_insumo || "un"} (${eq} ${p.unidade_medida || "un"})`;
+                                      }
+                                      return `${qty} ${p.unidade_medida || "un"}`;
+                                    })()}
                                   </span>
                                 </td>
                                 <td className="px-4 py-3 text-right font-semibold text-zinc-900 dark:text-zinc-100 font-mono">{fmtBRL(p.preco_venda)}</td>
@@ -893,7 +919,15 @@ export default function Produtos() {
                                 <span className="text-[9px] uppercase font-bold tracking-wider text-zinc-400 dark:text-zinc-500 block">Estoque</span>
                                 <span className={`inline-flex items-center gap-1 font-bold text-sm ${baixo ? "text-amber-700 dark:text-amber-500" : "text-zinc-800 dark:text-zinc-250"}`}>
                                   {baixo && <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
-                                  {Number(Number(p.quantidade_estoque || 0).toFixed(3))} {p.unidade_medida}
+                                  {(() => {
+                                    const qty = Number(Number(p.quantidade_estoque || 0).toFixed(3));
+                                    const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
+                                    if (qtyPerUnit > 0) {
+                                      const eq = Number((qty / qtyPerUnit).toFixed(2));
+                                      return `${qty} ${p.unidade_medida_insumo || "un"} (${eq} ${p.unidade_medida || "un"})`;
+                                    }
+                                    return `${qty} ${p.unidade_medida || "un"}`;
+                                  })()}
                                 </span>
                               </div>
                               <div className="space-y-0.5">

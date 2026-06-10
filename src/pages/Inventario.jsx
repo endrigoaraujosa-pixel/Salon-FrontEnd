@@ -73,8 +73,11 @@ export default function Inventario() {
       const res = await http.post("/estoque/inventario/ajuste", payload);
       const diff = res.data.diferenca;
       
+      const unitLabel = Number(prod.quantidade_por_unidade || 0) > 0 
+        ? (prod.unidade_medida_insumo || 'un') 
+        : (prod.unidade_medida || 'un');
       toast.success(
-        `Ajuste registrado! Novo estoque: ${counted.toFixed(3)} ${prod.unidade_medida || 'un'} (${diff > 0 ? '+' : ''}${diff.toFixed(3)})`
+        `Ajuste registrado! Novo estoque: ${counted.toFixed(3)} ${unitLabel} (${diff > 0 ? '+' : ''}${diff.toFixed(3)} ${unitLabel})`
       );
 
       // Clean active selection if it was this product
@@ -190,7 +193,15 @@ export default function Inventario() {
                               </span>
                             </TableCell>
                             <TableCell className="text-right font-mono font-bold text-zinc-700 dark:text-zinc-300">
-                              {Number(p.quantidade_estoque.toFixed(3))} {p.unidade_medida || "un"}
+                              {(() => {
+                                const qty = Number(p.quantidade_estoque.toFixed(3));
+                                const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
+                                if (qtyPerUnit > 0) {
+                                  const eq = Number((qty / qtyPerUnit).toFixed(2));
+                                  return `${qty} ${p.unidade_medida_insumo || 'un'} (${eq} ${p.unidade_medida || 'un'})`;
+                                }
+                                return `${qty} ${p.unidade_medida || 'un'}`;
+                              })()}
                             </TableCell>
                             <TableCell className="text-right font-mono text-zinc-550 dark:text-zinc-450">
                               {fmtBRL(p.custo_unitario)}
@@ -244,7 +255,15 @@ export default function Inventario() {
                         <div className="bg-zinc-50 dark:bg-zinc-950/20 p-3 rounded-lg border">
                           <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Estoque Atual</span>
                           <div className="font-mono text-base font-bold mt-1 text-zinc-700 dark:text-zinc-300">
-                            {Number(currentStock.toFixed(3))} {prod.unidade_medida || "un"}
+                            {(() => {
+                              const qty = Number(currentStock.toFixed(3));
+                              const qtyPerUnit = Number(prod.quantidade_por_unidade || 0);
+                              if (qtyPerUnit > 0) {
+                                const eq = Number((qty / qtyPerUnit).toFixed(2));
+                                return `${qty} ${prod.unidade_medida_insumo || 'un'} (${eq} ${prod.unidade_medida || 'un'})`;
+                              }
+                              return `${qty} ${prod.unidade_medida || 'un'}`;
+                            })()}
                           </div>
                         </div>
 
@@ -265,7 +284,17 @@ export default function Inventario() {
                           }`}>
                             {difference > 0 && <ArrowUpRight className="w-4 h-4 shrink-0" />}
                             {difference < 0 && <ArrowDownRight className="w-4 h-4 shrink-0" />}
-                            {difference > 0 ? "+" : ""}{difference.toFixed(3)} {prod.unidade_medida || "un"}
+                            {(() => {
+                              const qty = difference;
+                              const qtyPerUnit = Number(prod.quantidade_por_unidade || 0);
+                              const prefix = qty > 0 ? "+" : "";
+                              if (qtyPerUnit > 0) {
+                                const eq = Number((qty / qtyPerUnit).toFixed(2));
+                                const eqPrefix = eq > 0 ? "+" : "";
+                                return `${prefix}${qty.toFixed(3)} ${prod.unidade_medida_insumo || 'un'} (${eqPrefix}${eq.toFixed(2)} ${prod.unidade_medida || 'un'})`;
+                              }
+                              return `${prefix}${qty.toFixed(3)} ${prod.unidade_medida || 'un'}`;
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -376,6 +405,13 @@ export default function Inventario() {
                         typeText = "Ajuste";
                       }
 
+                      const prod = produtos.find(p => p.id === m.produto_id);
+                      const unitLabel = prod
+                        ? (Number(prod.quantidade_por_unidade || 0) > 0
+                          ? (prod.unidade_medida_insumo || 'un')
+                          : (prod.unidade_medida || 'un'))
+                        : 'un';
+
                       return (
                         <TableRow key={m.id} className="hover:bg-zinc-50/50 transition-colors">
                           <TableCell className="font-mono text-xs whitespace-nowrap text-zinc-500 dark:text-zinc-450">
@@ -396,13 +432,13 @@ export default function Inventario() {
                                 ? "text-rose-600 dark:text-rose-500" 
                                 : "text-zinc-500"
                           }`}>
-                            {m.quantidade > 0 ? "+" : ""}{Number(m.quantidade.toFixed(3))}
+                            {m.quantidade > 0 ? "+" : ""}{Number(m.quantidade.toFixed(3))} {unitLabel}
                           </TableCell>
                           <TableCell className="text-right font-mono text-zinc-500 dark:text-zinc-400">
-                            {Number(m.quantidade_anterior.toFixed(3))}
+                            {Number(m.quantidade_anterior.toFixed(3))} {unitLabel}
                           </TableCell>
                           <TableCell className="text-right font-mono font-bold text-zinc-800 dark:text-zinc-200">
-                            {Number(m.quantidade_atual.toFixed(3))}
+                            {Number(m.quantidade_atual.toFixed(3))} {unitLabel}
                           </TableCell>
                           <TableCell className="text-zinc-600 dark:text-zinc-350 max-w-xs truncate" title={m.motivo}>
                             {m.motivo || "-"}

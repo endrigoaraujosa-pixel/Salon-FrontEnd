@@ -122,7 +122,7 @@ export default function VendasDiretas() {
   const produto = produtos.find((p) => p.id === form.produto_id);
   const valorPrev = produto ? produto.preco_venda * form.quantidade : 0;
 
-  const save = async () => {
+  const handleCreateNovaVenda = async (force = false) => {
     if (novaVendaItens.length === 0) {
       toast.error("Adicione pelo menos um produto ao carrinho.");
       return;
@@ -145,7 +145,8 @@ export default function VendasDiretas() {
         itens: novaVendaItens.map(item => ({
           produto_id: item.produto_id,
           quantidade: Number(item.quantidade)
-        }))
+        })),
+        forcar_venda: force
       };
       if (form.cliente_id) payload.cliente_id = form.cliente_id;
 
@@ -160,7 +161,16 @@ export default function VendasDiretas() {
       nav(`/vendas-diretas/${data.id}/pagamento`, { state: { fromAgenda: wasFromAgenda } });
     } catch (e) {
       console.error("Erro:", e);
-      toast.error(e.response?.data?.detail || "Erro ao criar venda");
+      if (e.response?.data?.code === 'ESTOQUE_INSUFICIENTE') {
+        const confirmResult = window.confirm(
+          `${e.response.data.detail}\n\nDeseja continuar mesmo deixando o estoque negativo?`
+        );
+        if (confirmResult) {
+          await handleCreateNovaVenda(true);
+        }
+      } else {
+        toast.error(e.response?.data?.detail || "Erro ao criar venda");
+      }
     }
   };
 
@@ -181,19 +191,29 @@ export default function VendasDiretas() {
     }
 
     const itemExistenteIdx = novaVendaItens.findIndex(item => item.produto_id === prod.id);
+    const qtyPerUnit = Number(prod.quantidade_por_unidade || 0);
+    const maxAllowed = qtyPerUnit > 0 ? (prod.quantidade_estoque / qtyPerUnit) : prod.quantidade_estoque;
+    const formattedMax = qtyPerUnit > 0 
+      ? `${Number(maxAllowed.toFixed(2))} ${prod.unidade_medida || 'un'} (${Number(prod.quantidade_estoque.toFixed(3))} ${prod.unidade_medida_insumo || 'un'})`
+      : `${Number(prod.quantidade_estoque.toFixed(3))} ${prod.unidade_medida || 'un'}`;
+
     if (itemExistenteIdx !== -1) {
       const novaQtd = novaVendaItens[itemExistenteIdx].quantidade + qtd;
-      if (novaQtd > prod.quantidade_estoque) {
-        toast.error(`Estoque insuficiente. Disponível: ${Number(Number(prod.quantidade_estoque || 0).toFixed(3))}`);
-        return;
+      if (novaQtd > maxAllowed) {
+        const confirmResult = window.confirm(
+          `Estoque insuficiente para "${prod.nome}". Disponível: ${formattedMax}\n\nDeseja continuar mesmo deixando o estoque negativo?`
+        );
+        if (!confirmResult) return;
       }
       const copia = [...novaVendaItens];
       copia[itemExistenteIdx].quantidade = novaQtd;
       setNovaVendaItens(copia);
     } else {
-      if (qtd > prod.quantidade_estoque) {
-        toast.error(`Estoque insuficiente. Disponível: ${Number(Number(prod.quantidade_estoque || 0).toFixed(3))}`);
-        return;
+      if (qtd > maxAllowed) {
+        const confirmResult = window.confirm(
+          `Estoque insuficiente para "${prod.nome}". Disponível: ${formattedMax}\n\nDeseja continuar mesmo deixando o estoque negativo?`
+        );
+        if (!confirmResult) return;
       }
       setNovaVendaItens([
         ...novaVendaItens,
@@ -217,9 +237,18 @@ export default function VendasDiretas() {
       setNovaVendaItens(novaVendaItens.filter((_, i) => i !== idx));
       return;
     }
-    if (prod && novaQtd > prod.quantidade_estoque) {
-      toast.error(`Estoque insuficiente. Disponível: ${Number(Number(prod.quantidade_estoque || 0).toFixed(3))}`);
-      return;
+    if (prod) {
+      const qtyPerUnit = Number(prod.quantidade_por_unidade || 0);
+      const maxAllowed = qtyPerUnit > 0 ? (prod.quantidade_estoque / qtyPerUnit) : prod.quantidade_estoque;
+      if (novaQtd > maxAllowed) {
+        const formattedMax = qtyPerUnit > 0 
+          ? `${Number(maxAllowed.toFixed(2))} ${prod.unidade_medida || 'un'} (${Number(prod.quantidade_estoque.toFixed(3))} ${prod.unidade_medida_insumo || 'un'})`
+          : `${Number(prod.quantidade_estoque.toFixed(3))} ${prod.unidade_medida || 'un'}`;
+        const confirmResult = window.confirm(
+          `Estoque insuficiente para "${prod.nome}". Disponível: ${formattedMax}\n\nDeseja continuar mesmo deixando o estoque negativo?`
+        );
+        if (!confirmResult) return;
+      }
     }
     const copia = [...novaVendaItens];
     copia[idx].quantidade = novaQtd;
@@ -297,15 +326,29 @@ export default function VendasDiretas() {
       return;
     }
     setCarrinhoSaving(true);
-    try {
-      await http.put(`/vendas-diretas/${carrinhoVendaId}/carrinho/itens/${idx}`, { quantidade: novaQtd });
-      await loadCarrinho(carrinhoVendaId);
-      load();
-    } catch (e) {
-      toast.error(e.response?.data?.detail || "Erro ao atualizar quantidade.");
-    } finally {
-      setCarrinhoSaving(false);
-    }
+    const update = async (force = false) => {
+      try {
+        await http.put(`/vendas-diretas/${carrinhoVendaId}/carrinho/itens/${idx}`, { 
+          quantidade: novaQtd,
+          forcar_venda: force
+        });
+        await loadCarrinho(carrinhoVendaId);
+        load();
+      } catch (e) {
+        if (e.response?.data?.code === 'ESTOQUE_INSUFICIENTE') {
+          const confirmResult = window.confirm(
+            `${e.response.data.detail}\n\nDeseja continuar mesmo deixando o estoque negativo?`
+          );
+          if (confirmResult) {
+            await update(true);
+          }
+        } else {
+          toast.error(e.response?.data?.detail || "Erro ao atualizar quantidade.");
+        }
+      }
+    };
+    await update();
+    setCarrinhoSaving(false);
   };
 
   const handleSaveQtd = async (idx) => {
@@ -315,16 +358,30 @@ export default function VendasDiretas() {
       return;
     }
     setCarrinhoSaving(true);
-    try {
-      await http.put(`/vendas-diretas/${carrinhoVendaId}/carrinho/itens/${idx}`, { quantidade: val });
-      await loadCarrinho(carrinhoVendaId);
-      load();
-    } catch (e) {
-      toast.error(e.response?.data?.detail || "Erro ao atualizar quantidade.");
-    } finally {
-      setCarrinhoSaving(false);
-      setEditingQtdIdx(null);
-    }
+    const update = async (force = false) => {
+      try {
+        await http.put(`/vendas-diretas/${carrinhoVendaId}/carrinho/itens/${idx}`, { 
+          quantidade: val,
+          forcar_venda: force
+        });
+        await loadCarrinho(carrinhoVendaId);
+        load();
+      } catch (e) {
+        if (e.response?.data?.code === 'ESTOQUE_INSUFICIENTE') {
+          const confirmResult = window.confirm(
+            `${e.response.data.detail}\n\nDeseja continuar mesmo deixando o estoque negativo?`
+          );
+          if (confirmResult) {
+            await update(true);
+          }
+        } else {
+          toast.error(e.response?.data?.detail || "Erro ao atualizar quantidade.");
+        }
+      }
+    };
+    await update();
+    setCarrinhoSaving(false);
+    setEditingQtdIdx(null);
   };
 
   const handleRemoveCartItem = async (idx) => {
@@ -444,7 +501,6 @@ export default function VendasDiretas() {
                     searchPlaceholder="Pesquisar produto pelo nome..."
                     triggerTestId="venda-produto"
                     options={produtos
-                      .filter(p => p.quantidade_estoque > 0)
                       .filter(p => {
                         const matchesCategory =
                           selectedAddCategory === "all" ||
@@ -452,10 +508,16 @@ export default function VendasDiretas() {
                           p.categoria_id === selectedAddCategory;
                         return matchesCategory;
                       })
-                      .map((p) => ({
-                        value: p.id,
-                        label: `${p.nome} — ${fmtBRL(p.preco_venda)} (Estoque: ${Number(Number(p.quantidade_estoque || 0).toFixed(3))})`
-                      }))
+                      .map((p) => {
+                        const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
+                        const qtyStr = qtyPerUnit > 0 
+                          ? `${Number((p.quantidade_estoque / qtyPerUnit).toFixed(2))} ${p.unidade_medida || 'un'} (${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida_insumo || 'un'})`
+                          : `${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida || 'un'}`;
+                        return {
+                          value: p.id,
+                          label: `${p.nome} — ${fmtBRL(p.preco_venda)} (Estoque: ${qtyStr})`
+                        };
+                      })
                     }
                     value={form.produto_id}
                     onValueChange={(val) => setForm({ ...form, produto_id: val })}
@@ -634,7 +696,7 @@ export default function VendasDiretas() {
                 <Button type="button" variant="outline" className="h-12 px-6 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-bold text-zinc-700 dark:text-zinc-300" onClick={() => setOpen(false)}>Cancelar</Button>
                 <Button
                   data-testid="save-venda-btn"
-                  onClick={save}
+                  onClick={() => handleCreateNovaVenda()}
                   disabled={novaVendaItens.length === 0}
                   className="h-12 px-8 bg-[#84A59D] hover:bg-[#6F9189] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white shadow-lg font-bold text-base transition-transform hover:scale-[1.02]"
                 >
@@ -1000,10 +1062,16 @@ export default function VendasDiretas() {
                         searchPlaceholder="Digite o nome..."
                         options={produtos
                           .filter(p => p.quantidade_estoque > 0)
-                          .map(p => ({
-                            value: p.id,
-                            label: `${p.nome} — ${fmtBRL(p.preco_venda)} (Estoque: ${Number(Number(p.quantidade_estoque || 0).toFixed(3))})`
-                          }))
+                          .map(p => {
+                            const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
+                            const qtyStr = qtyPerUnit > 0 
+                              ? `${Number((p.quantidade_estoque / qtyPerUnit).toFixed(2))} ${p.unidade_medida || 'un'} (${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida_insumo || 'un'})`
+                              : `${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida || 'un'}`;
+                            return {
+                              value: p.id,
+                              label: `${p.nome} — ${fmtBRL(p.preco_venda)} (Estoque: ${qtyStr})`
+                            };
+                          })
                         }
                         value=""
                         onValueChange={async (prodId) => {
@@ -1011,20 +1079,32 @@ export default function VendasDiretas() {
                           const prod = produtos.find(p => p.id === prodId);
                           if (prod) {
                             setCarrinhoSaving(true);
-                            try {
-                              await http.post(`/vendas-diretas/${carrinhoVendaId}/carrinho/itens`, {
-                                produto_id: prodId,
-                                quantidade: 1,
-                                preco_unitario: prod.preco_venda
-                              });
-                              toast.success(`"${prod.nome}" adicionado!`);
-                              await loadCarrinho(carrinhoVendaId);
-                              load();
-                            } catch (e) {
-                              toast.error(e.response?.data?.detail || "Erro ao adicionar produto.");
-                            } finally {
-                              setCarrinhoSaving(false);
-                            }
+                            const add = async (force = false) => {
+                              try {
+                                await http.post(`/vendas-diretas/${carrinhoVendaId}/carrinho/itens`, {
+                                  produto_id: prodId,
+                                  quantidade: 1,
+                                  preco_unitario: prod.preco_venda,
+                                  forcar_venda: force
+                                });
+                                toast.success(`"${prod.nome}" adicionado!`);
+                                await loadCarrinho(carrinhoVendaId);
+                                load();
+                              } catch (e) {
+                                if (e.response?.data?.code === 'ESTOQUE_INSUFICIENTE') {
+                                  const confirmResult = window.confirm(
+                                    `${e.response.data.detail}\n\nDeseja continuar mesmo deixando o estoque negativo?`
+                                  );
+                                  if (confirmResult) {
+                                    await add(true);
+                                  }
+                                } else {
+                                  toast.error(e.response?.data?.detail || "Erro ao adicionar produto.");
+                                }
+                              }
+                            };
+                            await add();
+                            setCarrinhoSaving(false);
                           }
                         }}
                       />

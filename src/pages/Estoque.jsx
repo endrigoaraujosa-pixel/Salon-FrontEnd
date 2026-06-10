@@ -44,8 +44,16 @@ export default function Estoque() {
   };
 
   // Calculations for dashboard indicators
-  const totalItens = produtos.reduce((sum, p) => sum + (p.quantidade_estoque || 0), 0);
-  const totalValor = produtos.reduce((sum, p) => sum + ((p.quantidade_estoque || 0) * (p.custo_unitario || 0)), 0);
+  const totalItens = produtos.reduce((sum, p) => {
+    const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
+    const equivalentQty = qtyPerUnit > 0 ? (Number(p.quantidade_estoque || 0) / qtyPerUnit) : Number(p.quantidade_estoque || 0);
+    return sum + equivalentQty;
+  }, 0);
+  const totalValor = produtos.reduce((sum, p) => {
+    const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
+    const cost = qtyPerUnit > 0 ? (Number(p.custo_unitario || 0) / qtyPerUnit) : Number(p.custo_unitario || 0);
+    return sum + ((p.quantidade_estoque || 0) * cost);
+  }, 0);
   const alertaBaixoEstoque = produtos.filter(p => p.quantidade_estoque <= p.estoque_minimo).length;
 
   return (
@@ -73,7 +81,7 @@ export default function Estoque() {
               <div>
                 <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Saldo Total de Itens</span>
                 <div className="font-display text-2xl font-bold mt-1 text-zinc-900 dark:text-zinc-50">
-                  {Number(totalItens.toFixed(3))} <span className="text-sm font-normal text-zinc-450 dark:text-zinc-500">un</span>
+                  {Number(totalItens.toFixed(3))} <span className="text-sm font-normal text-zinc-450 dark:text-zinc-500">itens (equivalente)</span>
                 </div>
                 <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">{produtos.length} produtos differentes</p>
               </div>
@@ -232,6 +240,31 @@ export default function Estoque() {
                     badgeText = "Ajuste";
                   }
 
+                  const prod = produtos.find(p => p.id === m.produto_id);
+                  let qtyText = "";
+                  let qtyCurrentText = "";
+                  
+                  if (prod) {
+                    const qtyPerUnit = Number(prod.quantidade_por_unidade || 0);
+                    if (qtyPerUnit > 0) {
+                      const eq = Number((m.quantidade / qtyPerUnit).toFixed(2));
+                      const prefix = m.quantidade > 0 ? "+" : "";
+                      const eqPrefix = eq > 0 ? "+" : "";
+                      qtyText = `${prefix}${Number(m.quantidade.toFixed(3))} ${prod.unidade_medida_insumo || 'un'} (${eqPrefix}${eq} ${prod.unidade_medida || 'un'})`;
+                      
+                      const eqCurrent = Number((m.quantidade_atual / qtyPerUnit).toFixed(2));
+                      qtyCurrentText = `${Number(m.quantidade_atual.toFixed(3))} ${prod.unidade_medida_insumo || 'un'} (${eqCurrent} ${prod.unidade_medida || 'un'})`;
+                    } else {
+                      const prefix = m.quantidade > 0 ? "+" : "";
+                      qtyText = `${prefix}${Number(m.quantidade.toFixed(3))} ${prod.unidade_medida || 'un'}`;
+                      qtyCurrentText = `${Number(m.quantidade_atual.toFixed(3))} ${prod.unidade_medida || 'un'}`;
+                    }
+                  } else {
+                    const prefix = m.quantidade > 0 ? "+" : "";
+                    qtyText = `${prefix}${Number(m.quantidade.toFixed(3))} un`;
+                    qtyCurrentText = `${Number(m.quantidade_atual.toFixed(3))} un`;
+                  }
+
                   return (
                     <TableRow key={m.id} className="hover:bg-zinc-50/30 transition-colors">
                       <TableCell className="font-mono text-xs text-zinc-500 whitespace-nowrap">
@@ -243,17 +276,17 @@ export default function Estoque() {
                           {badgeText}
                         </span>
                       </TableCell>
-                      <TableCell className={`text-right font-mono font-bold ${
+                      <TableCell className={`text-right font-mono font-bold whitespace-nowrap ${
                         m.quantidade > 0 
                           ? "text-emerald-600 dark:text-emerald-500" 
                           : m.quantidade < 0 
                             ? "text-rose-600 dark:text-rose-500" 
                             : "text-zinc-500"
                       }`}>
-                        {m.quantidade > 0 ? "+" : ""}{Number(m.quantidade.toFixed(3))}
+                        {qtyText}
                       </TableCell>
-                      <TableCell className="text-right font-mono font-bold text-zinc-700 dark:text-zinc-300">
-                        {Number(m.quantidade_atual.toFixed(3))}
+                      <TableCell className="text-right font-mono font-bold text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
+                        {qtyCurrentText}
                       </TableCell>
                       <TableCell className="text-zinc-500 max-w-xs truncate" title={m.motivo}>
                         {m.motivo || "-"}
