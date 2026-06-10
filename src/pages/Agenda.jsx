@@ -103,6 +103,7 @@ export default function Agenda() {
   const [view, setView] = useState("dia");
   const [monthCursor, setMonthCursor] = useState({ y: today.getFullYear(), m: today.getMonth() + 1 });
   const [agendamentos, setAgendamentos] = useState([]);
+  const [searchNumero, setSearchNumero] = useState("");
   const [monthEvents, setMonthEvents] = useState({});
   const [loading, setLoading] = useState(true);
   const isMounted = useRef(false);
@@ -686,9 +687,18 @@ export default function Agenda() {
         }
       }
 
+      if (searchNumero && searchNumero.trim()) {
+        const numStr = String(a.numero || "");
+        const searchVal = searchNumero.trim();
+        const paddedNum = numStr.padStart(6, "0");
+        if (!numStr.includes(searchVal) && !paddedNum.includes(searchVal)) {
+          return false;
+        }
+      }
+
       return true;
     });
-  }, [agendamentos, selectedStatus, selectedInsumos, selectedColaborador, servicos]);
+  }, [agendamentos, selectedStatus, selectedInsumos, selectedColaborador, searchNumero, servicos]);
 
   const openUtilizedProducts = (agendamento, itemIndex) => {
     const item = agendamento.itens[itemIndex];
@@ -977,7 +987,15 @@ export default function Agenda() {
     return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   };
 
-  const loadDay = (d) => http.get("/agendamentos", { params: { data: d } }).then((r) => setAgendamentos(r.data || []));
+  const loadDay = (d, num = searchNumero) => {
+    const params = {};
+    if (num && num.trim() !== "") {
+      params.numero = num.trim();
+    } else {
+      params.data = d;
+    }
+    return http.get("/agendamentos", { params }).then((r) => setAgendamentos(r.data || []));
+  };
 
   const loadMonth = (y, m) => {
     const ms = `${y}-${String(m).padStart(2, "0")}`;
@@ -1012,8 +1030,8 @@ export default function Agenda() {
   useEffect(() => {
     if (!isMounted.current) return;
     setLoading(true);
-    loadDay(data).finally(() => setLoading(false));
-  }, [data]);
+    loadDay(data, searchNumero).finally(() => setLoading(false));
+  }, [data, searchNumero]);
 
   useEffect(() => {
     if (!isMounted.current) return;
@@ -1404,8 +1422,18 @@ export default function Agenda() {
       {view !== "calendario" && (
         <div className="flex items-center gap-3 mb-4 flex-wrap bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 shadow-sm select-none">
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Data</span>
+            <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-wider">Data</span>
             <Input type="date" value={data} onChange={(e) => setData(e.target.value)} className="w-40 h-9 text-xs" />
+          </div>
+          <div className="flex flex-col gap-1 w-40">
+            <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-wider">Nº do Serviço</span>
+            <Input
+              type="text"
+              placeholder="Buscar número..."
+              value={searchNumero}
+              onChange={(e) => setSearchNumero(e.target.value)}
+              className="h-9 text-xs bg-white dark:bg-zinc-950 border-zinc-250 dark:border-zinc-850"
+            />
           </div>
           <div className="flex flex-col gap-1 w-44">
             <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Status do Serviço</span>
@@ -1467,6 +1495,7 @@ export default function Agenda() {
             selectedStatus={selectedStatus}
             selectedInsumos={selectedInsumos}
             selectedColaborador={selectedColaborador}
+            searchNumero={searchNumero}
             servicos={servicos}
             colaboradores={colaboradores}
             onCardClick={openResumoModal}
@@ -1495,11 +1524,16 @@ export default function Agenda() {
                     <div className="agenda-time-duration">{fmtHour(a.data_hora)}</div>
                   </div>
                   <div className="agenda-content">
-                    <div className="agenda-client-name flex items-center gap-2">
-                      {a.cliente_nome}
+                    <div className="agenda-client-name flex items-center gap-2 flex-wrap">
+                      <span>{a.cliente_nome}</span>
                       {a.numero && (
                         <span className="text-[10px] font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] px-1.5 py-0.5 rounded">
                           {String(a.numero).padStart(6, "0")} | S
+                        </span>
+                      )}
+                      {a.data_hora && a.data_hora.substring(0, 10) !== data && (
+                        <span className="text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200/40 dark:border-blue-900/30 px-1.5 py-0.5 rounded">
+                          Agendado para: {new Date(a.data_hora.replace('Z', '')).toLocaleDateString('pt-BR')}
                         </span>
                       )}
                     </div>
@@ -1559,7 +1593,7 @@ export default function Agenda() {
           )}
         </>
       ) : view === "timeline" ? (
-        <AgendaTimeline data={data} selectedStatus={selectedStatus} selectedInsumos={selectedInsumos} selectedColaborador={selectedColaborador} servicos={servicos} colaboradores={colaboradores} onCardClick={openResumoModal} loading={false} />
+        <AgendaTimeline data={data} selectedStatus={selectedStatus} selectedInsumos={selectedInsumos} selectedColaborador={selectedColaborador} searchNumero={searchNumero} servicos={servicos} colaboradores={colaboradores} onCardClick={openResumoModal} loading={false} />
       ) : (
         <>
           <div className="flex items-center gap-2 mb-4">

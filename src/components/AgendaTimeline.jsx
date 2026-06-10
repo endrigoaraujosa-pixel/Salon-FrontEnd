@@ -17,7 +17,7 @@ const HOUR_END = 24;
 const ROW_HEIGHT = 64; // Increased for a more spacious premium feel
 const HOUR_WIDTH = 120; // Slightly wider hour blocks for better readability
 
-export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, selectedColaborador, servicos, onCardClick, loading: parentLoading = false }) {
+export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, selectedColaborador, searchNumero, servicos, onCardClick, loading: parentLoading = false }) {
   const [colaboradores, setColaboradores] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
   const [now, setNow] = useState(new Date());
@@ -67,9 +67,18 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
         }
       }
 
+      if (searchNumero && searchNumero.trim()) {
+        const numStr = String(a.numero || "");
+        const searchVal = searchNumero.trim();
+        const paddedNum = numStr.padStart(6, "0");
+        if (!numStr.includes(searchVal) && !paddedNum.includes(searchVal)) {
+          return false;
+        }
+      }
+
       return true;
     });
-  }, [agendamentos, selectedStatus, selectedInsumos, selectedColaborador, servicos]);
+  }, [agendamentos, selectedStatus, selectedInsumos, selectedColaborador, searchNumero, servicos]);
 
   useEffect(() => {
     setLocalLoading(true);
@@ -80,10 +89,16 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
 
   useEffect(() => {
     setLocalLoading(true);
-    http.get("/agendamentos", { params: { data } })
-      .then((r) => setAgendamentos(r.data))
+    const params = {};
+    if (searchNumero && searchNumero.trim() !== "") {
+      params.numero = searchNumero.trim();
+    } else {
+      params.data = data;
+    }
+    http.get("/agendamentos", { params })
+      .then((r) => setAgendamentos(r.data || []))
       .finally(() => setLocalLoading(false));
-  }, [data]);
+  }, [data, searchNumero]);
 
   // Track time in real-time
   useEffect(() => {
@@ -258,17 +273,22 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
                       const { left, width } = calcBlock(a);
                       const colors = STATUS_COLORS[a.status] || STATUS_COLORS.agendado;
                       const time = fmtHour(a.data_hora);
+                      const isDifferentDate = a.data_hora && a.data_hora.substring(0, 10) !== data;
+                      const dateStr = isDifferentDate ? ` (${new Date(a.data_hora.replace('Z', '')).toLocaleDateString('pt-BR')})` : '';
                       return (
                         <div
                           key={a.id}
                           data-testid={`timeline-block-${a.id}`}
                           className="absolute top-1.5 bottom-1.5 rounded-lg overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer select-none"
                           style={{ left: `${left}px`, width: `${width}px`, background: colors.bg, borderLeft: `4px solid ${colors.stripe}` }}
-                          title={`${time} · ${a.cliente_nome} · ${a.itens?.map((i) => i.nome).join(", ")}`}
+                          title={`${time}${dateStr} · ${a.cliente_nome} · ${a.itens?.map((i) => i.nome).join(", ")}`}
                           onClick={() => onCardClick?.(a)}
                         >
                           <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden" style={{ color: colors.text }}>
                             <div className="text-[11px] font-bold leading-tight truncate">{time} · {a.cliente_nome}</div>
+                            {isDifferentDate && (
+                              <div className="text-[9px] opacity-90 font-bold truncate mt-0.5">{new Date(a.data_hora.replace('Z', '')).toLocaleDateString('pt-BR')}</div>
+                            )}
                             <div className="text-[10px] opacity-80 leading-tight truncate mt-0.5 font-medium">{a.itens?.map((i) => i.nome).join(", ")}</div>
                           </div>
                         </div>
@@ -293,16 +313,21 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
                       const { left, width } = calcBlock(a);
                       const colors = STATUS_COLORS[a.status] || STATUS_COLORS.agendado;
                       const time = fmtHour(a.data_hora);
+                      const isDifferentDate = a.data_hora && a.data_hora.substring(0, 10) !== data;
+                      const dateStr = isDifferentDate ? ` (${new Date(a.data_hora.replace('Z', '')).toLocaleDateString('pt-BR')})` : '';
                       return (
                         <div
                           key={a.id}
                           className="absolute top-1.5 bottom-1.5 rounded-lg overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 select-none"
                           style={{ left: `${left}px`, width: `${width}px`, background: colors.bg, borderLeft: `4px solid ${colors.stripe}` }}
-                          title={`${time} · ${a.cliente_nome}`}
+                          title={`${time}${dateStr} · ${a.cliente_nome}`}
                           onClick={() => onCardClick?.(a)}
                         >
                           <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden" style={{ color: colors.text }}>
                             <div className="text-[11px] font-bold leading-tight truncate">{time} · {a.cliente_nome}</div>
+                            {isDifferentDate && (
+                              <div className="text-[9px] opacity-90 font-bold truncate mt-0.5">{new Date(a.data_hora.replace('Z', '')).toLocaleDateString('pt-BR')}</div>
+                            )}
                             <div className="text-[10px] opacity-80 leading-tight truncate mt-0.5 font-medium">Sem Profissional</div>
                           </div>
                         </div>
