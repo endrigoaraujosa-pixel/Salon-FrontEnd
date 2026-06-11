@@ -671,7 +671,7 @@ export default function Dashboard() {
               {selectedMetric === "ticket_medio" && `Média do Ticket: ${fmtBRL(detailData.length ? (detailData.reduce((acc, x) => acc + x.valor_pago, 0) / detailData.length) : 0)}`}
               {selectedMetric === "clientes" && `Total Clientes Ativos: ${detailData.length}`}
               {selectedMetric === "estoque" && `Total Itens Alerta: ${detailData.length}`}
-              {selectedMetric === "top_servico" && `Faturamento do Serviço: ${fmtBRL(detailData.reduce((acc, x) => acc + x.valor, 0))} (${detailData.length}x)`}
+              {selectedMetric === "top_servico" && (isAdmin ? `Faturamento do Serviço: ${fmtBRL(detailData.reduce((acc, x) => acc + x.valor, 0))} (${detailData.length}x)` : `Total de Atendimentos: ${detailData.length}`)}
             </div>
             <Button onClick={() => setDetailsOpen(false)} className="bg-zinc-800 hover:bg-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-100 text-white shadow-sm font-semibold">
               Fechar Detalhamento
