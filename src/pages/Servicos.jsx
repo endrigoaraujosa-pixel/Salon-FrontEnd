@@ -16,6 +16,7 @@ import SearchableSelect from "../components/SearchableSelect";
 
 const blank = { nome: "", categoria_id: "", duracao_minutos: 60, valor: 0, descricao: "", ativo: true, produtos_vinculados: [] };
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const normalizeText = (str) => !str ? "" : str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 export default function Servicos() {
   const [list, setList] = useState([]);
@@ -147,8 +148,8 @@ export default function Servicos() {
   };
 
   const filteredList = list.filter((s) => {
-    const matchesSearch = s.nome.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      (s.descricao && s.descricao.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesSearch = normalizeText(s.nome).includes(normalizeText(searchQuery)) || 
+      (s.descricao && normalizeText(s.descricao).includes(normalizeText(searchQuery)));
     const matchesCategory =
       selectedCategoryFilter === "all" ||
       (selectedCategoryFilter === "none" && !s.categoria_id) ||
@@ -227,8 +228,8 @@ export default function Servicos() {
 
   const generatePDF = () => {
     const reportServices = list.filter(s => {
-      const matchesSearch = !searchQuery || s.nome.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        (s.descricao && s.descricao.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesSearch = !searchQuery || normalizeText(s.nome).includes(normalizeText(searchQuery)) || 
+        (s.descricao && normalizeText(s.descricao).includes(normalizeText(searchQuery)));
       
       if (!matchesSearch) return false;
       

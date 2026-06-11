@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import http from "../api";
 import { PageHeader, EmptyState } from "../components/Page";
 import { Button } from "../components/ui/button";
@@ -19,6 +19,8 @@ export default function Colaboradores() {
   const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState(blank);
   const [auditOpen, setAuditOpen] = useState(false);
+  const [nameError, setNameError] = useState(false);
+  const nomeInputRef = useRef(null);
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
@@ -68,6 +70,12 @@ export default function Colaboradores() {
   useEffect(() => { load(); }, []);
 
   const save = async () => {
+    if (!form.nome || !form.nome.trim()) {
+      toast.error("O preenchimento do campo Nome é obrigatório para a conclusão do cadastro.");
+      setNameError(true);
+      nomeInputRef.current?.focus();
+      return;
+    }
     try {
       const payload = { 
         ...form, 
@@ -100,6 +108,7 @@ export default function Colaboradores() {
   };
 
   const edit = (c) => { 
+    setNameError(false);
     setForm({
       ...c,
       comissao_sozinho: c.comissao_sozinho !== undefined && c.comissao_sozinho !== null ? c.comissao_sozinho : (c.comissao_principal || 40),
@@ -112,7 +121,7 @@ export default function Colaboradores() {
   return (
     <div className="p-6 lg:p-8 fade-in">
       <PageHeader overline="Equipe" title="Colaboradores" action={
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setForm(blank); }}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); setNameError(false); if (!v) setForm(blank); }}>
           <DialogTrigger asChild><Button data-testid="add-colaborador-btn" className="bg-[#84A59D] hover:bg-[#6F9189]"><Plus className="w-4 h-4 mr-1" /> Novo colaborador</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>{form.id ? "Editar" : "Novo"} colaborador</DialogTitle></DialogHeader>
@@ -151,7 +160,21 @@ export default function Colaboradores() {
                   </Button>
                 )}
               </div>
-              <div><Label>Nome *</Label><Input data-testid="colab-nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
+              <div>
+                <Label className={nameError ? "text-rose-500 font-semibold" : ""}>Nome *</Label>
+                <Input 
+                  ref={nomeInputRef}
+                  data-testid="colab-nome" 
+                  value={form.nome} 
+                  onChange={(e) => {
+                    setForm({ ...form, nome: e.target.value });
+                    if (e.target.value.trim()) {
+                      setNameError(false);
+                    }
+                  }} 
+                  className={nameError ? "border-rose-500 focus-visible:ring-rose-500 focus-visible:border-rose-500" : ""} 
+                />
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><Label>Cargo</Label><Input value={form.cargo} onChange={(e) => setForm({ ...form, cargo: e.target.value })} /></div>
                 <div><Label>Telefone</Label><Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} /></div>

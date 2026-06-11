@@ -502,6 +502,7 @@ export default function VendasDiretas() {
                     triggerTestId="venda-produto"
                     options={produtos
                       .filter(p => {
+                        if (p.uso_exclusivo_servicos) return false;
                         const matchesCategory =
                           selectedAddCategory === "all" ||
                           (selectedAddCategory === "none" && !p.categoria_id) ||
@@ -1061,7 +1062,7 @@ export default function VendasDiretas() {
                         placeholder="Pesquise por nome do produto para adicionar..."
                         searchPlaceholder="Digite o nome..."
                         options={produtos
-                          .filter(p => p.quantidade_estoque > 0)
+                          .filter(p => p.quantidade_estoque > 0 && !p.uso_exclusivo_servicos)
                           .map(p => {
                             const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
                             const qtyStr = qtyPerUnit > 0 
