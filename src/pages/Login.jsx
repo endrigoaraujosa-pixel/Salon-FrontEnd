@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../auth";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
@@ -6,12 +6,28 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Scissors } from "lucide-react";
 import { toast } from "sonner";
+import http from "../api";
 
 export default function Login() {
   const { login } = useAuth();
   const nav = useNavigate();
   const [user, setUser] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
+  const [nomeFantasia, setNomeFantasia] = useState("");
+
+  useEffect(() => {
+    const fetchNomeFantasia = async () => {
+      try {
+        const response = await http.get("/configuracoes/empresa/public");
+        if (response.data && response.data.nome_fantasia) {
+          setNomeFantasia(response.data.nome_fantasia);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar nome fantasia da empresa:", err);
+      }
+    };
+    fetchNomeFantasia();
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -37,9 +53,16 @@ export default function Login() {
         />
         <div className="absolute inset-0 bg-black/35" />
         <div className="relative h-full flex flex-col justify-between p-12 text-white">
-          <div className="flex items-center gap-2">
-            <Scissors className="w-6 h-6" />
-            <span className="text-xl font-display font-semibold">Salon Studio</span>
+          <div className="flex items-start gap-2">
+            <Scissors className="w-6 h-6 mt-0.5" />
+            <div className="flex flex-col">
+              <span className="text-xl font-display font-semibold leading-tight">Salon Studio</span>
+              {nomeFantasia && (
+                <span className="text-[10px] text-white/80 font-bold uppercase tracking-wider mt-0.5" data-testid="login-company-left">
+                  {nomeFantasia}
+                </span>
+              )}
+            </div>
           </div>
           <div>
             <h1 className="font-display text-5xl font-semibold leading-tight tracking-tight">
@@ -55,6 +78,12 @@ export default function Login() {
       <div className="flex items-center justify-center p-8">
         <form onSubmit={submit} className="w-full max-w-sm space-y-6" data-testid="login-form">
           <div>
+            {nomeFantasia && (
+              <div className="flex items-center gap-1.5 mb-2.5 text-[#84A59D]" data-testid="login-company-right">
+                <Scissors className="w-4 h-4" />
+                <span className="text-xs uppercase font-bold tracking-wider font-display">{nomeFantasia}</span>
+              </div>
+            )}
             <h2 className="font-display text-3xl font-semibold tracking-tight">Bem-vinda de volta</h2>
             <p className="text-sm text-zinc-500 mt-1">Entre na sua conta para continuar</p>
           </div>

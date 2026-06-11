@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import SearchableSelect from "../components/SearchableSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
-import { FileText, Banknote, Package, TrendingUp, TrendingDown, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle, Filter } from "lucide-react";
+import { FileText, Banknote, Package, TrendingUp, TrendingDown, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle, Filter, ArrowLeft } from "lucide-react";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -65,6 +65,81 @@ const PresetButtons = ({ onPick }) => {
   );
 };
 
+const REPORTS_LIST = [
+  {
+    id: "dre",
+    title: "DRE",
+    description: "Demonstrativo de Resultado do Exercício. Apresenta receitas, CMV e despesas operacionais para apurar o lucro líquido.",
+    icon: FileText,
+    category: "Financeiro",
+    badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/40",
+    iconColor: "text-emerald-500"
+  },
+  {
+    id: "caixa",
+    title: "Caixa",
+    description: "Detalhamento de fluxo de caixa por profissional, com visualização por forma de pagamento recebida no período.",
+    icon: Banknote,
+    category: "Financeiro",
+    badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/40",
+    iconColor: "text-emerald-500"
+  },
+  {
+    id: "produtos",
+    title: "Produtos",
+    description: "Relatório de venda de produtos físicos, contendo quantidade vendida, faturamento, custo (CMV) e lucro bruto.",
+    icon: Package,
+    category: "Vendas",
+    badgeColor: "bg-amber-50 text-amber-700 border-amber-250 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/40",
+    iconColor: "text-amber-500"
+  },
+  {
+    id: "servicos",
+    title: "Serviços",
+    description: "Relatório de prestação de serviços, com quantidade realizada, faturamento, tempo de execução e ticket médio.",
+    icon: Scissors,
+    category: "Vendas",
+    badgeColor: "bg-amber-50 text-amber-700 border-amber-250 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/40",
+    iconColor: "text-amber-500"
+  },
+  {
+    id: "resultado_consolidado",
+    title: "Resultado Consolidado",
+    description: "Visão consolidada do resultado operacional, unificando receitas de produtos e serviços frente aos custos e taxas.",
+    icon: TrendingUp,
+    category: "Rentabilidade",
+    badgeColor: "bg-indigo-50 text-indigo-700 border-indigo-250 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800/40",
+    iconColor: "text-indigo-500"
+  },
+  {
+    id: "rentabilidade_servicos",
+    title: "Rentabilidade de Serviços",
+    description: "Análise de lucratividade individual dos serviços oferecidos, calculando a margem real de cada procedimento.",
+    icon: Scissors,
+    category: "Rentabilidade",
+    badgeColor: "bg-indigo-50 text-indigo-700 border-indigo-250 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800/40",
+    iconColor: "text-indigo-500"
+  },
+  {
+    id: "rentabilidade_produtos",
+    title: "Rentabilidade de Produtos",
+    description: "Análise de lucratividade dos produtos vendidos, avaliando margens individuais e custos de aquisição.",
+    icon: Package,
+    category: "Rentabilidade",
+    badgeColor: "bg-indigo-50 text-indigo-700 border-indigo-250 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800/40",
+    iconColor: "text-indigo-500"
+  },
+  {
+    id: "analitico_vendas",
+    title: "Analítico por Venda",
+    description: "Detalhamento transacional por venda de produtos e serviços, identificando receitas, CMV, comissões e taxas de cada transação.",
+    icon: FileText,
+    category: "Financeiro",
+    badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/40",
+    iconColor: "text-emerald-500"
+  }
+];
+
 export default function Relatorios() {
   const [from, setFrom] = useState(firstDayMonth());
   const [to, setTo] = useState(todayStr());
@@ -73,6 +148,15 @@ export default function Relatorios() {
   const [caixa, setCaixa] = useState(null);
   const [produtos, setProdutos] = useState(null);
   const [servicos, setServicos] = useState(null);
+  
+  // New navigation and generation states
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [isGenerated, setIsGenerated] = useState(false);
+  const [loadingReport, setLoadingReport] = useState(false);
+  const [searchReportQuery, setSearchReportQuery] = useState("");
+  const [generatedFilters, setGeneratedFilters] = useState(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+
   const [resultadoOperacional, setResultadoOperacional] = useState(null);
   const [filterUnidade, setFilterUnidade] = useState("todas");
   const [filterOperacionalColab, setFilterOperacionalColab] = useState("todos");
@@ -159,7 +243,10 @@ export default function Relatorios() {
   }, [tab, hasInitializedCaixa]);
 
   const reload = () => {
+    setLoadingReport(true);
     const params = { data_inicio: from, data_fim: to };
+    let promise = Promise.resolve();
+
     if (tab === "dre") {
       const dreParams = {
         data_inicio: from,
@@ -167,7 +254,7 @@ export default function Relatorios() {
         categoria: filterDreCategory,
         status: filterDreStatus
       };
-      http.get("/relatorios/dre", { params: dreParams })
+      promise = http.get("/relatorios/dre", { params: dreParams })
         .then((r) => setDre(r.data))
         .catch((err) => {
           console.error("DRE error:", err);
@@ -190,7 +277,7 @@ export default function Relatorios() {
     }
     if (tab === "caixa") {
       const caixaParams = { ...params, colaborador_id: colaboradorId };
-      http.get("/relatorios/caixa", { params: caixaParams })
+      promise = http.get("/relatorios/caixa", { params: caixaParams })
         .then((r) => setCaixa(r.data))
         .catch((err) => {
           console.error("Caixa error:", err);
@@ -207,7 +294,7 @@ export default function Relatorios() {
         cliente_id: filterCliente,
         status: filterStatus
       };
-      http.get("/relatorios/produtos", { params: prodParams })
+      promise = http.get("/relatorios/produtos", { params: prodParams })
         .then((r) => setProdutos(r.data))
         .catch((err) => {
           console.error("Produtos error:", err);
@@ -223,7 +310,7 @@ export default function Relatorios() {
         cliente_id: filterClienteServico,
         status: filterStatusServico
       };
-      http.get("/relatorios/servicos", { params: servParams })
+      promise = http.get("/relatorios/servicos", { params: servParams })
         .then((r) => setServicos(r.data))
         .catch((err) => {
           console.error("Servicos error:", err);
@@ -238,7 +325,7 @@ export default function Relatorios() {
         categoria_servico: filterOperacionalCatServico,
         categoria_produto: filterOperacionalCatProduto
       };
-      http.get("/relatorios/resultado-operacional", { params: operParams })
+      promise = http.get("/relatorios/resultado-operacional", { params: operParams })
         .then((r) => setResultadoOperacional(r.data))
         .catch((err) => {
           console.error("Resultado Operacional error:", err);
@@ -250,17 +337,11 @@ export default function Relatorios() {
           });
         });
     }
+
+    promise.finally(() => setLoadingReport(false));
   };
 
-  useEffect(() => { 
-    reload(); 
-  }, [
-    tab, from, to, colaboradorId,
-    filterColaborador, filterProduto, filterCategoria, filterFormaPagamento, filterCliente, filterStatus,
-    filterColaboradorServico, filterServico, filterFormaPagamentoServico, filterClienteServico, filterStatusServico,
-    filterDreCategory, filterDreStatus,
-    filterOperacionalColab, filterOperacionalCatServico, filterOperacionalCatProduto
-  ]);
+  // Automatic reload is disabled. Users click "Gerar Consulta" to run reload() manually.
 
   const SortHeader = ({ label, field, currentField, direction, onSort }) => {
     const active = field === currentField;
@@ -373,359 +454,56 @@ export default function Relatorios() {
       return sortVendaDirection === 'asc' ? valA - valB : valB - valA;
     });
 
-  const handleDrilldown = (title, data) => {
-    setDrilldownTitle(title);
-    setDrilldownData(data || []);
-    setDrilldownOpen(true);
+  const handleSelectReport = (reportId) => {
+    setSelectedReport(reportId);
+    setTab(reportId);
+    setIsGenerated(false);
+    setGeneratedFilters(null);
   };
+
+  const handleGenerate = () => {
+    setIsGenerated(true);
+    setGeneratedFilters({
+      from, to, colaboradorId,
+      filterColaborador, filterProduto, filterCategoria, filterFormaPagamento, filterCliente, filterStatus,
+      filterColaboradorServico, filterServico, filterFormaPagamentoServico, filterClienteServico, filterStatusServico,
+      filterDreCategory, filterDreStatus,
+      filterOperacionalColab, filterOperacionalCatServico, filterOperacionalCatProduto, filterUnidade
+    });
+    reload();
+  };
+
+  const hasChanges = generatedFilters && (
+    generatedFilters.from !== from ||
+    generatedFilters.to !== to ||
+    (tab === "caixa" && generatedFilters.colaboradorId !== colaboradorId) ||
+    (tab === "dre" && (generatedFilters.filterDreCategory !== filterDreCategory || generatedFilters.filterDreStatus !== filterDreStatus)) ||
+    (tab === "produtos" && (
+      generatedFilters.filterColaborador !== filterColaborador ||
+      generatedFilters.filterProduto !== filterProduto ||
+      generatedFilters.filterCategoria !== filterCategoria ||
+      generatedFilters.filterFormaPagamento !== filterFormaPagamento ||
+      generatedFilters.filterCliente !== filterCliente ||
+      generatedFilters.filterStatus !== filterStatus
+    )) ||
+    (tab === "servicos" && (
+      generatedFilters.filterColaboradorServico !== filterColaboradorServico ||
+      generatedFilters.filterServico !== filterServico ||
+      generatedFilters.filterFormaPagamentoServico !== filterFormaPagamentoServico ||
+      generatedFilters.filterClienteServico !== filterClienteServico ||
+      generatedFilters.filterStatusServico !== filterStatusServico
+    )) ||
+    (["resultado_consolidado", "rentabilidade_servicos", "rentabilidade_produtos", "analitico_vendas"].includes(tab) && (
+      generatedFilters.filterOperacionalColab !== filterOperacionalColab ||
+      generatedFilters.filterOperacionalCatServico !== filterOperacionalCatServico ||
+      generatedFilters.filterOperacionalCatProduto !== filterOperacionalCatProduto ||
+      generatedFilters.filterUnidade !== filterUnidade
+    ))
+  );
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 fade-in max-w-7xl mx-auto w-full overflow-x-hidden">
       <PageHeader overline="Análise" title="Relatórios" />
-
-      <div className="bg-white border border-zinc-200 rounded-xl p-4 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-end lg:gap-4 gap-4 shadow-sm">
-        <div className="w-full lg:w-auto">
-          <Label className="text-xs uppercase font-bold text-zinc-400 tracking-wider">De</Label>
-          <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-full lg:w-40" data-testid="rep-from" />
-        </div>
-        <div className="w-full lg:w-auto">
-          <Label className="text-xs uppercase font-bold text-zinc-400 tracking-wider">Até</Label>
-          <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-full lg:w-40" data-testid="rep-to" />
-        </div>
-
-        {tab === "caixa" && (
-          <div className="w-full lg:w-64 sm:col-span-2 lg:col-span-1">
-            <Label className="text-xs uppercase font-bold text-zinc-400 tracking-wider">Profissional</Label>
-            <SearchableSelect
-              placeholder="Todos os usuários"
-              searchPlaceholder="Pesquisar profissional..."
-              options={[
-                { value: "todos", label: "Todos os usuários" },
-                ...colaboradores.map((c) => ({ value: c.id, label: c.nome }))
-              ]}
-              value={colaboradorId}
-              onValueChange={setColaboradorId}
-            />
-          </div>
-        )}
-
-        <div className="w-full lg:flex-1 sm:col-span-2 lg:col-span-1">
-          <Label className="text-xs uppercase font-bold text-zinc-400 tracking-wider">Atalhos de Período</Label>
-          <PresetButtons onPick={(a, b) => { setFrom(a); setTo(b); }} />
-        </div>
-      </div>
-
-      {["resultado_consolidado", "rentabilidade_servicos", "rentabilidade_produtos", "analitico_vendas"].includes(tab) && (
-        <div className="bg-white border border-zinc-200 rounded-xl p-4 mb-6 shadow-sm no-print">
-          <div className="flex items-center gap-2 mb-3 text-[#3A4F4A] font-semibold text-sm">
-            <Filter className="w-4 h-4 text-[#84A59D]" />
-            <span>Filtros do Resultado Operacional</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {/* Unidade */}
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Unidade</Label>
-              <Select value={filterUnidade} onValueChange={setFilterUnidade}>
-                <SelectTrigger className="bg-white h-9 text-xs">
-                  <SelectValue placeholder="Matriz (Todas)" />
-                </SelectTrigger>
-                <SelectContent className="bg-white border border-zinc-200">
-                  <SelectItem value="todas">Matriz (Todas)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Profissional */}
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Profissional</Label>
-              <SearchableSelect
-                placeholder="Todos os profissionais"
-                searchPlaceholder="Pesquisar profissional..."
-                options={[
-                  { value: "todos", label: "Todos os profissionais" },
-                  ...colaboradores.map((c) => ({ value: c.id, label: c.nome }))
-                ]}
-                value={filterOperacionalColab}
-                onValueChange={setFilterOperacionalColab}
-              />
-            </div>
-
-            {/* Categoria de Serviço */}
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Categoria de Serviço</Label>
-              <SearchableSelect
-                placeholder="Todas as categorias"
-                searchPlaceholder="Pesquisar..."
-                options={[
-                  { value: "todos", label: "Todas as categorias" },
-                  ...categoriesList.map((cat) => ({
-                    value: cat.id,
-                    label: cat.nome
-                  }))
-                ]}
-                value={filterOperacionalCatServico}
-                onValueChange={setFilterOperacionalCatServico}
-              />
-            </div>
-
-            {/* Categoria de Produto */}
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Categoria de Produto</Label>
-              <SearchableSelect
-                placeholder="Todas as categorias"
-                searchPlaceholder="Pesquisar..."
-                options={[
-                  { value: "todos", label: "Todas as categorias" },
-                  ...[...new Set(produtosList.map(p => p.categoria).filter(Boolean))].map((cat) => ({
-                    value: cat,
-                    label: cat
-                  }))
-                ]}
-                value={filterOperacionalCatProduto}
-                onValueChange={setFilterOperacionalCatProduto}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {tab === "produtos" && (
-        <div className="bg-white border border-zinc-200 rounded-xl p-4 mb-6 shadow-sm no-print">
-          <div className="flex items-center gap-2 mb-3 text-[#3A4F4A] font-semibold text-sm">
-            <Package className="w-4 h-4 text-[#84A59D]" />
-            <span>Filtros Adicionais para Venda de Produtos</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {/* Colaborador */}
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Colaborador</Label>
-              <SearchableSelect
-                placeholder="Todos os colaboradores"
-                searchPlaceholder="Pesquisar colaborador..."
-                options={[
-                  { value: "todos", label: "Todos os colaboradores" },
-                  ...colaboradores.map((c) => ({ value: c.id, label: c.nome }))
-                ]}
-                value={filterColaborador}
-                onValueChange={setFilterColaborador}
-              />
-            </div>
-
-            {/* Produto */}
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Produto</Label>
-              <SearchableSelect
-                placeholder="Todos os produtos"
-                searchPlaceholder="Pesquisar produto..."
-                options={[
-                  { value: "todos", label: "Todos os produtos" },
-                  ...produtosList.map((p) => ({ value: p.id, label: p.nome }))
-                ]}
-                value={filterProduto}
-                onValueChange={setFilterProduto}
-              />
-            </div>
-
-            {/* Categoria */}
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Categoria</Label>
-              <SearchableSelect
-                placeholder="Todas as categorias"
-                searchPlaceholder="Pesquisar categoria..."
-                options={[
-                  { value: "todos", label: "Todas as categorias" },
-                  ...[...new Set(produtosList.map(p => p.categoria).filter(Boolean))].map((cat) => ({
-                    value: cat,
-                    label: cat
-                  }))
-                ]}
-                value={filterCategoria}
-                onValueChange={setFilterCategoria}
-              />
-            </div>
-
-            {/* Forma de Pagamento */}
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Pagamento</Label>
-              <Select value={filterFormaPagamento} onValueChange={setFilterFormaPagamento}>
-                <SelectTrigger className="bg-white h-9 text-xs">
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todas as formas</SelectItem>
-                  {Object.entries(FORMA_LABELS).filter(([k]) => k !== 'geral').map(([k, l]) => (
-                    <SelectItem key={k} value={k}>{l}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Cliente */}
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Cliente</Label>
-              <SearchableSelect
-                placeholder="Todos os clientes"
-                searchPlaceholder="Pesquisar cliente..."
-                options={[
-                  { value: "todos", label: "Todos os clientes" },
-                  ...clientesList.map((c) => ({ value: c.id, label: c.nome }))
-                ]}
-                value={filterCliente}
-                onValueChange={setFilterCliente}
-              />
-            </div>
-
-            {/* Status */}
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Status</Label>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="bg-white h-9 text-xs">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os status</SelectItem>
-                  <SelectItem value="pago">Pago</SelectItem>
-                  <SelectItem value="pendente">Pendente</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {tab === "servicos" && (
-        <div className="bg-white border border-zinc-200 rounded-xl p-4 mb-6 shadow-sm no-print">
-          <div className="flex items-center gap-2 mb-3 text-[#3A4F4A] font-semibold text-sm">
-            <Scissors className="w-4 h-4 text-[#84A59D]" />
-            <span>Filtros Adicionais para Prestação de Serviços</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            {/* Colaborador */}
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Profissional</Label>
-              <SearchableSelect
-                placeholder="Todos os profissionais"
-                searchPlaceholder="Pesquisar profissional..."
-                options={[
-                  { value: "todos", label: "Todos os profissionais" },
-                  ...colaboradores.map((c) => ({ value: c.id, label: c.nome }))
-                ]}
-                value={filterColaboradorServico}
-                onValueChange={setFilterColaboradorServico}
-              />
-            </div>
-
-            {/* Serviço */}
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Serviço</Label>
-              <SearchableSelect
-                placeholder="Todos os serviços"
-                searchPlaceholder="Pesquisar serviço..."
-                options={[
-                  { value: "todos", label: "Todos os serviços" },
-                  ...servicosList.map((s) => ({ value: s.id, label: s.nome }))
-                ]}
-                value={filterServico}
-                onValueChange={setFilterServico}
-              />
-            </div>
-
-            {/* Forma de Pagamento */}
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Pagamento</Label>
-              <Select value={filterFormaPagamentoServico} onValueChange={setFilterFormaPagamentoServico}>
-                <SelectTrigger className="bg-white h-9 text-xs">
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todas as formas</SelectItem>
-                  {Object.entries(FORMA_LABELS).filter(([k]) => k !== 'geral').map(([k, l]) => (
-                    <SelectItem key={k} value={k}>{l}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Cliente */}
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Cliente</Label>
-              <SearchableSelect
-                placeholder="Todos os clientes"
-                searchPlaceholder="Pesquisar cliente..."
-                options={[
-                  { value: "todos", label: "Todos os clientes" },
-                  ...clientesList.map((c) => ({ value: c.id, label: c.nome }))
-                ]}
-                value={filterClienteServico}
-                onValueChange={setFilterClienteServico}
-              />
-            </div>
-
-            {/* Status */}
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Status</Label>
-              <Select value={filterStatusServico} onValueChange={setFilterStatusServico}>
-                <SelectTrigger className="bg-white h-9 text-xs">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os status</SelectItem>
-                  <SelectItem value="concluido">Concluído</SelectItem>
-                  <SelectItem value="agendado">Agendado</SelectItem>
-                  <SelectItem value="cancelado">Cancelado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {tab === "dre" && (
-        <div className="bg-white border border-zinc-200 rounded-xl p-4 mb-6 shadow-sm no-print">
-          <div className="flex items-center gap-2 mb-3 text-[#3A4F4A] font-semibold text-sm">
-            <Filter className="w-4 h-4 text-[#84A59D]" />
-            <span>Filtros Adicionais para DRE</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
-            {/* Categoria */}
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Categoria</Label>
-              <Select value={filterDreCategory} onValueChange={setFilterDreCategory}>
-                <SelectTrigger className="bg-white h-9 text-xs">
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-150">
-                  <SelectItem value="todos">Todas as Categorias</SelectItem>
-                  {[
-                    ...new Set([
-                      "Salários", "Aluguel", "Luz", "Internet", "Produtos", "Água", "Marketing", "Juros", "Multas", "Devoluções", "Bônus", "Reembolsos", "Aluguel de espaço", "Venda de ativos", "Investimentos", "Outros",
-                      ...categoriesList.map(c => c.nome)
-                    ].filter(Boolean))
-                  ].map(cat => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Status */}
-            <div>
-              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Status Financeiro</Label>
-              <Select value={filterDreStatus} onValueChange={setFilterDreStatus}>
-                <SelectTrigger className="bg-white h-9 text-xs">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-150">
-                  <SelectItem value="todos">Todos os Status (Competência)</SelectItem>
-                  <SelectItem value="pago">Pago / Recebido (Caixa Realizado)</SelectItem>
-                  <SelectItem value="pendente">Pendente / Aberto (A Receber/Pagar)</SelectItem>
-                  <SelectItem value="vencido">Vencido (Em Atraso)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-      )}
 
       <style>{`
         @media print {
@@ -745,17 +523,487 @@ export default function Relatorios() {
         }
       `}</style>
 
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="mb-6 bg-zinc-100 p-1 rounded-lg flex overflow-x-auto max-w-full no-scrollbar whitespace-nowrap">
-          <TabsTrigger value="dre" data-testid="tab-dre" className="flex items-center gap-1.5 shrink-0"><FileText className="w-4 h-4" /> DRE</TabsTrigger>
-          <TabsTrigger value="caixa" data-testid="tab-caixa" className="flex items-center gap-1.5 shrink-0"><Banknote className="w-4 h-4" /> Caixa</TabsTrigger>
-          <TabsTrigger value="produtos" data-testid="tab-produtos" className="flex items-center gap-1.5 shrink-0"><Package className="w-4 h-4" /> Produtos</TabsTrigger>
-          <TabsTrigger value="servicos" data-testid="tab-servicos" className="flex items-center gap-1.5 shrink-0"><Scissors className="w-4 h-4" /> Serviços</TabsTrigger>
-          <TabsTrigger value="resultado_consolidado" data-testid="tab-res-consolidado" className="flex items-center gap-1.5 shrink-0"><TrendingUp className="w-4 h-4" /> Resultado Consolidado</TabsTrigger>
-          <TabsTrigger value="rentabilidade_servicos" data-testid="tab-res-servicos" className="flex items-center gap-1.5 shrink-0"><Scissors className="w-4 h-4" /> Rentabilidade de Serviços</TabsTrigger>
-          <TabsTrigger value="rentabilidade_produtos" data-testid="tab-res-produtos" className="flex items-center gap-1.5 shrink-0"><Package className="w-4 h-4" /> Rentabilidade de Produtos</TabsTrigger>
-          <TabsTrigger value="analitico_vendas" data-testid="tab-res-analitico" className="flex items-center gap-1.5 shrink-0"><FileText className="w-4 h-4" /> Analítico por Venda</TabsTrigger>
-        </TabsList>
+      {!selectedReport ? (
+        <div className="space-y-6">
+          {/* Search bar */}
+          <div className="relative max-w-md w-full no-print">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+            <Input
+              type="text"
+              placeholder="Buscar relatório por nome ou finalidade..."
+              value={searchReportQuery}
+              onChange={(e) => setSearchReportQuery(e.target.value)}
+              className="pl-9 bg-white border-zinc-200"
+            />
+          </div>
+
+          {/* Categorized Groups */}
+          {["Financeiro", "Vendas", "Rentabilidade"].map((cat) => {
+            const filtered = REPORTS_LIST.filter(
+              (r) =>
+                r.category === cat &&
+                (r.title.toLowerCase().includes(searchReportQuery.toLowerCase()) ||
+                  r.description.toLowerCase().includes(searchReportQuery.toLowerCase()))
+            );
+
+            if (filtered.length === 0) return null;
+
+            return (
+              <div key={cat} className="space-y-3">
+                <h2 className="text-sm uppercase font-bold text-zinc-400 tracking-wider mt-4">
+                  {cat}
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filtered.map((report) => {
+                    const IconComponent = report.icon;
+                    return (
+                      <div
+                        key={report.id}
+                        onClick={() => handleSelectReport(report.id)}
+                        className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-pointer flex flex-col justify-between group"
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${report.badgeColor}`}>
+                              {report.category}
+                            </span>
+                            <IconComponent className={`w-5 h-5 ${report.iconColor} group-hover:scale-110 transition-transform`} />
+                          </div>
+                          <div className="space-y-1">
+                            <h3 className="font-semibold text-zinc-800 font-display text-base group-hover:text-[#84A59D] transition-colors">
+                              {report.title}
+                            </h3>
+                            <p className="text-xs text-zinc-500 leading-relaxed">
+                              {report.description}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-4 pt-3 border-t border-zinc-55 flex items-center justify-end text-[11px] font-semibold text-[#84A59D] opacity-0 group-hover:opacity-100 transition-opacity">
+                          Acessar Relatório &rarr;
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div>
+          {/* Back Navigation Bar */}
+          <div className="flex items-center justify-between mb-6 border-b border-zinc-150 pb-4 no-print">
+            <button
+              onClick={() => { setSelectedReport(null); setIsGenerated(false); setGeneratedFilters(null); }}
+              className="flex items-center gap-2 text-zinc-500 hover:text-zinc-850 transition-colors font-semibold text-sm"
+            >
+              <ArrowLeft className="w-4 h-4" /> Voltar para Central de Relatórios
+            </button>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 bg-zinc-100 px-2.5 py-1 rounded-full">
+              {REPORTS_LIST.find(r => r.id === selectedReport)?.category}
+            </span>
+          </div>
+
+          <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl sm:text-3xl font-bold font-display text-zinc-850 dark:text-zinc-100">
+                  {REPORTS_LIST.find(r => r.id === selectedReport)?.title}
+                </h1>
+                <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
+                  <DialogTrigger asChild>
+                    <button
+                      className="text-zinc-400 hover:text-[#84A59D] transition-colors p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 focus:outline-none"
+                      title="Ajuda e Documentação do Relatório"
+                      data-testid="btn-ajuda-relatorio"
+                    >
+                      <HelpCircle className="w-5.5 h-5.5" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl shadow-xl">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2 text-xl font-bold font-display text-zinc-850 dark:text-zinc-100">
+                        <HelpCircle className="w-5 h-5 text-[#84A59D]" />
+                        Ajuda Contextual: {REPORTS_LIST.find(r => r.id === selectedReport)?.title}
+                      </DialogTitle>
+                    </DialogHeader>
+                    <div className="mt-4 border-t border-zinc-100 dark:border-zinc-800 pt-4">
+                      {renderHelpContent(selectedReport)}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <p className="text-xs text-zinc-500 mt-1 max-w-3xl">
+                {REPORTS_LIST.find(r => r.id === selectedReport)?.description}
+              </p>
+            </div>
+          </div>
+
+          {/* Filters Card */}
+          <div className="bg-white border border-zinc-200 rounded-xl p-5 mb-6 shadow-sm no-print">
+            <div className="flex items-center gap-2 mb-4 text-[#3A4F4A] font-semibold text-xs">
+              <Filter className="w-4 h-4 text-[#84A59D]" />
+              <span>Filtros do Relatório</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label className="text-xs uppercase font-bold text-zinc-450 tracking-wider">De</Label>
+                <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-full h-9 text-xs" data-testid="rep-from" />
+              </div>
+              <div>
+                <Label className="text-xs uppercase font-bold text-zinc-450 tracking-wider">Até</Label>
+                <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-full h-9 text-xs" data-testid="rep-to" />
+              </div>
+              <div>
+                <Label className="text-xs uppercase font-bold text-zinc-450 tracking-wider">Atalhos de Período</Label>
+                <PresetButtons onPick={(a, b) => { setFrom(a); setTo(b); }} />
+              </div>
+            </div>
+
+            {/* Specific Filters Row */}
+            {tab === "caixa" && (
+              <div className="w-full md:max-w-xs mt-4">
+                <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Profissional</Label>
+                <SearchableSelect
+                  placeholder="Todos os usuários"
+                  searchPlaceholder="Pesquisar profissional..."
+                  options={[
+                    { value: "todos", label: "Todos os usuários" },
+                    ...colaboradores.map((c) => ({ value: c.id, label: c.nome }))
+                  ]}
+                  value={colaboradorId}
+                  onValueChange={setColaboradorId}
+                />
+              </div>
+            )}
+
+            {tab === "dre" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 max-w-xl">
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Categoria</Label>
+                  <Select value={filterDreCategory} onValueChange={setFilterDreCategory}>
+                    <SelectTrigger className="bg-white h-9 text-xs">
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-150">
+                      <SelectItem value="todos">Todas as Categorias</SelectItem>
+                      {[
+                        ...new Set([
+                          "Salários", "Aluguel", "Luz", "Internet", "Produtos", "Água", "Marketing", "Juros", "Multas", "Devoluções", "Bônus", "Reembolsos", "Aluguel de espaço", "Venda de ativos", "Investimentos", "Outros",
+                          ...categoriesList.map(c => c.nome)
+                        ].filter(Boolean))
+                      ].map(cat => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Status Financeiro</Label>
+                  <Select value={filterDreStatus} onValueChange={setFilterDreStatus}>
+                    <SelectTrigger className="bg-white h-9 text-xs">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-150">
+                      <SelectItem value="todos">Todos os Status (Competência)</SelectItem>
+                      <SelectItem value="pago">Pago / Recebido (Caixa Realizado)</SelectItem>
+                      <SelectItem value="pendente">Pendente / Aberto (A Receber/Pagar)</SelectItem>
+                      <SelectItem value="vencido">Vencido (Em Atraso)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            {tab === "produtos" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mt-4 border-t border-zinc-100 pt-3">
+                {/* Colaborador */}
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Colaborador</Label>
+                  <SearchableSelect
+                    placeholder="Todos os colaboradores"
+                    searchPlaceholder="Pesquisar colaborador..."
+                    options={[
+                      { value: "todos", label: "Todos os colaboradores" },
+                      ...colaboradores.map((c) => ({ value: c.id, label: c.nome }))
+                    ]}
+                    value={filterColaborador}
+                    onValueChange={setFilterColaborador}
+                  />
+                </div>
+                {/* Produto */}
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Produto</Label>
+                  <SearchableSelect
+                    placeholder="Todos os produtos"
+                    searchPlaceholder="Pesquisar produto..."
+                    options={[
+                      { value: "todos", label: "Todos os produtos" },
+                      ...produtosList.map((p) => ({ value: p.id, label: p.nome }))
+                    ]}
+                    value={filterProduto}
+                    onValueChange={setFilterProduto}
+                  />
+                </div>
+                {/* Categoria */}
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Categoria</Label>
+                  <SearchableSelect
+                    placeholder="Todas as categorias"
+                    searchPlaceholder="Pesquisar categoria..."
+                    options={[
+                      { value: "todos", label: "Todas as categorias" },
+                      ...[...new Set(produtosList.map(p => p.categoria).filter(Boolean))].map((cat) => ({
+                        value: cat,
+                        label: cat
+                      }))
+                    ]}
+                    value={filterCategoria}
+                    onValueChange={setFilterCategoria}
+                  />
+                </div>
+                {/* Pagamento */}
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Pagamento</Label>
+                  <Select value={filterFormaPagamento} onValueChange={setFilterFormaPagamento}>
+                    <SelectTrigger className="bg-white h-9 text-xs">
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todas as formas</SelectItem>
+                      {Object.entries(FORMA_LABELS).filter(([k]) => k !== 'geral').map(([k, l]) => (
+                        <SelectItem key={k} value={k}>{l}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {/* Cliente */}
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Cliente</Label>
+                  <SearchableSelect
+                    placeholder="Todos os clientes"
+                    searchPlaceholder="Pesquisar cliente..."
+                    options={[
+                      { value: "todos", label: "Todos os clientes" },
+                      ...clientesList.map((c) => ({ value: c.id, label: c.nome }))
+                    ]}
+                    value={filterCliente}
+                    onValueChange={setFilterCliente}
+                  />
+                </div>
+                {/* Status */}
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Status</Label>
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                    <SelectTrigger className="bg-white h-9 text-xs">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os status</SelectItem>
+                      <SelectItem value="pago">Pago</SelectItem>
+                      <SelectItem value="pendente">Pendente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            {tab === "servicos" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mt-4 border-t border-zinc-100 pt-3">
+                {/* Colaborador */}
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Profissional</Label>
+                  <SearchableSelect
+                    placeholder="Todos os profissionais"
+                    searchPlaceholder="Pesquisar profissional..."
+                    options={[
+                      { value: "todos", label: "Todos os profissionais" },
+                      ...colaboradores.map((c) => ({ value: c.id, label: c.nome }))
+                    ]}
+                    value={filterColaboradorServico}
+                    onValueChange={setFilterColaboradorServico}
+                  />
+                </div>
+                {/* Serviço */}
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Serviço</Label>
+                  <SearchableSelect
+                    placeholder="Todos os serviços"
+                    searchPlaceholder="Pesquisar serviço..."
+                    options={[
+                      { value: "todos", label: "Todos os serviços" },
+                      ...servicosList.map((s) => ({ value: s.id, label: s.nome }))
+                    ]}
+                    value={filterServico}
+                    onValueChange={setFilterServico}
+                  />
+                </div>
+                {/* Pagamento */}
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Pagamento</Label>
+                  <Select value={filterFormaPagamentoServico} onValueChange={setFilterFormaPagamentoServico}>
+                    <SelectTrigger className="bg-white h-9 text-xs">
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todas as formas</SelectItem>
+                      {Object.entries(FORMA_LABELS).filter(([k]) => k !== 'geral').map(([k, l]) => (
+                        <SelectItem key={k} value={k}>{l}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {/* Cliente */}
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Cliente</Label>
+                  <SearchableSelect
+                    placeholder="Todos os clientes"
+                    searchPlaceholder="Pesquisar cliente..."
+                    options={[
+                      { value: "todos", label: "Todos os clientes" },
+                      ...clientesList.map((c) => ({ value: c.id, label: c.nome }))
+                    ]}
+                    value={filterClienteServico}
+                    onValueChange={setFilterClienteServico}
+                  />
+                </div>
+                {/* Status */}
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Status</Label>
+                  <Select value={filterStatusServico} onValueChange={setFilterStatusServico}>
+                    <SelectTrigger className="bg-white h-9 text-xs">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os status</SelectItem>
+                      <SelectItem value="concluido">Concluído</SelectItem>
+                      <SelectItem value="agendado">Agendado</SelectItem>
+                      <SelectItem value="cancelado">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            {["resultado_consolidado", "rentabilidade_servicos", "rentabilidade_produtos", "analitico_vendas"].includes(tab) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-4 border-t border-zinc-100 pt-3">
+                {/* Unidade */}
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Unidade</Label>
+                  <Select value={filterUnidade} onValueChange={setFilterUnidade}>
+                    <SelectTrigger className="bg-white h-9 text-xs">
+                      <SelectValue placeholder="Matriz (Todas)" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border border-zinc-200">
+                      <SelectItem value="todas">Matriz (Todas)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {/* Profissional */}
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Profissional</Label>
+                  <SearchableSelect
+                    placeholder="Todos os profissionais"
+                    searchPlaceholder="Pesquisar profissional..."
+                    options={[
+                      { value: "todos", label: "Todos os profissionais" },
+                      ...colaboradores.map((c) => ({ value: c.id, label: c.nome }))
+                    ]}
+                    value={filterOperacionalColab}
+                    onValueChange={setFilterOperacionalColab}
+                  />
+                </div>
+                {/* Categoria de Serviço */}
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Categoria de Serviço</Label>
+                  <SearchableSelect
+                    placeholder="Todas as categorias"
+                    searchPlaceholder="Pesquisar..."
+                    options={[
+                      { value: "todos", label: "Todas as categorias" },
+                      ...categoriesList.map((cat) => ({
+                        value: cat.id,
+                        label: cat.nome
+                      }))
+                    ]}
+                    value={filterOperacionalCatServico}
+                    onValueChange={setFilterOperacionalCatServico}
+                  />
+                </div>
+                {/* Categoria de Produto */}
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Categoria de Produto</Label>
+                  <SearchableSelect
+                    placeholder="Todas as categorias"
+                    searchPlaceholder="Pesquisar..."
+                    options={[
+                      { value: "todos", label: "Todas as categorias" },
+                      ...[...new Set(produtosList.map(p => p.categoria).filter(Boolean))].map((cat) => ({
+                        value: cat,
+                        label: cat
+                      }))
+                    ]}
+                    value={filterOperacionalCatProduto}
+                    onValueChange={setFilterOperacionalCatProduto}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Generate Button Row */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mt-4 pt-4 border-t border-zinc-100">
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={handleGenerate}
+                  disabled={loadingReport}
+                  className="bg-[#84A59D] hover:bg-[#6F9189] text-white font-semibold text-xs px-5 h-9 rounded-lg flex items-center gap-2 shadow-sm"
+                >
+                  {loadingReport ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      Carregando...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4" />
+                      Gerar Consulta
+                    </>
+                  )}
+                </Button>
+                {hasChanges && (
+                  <span className="text-xs text-amber-600 font-semibold flex items-center gap-1">
+                    ⚠️ Filtros modificados. Clique em "Gerar Consulta" para atualizar.
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Results Area */}
+          {!isGenerated ? (
+            <div className="bg-white border border-zinc-200 rounded-xl p-12 text-center text-zinc-500 shadow-sm max-w-lg mx-auto my-8 no-print">
+              <div className="flex justify-center mb-4 text-[#84A59D]">
+                <Search className="w-12 h-12 stroke-[1.5] animate-pulse" />
+              </div>
+              <h3 className="text-base font-semibold text-zinc-800 mb-1">Pronto para gerar o relatório</h3>
+              <p className="text-xs text-zinc-500 mb-6">Defina o período e filtros acima e clique em "Gerar Consulta" para carregar as informações.</p>
+              <Button
+                onClick={handleGenerate}
+                className="bg-[#84A59D] hover:bg-[#6F9189] text-white font-semibold text-xs px-6 h-9 rounded-lg"
+              >
+                Gerar Consulta
+              </Button>
+            </div>
+          ) : loadingReport ? (
+            <div className="text-zinc-400 p-12 text-center bg-white border border-zinc-200 rounded-xl shadow-sm no-print">
+              <div className="flex justify-center mb-3">
+                <span className="w-8 h-8 border-4 border-[#84A59D] border-t-transparent rounded-full animate-spin"></span>
+              </div>
+              Carregando dados do relatório...
+            </div>
+          ) : (
+            <Tabs value={selectedReport} className="w-full">
 
         <TabsContent value="dre">
           {!dre ? <div className="text-zinc-400 p-8 text-center">Carregando...</div> : (
@@ -2642,8 +2890,11 @@ export default function Relatorios() {
           )}
         </TabsContent>
       </Tabs>
-    </div>
-  );
+    )}
+  </div>
+)}
+</div>
+);
 }
 
 const Row = ({ label, value, bold, negative, highlight }) => (
@@ -2665,3 +2916,224 @@ const DRE_Row = ({ label, value, bold, negative, highlight, onClick }) => (
     <span className={`font-display ${bold ? "text-xl font-bold" : ""} ${negative ? "text-rose-600" : "text-zinc-800 dark:text-zinc-150"} ${highlight ? "text-2xl text-[#3A4F4A] dark:text-[#EAF0EE]" : ""}`}>{fmtBRL(value)}</span>
   </div>
 );
+
+const HelpSection = ({ title, children }) => (
+  <div className="space-y-1.5 pb-4 border-b border-zinc-100 last:border-0 last:pb-0 dark:border-zinc-800">
+    <h4 className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider font-display">{title}</h4>
+    <div className="text-xs text-zinc-600 dark:text-zinc-350 leading-relaxed space-y-2">{children}</div>
+  </div>
+);
+
+const renderHelpContent = (reportId) => {
+  switch (reportId) {
+    case "dre":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>O Demonstrativo de Resultado do Exercício (DRE) apresenta um resumo ordenado das receitas, despesas, custos e encargos tributários/financeiros da empresa em um período de tempo, com o objetivo de apurar o <strong>Lucro Líquido</strong> final.</p>
+          </HelpSection>
+          <HelpSection title="Quando utilizar">
+            <p>Utilize para avaliar a saúde financeira macro do estabelecimento, entender para onde estão indo as despesas e certificar-se de que o preço praticado cobre todos os custos operacionais (fixos e variáveis) com saldo positivo.</p>
+          </HelpSection>
+          <HelpSection title="Explicação dos Filtros">
+            <p><strong>Período (De/Até):</strong> Seleciona os lançamentos efetuados dentro das datas especificadas.</p>
+            <p><strong>Categoria:</strong> Filtra despesas operacionais específicas (ex: Água, Aluguel, Luz, etc.).</p>
+            <p><strong>Status Financeiro (Competência/Regime):</strong> Escolha entre analisar todas as contas lançadas (Competência), apenas o que já foi recebido/pago (Fluxo de Caixa Realizado), o que está pendente (A Receber/Pagar) ou contas em atraso (Vencido).</p>
+          </HelpSection>
+          <HelpSection title="Fórmulas Utilizadas">
+            <div className="font-mono bg-zinc-50 dark:bg-zinc-950 p-2.5 rounded border border-zinc-150 dark:border-zinc-800 text-[11px] space-y-1">
+              <div>• Receita Bruta = Receita Serviços + Receita Vendas Diretas + Outras Receitas</div>
+              <div>• Lucro Bruto = Receita Bruta - Custo de Produtos (CMV)</div>
+              <div>• Lucro Líquido = Lucro Bruto - Despesas Operacionais (Fixas/Variáveis) - Taxas de Cartão</div>
+            </div>
+          </HelpSection>
+          <HelpSection title="Regras de Negócio">
+            <p>As despesas e receitas são provisionadas no regime de competência por padrão, refletindo a data do fato gerador. O CMV (Custo de Mercadoria Vendida) é deduzido a partir da venda física dos itens cadastrados no estoque.</p>
+          </HelpSection>
+          <HelpSection title="Exemplo Prático">
+            <p>Se o salão faturou R$ 15.000 em serviços e R$ 5.000 em vendas de produtos (CMV de R$ 2.000), o Lucro Bruto é de R$ 18.000. Deduzindo R$ 6.000 de despesas operacionais e R$ 500 em taxas, o Lucro Líquido da DRE será de R$ 11.500.</p>
+          </HelpSection>
+        </div>
+      );
+    case "caixa":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>O relatório de Caixa apresenta o fluxo de caixa consolidado e detalhado por profissional, agrupando as entradas financeiras conforme as formas de pagamento utilizadas pelos clientes no período.</p>
+          </HelpSection>
+          <HelpSection title="Quando utilizar">
+            <p>Essencial para a conciliação diária de valores em caixa (fechamento de caixa) e conferência de repasses financeiros recebidos por meios digitais (PIX, Cartão de Crédito/Débito).</p>
+          </HelpSection>
+          <HelpSection title="Explicação dos Filtros">
+            <p><strong>Período (De/Até):</strong> Data exata da baixa/pagamento.</p>
+            <p><strong>Profissional:</strong> Filtra as formas de recebimento e montantes associados aos atendimentos executados por um profissional específico.</p>
+          </HelpSection>
+          <HelpSection title="Colunas e Campos Exibidos">
+            <p><strong>Forma de Pagamento:</strong> Modalidade do recebimento (Dinheiro, PIX, Cartão de Crédito/Débito).</p>
+            <p><strong>Total Recebido:</strong> Montante bruto recebido por aquela modalidade.</p>
+            <p><strong>Quantidade de Lançamentos:</strong> Número de comandas/transações pagas usando essa forma.</p>
+          </HelpSection>
+          <HelpSection title="Regras de Negócio">
+            <p>Exibe exclusivamente pagamentos efetivados e conciliados. Caso uma comanda possua múltiplas formas de pagamento, o valor é fracionado e contabilizado respectivamente em cada categoria.</p>
+          </HelpSection>
+          <HelpSection title="Exemplo Prático">
+            <p>Para fechar o caixa físico no fim do dia: filtre pelo dia atual e confira o valor exibido na linha <strong>"Dinheiro"</strong> com o montante em cédulas na gaveta.</p>
+          </HelpSection>
+        </div>
+      );
+    case "produtos":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Apresentar o volume de vendas de produtos físicos de varejo, detalhando faturamento bruto, custos de reposição (CMV) e lucro bruto por produto comercializado.</p>
+          </HelpSection>
+          <HelpSection title="Quando utilizar">
+            <p>Utilize para acompanhar a performance de vendas de produtos, monitorar o giro de estoque do estabelecimento e identificar os produtos mais lucrativos ou mais vendidos.</p>
+          </HelpSection>
+          <HelpSection title="Explicação dos Filtros">
+            <p><strong>Colaborador:</strong> Filtra as vendas realizadas por determinado atendente/vendedor.</p>
+            <p><strong>Produto / Categoria:</strong> Filtra as vendas de um item específico ou de uma categoria de produtos.</p>
+            <p><strong>Forma de Pagamento / Cliente / Status:</strong> Permite isolar vendas pagas com certa modalidade, adquiridas por um cliente específico ou com determinado status (pago/pendente).</p>
+          </HelpSection>
+          <HelpSection title="Colunas e Campos Exibidos">
+            <p><strong>Produto:</strong> Nome comercial do item.</p>
+            <p><strong>Qtd:</strong> Quantidade física vendida (pode expressar frações dependendo da unidade de medida).</p>
+            <p><strong>Faturamento:</strong> Receita bruta gerada pelas vendas daquele produto.</p>
+            <p><strong>Custo Total (CMV):</strong> Custo total de aquisição/estoque das mercadorias vendidas.</p>
+            <p><strong>Lucro Bruto:</strong> Faturamento - Custo Total.</p>
+            <p><strong>Margem (%):</strong> Percentual de retorno obtido sobre o preço de venda.</p>
+          </HelpSection>
+          <HelpSection title="Fórmulas Utilizadas">
+            <div className="font-mono bg-zinc-50 dark:bg-zinc-950 p-2.5 rounded border border-zinc-150 dark:border-zinc-800 text-[11px] space-y-1">
+              <div>• Custo Total (CMV) = Quantidade Vendida × Custo de Compra Unitário</div>
+              <div>• Lucro Bruto = Faturamento - Custo Total (CMV)</div>
+              <div>• Margem (%) = (Lucro Bruto / Faturamento) × 100</div>
+            </div>
+          </HelpSection>
+        </div>
+      );
+    case "servicos":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Analisar o volume de execução dos serviços prestados pelo estabelecimento, avaliando o faturamento total, ticket médio e tempo total consumido da agenda.</p>
+          </HelpSection>
+          <HelpSection title="Quando utilizar">
+            <p>Para identificar quais serviços são os carros-chefes do salão, mensurar a produtividade de tempo da equipe e analisar o valor médio cobrado por procedimento.</p>
+          </HelpSection>
+          <HelpSection title="Explicação dos Filtros">
+            <p><strong>Profissional:</strong> Filtra serviços realizados por um profissional específico.</p>
+            <p><strong>Serviço:</strong> Isola a análise para um procedimento específico.</p>
+            <p><strong>Status:</strong> Permite filtrar apenas serviços concluídos, agendados ou cancelados.</p>
+          </HelpSection>
+          <HelpSection title="Colunas e Campos Exibidos">
+            <p><strong>Qtd:</strong> Quantidade de execuções finalizadas.</p>
+            <p><strong>Faturamento:</strong> Receita bruta total gerada por aquele serviço.</p>
+            <p><strong>Ticket Médio:</strong> Valor médio por atendimento (Faturamento / Qtd).</p>
+            <p><strong>Duração Média:</strong> Tempo médio configurado na ficha do serviço para cada execução (em minutos).</p>
+            <p><strong>Tempo Total:</strong> Soma de todas as horas dedicadas a este serviço.</p>
+          </HelpSection>
+        </div>
+      );
+    case "resultado_consolidado":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>O relatório de Resultado Consolidado apresenta uma visão clara e unificada do resultado financeiro operacional direto, englobando todas as receitas obtidas com produtos e serviços frente aos custos de CMV, comissões de profissionais e taxas de cartão.</p>
+          </HelpSection>
+          <HelpSection title="Quando utilizar">
+            <p>Essencial para apurar a rentabilidade da operação do salão (DRE operacional ou de contribuição) antes da dedução das despesas administrativas ou custos fixos.</p>
+          </HelpSection>
+          <HelpSection title="Definição dos Indicadores">
+            <p><strong>Faturamento Total:</strong> Soma de todas as receitas de serviços prestados e produtos vendidos.</p>
+            <p><strong>CMV (Custo de Mercadoria Vendida):</strong> Custo de aquisição do estoque de produtos vendidos mais o valor proporcional de insumos consumidos nos serviços executados.</p>
+            <p><strong>Comissões:</strong> Montante devido aos profissionais parceiros como comissão direta de atendimentos e vendas.</p>
+            <p><strong>Taxas Financeiras:</strong> Custos de intermediação cobrados pelas credenciadoras de cartão (Crédito, Débito, PIX, etc.).</p>
+            <p><strong>Resultado Operacional:</strong> Faturamento total restante após deduzidos CMV, Comissões e Taxas.</p>
+            <p><strong>Margem Operacional:</strong> Percentual de lucratividade líquida da operação (Resultado Operacional dividido pelo Faturamento).</p>
+          </HelpSection>
+          <HelpSection title="Fórmulas Utilizadas">
+            <div className="font-mono bg-zinc-50 dark:bg-zinc-950 p-2.5 rounded border border-zinc-150 dark:border-zinc-800 text-[11px] space-y-1">
+              <div>• Faturamento Total = Receita Serviços + Receita Produtos</div>
+              <div>• Resultado Operacional = Faturamento - CMV - Comissões - Taxas de Cartão</div>
+              <div>• Margem Operacional = (Resultado Operacional / Faturamento Total) × 100</div>
+            </div>
+          </HelpSection>
+          <HelpSection title="Exemplo Prático">
+            <p>Se a sua receita total foi R$ 10.000, o CMV de estoque foi R$ 1.500, as comissões pagas aos colaboradores somaram R$ 4.000, e as taxas de cartão foram R$ 300: o seu Resultado Operacional é de R$ 4.200, representando uma Margem Operacional de 42%.</p>
+          </HelpSection>
+        </div>
+      );
+    case "rentabilidade_servicos":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Apresentar a rentabilidade líquida individual de cada tipo de serviço oferecido, permitindo avaliar quais procedimentos geram maior margem de lucro após as deduções diretas.</p>
+          </HelpSection>
+          <HelpSection title="Quando utilizar">
+            <p>Utilize para revisar a precificação de serviços, planejar descontos ou campanhas de marketing baseadas em margem real, e entender os custos diretos de execução de cada item.</p>
+          </HelpSection>
+          <HelpSection title="Fórmulas e Rateios">
+            <div className="font-mono bg-zinc-50 dark:bg-zinc-950 p-2.5 rounded border border-zinc-150 dark:border-zinc-800 text-[11px] space-y-1">
+              <div>• Resultado = Faturamento - Insumos - Comissões - Taxas</div>
+              <div>• Margem (%) = (Resultado / Faturamento) × 100</div>
+            </div>
+            <p className="mt-2"><strong>Insumos:</strong> Custos de produtos utilizados na lavagem, tintura, hidratação, etc. associados à ficha técnica do serviço.</p>
+            <p><strong>Taxas:</strong> As taxas financeiras de cartão de crédito/débito são proporcionalizadas em percentual médio conforme a forma de pagamento do atendimento.</p>
+          </HelpSection>
+          <HelpSection title="Exemplo Prático de Interpretação">
+            <p>Se o serviço "Tintura" gera R$ 3.000 de faturamento, deduz R$ 500 de insumos, R$ 1.200 de comissões e R$ 100 de taxas: o resultado gerado é de R$ 1.200 (Margem de 40%). Se "Corte de Cabelo" não consome insumos e possui margem de 55%, este último é individualmente mais lucrativo por atendimento.</p>
+          </HelpSection>
+        </div>
+      );
+    case "rentabilidade_produtos":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>O relatório de Rentabilidade de Produtos analisa a lucratividade individual dos produtos físicos vendidos diretamente aos clientes, abatendo o CMV, a comissão de vendas e as taxas de transação.</p>
+          </HelpSection>
+          <HelpSection title="Quando utilizar">
+            <p>Utilize para identificar produtos que possuem margens de lucro muito baixas ou negativas (possivelmente por custo de aquisição elevado ou precificação incorreta) e negociar melhores preços com fornecedores.</p>
+          </HelpSection>
+          <HelpSection title="Fórmulas Utilizadas">
+            <div className="font-mono bg-zinc-50 dark:bg-zinc-950 p-2.5 rounded border border-zinc-150 dark:border-zinc-800 text-[11px] space-y-1">
+              <div>• Resultado = Faturamento - CMV - Comissões - Taxas</div>
+              <div>• Margem (%) = (Resultado / Faturamento) × 100</div>
+            </div>
+            <p className="mt-2"><strong>CMV:</strong> O custo de aquisição do lote do produto baixado no estoque ao registrar a venda.</p>
+          </HelpSection>
+          <HelpSection title="Como Interpretar">
+            <p>Foque nos produtos com maior volume de venda (Qtd) e maior Margem (%). Itens com alta quantidade mas baixíssima margem geram esforço operacional, mas pouco retorno financeiro efetivo.</p>
+          </HelpSection>
+        </div>
+      );
+    case "analitico_vendas":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Fornecer uma listagem analítica transacional de todas as vendas e atendimentos do período, detalhando cada comanda com a respectiva receita, custos, comissões de equipe, taxas bancárias e margem de cada transação.</p>
+          </HelpSection>
+          <HelpSection title="Quando utilizar">
+            <p>Utilize para auditorias detalhadas, conferência de divergências em fechamentos de caixa ou para analisar comandas específicas de clientes.</p>
+          </HelpSection>
+          <HelpSection title="Significado das Colunas">
+            <p><strong>Venda:</strong> Código ou número sequencial identificador da comanda.</p>
+            <p><strong>Valor Prod / Serv:</strong> Segmentação do faturamento da venda.</p>
+            <p><strong>CMV / Comissão / Taxas:</strong> Descontos diretos associados especificamente a esta comanda.</p>
+            <p><strong>Resultado / Margem:</strong> Lucro operacional e eficiência percentual daquela transação individual.</p>
+          </HelpSection>
+          <HelpSection title="Distribuição das Taxas">
+            <p>As taxas financeiras bancárias são calculadas proporcionalmente aos itens da venda a partir da forma de pagamento registrada na baixa da comanda (de acordo com a tabela de taxas de cartão cadastradas no sistema).</p>
+          </HelpSection>
+          <HelpSection title="Fórmula do Resultado por Venda">
+            <div className="font-mono bg-zinc-50 dark:bg-zinc-950 p-2.5 rounded border border-zinc-150 dark:border-zinc-800 text-[11px] space-y-1">
+              <div>• Faturamento Venda = Valor Produtos + Valor Serviços</div>
+              <div>• Resultado Venda = Faturamento - CMV - Comissão - Taxas Bancárias</div>
+            </div>
+          </HelpSection>
+        </div>
+      );
+    default:
+      return <p className="text-xs text-zinc-500">Nenhuma documentação disponível para este relatório.</p>;
+  }
+};
