@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import http from "../api";
 import { PageHeader, EmptyState } from "../components/Page";
 import { Button } from "../components/ui/button";
@@ -38,6 +38,8 @@ export default function Clientes() {
   const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState(blank);
   const [auditOpen, setAuditOpen] = useState(false);
+  const [nameError, setNameError] = useState(false);
+  const nomeInputRef = useRef(null);
   const nav = useNavigate();
 
   const handlePhotoChange = (e) => {
@@ -98,6 +100,13 @@ export default function Clientes() {
   useEffect(() => { load(); }, []);
 
   const save = async () => {
+    if (!form.nome || !form.nome.trim()) {
+      toast.error("O preenchimento do campo Nome é obrigatório para a conclusão do cadastro.");
+      setNameError(true);
+      nomeInputRef.current?.focus();
+      return;
+    }
+
     if (form.telefone) {
       const cleanInput = form.telefone.replace(/\D/g, "");
       if (cleanInput.length > 0) {
@@ -143,7 +152,11 @@ export default function Clientes() {
     }
   };
 
-  const edit = (c) => { setForm({ ...c, telefone: formatPhone(c.telefone || "") }); setOpen(true); };
+  const edit = (c) => { 
+    setNameError(false);
+    setForm({ ...c, telefone: formatPhone(c.telefone || "") }); 
+    setOpen(true); 
+  };
 
   const generatePDF = async () => {
     try {
@@ -409,7 +422,8 @@ export default function Clientes() {
     }
   };
 
-  const filtered = list.filter((c) => c.nome?.toLowerCase().includes(q.toLowerCase()) || c.telefone?.includes(q));
+  const normalizeText = (str) => !str ? "" : str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const filtered = list.filter((c) => normalizeText(c.nome).includes(normalizeText(q)) || c.telefone?.includes(q));
 
   return (
     <div className="p-6 lg:p-8 fade-in">
@@ -438,7 +452,7 @@ export default function Clientes() {
               <Printer className="w-4 h-4" /> Emitir PDF
             </Button>
 
-            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setForm(blank); }}>
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); setNameError(false); if (!v) setForm(blank); }}>
               <DialogTrigger asChild>
                 <Button data-testid="add-cliente-btn" className="flex-1 sm:flex-initial bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold h-10 flex items-center justify-center gap-1.5">
                   <Plus className="w-4 h-4" /> Novo cliente
@@ -482,8 +496,19 @@ export default function Clientes() {
                     )}
                   </div>
                   <div>
-                    <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Nome *</Label>
-                    <Input data-testid="cliente-nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} className="h-10 mt-1 dark:bg-zinc-950" />
+                    <Label className={`font-semibold ${nameError ? "text-rose-500" : "text-zinc-700 dark:text-zinc-300"}`}>Nome *</Label>
+                    <Input 
+                      ref={nomeInputRef}
+                      data-testid="cliente-nome" 
+                      value={form.nome} 
+                      onChange={(e) => {
+                        setForm({ ...form, nome: e.target.value });
+                        if (e.target.value.trim()) {
+                          setNameError(false);
+                        }
+                      }} 
+                      className={`h-10 mt-1 dark:bg-zinc-950 ${nameError ? "border-rose-500 focus-visible:ring-rose-500 focus-visible:border-rose-500" : ""}`} 
+                    />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>

@@ -444,22 +444,28 @@ export default function Dashboard() {
                     </div>
                   ))}
 
-                  {selectedMetric === "estoque" && detailData.map((item, idx) => (
-                    <div key={idx} className="bg-white dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-800/80 rounded-xl p-4 space-y-2 shadow-sm">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 truncate">{item.nome}</span>
-                        <span className="text-xs text-zinc-400 dark:text-zinc-500 font-medium flex-shrink-0">{item.categoria || '—'}</span>
+                  {selectedMetric === "estoque" && detailData.map((item, idx) => {
+                    const qtyPerUnit = Number(item.quantidade_por_unidade || 0);
+                    const qtyStr = qtyPerUnit > 0 
+                      ? `${Number((item.quantidade_estoque / qtyPerUnit).toFixed(2))} ${item.unidade_medida || 'un'} (${Number(item.quantidade_estoque.toFixed(3))} ${item.unidade_medida_insumo || 'un'})`
+                      : `${Number(item.quantidade_estoque.toFixed(3))} ${item.unidade_medida || 'un'}`;
+                    return (
+                      <div key={idx} className="bg-white dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-800/80 rounded-xl p-4 space-y-2 shadow-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 truncate">{item.nome}</span>
+                          <span className="text-xs text-zinc-400 dark:text-zinc-550 font-medium flex-shrink-0">{item.categoria || '—'}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-zinc-650 dark:text-zinc-350">
+                          <span>Preço Venda: {fmtBRL(item.preco_venda)}</span>
+                          <span className="font-semibold">Mínimo: {item.estoque_minimo}</span>
+                        </div>
+                        <div className="bg-rose-50/40 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 p-2.5 rounded-lg flex items-center justify-between text-xs">
+                          <span className="text-rose-600 dark:text-rose-400 font-bold">Estoque Atual:</span>
+                          <span className="font-mono font-bold text-rose-600 dark:text-rose-400">{qtyStr}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between text-xs text-zinc-650 dark:text-zinc-350">
-                        <span>Preço Venda: {fmtBRL(item.preco_venda)}</span>
-                        <span className="font-semibold">Mínimo: {item.estoque_minimo}</span>
-                      </div>
-                      <div className="bg-rose-50/40 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 p-2.5 rounded-lg flex items-center justify-between text-xs">
-                        <span className="text-rose-600 dark:text-rose-400 font-bold">Estoque Atual:</span>
-                        <span className="font-mono font-bold text-rose-600 dark:text-rose-400">{Number(Number(item.quantidade_estoque || 0).toFixed(3))}</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {selectedMetric === "top_servico" && detailData.map((item, idx) => (
                     <div key={idx} className="bg-white dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-800/80 rounded-xl p-4 space-y-2.5 shadow-sm">
@@ -615,15 +621,21 @@ export default function Dashboard() {
                           </tr>
                         ))}
 
-                        {selectedMetric === "estoque" && detailData.map((item, idx) => (
-                          <tr key={idx} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-800/30 transition-colors">
-                            <td className="px-4 py-3 text-zinc-800 dark:text-zinc-200 font-semibold">{item.nome}</td>
-                            <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 text-xs">{item.categoria || '—'}</td>
-                            <td className="px-4 py-3 text-right text-zinc-650 dark:text-zinc-350">{fmtBRL(item.preco_venda)}</td>
-                            <td className="px-4 py-3 text-center font-mono font-bold text-rose-500 dark:text-rose-455 bg-rose-50/35 dark:bg-rose-950/20">{Number(Number(item.quantidade_estoque || 0).toFixed(3))}</td>
-                            <td className="px-4 py-3 text-center font-mono font-medium text-zinc-500 dark:text-zinc-450">{item.estoque_minimo}</td>
-                          </tr>
-                        ))}
+                        {selectedMetric === "estoque" && detailData.map((item, idx) => {
+                          const qtyPerUnit = Number(item.quantidade_por_unidade || 0);
+                          const qtyStr = qtyPerUnit > 0 
+                            ? `${Number((item.quantidade_estoque / qtyPerUnit).toFixed(2))} ${item.unidade_medida || 'un'} (${Number(item.quantidade_estoque.toFixed(3))} ${item.unidade_medida_insumo || 'un'})`
+                            : `${Number(item.quantidade_estoque.toFixed(3))} ${item.unidade_medida || 'un'}`;
+                          return (
+                            <tr key={idx} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-800/30 transition-colors">
+                              <td className="px-4 py-3 text-zinc-800 dark:text-zinc-200 font-semibold">{item.nome}</td>
+                              <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 text-xs">{item.categoria || '—'}</td>
+                              <td className="px-4 py-3 text-right text-zinc-650 dark:text-zinc-350">{fmtBRL(item.preco_venda)}</td>
+                              <td className="px-4 py-3 text-center font-mono font-bold text-rose-500 dark:text-rose-455 bg-rose-50/35 dark:bg-rose-950/20">{qtyStr}</td>
+                              <td className="px-4 py-3 text-center font-mono font-medium text-zinc-500 dark:text-zinc-450">{item.estoque_minimo}</td>
+                            </tr>
+                          );
+                        })}
 
                         {selectedMetric === "top_servico" && detailData.map((item, idx) => (
                           <tr key={idx} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-800/30 transition-colors">

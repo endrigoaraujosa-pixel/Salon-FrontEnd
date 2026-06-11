@@ -277,10 +277,16 @@ export default function EntradaProdutos() {
     }))
   ];
 
-  const produtoOptions = produtos.map((p) => ({
-    value: p.id,
-    label: `${p.nome} (${p.unidade_medida || "un"}) - Estoque atual: ${Number(p.quantidade_estoque.toFixed(3))}`
-  }));
+  const produtoOptions = produtos.map((p) => {
+    const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
+    const qtyStr = qtyPerUnit > 0 
+      ? `${Number((p.quantidade_estoque / qtyPerUnit).toFixed(2))} ${p.unidade_medida || 'un'} (${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida_insumo || 'un'})`
+      : `${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida || 'un'}`;
+    return {
+      value: p.id,
+      label: `${p.nome} (${p.unidade_medida || "un"}) - Estoque atual: ${qtyStr}`
+    };
+  });
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 fade-in min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200">

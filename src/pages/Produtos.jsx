@@ -13,8 +13,9 @@ import { toast } from "sonner";
 import AuditModal from "../components/AuditModal";
 import SearchableSelect from "../components/SearchableSelect";
 
-const blank = { nome: "", categoria: "", categoria_id: "", unidade_medida: "un", quantidade_estoque: 0, estoque_minimo: 5, custo_unitario: 0, preco_venda: 0, fornecedor: "", ativo: true, comissao: 0, quantidade_por_unidade: 0, unidade_medida_insumo: "un" };
+const blank = { nome: "", categoria: "", categoria_id: "", unidade_medida: "un", quantidade_estoque: 0, estoque_minimo: 5, custo_unitario: 0, preco_venda: 0, fornecedor: "", ativo: true, comissao: 0, quantidade_por_unidade: 0, unidade_medida_insumo: "un", uso_exclusivo_servicos: false };
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const normalizeText = (str) => !str ? "" : str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 export default function Produtos() {
   const [list, setList] = useState([]);
@@ -85,8 +86,8 @@ export default function Produtos() {
 
   const generatePDF = () => {
     const reportProducts = list.filter(p => {
-      const matchesSearch = !searchQuery || p.nome.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        (p.fornecedor && p.fornecedor.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesSearch = !searchQuery || normalizeText(p.nome).includes(normalizeText(searchQuery)) || 
+        (p.fornecedor && normalizeText(p.fornecedor).includes(normalizeText(searchQuery)));
       
       if (!matchesSearch) return false;
       
@@ -314,7 +315,15 @@ export default function Produtos() {
         g.products.forEach(p => {
           const baixoEstoque = p.quantidade_estoque <= p.estoque_minimo;
           const stockClass = baixoEstoque ? "stock-alert" : "stock-normal";
-          const stockLabel = `${Number(Number(p.quantidade_estoque || 0).toFixed(3))} ${p.unidade_medida || "un"}`;
+          let stockLabel = "";
+          const qtyVal = Number(Number(p.quantidade_estoque || 0).toFixed(3));
+          const qtyPerUnitVal = Number(p.quantidade_por_unidade || 0);
+          if (qtyPerUnitVal > 0) {
+            const eq = Number((qtyVal / qtyPerUnitVal).toFixed(2));
+            stockLabel = `${qtyVal} ${p.unidade_medida_insumo || "un"} (${eq} ${p.unidade_medida || "un"})`;
+          } else {
+            stockLabel = `${qtyVal} ${p.unidade_medida || "un"}`;
+          }
           
           htmlContent += `
               <tr>
@@ -374,13 +383,18 @@ export default function Produtos() {
         toast.error("A categoria é obrigatória. Selecione uma categoria cadastrada.");
         return;
       }
+      const qtyPerUnit = Number(form.quantidade_por_unidade || 0);
       const p = { ...form,
-        quantidade_estoque: Number(form.quantidade_estoque),
-        estoque_minimo: Number(form.estoque_minimo),
+        quantidade_estoque: qtyPerUnit > 0 
+          ? Number((Number(form.quantidade_estoque || 0) * qtyPerUnit).toFixed(3))
+          : Number(form.quantidade_estoque || 0),
+        estoque_minimo: qtyPerUnit > 0 
+          ? Number((Number(form.estoque_minimo || 0) * qtyPerUnit).toFixed(3))
+          : Number(form.estoque_minimo || 0),
         custo_unitario: Number(form.custo_unitario),
         preco_venda: Number(form.preco_venda),
-        comissao: Number(form.comissao || 0),
-        quantidade_por_unidade: Number(form.quantidade_por_unidade || 0),
+        comissao: Number(Number(form.comissao || 0).toFixed(3)),
+        quantidade_por_unidade: qtyPerUnit,
         unidade_medida_insumo: form.unidade_medida_insumo || "un",
       };
       if (form.id) await http.put(`/produtos/${form.id}`, p); else await http.post("/produtos", p);
@@ -410,11 +424,18 @@ export default function Produtos() {
   };
 
   const edit = (p) => { 
+    const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
     setForm({
       ...p,
-      quantidade_por_unidade: p.quantidade_por_unidade !== undefined && p.quantidade_por_unidade !== null
-        ? Number(p.quantidade_por_unidade).toFixed(3)
-        : ""
+      quantidade_por_unidade: qtyPerUnit > 0 ? Number(qtyPerUnit).toFixed(3) : "",
+      quantidade_estoque: qtyPerUnit > 0 && p.quantidade_estoque 
+        ? Number((Number(p.quantidade_estoque) / qtyPerUnit).toFixed(3))
+        : p.quantidade_estoque || 0,
+      estoque_minimo: qtyPerUnit > 0 && p.estoque_minimo
+        ? Number((Number(p.estoque_minimo) / qtyPerUnit).toFixed(3))
+        : p.estoque_minimo || 0,
+      uso_exclusivo_servicos: !!p.uso_exclusivo_servicos,
+      comissao: p.comissao !== undefined && p.comissao !== null ? Number(Number(p.comissao).toFixed(3)) : 0
     }); 
     setOpen(true); 
   };
@@ -440,8 +461,8 @@ export default function Produtos() {
   };
 
   const filteredList = list.filter((p) => {
-    const matchesSearch = p.nome.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      (p.fornecedor && p.fornecedor.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesSearch = normalizeText(p.nome).includes(normalizeText(searchQuery)) || 
+      (p.fornecedor && normalizeText(p.fornecedor).includes(normalizeText(searchQuery)));
     const matchesCategory =
       selectedCategoryFilter === "all" ||
       (selectedCategoryFilter === "none" && !p.categoria_id) ||
@@ -499,97 +520,99 @@ export default function Produtos() {
       />
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-2xl w-full p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-950 shadow-2xl rounded-2xl border-0" style={{ maxHeight: "90vh" }}>
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-2xl w-full p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-950 shadow-2xl rounded-2xl border-0" style={{ maxHeight: "92vh" }}>
           {/* fixed header */}
-          <div className="px-6 pt-5 pb-4 border-b border-zinc-100 dark:border-zinc-800 shrink-0 bg-zinc-50/50 dark:bg-zinc-900/20">
+          <div className="px-6 py-5 border-b border-zinc-100 dark:border-zinc-800 shrink-0 bg-zinc-50/50 dark:bg-zinc-900/20">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2.5 text-base font-bold text-zinc-800 dark:text-zinc-100">
-                <div className="p-1.5 bg-[#EAF0EE] dark:bg-[#1a2e2a] text-[#3A4F4A] dark:text-[#84A59D] rounded-lg">
+              <DialogTitle className="flex items-center gap-3 text-lg font-bold text-zinc-800 dark:text-zinc-100">
+                <div className="p-2 bg-[#EAF0EE] dark:bg-[#1a2e2a] text-[#3A4F4A] dark:text-[#84A59D] rounded-xl">
                   <Package className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="block font-display text-base font-bold text-zinc-950 dark:text-zinc-50">{form.id ? "Editar" : "Novo"} Produto</span>
-                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium">Preencha as informações detalhadas de estoque, comissão e valores do produto.</span>
+                  <span className="block font-display text-lg font-bold text-zinc-950 dark:text-zinc-50">{form.id ? "Editar" : "Novo"} Produto</span>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5 block">Preencha as informações detalhadas de estoque, comissão e valores do produto.</span>
                 </div>
               </DialogTitle>
             </DialogHeader>
           </div>
 
           {/* Scrollable body */}
-          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 bg-zinc-50/10 dark:bg-zinc-900/5">
+          <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-zinc-50/10 dark:bg-zinc-900/5">
             
             {/* Section 1: Identificação */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">1. Identificação do Produto</h3>
-              <div className="bg-white dark:bg-zinc-900/40 p-4 border border-zinc-150 dark:border-zinc-800 rounded-xl shadow-xs space-y-4">
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-[#3A4F4A] dark:text-[#84A59D] uppercase tracking-wider flex items-center gap-2 border-l-3 border-[#84A59D] pl-2.5">
+                1. Identificação do Produto
+              </h3>
+              <div className="bg-white dark:bg-zinc-900/50 p-5 sm:p-6 border border-zinc-200 dark:border-zinc-800/80 rounded-2xl shadow-xs space-y-5">
                 <div>
-                  <Label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Nome do Produto *</Label>
-                  <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Shampoo Nutritivo 500ml" className="mt-1" />
+                  <Label className="text-sm font-semibold text-zinc-750 dark:text-zinc-300 block mb-1.5">Nome do Produto *</Label>
+                  <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Shampoo Nutritivo 500ml" />
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Categoria *</Label>
-                    <div className="mt-1">
-                      <SearchableSelect
-                        options={categorias
-                          .filter(c => c.tipo === "produto" || c.tipo === "ambos")
-                          .map(c => ({ value: c.id, label: c.nome }))}
-                        value={form.categoria_id || ""}
-                        onValueChange={(val) => {
-                          const cat = categorias.find(c => c.id === val);
-                          setForm({
-                            ...form,
-                            categoria_id: val,
-                            categoria: cat ? cat.nome : ""
-                          });
-                        }}
-                        placeholder="Selecione a categoria *"
-                        searchPlaceholder="Pesquisar categoria..."
-                        emptyText="Nenhuma categoria encontrada."
-                      />
-                    </div>
+                    <Label className="text-sm font-semibold text-zinc-750 dark:text-zinc-300 block mb-1.5">Categoria *</Label>
+                    <SearchableSelect
+                      options={categorias
+                        .filter(c => c.tipo === "produto" || c.tipo === "ambos")
+                        .map(c => ({ value: c.id, label: c.nome }))}
+                      value={form.categoria_id || ""}
+                      onValueChange={(val) => {
+                        const cat = categorias.find(c => c.id === val);
+                        setForm({
+                          ...form,
+                          categoria_id: val,
+                          categoria: cat ? cat.nome : ""
+                        });
+                      }}
+                      placeholder="Selecione a categoria *"
+                      searchPlaceholder="Pesquisar categoria..."
+                      emptyText="Nenhuma categoria encontrada."
+                    />
                   </div>
                   
                   <div>
-                    <Label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Unidade de Medida</Label>
-                    <Input value={form.unidade_medida} onChange={(e) => setForm({ ...form, unidade_medida: e.target.value })} placeholder="Ex: un, ml, kg" className="mt-1" />
+                    <Label className="text-sm font-semibold text-zinc-750 dark:text-zinc-300 block mb-1.5">Unidade de Medida</Label>
+                    <Input value={form.unidade_medida} onChange={(e) => setForm({ ...form, unidade_medida: e.target.value })} placeholder="Ex: un, ml, kg" />
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Fornecedor / Fabricante</Label>
-                  <Input value={form.fornecedor} onChange={(e) => setForm({ ...form, fornecedor: e.target.value })} placeholder="Ex: L'Oréal Professional" className="mt-1" />
+                  <Label className="text-sm font-semibold text-zinc-750 dark:text-zinc-300 block mb-1.5">Fornecedor / Fabricante</Label>
+                  <Input value={form.fornecedor} onChange={(e) => setForm({ ...form, fornecedor: e.target.value })} placeholder="Ex: L'Oréal Professional" />
                 </div>
               </div>
             </div>
 
             {/* Section 2: Valores e Comissão */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">2. Precificação & Comissionamento</h3>
-              <div className="bg-white dark:bg-zinc-900/40 p-4 border border-zinc-150 dark:border-zinc-800 rounded-xl shadow-xs space-y-4">
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-[#3A4F4A] dark:text-[#84A59D] uppercase tracking-wider flex items-center gap-2 border-l-3 border-[#84A59D] pl-2.5">
+                2. Precificação & Comissionamento
+              </h3>
+              <div className="bg-white dark:bg-zinc-900/50 p-5 sm:p-6 border border-zinc-200 dark:border-zinc-800/80 rounded-2xl shadow-xs space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Custo Unitário (R$)</Label>
-                    <Input type="number" step="0.01" value={form.custo_unitario} onChange={(e) => setForm({ ...form, custo_unitario: e.target.value })} placeholder="0,00" className="mt-1 font-mono" />
-                    <p className="text-[10px] text-zinc-400 mt-1">Custo total da embalagem de compra.</p>
+                    <Label className="text-sm font-semibold text-zinc-750 dark:text-zinc-300 block mb-1.5">Custo Unitário (R$)</Label>
+                    <Input type="number" step="0.01" value={form.custo_unitario} onChange={(e) => setForm({ ...form, custo_unitario: e.target.value })} placeholder="0,00" className="font-mono" />
+                    <p className="text-xs text-zinc-500 dark:text-zinc-450 mt-1.5">Custo total da embalagem de compra.</p>
                   </div>
                   <div>
-                    <Label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Preço de Venda (R$) *</Label>
-                    <Input type="number" step="0.01" value={form.preco_venda} onChange={(e) => setForm({ ...form, preco_venda: e.target.value })} placeholder="0,00" className="mt-1 font-mono font-bold text-[#3A4F4A] dark:text-[#EAF0EE]" />
+                    <Label className="text-sm font-semibold text-zinc-750 dark:text-zinc-300 block mb-1.5">Preço de Venda (R$) *</Label>
+                    <Input type="number" step="0.01" value={form.preco_venda} onChange={(e) => setForm({ ...form, preco_venda: e.target.value })} placeholder="0,00" className="font-mono font-bold text-[#3A4F4A] dark:text-[#EAF0EE]" />
                   </div>
                 </div>
 
-                 {/* Quantidade por Unidade de Compra */}
-                <div className="p-3.5 bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] rounded-xl space-y-2">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#3A4F4A] dark:text-[#84A59D]">
+                {/* Quantidade por Unidade de Compra */}
+                <div className="p-4 sm:p-5 bg-zinc-50/50 dark:bg-zinc-900/20 border border-zinc-150 dark:border-zinc-800/80 rounded-xl space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#3A4F4A] dark:text-[#84A59D] pb-1.5 border-b border-zinc-200/50 dark:border-zinc-800/60">
                     <Package className="w-3.5 h-3.5" />
                     <span>Configuração do Conteúdo da Embalagem (Insumos)</span>
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400">Quantidade na Embalagem</Label>
+                      <Label className="text-xs font-semibold text-zinc-650 dark:text-zinc-400 block mb-1.5">Quantidade na Embalagem</Label>
                       <Input
                         type="text"
                         inputMode="decimal"
@@ -611,29 +634,28 @@ export default function Produtos() {
                             setForm(prev => ({ ...prev, quantidade_por_unidade: Number(val).toFixed(3) }));
                           }
                         }}
-                        className="font-mono mt-1"
+                        className="font-mono"
                         placeholder="Ex: 400.000, 900.000, 1000.000"
                       />
                     </div>
                     <div>
-                      <Label className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400">Unidade de Consumo (g, ml, un...)</Label>
+                      <Label className="text-xs font-semibold text-zinc-650 dark:text-zinc-400 block mb-1.5">Unidade de Consumo (g, ml, un...)</Label>
                       <Input
                         value={form.unidade_medida_insumo || ""}
                         onChange={(e) => setForm({ ...form, unidade_medida_insumo: e.target.value })}
-                        className="mt-1"
                         placeholder="Ex: g, ml, un"
                       />
                     </div>
                   </div>
                   
-                  <div className="space-y-1.5 pt-1.5 border-t border-dashed border-[#E8EFEF] dark:border-[#2e3e3b] mt-2">
-                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                  <div className="space-y-2 pt-2 border-t border-dashed border-zinc-200 dark:border-zinc-800">
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
                       Informe o conteúdo interno da embalagem (ex: 400g ou 900ml) para calcular o custo proporcional por grama/mililitro no lançamento de insumos.
                     </p>
                     {Number(form.quantidade_por_unidade) > 0 && Number(form.custo_unitario) > 0 && (
-                      <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#EAF0EE] dark:bg-[#1a2e2a] border border-[#84A59D]/30">
-                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400">Custo por {form.unidade_medida_insumo || "un"}:</span>
-                        <span className="text-[11px] font-bold font-mono text-[#3A4F4A] dark:text-[#84A59D]">
+                      <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xs">
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400">Custo por {form.unidade_medida_insumo || "un"}:</span>
+                        <span className="text-sm font-bold font-mono text-[#3A4F4A] dark:text-[#84A59D]">
                           {(() => {
                             const val = Number(form.custo_unitario) / Number(form.quantidade_por_unidade);
                             const hasMoreDecimals = (val * 100) % 1 !== 0;
@@ -650,24 +672,34 @@ export default function Produtos() {
                   </div>
                 </div>
 
-                <div className="p-3.5 bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] rounded-xl space-y-2">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#3A4F4A] dark:text-[#84A59D]">
-                     <Percent className="w-3.5 h-3.5" />
+                {/* Comissão por Venda */}
+                <div className="p-4 sm:p-5 bg-zinc-50/50 dark:bg-zinc-900/20 border border-zinc-150 dark:border-zinc-800/80 rounded-xl space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#3A4F4A] dark:text-[#84A59D] pb-1.5 border-b border-zinc-200/50 dark:border-zinc-800/60">
+                    <Percent className="w-3.5 h-3.5" />
                     <span>Comissão por Venda</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-                    <div className="relative mt-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                    <div className="relative">
                       <Input
                         type="number"
-                        step="0.1"
+                        step="0.001"
                         value={form.comissao}
-                        onChange={(e) => setForm({ ...form, comissao: e.target.value })}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val.includes(".")) {
+                            const [intPart, decPart] = val.split(".");
+                            if (decPart && decPart.length > 3) {
+                              return;
+                            }
+                          }
+                          setForm({ ...form, comissao: val });
+                        }}
                         className="font-mono pr-8"
                         placeholder="0.0"
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400 dark:text-zinc-500">%</span>
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-zinc-450 dark:text-zinc-500">%</span>
                     </div>
-                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    <p className="text-xs text-zinc-550 dark:text-zinc-400 leading-relaxed">
                       Percentual de comissão pago diretamente ao colaborador pela venda deste produto.
                     </p>
                   </div>
@@ -676,28 +708,46 @@ export default function Produtos() {
             </div>
 
             {/* Section 3: Estoque */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">3. Controle de Estoque & Status</h3>
-              <div className="bg-white dark:bg-zinc-900/40 p-4 border border-zinc-150 dark:border-zinc-800 rounded-xl shadow-xs space-y-4">
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-[#3A4F4A] dark:text-[#84A59D] uppercase tracking-wider flex items-center gap-2 border-l-3 border-[#84A59D] pl-2.5">
+                3. Controle de Estoque & Status
+              </h3>
+              <div className="bg-white dark:bg-zinc-900/50 p-5 sm:p-6 border border-zinc-200 dark:border-zinc-800/80 rounded-2xl shadow-xs space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Quantidade em Estoque</Label>
-                    <Input type="number" value={form.quantidade_estoque} onChange={(e) => setForm({ ...form, quantidade_estoque: e.target.value })} placeholder="0" className="mt-1 font-mono" />
+                    <Label className="text-sm font-semibold text-zinc-750 dark:text-zinc-300 block mb-1.5">Quantidade em Estoque ({form.unidade_medida || "un"})</Label>
+                    <Input type="number" value={form.quantidade_estoque} onChange={(e) => setForm({ ...form, quantidade_estoque: e.target.value })} placeholder="0" className="font-mono" />
                   </div>
                   <div>
-                    <Label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">Mínimo para Alerta</Label>
-                    <Input type="number" value={form.estoque_minimo} onChange={(e) => setForm({ ...form, estoque_minimo: e.target.value })} placeholder="5" className="mt-1 font-mono" />
+                    <Label className="text-sm font-semibold text-zinc-750 dark:text-zinc-300 block mb-1.5">Mínimo para Alerta ({form.unidade_medida || "un"})</Label>
+                    <Input type="number" value={form.estoque_minimo} onChange={(e) => setForm({ ...form, estoque_minimo: e.target.value })} placeholder="5" className="font-mono" />
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-3.5 bg-zinc-50/50 dark:bg-zinc-900/20 border border-zinc-100 dark:border-zinc-800 rounded-xl">
-                  <div className="space-y-0.5">
-                    <Label className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Disponibilidade do Produto</Label>
-                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500">Se desativado, o produto não poderá ser selecionado em novas vendas ou atendimentos.</p>
+                <div className="flex items-center justify-between p-4 bg-zinc-50/50 dark:bg-zinc-900/20 border border-zinc-150 dark:border-zinc-800/80 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-colors gap-4">
+                  <div className="space-y-0.5 flex-1">
+                    <Label className="text-sm font-semibold text-zinc-850 dark:text-zinc-200 block">Disponibilidade do Produto</Label>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">Se desativado, o produto não poderá ser selecionado em novas vendas ou atendimentos.</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <Switch checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: v })} />
-                    <span className="text-xs font-semibold text-zinc-650 dark:text-zinc-400">{form.ativo ? "Ativo" : "Inativo"}</span>
+                    <span className="text-xs font-semibold text-zinc-650 dark:text-zinc-400 hidden sm:inline">{form.ativo ? "Ativo" : "Inativo"}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-zinc-50/50 dark:bg-zinc-900/20 border border-zinc-150 dark:border-zinc-800/80 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-colors gap-4">
+                  <div className="space-y-0.5 flex-1">
+                    <Label htmlFor="uso_exclusivo_servicos" className="text-sm font-semibold text-zinc-850 dark:text-zinc-200 cursor-pointer block">Uso exclusivo em serviços</Label>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">Se ativado, este produto não poderá ser vendido diretamente, apenas usado como insumo em serviços.</p>
+                  </div>
+                  <div className="flex items-center gap-2 pr-1 shrink-0">
+                    <input
+                      type="checkbox"
+                      id="uso_exclusivo_servicos"
+                      checked={!!form.uso_exclusivo_servicos}
+                      onChange={(e) => setForm({ ...form, uso_exclusivo_servicos: e.target.checked })}
+                      className="h-5 w-5 rounded border-zinc-300 dark:border-zinc-700 text-[#84A59D] focus:ring-[#84A59D] cursor-pointer dark:bg-zinc-950 dark:checked:bg-[#84A59D]"
+                    />
                   </div>
                 </div>
               </div>
@@ -707,8 +757,8 @@ export default function Produtos() {
 
           {/* fixed footer */}
           <div className="px-6 py-4 border-t border-zinc-150 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20 shrink-0 flex flex-col sm:flex-row gap-2.5 sm:justify-end">
-            <Button type="button" variant="outline" className="w-full sm:w-auto h-10 border-zinc-300 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-900 font-semibold" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={save} className="w-full sm:w-auto bg-[#84A59D] hover:bg-[#6F9189] text-white shadow-xs font-bold h-10 px-6">
+            <Button type="button" variant="outline" className="w-full sm:w-auto h-11 border-zinc-300 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-900 font-bold rounded-xl text-sm" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button onClick={save} className="w-full sm:w-auto bg-[#84A59D] hover:bg-[#6F9189] text-white shadow-xs font-bold h-11 px-6 rounded-xl text-sm">
               Salvar Produto
             </Button>
           </div>
@@ -833,20 +883,35 @@ export default function Produtos() {
                             return (
                               <tr key={p.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors">
                                 <td className="px-4 py-3">
-                                  <div className="font-semibold text-zinc-900 dark:text-zinc-100">{p.nome}</div>
+                                  <div className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center flex-wrap gap-2">
+                                    <span>{p.nome}</span>
+                                    {p.uso_exclusivo_servicos && (
+                                      <span className="inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold bg-zinc-100 text-zinc-650 dark:bg-zinc-800 dark:text-zinc-350 border border-zinc-200 dark:border-zinc-700 uppercase tracking-wider">
+                                        Exclusivo em Serviços
+                                      </span>
+                                    )}
+                                  </div>
                                   {p.fornecedor && <div className="text-[11px] text-zinc-400 mt-0.5">{p.fornecedor}</div>}
                                 </td>
                                 <td className="px-4 py-3 text-right">
                                   <span className={`inline-flex items-center gap-1 ${baixo ? "text-amber-700 dark:text-amber-500 font-bold" : "text-zinc-700 dark:text-zinc-300"}`}>
                                     {baixo && <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
-                                    {Number(Number(p.quantidade_estoque || 0).toFixed(3))} {p.unidade_medida}
+                                    {(() => {
+                                      const qty = Number(Number(p.quantidade_estoque || 0).toFixed(3));
+                                      const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
+                                      if (qtyPerUnit > 0) {
+                                        const eq = Number((qty / qtyPerUnit).toFixed(2));
+                                        return `${qty} ${p.unidade_medida_insumo || "un"} (${eq} ${p.unidade_medida || "un"})`;
+                                      }
+                                      return `${qty} ${p.unidade_medida || "un"}`;
+                                    })()}
                                   </span>
                                 </td>
                                 <td className="px-4 py-3 text-right font-semibold text-zinc-900 dark:text-zinc-100 font-mono">{fmtBRL(p.preco_venda)}</td>
                                 <td className="px-4 py-3 text-center">
                                   {p.comissao > 0 ? (
                                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30">
-                                      {p.comissao}%
+                                      {Number(Number(p.comissao).toFixed(3))}%
                                     </span>
                                   ) : (
                                     <span className="text-zinc-400 dark:text-zinc-650">-</span>
@@ -877,12 +942,19 @@ export default function Produtos() {
                             <div>
                               <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
-                                  <h4 className="font-extrabold text-zinc-900 dark:text-zinc-50 text-[16px] sm:text-lg tracking-tight leading-snug">{p.nome}</h4>
+                                  <h4 className="font-extrabold text-zinc-900 dark:text-zinc-50 text-[16px] sm:text-lg tracking-tight leading-snug flex flex-wrap items-center gap-1.5">
+                                    <span>{p.nome}</span>
+                                    {p.uso_exclusivo_servicos && (
+                                      <span className="inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold bg-zinc-100 text-zinc-650 dark:bg-zinc-800 dark:text-zinc-350 border border-zinc-200 dark:border-zinc-700 uppercase tracking-wider">
+                                        Exclusivo em Serviços
+                                      </span>
+                                    )}
+                                  </h4>
                                   {p.fornecedor && <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium mt-0.5">{p.fornecedor}</p>}
                                 </div>
                                 {p.comissao > 0 && (
                                   <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30 shrink-0">
-                                    Comissão {p.comissao}%
+                                    Comissão {Number(Number(p.comissao).toFixed(3))}%
                                   </span>
                                 )}
                               </div>
@@ -893,7 +965,15 @@ export default function Produtos() {
                                 <span className="text-[9px] uppercase font-bold tracking-wider text-zinc-400 dark:text-zinc-500 block">Estoque</span>
                                 <span className={`inline-flex items-center gap-1 font-bold text-sm ${baixo ? "text-amber-700 dark:text-amber-500" : "text-zinc-800 dark:text-zinc-250"}`}>
                                   {baixo && <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
-                                  {Number(Number(p.quantidade_estoque || 0).toFixed(3))} {p.unidade_medida}
+                                  {(() => {
+                                    const qty = Number(Number(p.quantidade_estoque || 0).toFixed(3));
+                                    const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
+                                    if (qtyPerUnit > 0) {
+                                      const eq = Number((qty / qtyPerUnit).toFixed(2));
+                                      return `${qty} ${p.unidade_medida_insumo || "un"} (${eq} ${p.unidade_medida || "un"})`;
+                                    }
+                                    return `${qty} ${p.unidade_medida || "un"}`;
+                                  })()}
                                 </span>
                               </div>
                               <div className="space-y-0.5">

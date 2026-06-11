@@ -2352,7 +2352,13 @@ export default function Agenda() {
                                   </div>
                                 </td>
                                 <td className="px-5 py-4 text-center text-zinc-500 dark:text-zinc-400 font-mono text-xs">
-                                  {Number(row.quantidade_estoque || 0).toFixed(3)} {row.unidade}
+                                  {Number(row.quantidade_por_unidade) > 0 ? (
+                                    <span>
+                                      {Number((Number(row.quantidade_estoque || 0) / Number(row.quantidade_por_unidade)).toFixed(2))} {row.unidade || 'un'} ({Number(row.quantidade_estoque || 0).toFixed(3)} {row.unidade_medida_insumo || 'un'})
+                                    </span>
+                                  ) : (
+                                    <span>{Number(row.quantidade_estoque || 0).toFixed(3)} {row.unidade}</span>
+                                  )}
                                 </td>
                                 <td className="px-5 py-4 text-right text-zinc-600 dark:text-zinc-400 font-mono text-xs">
                                   <div className="font-bold text-zinc-800 dark:text-zinc-200">
@@ -2417,10 +2423,16 @@ export default function Agenda() {
                       className="w-full h-10 text-xs"
                       options={produtos
                         .filter(p => !tempUtilizedProducts.some(row => row.produto_id === p.id))
-                        .map(p => ({
-                          value: p.id,
-                          label: `${p.nome} (${Number(Number(p.quantidade_estoque || 0).toFixed(3))} ${p.unidade_medida || "un"})`
-                        }))
+                        .map(p => {
+                          const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
+                          const qtyStr = qtyPerUnit > 0 
+                            ? `${Number((p.quantidade_estoque / qtyPerUnit).toFixed(2))} ${p.unidade_medida || 'un'} (${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida_insumo || 'un'})`
+                            : `${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida || 'un'}`;
+                          return {
+                            value: p.id,
+                            label: `${p.nome} (${qtyStr})`
+                          };
+                        })
                       }
                       value={selectedProdToAdd}
                       onValueChange={(val) => {
