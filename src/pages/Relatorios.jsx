@@ -73,6 +73,25 @@ export default function Relatorios() {
   const [caixa, setCaixa] = useState(null);
   const [produtos, setProdutos] = useState(null);
   const [servicos, setServicos] = useState(null);
+  const [resultadoOperacional, setResultadoOperacional] = useState(null);
+  const [filterUnidade, setFilterUnidade] = useState("todas");
+  const [filterOperacionalColab, setFilterOperacionalColab] = useState("todos");
+  const [filterOperacionalCatServico, setFilterOperacionalCatServico] = useState("todos");
+  const [filterOperacionalCatProduto, setFilterOperacionalCatProduto] = useState("todos");
+
+  // Sorting for Operational Result Reports
+  const [sortServicoField, setSortServicoField] = useState("faturamento");
+  const [sortServicoDirection, setSortServicoDirection] = useState("desc");
+  const [sortProdutoField, setSortProdutoField] = useState("faturamento");
+  const [sortProdutoDirection, setSortProdutoDirection] = useState("desc");
+  const [sortVendaField, setSortVendaField] = useState("data");
+  const [sortVendaDirection, setSortVendaDirection] = useState("desc");
+
+  // Search queries for Operational Result Reports
+  const [searchOperServico, setSearchOperServico] = useState("");
+  const [searchOperProduto, setSearchOperProduto] = useState("");
+  const [searchOperVenda, setSearchOperVenda] = useState("");
+
   const [dreDetailsOpen, setDreDetailsOpen] = useState(false);
   const [hasInitializedCaixa, setHasInitializedCaixa] = useState(false);
   const [detailsForma, setDetailsForma] = useState(null);
@@ -211,6 +230,26 @@ export default function Relatorios() {
           setServicos([]);
         });
     }
+    if (["resultado_consolidado", "rentabilidade_servicos", "rentabilidade_produtos", "analitico_vendas"].includes(tab)) {
+      const operParams = {
+        data_inicio: from,
+        data_fim: to,
+        colaborador_id: filterOperacionalColab,
+        categoria_servico: filterOperacionalCatServico,
+        categoria_produto: filterOperacionalCatProduto
+      };
+      http.get("/relatorios/resultado-operacional", { params: operParams })
+        .then((r) => setResultadoOperacional(r.data))
+        .catch((err) => {
+          console.error("Resultado Operacional error:", err);
+          setResultadoOperacional({
+            consolidado: { receita_servicos: 0, receita_produtos: 0, receita_total: 0, cmv: 0, comissoes: 0, taxas: 0, resultado_operacional: 0, margem_operacional: 0 },
+            servicos: [],
+            produtos: [],
+            vendas: []
+          });
+        });
+    }
   };
 
   useEffect(() => { 
@@ -219,8 +258,120 @@ export default function Relatorios() {
     tab, from, to, colaboradorId,
     filterColaborador, filterProduto, filterCategoria, filterFormaPagamento, filterCliente, filterStatus,
     filterColaboradorServico, filterServico, filterFormaPagamentoServico, filterClienteServico, filterStatusServico,
-    filterDreCategory, filterDreStatus
+    filterDreCategory, filterDreStatus,
+    filterOperacionalColab, filterOperacionalCatServico, filterOperacionalCatProduto
   ]);
+
+  const SortHeader = ({ label, field, currentField, direction, onSort }) => {
+    const active = field === currentField;
+    return (
+      <button 
+        type="button" 
+        onClick={() => onSort(field)}
+        className="inline-flex items-center gap-1 hover:text-[#3A4F4A] transition-colors font-semibold"
+      >
+        <span>{label}</span>
+        <ArrowUpDown className={`w-3.5 h-3.5 ${active ? 'text-[#84A59D]' : 'text-zinc-300'}`} />
+      </button>
+    );
+  };
+
+  const handleExport = (format, title, headers, keys, rows) => {
+    if (format === 'csv') {
+      const csvHeaders = headers.join(";");
+      const csvRows = rows.map(row => 
+        keys.map(key => {
+          let val = row[key];
+          if (typeof val === 'number') {
+            return String(val).replace('.', ',');
+          }
+          if (typeof val === 'string') {
+            return `"${val.replace(/"/g, '""')}"`;
+          }
+          return val === null || val === undefined ? '' : String(val);
+        }).join(";")
+      );
+      
+      const content = [csvHeaders, ...csvRows].join("\r\n");
+      const blob = new Blob(["\uFEFF" + content], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `${title}_${from}_to_${to}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else if (format === 'xlsx') {
+      let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">`;
+      html += `<head><meta charset="utf-8" /><style>table { border-collapse: collapse; } th { background-color: #f4f4f5; font-weight: bold; border: 1px solid #d4d4d8; } td { border: 1px solid #e4e4e7; }</style></head><body>`;
+      html += `<h2>${title}</h2>`;
+      html += `<p>Período: ${from} a ${to}</p>`;
+      html += `<table><thead><tr>`;
+      headers.forEach(h => {
+        html += `<th>${h}</th>`;
+      });
+      html += `</tr></thead><tbody>`;
+      rows.forEach(row => {
+        html += `<tr>`;
+        keys.forEach(key => {
+          let val = row[key];
+          if (typeof val === 'number') {
+            html += `<td style="mso-number-format:'\\#\\,\\#\\#0\\.00';">${val}</td>`;
+          } else {
+            html += `<td>${val === null || val === undefined ? '' : val}</td>`;
+          }
+        });
+        html += `</tr>`;
+      });
+      html += `</tbody></table></body></html>`;
+
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `${title}_${from}_to_${to}.xls`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const sortedAndFilteredServicos = (resultadoOperacional?.servicos || [])
+    .filter(s => s.servico_nome.toLowerCase().includes(searchOperServico.toLowerCase()))
+    .sort((a, b) => {
+      const valA = a[sortServicoField];
+      const valB = b[sortServicoField];
+      if (typeof valA === 'string') {
+        return sortServicoDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+      return sortServicoDirection === 'asc' ? valA - valB : valB - valA;
+    });
+
+  const sortedAndFilteredProdutos = (resultadoOperacional?.produtos || [])
+    .filter(p => p.produto_nome.toLowerCase().includes(searchOperProduto.toLowerCase()))
+    .sort((a, b) => {
+      const valA = a[sortProdutoField];
+      const valB = b[sortProdutoField];
+      if (typeof valA === 'string') {
+        return sortProdutoDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+      return sortProdutoDirection === 'asc' ? valA - valB : valB - valA;
+    });
+
+  const sortedAndFilteredVendas = (resultadoOperacional?.vendas || [])
+    .filter(v => 
+      v.cliente.toLowerCase().includes(searchOperVenda.toLowerCase()) ||
+      v.profissional.toLowerCase().includes(searchOperVenda.toLowerCase()) ||
+      v.numero.toLowerCase().includes(searchOperVenda.toLowerCase())
+    )
+    .sort((a, b) => {
+      const valA = a[sortVendaField];
+      const valB = b[sortVendaField];
+      if (typeof valA === 'string') {
+        return sortVendaDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+      return sortVendaDirection === 'asc' ? valA - valB : valB - valA;
+    });
 
   const handleDrilldown = (title, data) => {
     setDrilldownTitle(title);
@@ -263,6 +414,80 @@ export default function Relatorios() {
           <PresetButtons onPick={(a, b) => { setFrom(a); setTo(b); }} />
         </div>
       </div>
+
+      {["resultado_consolidado", "rentabilidade_servicos", "rentabilidade_produtos", "analitico_vendas"].includes(tab) && (
+        <div className="bg-white border border-zinc-200 rounded-xl p-4 mb-6 shadow-sm no-print">
+          <div className="flex items-center gap-2 mb-3 text-[#3A4F4A] font-semibold text-sm">
+            <Filter className="w-4 h-4 text-[#84A59D]" />
+            <span>Filtros do Resultado Operacional</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {/* Unidade */}
+            <div>
+              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Unidade</Label>
+              <Select value={filterUnidade} onValueChange={setFilterUnidade}>
+                <SelectTrigger className="bg-white h-9 text-xs">
+                  <SelectValue placeholder="Matriz (Todas)" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border border-zinc-200">
+                  <SelectItem value="todas">Matriz (Todas)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Profissional */}
+            <div>
+              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Profissional</Label>
+              <SearchableSelect
+                placeholder="Todos os profissionais"
+                searchPlaceholder="Pesquisar profissional..."
+                options={[
+                  { value: "todos", label: "Todos os profissionais" },
+                  ...colaboradores.map((c) => ({ value: c.id, label: c.nome }))
+                ]}
+                value={filterOperacionalColab}
+                onValueChange={setFilterOperacionalColab}
+              />
+            </div>
+
+            {/* Categoria de Serviço */}
+            <div>
+              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Categoria de Serviço</Label>
+              <SearchableSelect
+                placeholder="Todas as categorias"
+                searchPlaceholder="Pesquisar..."
+                options={[
+                  { value: "todos", label: "Todas as categorias" },
+                  ...categoriesList.map((cat) => ({
+                    value: cat.id,
+                    label: cat.nome
+                  }))
+                ]}
+                value={filterOperacionalCatServico}
+                onValueChange={setFilterOperacionalCatServico}
+              />
+            </div>
+
+            {/* Categoria de Produto */}
+            <div>
+              <Label className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Categoria de Produto</Label>
+              <SearchableSelect
+                placeholder="Todas as categorias"
+                searchPlaceholder="Pesquisar..."
+                options={[
+                  { value: "todos", label: "Todas as categorias" },
+                  ...[...new Set(produtosList.map(p => p.categoria).filter(Boolean))].map((cat) => ({
+                    value: cat,
+                    label: cat
+                  }))
+                ]}
+                value={filterOperacionalCatProduto}
+                onValueChange={setFilterOperacionalCatProduto}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {tab === "produtos" && (
         <div className="bg-white border border-zinc-200 rounded-xl p-4 mb-6 shadow-sm no-print">
@@ -526,6 +751,10 @@ export default function Relatorios() {
           <TabsTrigger value="caixa" data-testid="tab-caixa" className="flex items-center gap-1.5 shrink-0"><Banknote className="w-4 h-4" /> Caixa</TabsTrigger>
           <TabsTrigger value="produtos" data-testid="tab-produtos" className="flex items-center gap-1.5 shrink-0"><Package className="w-4 h-4" /> Produtos</TabsTrigger>
           <TabsTrigger value="servicos" data-testid="tab-servicos" className="flex items-center gap-1.5 shrink-0"><Scissors className="w-4 h-4" /> Serviços</TabsTrigger>
+          <TabsTrigger value="resultado_consolidado" data-testid="tab-res-consolidado" className="flex items-center gap-1.5 shrink-0"><TrendingUp className="w-4 h-4" /> Resultado Consolidado</TabsTrigger>
+          <TabsTrigger value="rentabilidade_servicos" data-testid="tab-res-servicos" className="flex items-center gap-1.5 shrink-0"><Scissors className="w-4 h-4" /> Rentabilidade de Serviços</TabsTrigger>
+          <TabsTrigger value="rentabilidade_produtos" data-testid="tab-res-produtos" className="flex items-center gap-1.5 shrink-0"><Package className="w-4 h-4" /> Rentabilidade de Produtos</TabsTrigger>
+          <TabsTrigger value="analitico_vendas" data-testid="tab-res-analitico" className="flex items-center gap-1.5 shrink-0"><FileText className="w-4 h-4" /> Analítico por Venda</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dre">
@@ -1818,6 +2047,598 @@ export default function Relatorios() {
                 </div>
               );
             })()
+          )}
+        </TabsContent>
+
+        <TabsContent value="resultado_consolidado">
+          {!resultadoOperacional ? (
+            <div className="text-zinc-400 p-8 text-center bg-white border border-zinc-200 rounded-xl">Carregando dados...</div>
+          ) : (
+            <div className="space-y-6 print-full-width">
+              {/* Print Only Header */}
+              <div className="hidden print:block mb-8 border-b-2 border-zinc-900 pb-4">
+                <div className="flex justify-between items-end">
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-zinc-900">{empresa?.nome_fantasia || "STUDIO APP"}</h1>
+                    <p className="text-xs text-zinc-500">Resultado Operacional Consolidado</p>
+                  </div>
+                  <div className="text-right text-xs text-zinc-500">
+                    <div><strong>Período:</strong> {from ? new Date(from + 'T12:00:00').toLocaleDateString('pt-BR') : '-'} a {to ? new Date(to + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}</div>
+                    <div><strong>Gerado em:</strong> {new Date().toLocaleString('pt-BR')}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Overview Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Faturamento Bruto</span>
+                    <TrendingUp className="w-5 h-5 text-[#84A59D]" />
+                  </div>
+                  <div className="font-display text-3xl font-bold mt-2 text-zinc-800">
+                    {fmtBRL(resultadoOperacional.consolidado.receita_total)}
+                  </div>
+                  <p className="text-[10px] text-zinc-500 mt-1">
+                    Serviços: {fmtBRL(resultadoOperacional.consolidado.receita_servicos)} | Produtos: {fmtBRL(resultadoOperacional.consolidado.receita_produtos)}
+                  </p>
+                </div>
+
+                <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Custos & Deduções</span>
+                    <TrendingDown className="w-5 h-5 text-rose-500" />
+                  </div>
+                  <div className="font-display text-3xl font-bold mt-2 text-zinc-800">
+                    {fmtBRL(resultadoOperacional.consolidado.cmv + resultadoOperacional.consolidado.comissoes + resultadoOperacional.consolidado.taxas)}
+                  </div>
+                  <p className="text-[10px] text-zinc-500 mt-1">
+                    CMV/Insumo: {fmtBRL(resultadoOperacional.consolidado.cmv)} | Comissões: {fmtBRL(resultadoOperacional.consolidado.comissoes)} | Taxas: {fmtBRL(resultadoOperacional.consolidado.taxas)}
+                  </p>
+                </div>
+
+                <div className={`border rounded-2xl p-5 shadow-sm hover:shadow-md transition-all ${
+                  resultadoOperacional.consolidado.resultado_operacional >= 0 
+                    ? "bg-emerald-50/50 border-emerald-200" 
+                    : "bg-rose-50/50 border-rose-200"
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-bold uppercase tracking-wider ${
+                      resultadoOperacional.consolidado.resultado_operacional >= 0 ? "text-emerald-600" : "text-rose-600"
+                    }`}>
+                      Resultado Operacional
+                    </span>
+                    <TrendingUp className={`w-5 h-5 ${
+                      resultadoOperacional.consolidado.resultado_operacional >= 0 ? "text-emerald-600" : "text-rose-600"
+                    }`} />
+                  </div>
+                  <div className={`font-display text-3xl font-black mt-2 ${
+                    resultadoOperacional.consolidado.resultado_operacional >= 0 ? "text-emerald-700" : "text-rose-700"
+                  }`}>
+                    {fmtBRL(resultadoOperacional.consolidado.resultado_operacional)}
+                  </div>
+                  <p className="text-[10px] text-zinc-500 mt-1">
+                    Margem Operacional: {(resultadoOperacional.consolidado.margem_operacional || 0).toFixed(2)}%
+                  </p>
+                </div>
+              </div>
+
+              {/* Detailed Breakdown */}
+              <div className="bg-white border border-zinc-200 rounded-xl p-6 space-y-4 shadow-sm">
+                <div className="flex justify-between items-center border-b border-zinc-100 pb-3">
+                  <h3 className="font-display text-lg font-medium text-zinc-800">Resultado Operacional Consolidado</h3>
+                  <div className="flex gap-2 no-print">
+                    <Button 
+                      onClick={() => window.print()}
+                      variant="outline" 
+                      size="sm"
+                      className="text-xs h-8"
+                    >
+                      <Printer className="w-4 h-4 mr-1.5" /> Exportar PDF
+                    </Button>
+                    <Button 
+                      onClick={() => handleExport('csv', 'Resultado_Consolidado', ['Métrica', 'Valor'], ['metric', 'value'], [
+                        { metric: 'Receita de Serviços', value: resultadoOperacional.consolidado.receita_servicos },
+                        { metric: 'Receita de Produtos', value: resultadoOperacional.consolidado.receita_produtos },
+                        { metric: 'Faturamento Bruto', value: resultadoOperacional.consolidado.receita_total },
+                        { metric: 'CMV e Insumos', value: resultadoOperacional.consolidado.cmv },
+                        { metric: 'Comissões', value: resultadoOperacional.consolidado.comissoes },
+                        { metric: 'Taxas Financeiras', value: resultadoOperacional.consolidado.taxas },
+                        { metric: 'Resultado Operacional', value: resultadoOperacional.consolidado.resultado_operacional },
+                        { metric: 'Margem Operacional (%)', value: resultadoOperacional.consolidado.margem_operacional }
+                      ])}
+                      variant="outline" 
+                      size="sm"
+                      className="text-xs h-8"
+                    >
+                      CSV
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-3 divide-y divide-zinc-100">
+                  <div className="pt-2">
+                    <DRE_Row label="Faturamento de Serviços" value={resultadoOperacional.consolidado.receita_servicos} />
+                  </div>
+                  <div className="pt-2">
+                    <DRE_Row label="Faturamento de Vendas de Produtos" value={resultadoOperacional.consolidado.receita_produtos} />
+                  </div>
+                  <div className="border-t border-zinc-200 pt-3">
+                    <DRE_Row label="Faturamento Bruto Total" value={resultadoOperacional.consolidado.receita_total} bold />
+                  </div>
+                  <div className="pt-2">
+                    <DRE_Row label="(-) Custo de Mercadorias (CMV) & Insumos" value={-resultadoOperacional.consolidado.cmv} negative />
+                  </div>
+                  <div className="pt-2">
+                    <DRE_Row label="(-) Comissões (Profissional + Auxiliar)" value={-resultadoOperacional.consolidado.comissoes} negative />
+                  </div>
+                  <div className="pt-2">
+                    <DRE_Row label="(-) Taxas de Transação Financeiras" value={-resultadoOperacional.consolidado.taxas} negative />
+                  </div>
+                  <div className="border-t border-zinc-200 pt-3">
+                    <DRE_Row label="Resultado Operacional" value={resultadoOperacional.consolidado.resultado_operacional} bold highlight />
+                  </div>
+                  <div className="pt-2 flex justify-between items-center text-sm font-semibold">
+                    <span className="text-zinc-500">Margem Operacional (%)</span>
+                    <span className="text-zinc-800 font-mono">{(resultadoOperacional.consolidado.margem_operacional || 0).toFixed(2)}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="rentabilidade_servicos">
+          {!resultadoOperacional ? (
+            <div className="text-zinc-400 p-8 text-center bg-white border border-zinc-200 rounded-xl">Carregando dados...</div>
+          ) : (
+            <div className="space-y-6 print-full-width">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 pb-3 no-print">
+                <div className="relative flex-1 max-w-xs">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-400" />
+                  <Input 
+                    placeholder="Pesquisar serviço..." 
+                    value={searchOperServico}
+                    onChange={(e) => setSearchOperServico(e.target.value)}
+                    className="pl-9 h-9 text-xs"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={() => window.print()} variant="outline" size="sm" className="text-xs h-8">
+                    <Printer className="w-4 h-4 mr-1.5" /> PDF
+                  </Button>
+                  <Button 
+                    onClick={() => handleExport(
+                      'xlsx', 
+                      'Rentabilidade_Servicos', 
+                      ['Serviço', 'Quantidade', 'Faturamento', 'Comissão', 'Taxas', 'Insumos', 'Resultado', 'Margem (%)'], 
+                      ['servico_nome', 'quantidade', 'faturamento', 'comissao', 'taxas', 'insumos', 'resultado_operacional', 'margem'], 
+                      sortedAndFilteredServicos
+                    )} 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs h-8"
+                  >
+                    Excel
+                  </Button>
+                  <Button 
+                    onClick={() => handleExport(
+                      'csv', 
+                      'Rentabilidade_Servicos', 
+                      ['Serviço', 'Quantidade', 'Faturamento', 'Comissão', 'Taxas', 'Insumos', 'Resultado', 'Margem (%)'], 
+                      ['servico_nome', 'quantidade', 'faturamento', 'comissao', 'taxas', 'insumos', 'resultado_operacional', 'margem'], 
+                      sortedAndFilteredServicos
+                    )} 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs h-8"
+                  >
+                    CSV
+                  </Button>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-bold uppercase tracking-wider">
+                        <th className="px-4 py-3">
+                          <SortHeader label="Serviço" field="servico_nome" currentField={sortServicoField} direction={sortServicoDirection} onSort={(f) => {
+                            if (sortServicoField === f) setSortServicoDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortServicoField(f); setSortServicoDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-4 py-3 text-center">
+                          <SortHeader label="Qtd" field="quantidade" currentField={sortServicoField} direction={sortServicoDirection} onSort={(f) => {
+                            if (sortServicoField === f) setSortServicoDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortServicoField(f); setSortServicoDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-4 py-3 text-right">
+                          <SortHeader label="Faturamento" field="faturamento" currentField={sortServicoField} direction={sortServicoDirection} onSort={(f) => {
+                            if (sortServicoField === f) setSortServicoDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortServicoField(f); setSortServicoDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-4 py-3 text-right">
+                          <SortHeader label="Insumos" field="insumos" currentField={sortServicoField} direction={sortServicoDirection} onSort={(f) => {
+                            if (sortServicoField === f) setSortServicoDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortServicoField(f); setSortServicoDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-4 py-3 text-right">
+                          <SortHeader label="Comissão" field="comissao" currentField={sortServicoField} direction={sortServicoDirection} onSort={(f) => {
+                            if (sortServicoField === f) setSortServicoDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortServicoField(f); setSortServicoDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-4 py-3 text-right">
+                          <SortHeader label="Taxas" field="taxas" currentField={sortServicoField} direction={sortServicoDirection} onSort={(f) => {
+                            if (sortServicoField === f) setSortServicoDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortServicoField(f); setSortServicoDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-4 py-3 text-right">
+                          <SortHeader label="Resultado" field="resultado_operacional" currentField={sortServicoField} direction={sortServicoDirection} onSort={(f) => {
+                            if (sortServicoField === f) setSortServicoDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortServicoField(f); setSortServicoDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-4 py-3 text-center">
+                          <SortHeader label="Margem" field="margem" currentField={sortServicoField} direction={sortServicoDirection} onSort={(f) => {
+                            if (sortServicoField === f) setSortServicoDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortServicoField(f); setSortServicoDirection('desc'); }
+                          }} />
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-200">
+                      {sortedAndFilteredServicos.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="text-center py-8 text-zinc-400">Nenhum serviço encontrado.</td>
+                        </tr>
+                      ) : sortedAndFilteredServicos.map((s, idx) => (
+                        <tr key={idx} className="hover:bg-zinc-50 transition-colors">
+                          <td className="px-4 py-3 font-semibold text-zinc-700">{s.servico_nome}</td>
+                          <td className="px-4 py-3 text-center font-mono">{s.quantidade}</td>
+                          <td className="px-4 py-3 text-right font-mono text-zinc-800">{fmtBRL(s.faturamento)}</td>
+                          <td className="px-4 py-3 text-right font-mono text-rose-500">{fmtBRL(s.insumos)}</td>
+                          <td className="px-4 py-3 text-right font-mono text-amber-600">{fmtBRL(s.comissao)}</td>
+                          <td className="px-4 py-3 text-right font-mono text-amber-700">{fmtBRL(s.taxas)}</td>
+                          <td className={`px-4 py-3 text-right font-mono font-bold ${s.resultado_operacional >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{fmtBRL(s.resultado_operacional)}</td>
+                          <td className="px-4 py-3 text-center font-mono">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              s.margem >= 50 
+                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
+                                : s.margem >= 20 
+                                ? 'bg-amber-50 text-amber-600 border border-amber-200' 
+                                : 'bg-rose-50 text-rose-600 border border-rose-200'
+                            }`}>
+                              {(s.margem || 0).toFixed(1)}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="rentabilidade_produtos">
+          {!resultadoOperacional ? (
+            <div className="text-zinc-400 p-8 text-center bg-white border border-zinc-200 rounded-xl">Carregando dados...</div>
+          ) : (
+            <div className="space-y-6 print-full-width">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 pb-3 no-print">
+                <div className="relative flex-1 max-w-xs">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-400" />
+                  <Input 
+                    placeholder="Pesquisar produto..." 
+                    value={searchOperProduto}
+                    onChange={(e) => setSearchOperProduto(e.target.value)}
+                    className="pl-9 h-9 text-xs"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={() => window.print()} variant="outline" size="sm" className="text-xs h-8">
+                    <Printer className="w-4 h-4 mr-1.5" /> PDF
+                  </Button>
+                  <Button 
+                    onClick={() => handleExport(
+                      'xlsx', 
+                      'Rentabilidade_Produtos', 
+                      ['Produto', 'Quantidade', 'Faturamento', 'CMV', 'Comissão', 'Taxas', 'Resultado', 'Margem (%)'], 
+                      ['produto_nome', 'quantidade', 'faturamento', 'cmv', 'comissao', 'taxas', 'resultado_operacional', 'margem'], 
+                      sortedAndFilteredProdutos
+                    )} 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs h-8"
+                  >
+                    Excel
+                  </Button>
+                  <Button 
+                    onClick={() => handleExport(
+                      'csv', 
+                      'Rentabilidade_Produtos', 
+                      ['Produto', 'Quantidade', 'Faturamento', 'CMV', 'Comissão', 'Taxas', 'Resultado', 'Margem (%)'], 
+                      ['produto_nome', 'quantidade', 'faturamento', 'cmv', 'comissao', 'taxas', 'resultado_operacional', 'margem'], 
+                      sortedAndFilteredProdutos
+                    )} 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs h-8"
+                  >
+                    CSV
+                  </Button>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-bold uppercase tracking-wider">
+                        <th className="px-4 py-3">
+                          <SortHeader label="Produto" field="produto_nome" currentField={sortProdutoField} direction={sortProdutoDirection} onSort={(f) => {
+                            if (sortProdutoField === f) setSortProdutoDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortProdutoField(f); setSortProdutoDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-4 py-3 text-center">
+                          <SortHeader label="Qtd" field="quantidade" currentField={sortProdutoField} direction={sortProdutoDirection} onSort={(f) => {
+                            if (sortProdutoField === f) setSortProdutoDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortProdutoField(f); setSortProdutoDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-4 py-3 text-right">
+                          <SortHeader label="Faturamento" field="faturamento" currentField={sortProdutoField} direction={sortProdutoDirection} onSort={(f) => {
+                            if (sortProdutoField === f) setSortProdutoDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortProdutoField(f); setSortProdutoDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-4 py-3 text-right">
+                          <SortHeader label="CMV" field="cmv" currentField={sortProdutoField} direction={sortProdutoDirection} onSort={(f) => {
+                            if (sortProdutoField === f) setSortProdutoDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortProdutoField(f); setSortProdutoDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-4 py-3 text-right">
+                          <SortHeader label="Comissão" field="comissao" currentField={sortProdutoField} direction={sortProdutoDirection} onSort={(f) => {
+                            if (sortProdutoField === f) setSortProdutoDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortProdutoField(f); setSortProdutoDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-4 py-3 text-right">
+                          <SortHeader label="Taxas" field="taxas" currentField={sortProdutoField} direction={sortProdutoDirection} onSort={(f) => {
+                            if (sortProdutoField === f) setSortProdutoDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortProdutoField(f); setSortProdutoDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-4 py-3 text-right">
+                          <SortHeader label="Resultado" field="resultado_operacional" currentField={sortProdutoField} direction={sortProdutoDirection} onSort={(f) => {
+                            if (sortProdutoField === f) setSortProdutoDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortProdutoField(f); setSortProdutoDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-4 py-3 text-center">
+                          <SortHeader label="Margem" field="margem" currentField={sortProdutoField} direction={sortProdutoDirection} onSort={(f) => {
+                            if (sortProdutoField === f) setSortProdutoDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortProdutoField(f); setSortProdutoDirection('desc'); }
+                          }} />
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-200">
+                      {sortedAndFilteredProdutos.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="text-center py-8 text-zinc-400">Nenhum produto encontrado.</td>
+                        </tr>
+                      ) : sortedAndFilteredProdutos.map((p, idx) => (
+                        <tr key={idx} className="hover:bg-zinc-50 transition-colors">
+                          <td className="px-4 py-3 font-semibold text-zinc-700">{p.produto_nome}</td>
+                          <td className="px-4 py-3 text-center font-mono">{p.quantidade}</td>
+                          <td className="px-4 py-3 text-right font-mono text-zinc-800">{fmtBRL(p.faturamento)}</td>
+                          <td className="px-4 py-3 text-right font-mono text-rose-500">{fmtBRL(p.cmv)}</td>
+                          <td className="px-4 py-3 text-right font-mono text-amber-600">{fmtBRL(p.comissao)}</td>
+                          <td className="px-4 py-3 text-right font-mono text-amber-700">{fmtBRL(p.taxas)}</td>
+                          <td className={`px-4 py-3 text-right font-mono font-bold ${p.resultado_operacional >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{fmtBRL(p.resultado_operacional)}</td>
+                          <td className="px-4 py-3 text-center font-mono">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              p.margem >= 40 
+                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
+                                : p.margem >= 15 
+                                ? 'bg-amber-50 text-amber-600 border border-amber-200' 
+                                : 'bg-rose-50 text-rose-600 border border-rose-200'
+                            }`}>
+                              {(p.margem || 0).toFixed(1)}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="analitico_vendas">
+          {!resultadoOperacional ? (
+            <div className="text-zinc-400 p-8 text-center bg-white border border-zinc-200 rounded-xl">Carregando dados...</div>
+          ) : (
+            <div className="space-y-6 print-full-width">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 pb-3 no-print">
+                <div className="relative flex-1 max-w-xs">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-400" />
+                  <Input 
+                    placeholder="Pesquisar venda (Nº, profissional, cliente)..." 
+                    value={searchOperVenda}
+                    onChange={(e) => setSearchOperVenda(e.target.value)}
+                    className="pl-9 h-9 text-xs"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={() => window.print()} variant="outline" size="sm" className="text-xs h-8">
+                    <Printer className="w-4 h-4 mr-1.5" /> PDF
+                  </Button>
+                  <Button 
+                    onClick={() => handleExport(
+                      'xlsx', 
+                      'Analitico_Venda', 
+                      ['Venda', 'Data', 'Cliente', 'Profissional', 'Valor Prod.', 'Valor Serv.', 'Faturamento Total', 'CMV', 'Comissão', 'Taxas', 'Resultado', 'Margem (%)'], 
+                      ['numero', 'data', 'cliente', 'profissional', 'valor_produtos', 'valor_servicos', 'faturamento_total', 'cmv', 'comissao', 'taxas', 'resultado_operacional', 'margem'], 
+                      sortedAndFilteredVendas.map(v => ({ ...v, data: new Date(v.data).toLocaleDateString('pt-BR') }))
+                    )} 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs h-8"
+                  >
+                    Excel
+                  </Button>
+                  <Button 
+                    onClick={() => handleExport(
+                      'csv', 
+                      'Analitico_Venda', 
+                      ['Venda', 'Data', 'Cliente', 'Profissional', 'Valor Prod.', 'Valor Serv.', 'Faturamento Total', 'CMV', 'Comissão', 'Taxas', 'Resultado', 'Margem (%)'], 
+                      ['numero', 'data', 'cliente', 'profissional', 'valor_produtos', 'valor_servicos', 'faturamento_total', 'cmv', 'comissao', 'taxas', 'resultado_operacional', 'margem'], 
+                      sortedAndFilteredVendas.map(v => ({ ...v, data: new Date(v.data).toLocaleDateString('pt-BR') }))
+                    )} 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs h-8"
+                  >
+                    CSV
+                  </Button>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[11px] text-left border-collapse">
+                    <thead>
+                      <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-bold uppercase tracking-wider">
+                        <th className="px-3 py-3">
+                          <SortHeader label="Venda" field="numero" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
+                            if (sortVendaField === f) setSortVendaDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortVendaField(f); setSortVendaDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-3 py-3">
+                          <SortHeader label="Data" field="data" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
+                            if (sortVendaField === f) setSortVendaDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortVendaField(f); setSortVendaDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-3 py-3">
+                          <SortHeader label="Cliente" field="cliente" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
+                            if (sortVendaField === f) setSortVendaDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortVendaField(f); setSortVendaDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-3 py-3">
+                          <SortHeader label="Profissional" field="profissional" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
+                            if (sortVendaField === f) setSortVendaDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortVendaField(f); setSortVendaDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-3 py-3 text-right">
+                          <SortHeader label="Prod" field="valor_produtos" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
+                            if (sortVendaField === f) setSortVendaDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortVendaField(f); setSortVendaDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-3 py-3 text-right">
+                          <SortHeader label="Serv" field="valor_servicos" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
+                            if (sortVendaField === f) setSortVendaDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortVendaField(f); setSortVendaDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-3 py-3 text-right">
+                          <SortHeader label="Total" field="faturamento_total" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
+                            if (sortVendaField === f) setSortVendaDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortVendaField(f); setSortVendaDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-3 py-3 text-right">
+                          <SortHeader label="CMV" field="cmv" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
+                            if (sortVendaField === f) setSortVendaDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortVendaField(f); setSortVendaDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-3 py-3 text-right">
+                          <SortHeader label="Comiss." field="comissao" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
+                            if (sortVendaField === f) setSortVendaDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortVendaField(f); setSortVendaDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-3 py-3 text-right">
+                          <SortHeader label="Taxas" field="taxas" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
+                            if (sortVendaField === f) setSortVendaDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortVendaField(f); setSortVendaDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-3 py-3 text-right">
+                          <SortHeader label="Resultado" field="resultado_operacional" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
+                            if (sortVendaField === f) setSortVendaDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortVendaField(f); setSortVendaDirection('desc'); }
+                          }} />
+                        </th>
+                        <th className="px-3 py-3 text-center">
+                          <SortHeader label="Margem" field="margem" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
+                            if (sortVendaField === f) setSortVendaDirection(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortVendaField(f); setSortVendaDirection('desc'); }
+                          }} />
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-200">
+                      {sortedAndFilteredVendas.length === 0 ? (
+                        <tr>
+                          <td colSpan={12} className="text-center py-8 text-zinc-400">Nenhuma venda encontrada.</td>
+                        </tr>
+                      ) : sortedAndFilteredVendas.map((v, idx) => (
+                        <tr key={idx} className="hover:bg-zinc-50 transition-colors">
+                          <td className="px-3 py-2.5 font-semibold text-zinc-700">{v.numero}</td>
+                          <td className="px-3 py-2.5 text-zinc-500">{new Date(v.data).toLocaleDateString('pt-BR')}</td>
+                          <td className="px-3 py-2.5 font-medium text-zinc-800 truncate max-w-[120px]" title={v.cliente}>{v.cliente}</td>
+                          <td className="px-3 py-2.5 text-zinc-600 truncate max-w-[100px]" title={v.profissional}>{v.profissional}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-zinc-700">{fmtBRL(v.valor_produtos)}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-zinc-700">{fmtBRL(v.valor_servicos)}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-zinc-800 font-semibold">{fmtBRL(v.faturamento_total)}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-rose-500">{fmtBRL(v.cmv)}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-amber-600">{fmtBRL(v.comissao)}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-amber-700">{fmtBRL(v.taxas)}</td>
+                          <td className={`px-3 py-2.5 text-right font-mono font-bold ${v.resultado_operacional >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{fmtBRL(v.resultado_operacional)}</td>
+                          <td className="px-3 py-2.5 text-center font-mono">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                              v.margem >= 35 
+                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
+                                : v.margem >= 15 
+                                ? 'bg-amber-50 text-amber-600 border border-amber-200' 
+                                : 'bg-rose-50 text-rose-600 border border-rose-200'
+                            }`}>
+                              {(v.margem || 0).toFixed(1)}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           )}
         </TabsContent>
       </Tabs>
