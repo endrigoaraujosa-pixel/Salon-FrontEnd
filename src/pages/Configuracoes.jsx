@@ -36,13 +36,13 @@ export default function Configuracoes() {
       bgColor: "bg-emerald-50 dark:bg-emerald-950/15"
     },
     {
-      title: "Outras Configurações",
-      description: "Novas opções de customização e parâmetros do sistema serão disponibilizadas em breve.",
+      title: "Configurações",
+      description: "Gerencie as diretrizes e regras gerais do sistema, como o controle de valores de agendamentos.",
       icon: Sliders,
-      route: null,
-      active: false,
-      color: "text-zinc-400 dark:text-zinc-500",
-      bgColor: "bg-zinc-100 dark:bg-zinc-900"
+      route: "/configuracoes/gerais",
+      active: true,
+      color: "text-purple-600 dark:text-purple-450",
+      bgColor: "bg-purple-50 dark:bg-purple-950/15"
     }
   ];
 

@@ -80,6 +80,13 @@ export default function Pagamento() {
       .catch(() => {});
   }, [id]);
 
+  useEffect(() => {
+    if (autorizarDialogOpen) {
+      setAuthEmail("");
+      setAuthPassword("");
+    }
+  }, [autorizarDialogOpen]);
+
   const toggleSaleSelection = (saleId) => {
     setPendingSales(prev => prev.map(s => s.id === saleId ? { ...s, selected: !s.selected } : s));
   };
@@ -1095,7 +1102,7 @@ export default function Pagamento() {
       </Dialog>
 
       {/* Dialog de autorização de desconto */}
-      <Dialog open={autorizarDialogOpen} onOpenChange={(open) => { setAutorizarDialogOpen(open); if (!open) setDescontoId(""); }}>
+      <Dialog open={autorizarDialogOpen} onOpenChange={(open) => { setAutorizarDialogOpen(open); if (!open) { setDescontoId(""); setAuthEmail(""); setAuthPassword(""); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Autorização de Desconto Restrito</DialogTitle>
@@ -1103,23 +1110,27 @@ export default function Pagamento() {
           <div className="space-y-4 py-2">
             <p className="text-xs text-zinc-500">Este desconto exige autorização de um usuário com permissões administrativas ou previamente autorizado.</p>
             <div>
-              <Label htmlFor="auth-email">Usuário (E-mail)</Label>
+              <Label htmlFor="secure-auth-email">Usuário (E-mail)</Label>
               <Input
-                id="auth-email"
+                id="secure-auth-email"
+                name="secure-auth-email"
                 type="email"
                 value={authEmail}
                 onChange={(e) => setAuthEmail(e.target.value)}
                 placeholder="email@exemplo.com"
+                autoComplete="nope"
               />
             </div>
             <div>
-              <Label htmlFor="auth-password">Senha</Label>
+              <Label htmlFor="secure-auth-password">Senha</Label>
               <Input
-                id="auth-password"
+                id="secure-auth-password"
+                name="secure-auth-password"
                 type="password"
                 value={authPassword}
                 onChange={(e) => setAuthPassword(e.target.value)}
                 placeholder="******"
+                autoComplete="new-password"
               />
             </div>
           </div>

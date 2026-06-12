@@ -31,6 +31,7 @@ import Inventario from "./pages/Inventario";
 import Estoque from "./pages/Estoque";
 import ConfiguracoesEmpresa from "./pages/ConfiguracoesEmpresa";
 import ConfiguracoesWhatsApp from "./pages/ConfiguracoesWhatsApp";
+import ConfiguracoesGerais from "./pages/ConfiguracoesGerais";
 import AgendaWhatsAppHistorico from "./pages/AgendaWhatsAppHistorico";
 import CadastroTipoPagamento from "./pages/CadastroTipoPagamento";
 import CadastroDescontos from "./pages/CadastroDescontos";
@@ -97,6 +98,7 @@ function App() {
               <Route path="/configuracoes/perfis-acesso" element={<AdminRoute><PerfisAcesso /></AdminRoute>} />
               <Route path="/configuracoes/empresa" element={<AdminRoute><ConfiguracoesEmpresa /></AdminRoute>} />
               <Route path="/configuracoes/whatsapp" element={<AdminRoute><ConfiguracoesWhatsApp /></AdminRoute>} />
+              <Route path="/configuracoes/gerais" element={<AdminRoute><ConfiguracoesGerais /></AdminRoute>} />
               <Route path="/cadastros" element={<PermissionRoute permKey="cadastros"><Cadastros /></PermissionRoute>} />
               <Route path="/cadastros/fornecedores" element={<PermissionRoute permKey="cadastros"><ConfiguracoesFornecedores /></PermissionRoute>} />
               <Route path="/cadastros/tipo-pagamento" element={<PermissionRoute permKey="cadastros"><CadastroTipoPagamento /></PermissionRoute>} />
