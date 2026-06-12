@@ -189,6 +189,29 @@ export default function Relatorios() {
   const [drilldownOpen, setDrilldownOpen] = useState(false);
   const [drilldownTitle, setDrilldownTitle] = useState("");
   const [drilldownData, setDrilldownData] = useState([]);
+
+  // Rentabilidade individual detail states
+  const [rentabilidadeDetailOpen, setRentabilidadeDetailOpen] = useState(false);
+  const [selectedDetailItem, setSelectedDetailItem] = useState(null);
+  const [detailType, setDetailType] = useState(""); // 'servico' | 'produto'
+  const [detailLaunches, setDetailLaunches] = useState([]);
+
+  const handleShowRentabilidadeDetail = (item, type) => {
+    setSelectedDetailItem(item);
+    setDetailType(type);
+    const name = type === 'servico' ? item.servico_nome : item.produto_nome;
+    const launches = type === 'servico'
+      ? (resultadoOperacional?.detalhes_servicos || []).filter(s => s.servico_nome === name)
+      : (resultadoOperacional?.detalhes_produtos || []).filter(p => p.produto_nome === name);
+    setDetailLaunches(launches);
+    setRentabilidadeDetailOpen(true);
+  };
+
+  const handleDrilldown = (title, data) => {
+    setDrilldownTitle(title);
+    setDrilldownData(data || []);
+    setDrilldownOpen(true);
+  };
   
   // Estados para filtros
   const [colaboradores, setColaboradores] = useState([]);
@@ -1416,7 +1439,7 @@ export default function Relatorios() {
                       </div>
                     </DialogFooter>
                   </DialogContent>
-                </Dialog>
+                 </Dialog>
               </div>
               <div className="space-y-4">
                 <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
@@ -2549,7 +2572,7 @@ export default function Relatorios() {
                           <td colSpan={8} className="text-center py-8 text-zinc-400">Nenhum serviço encontrado.</td>
                         </tr>
                       ) : sortedAndFilteredServicos.map((s, idx) => (
-                        <tr key={idx} className="hover:bg-zinc-50 transition-colors">
+                        <tr key={idx} className="hover:bg-zinc-100 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors" onClick={() => handleShowRentabilidadeDetail(s, 'servico')}>
                           <td className="px-4 py-3 font-semibold text-zinc-700">{s.servico_nome}</td>
                           <td className="px-4 py-3 text-center font-mono">{s.quantidade}</td>
                           <td className="px-4 py-3 text-right font-mono text-zinc-800">{fmtBRL(s.faturamento)}</td>
@@ -2691,7 +2714,7 @@ export default function Relatorios() {
                           <td colSpan={8} className="text-center py-8 text-zinc-400">Nenhum produto encontrado.</td>
                         </tr>
                       ) : sortedAndFilteredProdutos.map((p, idx) => (
-                        <tr key={idx} className="hover:bg-zinc-50 transition-colors">
+                        <tr key={idx} className="hover:bg-zinc-100 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors" onClick={() => handleShowRentabilidadeDetail(p, 'produto')}>
                           <td className="px-4 py-3 font-semibold text-zinc-700">{p.produto_nome}</td>
                           <td className="px-4 py-3 text-center font-mono">{p.quantidade}</td>
                           <td className="px-4 py-3 text-right font-mono text-zinc-800">{fmtBRL(p.faturamento)}</td>
@@ -2891,8 +2914,148 @@ export default function Relatorios() {
         </TabsContent>
       </Tabs>
     )}
-  </div>
-)}
+      {/* Rentabilidade Detail Dialog */}
+      <Dialog open={rentabilidadeDetailOpen} onOpenChange={setRentabilidadeDetailOpen}>
+        <DialogContent className="sm:max-w-5xl md:max-w-6xl lg:max-w-7xl max-h-[90vh] overflow-y-auto w-[96vw] rounded-xl p-6 md:p-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl md:text-2xl font-semibold text-[#3A4F4A] dark:text-[#EAF0EE]">
+              <TrendingUp className="w-6 h-6 text-[#84A59D]" />
+              <span>Detalhamento de Rentabilidade: {detailType === 'servico' ? selectedDetailItem?.servico_nome : selectedDetailItem?.produto_nome}</span>
+            </DialogTitle>
+            <p className="text-xs sm:text-sm text-zinc-500 mt-1">
+              Análise individual e composição dos lançamentos no período de {from ? new Date(from + 'T12:00:00').toLocaleDateString('pt-BR') : ''} a {to ? new Date(to + 'T12:00:00').toLocaleDateString('pt-BR') : ''}.
+            </p>
+          </DialogHeader>
+
+          {selectedDetailItem && (
+            <div className="space-y-6 my-4">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Quantidade</span>
+                  <div className="text-2xl font-display font-bold text-zinc-800 dark:text-zinc-100 mt-1">{selectedDetailItem.quantidade}</div>
+                </div>
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Faturamento Bruto</span>
+                  <div className="text-2xl font-display font-bold text-zinc-800 dark:text-zinc-100 mt-1">{fmtBRL(selectedDetailItem.faturamento)}</div>
+                </div>
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{detailType === 'servico' ? 'Insumos' : 'CMV'}</span>
+                  <div className="text-2xl font-display font-bold text-rose-500 mt-1">{fmtBRL(detailType === 'servico' ? selectedDetailItem.insumos : selectedDetailItem.cmv)}</div>
+                </div>
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Resultado Operacional</span>
+                  <div className={`text-2xl font-display font-bold mt-1 ${selectedDetailItem.resultado_operacional >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{fmtBRL(selectedDetailItem.resultado_operacional)}</div>
+                </div>
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl col-span-2 md:col-span-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Margem Real</span>
+                  <div className="mt-1">
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold font-mono ${
+                      selectedDetailItem.margem >= (detailType === 'servico' ? 50 : 40)
+                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                        : selectedDetailItem.margem >= (detailType === 'servico' ? 20 : 15)
+                        ? 'bg-amber-50 text-amber-600 border border-amber-200'
+                        : 'bg-rose-50 text-rose-600 border border-rose-200'
+                    }`}>
+                      {(selectedDetailItem.margem || 0).toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Table of Launches */}
+              <div className="space-y-2">
+                <h3 className="font-display text-sm font-bold uppercase tracking-wider text-zinc-400">Composição dos Lançamentos</h3>
+                {detailLaunches.length === 0 ? (
+                  <div className="py-12 text-center text-zinc-400 text-sm border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 shadow-sm">
+                    Nenhum lançamento encontrado para este item no período.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border border-zinc-200 dark:border-zinc-800 rounded-xl max-h-[45vh] overflow-y-auto shadow-sm">
+                    <table className="w-full text-xs text-left border-collapse">
+                      <thead className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-[10px] uppercase font-bold text-zinc-500 tracking-wider">
+                        <tr>
+                          <th className="px-4 py-3">Data</th>
+                          <th className="px-4 py-3">Nº Venda/Agendamento</th>
+                          <th className="px-4 py-3 font-medium">Cliente</th>
+                          <th className="px-4 py-3 font-medium">Profissional</th>
+                          {detailType === 'produto' && <th className="px-4 py-3 text-center">Qtd</th>}
+                          <th className="px-4 py-3 text-right">Faturamento</th>
+                          <th className="px-4 py-3 text-right">{detailType === 'servico' ? 'Insumos' : 'CMV'}</th>
+                          <th className="px-4 py-3 text-right">Comissão</th>
+                          <th className="px-4 py-3 text-right">Taxas</th>
+                          <th className="px-4 py-3 text-right">Resultado</th>
+                          <th className="px-4 py-3 text-center">Margem</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-medium">
+                        {detailLaunches.map((launch, idx) => {
+                          const l_margem = launch.faturamento > 0 ? ((launch.resultado_operacional / launch.faturamento) * 100) : 0;
+                          return (
+                            <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
+                              <td className="px-4 py-3 whitespace-nowrap text-zinc-500 font-mono">
+                                {launch.data ? new Date(launch.data).toLocaleDateString('pt-BR') : '-'}
+                              </td>
+                              <td className="px-4 py-3 font-semibold text-zinc-800 dark:text-zinc-150">
+                                {launch.numero || '-'}
+                              </td>
+                              <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300 truncate max-w-[120px]" title={launch.cliente}>
+                                {launch.cliente}
+                              </td>
+                              <td className="px-4 py-3 text-zinc-650 dark:text-zinc-350 truncate max-w-[120px]" title={launch.profissional}>
+                                {launch.profissional}
+                              </td>
+                              {detailType === 'produto' && (
+                                <td className="px-4 py-3 text-center font-mono font-semibold text-zinc-700 dark:text-zinc-300">
+                                  {launch.quantidade}
+                                </td>
+                              )}
+                              <td className="px-4 py-3 text-right font-mono font-semibold text-zinc-800 dark:text-zinc-100">
+                                {fmtBRL(launch.faturamento)}
+                              </td>
+                              <td className="px-4 py-3 text-right font-mono text-rose-500">
+                                {fmtBRL(detailType === 'servico' ? launch.insumos : launch.cmv)}
+                              </td>
+                              <td className="px-4 py-3 text-right font-mono text-amber-600">
+                                {fmtBRL(launch.comissao)}
+                              </td>
+                              <td className="px-4 py-3 text-right font-mono text-amber-700">
+                                {fmtBRL(launch.taxas)}
+                              </td>
+                              <td className={`px-4 py-3 text-right font-mono font-bold ${launch.resultado_operacional >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {fmtBRL(launch.resultado_operacional)}
+                              </td>
+                              <td className="px-4 py-3 text-center font-mono">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                  l_margem >= (detailType === 'servico' ? 50 : 40)
+                                    ? 'bg-emerald-50 text-emerald-600'
+                                    : l_margem >= (detailType === 'servico' ? 20 : 15)
+                                    ? 'bg-amber-50 text-amber-600'
+                                    : 'bg-rose-50 text-rose-600'
+                                }`}>
+                                  {l_margem.toFixed(1)}%
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setRentabilidadeDetailOpen(false)} className="bg-[#84A59D] hover:bg-[#6F9189] text-white text-xs px-4 h-9 rounded-lg">
+              Fechar Detalhes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )}
 </div>
 );
 }
