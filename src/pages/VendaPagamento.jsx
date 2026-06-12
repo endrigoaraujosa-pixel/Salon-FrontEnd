@@ -101,9 +101,19 @@ export default function VendaPagamento() {
     setLoadingDesconto(true);
     try {
       if (authData) {
+        if (!authData.email || !authData.email.trim()) {
+          toast.error("Usuário (E-mail) é obrigatório");
+          setLoadingDesconto(false);
+          return;
+        }
+        if (!authData.password || !authData.password.trim()) {
+          toast.error("Senha é obrigatória");
+          setLoadingDesconto(false);
+          return;
+        }
         await http.post("/descontos/validar", {
           id: dId,
-          email: authData.email,
+          email: authData.email.trim(),
           password: authData.password
         });
       }
@@ -841,6 +851,7 @@ export default function VendaPagamento() {
                 type="email"
                 value={authEmail}
                 onChange={(e) => setAuthEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && authEmail?.trim() && authPassword?.trim() && !loadingDesconto && applyDiscountOnBackend(descontoId, { email: authEmail, password: authPassword })}
                 placeholder="email@exemplo.com"
                 autoComplete="nope"
               />
@@ -853,6 +864,7 @@ export default function VendaPagamento() {
                 type="password"
                 value={authPassword}
                 onChange={(e) => setAuthPassword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && authEmail?.trim() && authPassword?.trim() && !loadingDesconto && applyDiscountOnBackend(descontoId, { email: authEmail, password: authPassword })}
                 placeholder="******"
                 autoComplete="new-password"
               />
@@ -863,7 +875,7 @@ export default function VendaPagamento() {
             <Button 
               onClick={() => applyDiscountOnBackend(descontoId, { email: authEmail, password: authPassword })} 
               className="bg-[#84A59D] hover:bg-[#6F9189]"
-              disabled={loadingDesconto || !authEmail || !authPassword}
+              disabled={loadingDesconto || !authEmail?.trim() || !authPassword?.trim()}
             >
               {loadingDesconto ? "Autorizando..." : "Autorizar & Aplicar"}
             </Button>

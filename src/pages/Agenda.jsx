@@ -1252,11 +1252,11 @@ export default function Agenda() {
   };
 
   const confirmarMudancaStatus = async () => {
-    if (!senhaData.email) {
+    if (!senhaData.email || !senhaData.email.trim()) {
       toast.error("Digite seu email");
       return;
     }
-    if (!senhaData.senha) {
+    if (!senhaData.senha || !senhaData.senha.trim()) {
       toast.error("Digite sua senha");
       return;
     }
