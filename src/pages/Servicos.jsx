@@ -597,7 +597,7 @@ export default function Servicos() {
                 <Label>Produtos Vinculados</Label>
                 <div className="w-64">
                   <SearchableSelect
-                    options={produtos.map(p => ({ value: p.id, label: p.nome }))}
+                    options={produtos.filter(p => !p.ocultar_insumos).map(p => ({ value: p.id, label: p.nome }))}
                     value=""
                     onValueChange={(val) => addProduto(val)}
                     placeholder="Adicionar produto..."

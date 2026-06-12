@@ -109,6 +109,7 @@ export default function Agenda() {
   const isMounted = useRef(false);
   const [clientes, setClientes] = useState([]);
   const [servicos, setServicos] = useState([]);
+  const [configSistema, setConfigSistema] = useState(null);
   const [colaboradores, setColaboradores] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [selectedAddCategory, setSelectedAddCategory] = useState("all");
@@ -1020,7 +1021,8 @@ export default function Agenda() {
       http.get("/colaboradores").then((r) => setColaboradores(r.data || [])),
       http.get("/categorias").then((r) => setCategorias(r.data || [])),
       http.get("/produtos").then((r) => setProdutos(r.data || [])),
-      http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data || null)).catch(() => {})
+      http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data || null)).catch(() => {}),
+      http.get("/configuracoes/sistema").then((r) => setConfigSistema(r.data || null)).catch(() => {})
     ]).finally(() => {
       setLoading(false);
       isMounted.current = true;
@@ -1038,6 +1040,12 @@ export default function Agenda() {
     setLoading(true);
     loadMonth(monthCursor.y, monthCursor.m).finally(() => setLoading(false));
   }, [monthCursor]);
+
+  useEffect(() => {
+    if (openSenha) {
+      setSenhaData((prev) => ({ ...prev, email: "", senha: "" }));
+    }
+  }, [openSenha]);
 
   const handleConfirmEditConcluido = async (email, password) => {
     try {
@@ -1103,6 +1111,19 @@ export default function Agenda() {
         const s = servicos.find(x => x.id === item.servico_id);
         toast.error(`O colaborador principal e o auxiliar não podem ser a mesma pessoa. (Serviço: ${s?.nome || ""})`);
         return;
+      }
+    }
+
+    if (configSistema?.bloquear_valor_agendamento_menor) {
+      for (const item of form.itens_selecionados) {
+        const s = servicos.find(x => x.id === item.servico_id);
+        if (s) {
+          const valorCobrado = item.valor !== undefined && item.valor !== null && item.valor !== '' ? Number(item.valor) : Number(s.valor || 0);
+          if (valorCobrado < Number(s.valor || 0)) {
+            toast.error(`O valor cobrado para o serviço "${s.nome}" (R$ ${valorCobrado.toFixed(2)}) não pode ser inferior ao valor cadastrado (R$ ${Number(s.valor || 0).toFixed(2)}).`);
+            return;
+          }
+        }
       }
     }
 
@@ -1861,12 +1882,33 @@ export default function Agenda() {
           <div className="dialog-body">
             <p className="text-sm mb-4" style={{ color: "#52525b" }}>Este agendamento ja foi concluido. Para alterar seu status, digite suas credenciais:</p>
             <div className="form-group mb-4">
-              <Label className="form-label">Email</Label>
-              <Input type="email" placeholder="seu@email.com" value={senhaData.email} onChange={(e) => setSenhaData({ ...senhaData, email: e.target.value })} disabled={carregandoSenha} className="form-input" />
+              <Label className="form-label" htmlFor="secure-status-email">Email</Label>
+              <Input
+                id="secure-status-email"
+                name="secure-status-email"
+                type="email"
+                placeholder="seu@email.com"
+                value={senhaData.email}
+                onChange={(e) => setSenhaData({ ...senhaData, email: e.target.value })}
+                disabled={carregandoSenha}
+                className="form-input"
+                autoComplete="nope"
+              />
             </div>
             <div className="form-group">
-              <Label className="form-label">Sua senha</Label>
-              <Input type="password" placeholder="Digite sua senha" value={senhaData.senha} onChange={(e) => setSenhaData({ ...senhaData, senha: e.target.value })} onKeyPress={(e) => e.key === "Enter" && !carregandoSenha && confirmarMudancaStatus()} disabled={carregandoSenha} className="form-input" />
+              <Label className="form-label" htmlFor="secure-status-password">Sua senha</Label>
+              <Input
+                id="secure-status-password"
+                name="secure-status-password"
+                type="password"
+                placeholder="Digite sua senha"
+                value={senhaData.senha}
+                onChange={(e) => setSenhaData({ ...senhaData, senha: e.target.value })}
+                onKeyPress={(e) => e.key === "Enter" && !carregandoSenha && confirmarMudancaStatus()}
+                disabled={carregandoSenha}
+                className="form-input"
+                autoComplete="new-password"
+              />
             </div>
           </div>
           <DialogFooter>
@@ -2422,7 +2464,7 @@ export default function Agenda() {
                       searchPlaceholder="Pesquisar produto pelo nome..."
                       className="w-full h-10 text-xs"
                       options={produtos
-                        .filter(p => !tempUtilizedProducts.some(row => row.produto_id === p.id))
+                        .filter(p => !p.ocultar_insumos && !tempUtilizedProducts.some(row => row.produto_id === p.id))
                         .map(p => {
                           const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
                           const qtyStr = qtyPerUnit > 0 

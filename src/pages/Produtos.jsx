@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import AuditModal from "../components/AuditModal";
 import SearchableSelect from "../components/SearchableSelect";
 
-const blank = { nome: "", categoria: "", categoria_id: "", unidade_medida: "un", quantidade_estoque: 0, estoque_minimo: 5, custo_unitario: 0, preco_venda: 0, fornecedor: "", ativo: true, comissao: 0, quantidade_por_unidade: 0, unidade_medida_insumo: "un", uso_exclusivo_servicos: false };
+const blank = { nome: "", categoria: "", categoria_id: "", unidade_medida: "un", quantidade_estoque: 0, estoque_minimo: 5, custo_unitario: 0, preco_venda: 0, fornecedor: "", ativo: true, comissao: 0, quantidade_por_unidade: 0, unidade_medida_insumo: "un", uso_exclusivo_servicos: false, ocultar_insumos: false };
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const normalizeText = (str) => !str ? "" : str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
@@ -383,6 +383,10 @@ export default function Produtos() {
         toast.error("A categoria é obrigatória. Selecione uma categoria cadastrada.");
         return;
       }
+      if (form.uso_exclusivo_servicos && form.ocultar_insumos) {
+        toast.error("O produto não pode ser de uso exclusivo em serviços e ao mesmo tempo oculto no lançamento de insumos.");
+        return;
+      }
       const qtyPerUnit = Number(form.quantidade_por_unidade || 0);
       const p = { ...form,
         quantidade_estoque: qtyPerUnit > 0 
@@ -435,6 +439,7 @@ export default function Produtos() {
         ? Number((Number(p.estoque_minimo) / qtyPerUnit).toFixed(3))
         : p.estoque_minimo || 0,
       uso_exclusivo_servicos: !!p.uso_exclusivo_servicos,
+      ocultar_insumos: !!p.ocultar_insumos,
       comissao: p.comissao !== undefined && p.comissao !== null ? Number(Number(p.comissao).toFixed(3)) : 0
     }); 
     setOpen(true); 
@@ -737,16 +742,34 @@ export default function Produtos() {
 
                 <div className="flex items-center justify-between p-4 bg-zinc-50/50 dark:bg-zinc-900/20 border border-zinc-150 dark:border-zinc-800/80 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-colors gap-4">
                   <div className="space-y-0.5 flex-1">
-                    <Label htmlFor="uso_exclusivo_servicos" className="text-sm font-semibold text-zinc-850 dark:text-zinc-200 cursor-pointer block">Uso exclusivo em serviços</Label>
+                    <Label htmlFor="uso_exclusivo_servicos" className={`text-sm font-semibold cursor-pointer block ${form.ocultar_insumos ? "text-zinc-400 dark:text-zinc-650" : "text-zinc-850 dark:text-zinc-200"}`}>Uso exclusivo em serviços</Label>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">Se ativado, este produto não poderá ser vendido diretamente, apenas usado como insumo em serviços.</p>
                   </div>
                   <div className="flex items-center gap-2 pr-1 shrink-0">
                     <input
                       type="checkbox"
                       id="uso_exclusivo_servicos"
+                      disabled={!!form.ocultar_insumos}
                       checked={!!form.uso_exclusivo_servicos}
                       onChange={(e) => setForm({ ...form, uso_exclusivo_servicos: e.target.checked })}
-                      className="h-5 w-5 rounded border-zinc-300 dark:border-zinc-700 text-[#84A59D] focus:ring-[#84A59D] cursor-pointer dark:bg-zinc-950 dark:checked:bg-[#84A59D]"
+                      className="h-5 w-5 rounded border-zinc-300 dark:border-zinc-700 text-[#84A59D] focus:ring-[#84A59D] cursor-pointer dark:bg-zinc-950 dark:checked:bg-[#84A59D] disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-zinc-50/50 dark:bg-zinc-900/20 border border-zinc-150 dark:border-zinc-800/80 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-colors gap-4">
+                  <div className="space-y-0.5 flex-1">
+                    <Label htmlFor="ocultar_insumos" className={`text-sm font-semibold cursor-pointer block ${form.uso_exclusivo_servicos ? "text-zinc-400 dark:text-zinc-650" : "text-zinc-850 dark:text-zinc-200"}`}>Não exibir no lançamento de insumos</Label>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">Se ativado, este produto não poderá ser utilizado como insumo em atendimentos ou serviços (Somente Venda).</p>
+                  </div>
+                  <div className="flex items-center gap-2 pr-1 shrink-0">
+                    <input
+                      type="checkbox"
+                      id="ocultar_insumos"
+                      disabled={!!form.uso_exclusivo_servicos}
+                      checked={!!form.ocultar_insumos}
+                      onChange={(e) => setForm({ ...form, ocultar_insumos: e.target.checked })}
+                      className="h-5 w-5 rounded border-zinc-300 dark:border-zinc-700 text-[#84A59D] focus:ring-[#84A59D] cursor-pointer dark:bg-zinc-950 dark:checked:bg-[#84A59D] disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -890,6 +913,11 @@ export default function Produtos() {
                                         Exclusivo em Serviços
                                       </span>
                                     )}
+                                    {p.ocultar_insumos && (
+                                      <span className="inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold bg-zinc-100 text-zinc-650 dark:bg-zinc-800 dark:text-zinc-350 border border-zinc-200 dark:border-zinc-700 uppercase tracking-wider">
+                                        Somente Venda
+                                      </span>
+                                    )}
                                   </div>
                                   {p.fornecedor && <div className="text-[11px] text-zinc-400 mt-0.5">{p.fornecedor}</div>}
                                 </td>
@@ -947,6 +975,11 @@ export default function Produtos() {
                                     {p.uso_exclusivo_servicos && (
                                       <span className="inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold bg-zinc-100 text-zinc-650 dark:bg-zinc-800 dark:text-zinc-350 border border-zinc-200 dark:border-zinc-700 uppercase tracking-wider">
                                         Exclusivo em Serviços
+                                      </span>
+                                    )}
+                                    {p.ocultar_insumos && (
+                                      <span className="inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold bg-zinc-100 text-zinc-650 dark:bg-zinc-800 dark:text-zinc-350 border border-zinc-200 dark:border-zinc-700 uppercase tracking-wider">
+                                        Somente Venda
                                       </span>
                                     )}
                                   </h4>

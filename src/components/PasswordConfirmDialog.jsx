@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -11,6 +11,14 @@ export default function PasswordConfirmDialog({ open, onOpenChange, onConfirm, t
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setEmail("");
+      setPassword("");
+      setError("");
+    }
+  }, [open]);
 
   const handleSubmit = async () => {
     if (requireCredentials && !email.trim()) {
@@ -60,9 +68,10 @@ export default function PasswordConfirmDialog({ open, onOpenChange, onConfirm, t
           
           {requireCredentials && (
             <div>
-              <Label htmlFor="email">Usuário (E-mail)</Label>
+              <Label htmlFor="confirm-action-email">Usuário (E-mail)</Label>
               <Input
-                id="email"
+                id="confirm-action-email"
+                name="confirm-action-email"
                 type="email"
                 value={email}
                 onChange={(e) => {
@@ -71,15 +80,17 @@ export default function PasswordConfirmDialog({ open, onOpenChange, onConfirm, t
                 }}
                 placeholder="Ex: gerente@salon.com"
                 disabled={loading}
+                autoComplete="nope"
                 autoFocus
               />
             </div>
           )}
 
           <div>
-            <Label htmlFor="password">Senha</Label>
+            <Label htmlFor="confirm-action-password">Senha</Label>
             <Input
-              id="password"
+              id="confirm-action-password"
+              name="confirm-action-password"
               type="password"
               value={password}
               onChange={(e) => {
@@ -89,6 +100,7 @@ export default function PasswordConfirmDialog({ open, onOpenChange, onConfirm, t
               onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
               placeholder="Digite sua senha"
               disabled={loading}
+              autoComplete="new-password"
               autoFocus={!requireCredentials}
             />
           </div>
