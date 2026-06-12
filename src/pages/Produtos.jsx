@@ -663,12 +663,11 @@ export default function Produtos() {
                         <span className="text-sm font-bold font-mono text-[#3A4F4A] dark:text-[#84A59D]">
                           {(() => {
                             const val = Number(form.custo_unitario) / Number(form.quantidade_por_unidade);
-                            const hasMoreDecimals = (val * 100) % 1 !== 0;
                             return val.toLocaleString("pt-BR", {
                               style: "currency",
                               currency: "BRL",
                               minimumFractionDigits: 2,
-                              maximumFractionDigits: hasMoreDecimals ? 4 : 2
+                              maximumFractionDigits: 2
                             });
                           })()}
                         </span>
