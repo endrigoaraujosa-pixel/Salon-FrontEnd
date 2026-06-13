@@ -1065,8 +1065,22 @@ export default function Relatorios() {
       const totalQtd = estoqueReportData.totais?.total_quantidade || 0;
 
       kpis = [
-        { label: "Custo Total Consumido", value: fmtBRL(totalCusto), icon: Flame, color: "text-orange-500", bg: "bg-orange-50" },
-        { label: "Qtd de Itens Consumidos", value: totalQtd, icon: Package, color: "text-blue-500", bg: "bg-blue-50" }
+        { 
+          label: "Custo Total Consumido", 
+          value: fmtBRL(totalCusto), 
+          icon: Flame, 
+          color: "text-orange-500", 
+          bg: "bg-orange-50",
+          tooltip: "Soma do custo dos insumos/produtos utilizados em todos os agendamentos concluídos no período."
+        },
+        { 
+          label: "Qtd de Itens Consumidos", 
+          value: totalQtd, 
+          icon: Package, 
+          color: "text-blue-500", 
+          bg: "bg-blue-50",
+          tooltip: "Soma das quantidades físicas de insumos consumidos em todos os agendamentos concluídos no período."
+        }
       ];
 
       headers = [
@@ -1577,16 +1591,16 @@ export default function Relatorios() {
       ) : (
         <div className="relative">
           {/* Sticky Header Container */}
-          <div className="sticky top-[-24px] pt-4 pb-2 z-30 bg-zinc-50/95 backdrop-blur-md border-b border-zinc-200/80 mb-6 no-print -mx-6 px-6 max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-[-24px] pt-4 pb-2 z-30 bg-zinc-50/95 dark:bg-zinc-950/95 backdrop-blur-md border-b border-zinc-200/80 dark:border-zinc-800/80 mb-6 no-print -mx-6 px-6 max-h-[90vh] overflow-y-auto">
             {/* Back Navigation Bar */}
-          <div className="flex items-center justify-between mb-6 border-b border-zinc-150 pb-4 no-print">
+          <div className="flex items-center justify-between mb-6 border-b border-zinc-200 dark:border-zinc-800 pb-4 no-print">
             <button
               onClick={() => { setSelectedReport(null); setIsGenerated(false); setGeneratedFilters(null); }}
-              className="flex items-center gap-2 text-zinc-500 hover:text-zinc-850 transition-colors font-semibold text-sm"
+              className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-zinc-200 transition-colors font-semibold text-sm"
             >
               <ArrowLeft className="w-4 h-4" /> Voltar para Central de Relatórios
             </button>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 bg-zinc-100 px-2.5 py-1 rounded-full">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-2.5 py-1 rounded-full">
               {REPORTS_LIST.find(r => r.id === selectedReport)?.category}
             </span>
           </div>
@@ -1627,8 +1641,8 @@ export default function Relatorios() {
           </div>
 
           {/* Filters Card */}
-          <div className="bg-white border border-zinc-200 rounded-xl p-5 mb-6 shadow-sm no-print">
-            <div className="flex items-center gap-2 mb-4 text-[#3A4F4A] font-semibold text-xs">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 mb-6 shadow-sm no-print">
+            <div className="flex items-center gap-2 mb-4 text-[#3A4F4A] dark:text-[#A8C3BC] font-semibold text-xs">
               <Filter className="w-4 h-4 text-[#84A59D]" />
               <span>Filtros do Relatório</span>
             </div>
@@ -1939,7 +1953,7 @@ export default function Relatorios() {
             )}
 
             {tab && tab.startsWith("estoque") && (
-              <div className="mt-4 border-t border-zinc-100 pt-4 space-y-3">
+              <div className="mt-4 border-t border-zinc-100 dark:border-zinc-800 pt-4 space-y-3">
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <Label className="text-[10px] uppercase font-bold text-zinc-550 tracking-wider">Categorias de Produto</Label>
@@ -1961,7 +1975,7 @@ export default function Relatorios() {
                       </button>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto p-2.5 border border-zinc-200 rounded-lg bg-zinc-50 dark:bg-zinc-950">
+                  <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto p-2.5 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50 dark:bg-zinc-950">
                     {categoriesList.length === 0 ? (
                       <span className="text-xs text-zinc-400">Nenhuma categoria cadastrada.</span>
                     ) : (
@@ -1972,8 +1986,8 @@ export default function Relatorios() {
                             key={cat.id}
                             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs cursor-pointer select-none border transition-all ${
                               checked
-                                ? "bg-[#84A59D]/10 text-[#3A4F4A] border-[#84A59D] font-medium"
-                                : "bg-white text-zinc-500 border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-800"
+                                ? "bg-[#84A59D]/10 text-[#3A4F4A] dark:text-[#A8C3BC] dark:bg-[#84A59D]/20 border-[#84A59D] font-medium"
+                                : "bg-white text-zinc-500 dark:text-zinc-400 border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-800 dark:hover:bg-zinc-800"
                             }`}
                           >
                             <input
@@ -2015,7 +2029,7 @@ export default function Relatorios() {
             )}
 
             {/* Generate Button Row */}
-            <div className="flex flex-wrap items-center justify-between gap-4 mt-4 pt-4 border-t border-zinc-100">
+            <div className="flex flex-wrap items-center justify-between gap-4 mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
               <div className="flex items-center gap-3">
                 <Button
                   onClick={handleGenerate}
