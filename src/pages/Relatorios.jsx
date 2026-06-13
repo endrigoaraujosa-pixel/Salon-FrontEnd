@@ -9,7 +9,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from ".
 import SearchableSelect from "../components/SearchableSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "../components/ui/tooltip";
-import { FileText, Banknote, Package, TrendingUp, TrendingDown, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle, Filter, ArrowLeft, AlertTriangle, AlertCircle, Coins, Flame, Zap, Calendar, Sliders, ClipboardList } from "lucide-react";
+import { FileText, Banknote, Package, TrendingUp, TrendingDown, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle, Filter, ArrowLeft, AlertTriangle, AlertCircle, Coins, Flame, Zap, Calendar, Sliders, ClipboardList, Eye } from "lucide-react";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -317,6 +317,15 @@ export default function Relatorios() {
       : (resultadoOperacional?.detalhes_produtos || []).filter(p => p.produto_nome === name);
     setDetailLaunches(launches);
     setRentabilidadeDetailOpen(true);
+  };
+
+  // Consumo individual detail states
+  const [consumoDetailOpen, setConsumoDetailOpen] = useState(false);
+  const [selectedConsumoItem, setSelectedConsumoItem] = useState(null);
+
+  const handleShowConsumoDetail = (item) => {
+    setSelectedConsumoItem(item);
+    setConsumoDetailOpen(true);
   };
 
   const handleDrilldown = (title, data) => {
@@ -1017,7 +1026,37 @@ export default function Relatorios() {
       };
     }
     else if (tabName === "estoque_consumo_insumos") {
-      dataList = estoqueReportData.consumos || [];
+      const grouped = {};
+      (estoqueReportData.consumos || []).forEach(item => {
+        const key = item.produto_id || item.produto_nome;
+        if (!grouped[key]) {
+          grouped[key] = {
+            produto_id: item.produto_id,
+            produto_nome: item.produto_nome,
+            categoria_nome: item.categoria_nome,
+            quantidade: 0,
+            unidade_medida: item.unidade_medida,
+            unidade_medida_insumo: item.unidade_medida_insumo,
+            quantidade_por_embalagem: item.quantidade_por_embalagem,
+            quantidade_por_unidade: item.quantidade_por_unidade,
+            custo_unitario: 0,
+            custo_total: 0,
+            valor_total_custo: 0,
+            launches: []
+          };
+        }
+        grouped[key].quantidade += Number(item.quantidade || 0);
+        grouped[key].custo_total += Number(item.custo_total || item.valor_total_custo || 0);
+        grouped[key].valor_total_custo += Number(item.custo_total || item.valor_total_custo || 0);
+        grouped[key].launches.push(item);
+      });
+
+      // Calculate weighted average unit cost for each grouped product
+      Object.values(grouped).forEach(g => {
+        g.custo_unitario = g.quantidade > 0 ? (g.custo_total / g.quantidade) : 0;
+      });
+
+      dataList = Object.values(grouped);
       exportTitle = "Consumo de Insumos";
       exportHeaders = ["Insumo/Produto", "Categoria", "Qtd Consumida", "Unidade", "Custo Unitário", "Custo Total"];
       exportKeys = ["produto_nome", "categoria_nome", "quantidade", "unidade_medida", "custo_unitario", "valor_total_custo"];
@@ -1034,8 +1073,9 @@ export default function Relatorios() {
         { label: "Insumo/Produto", key: "produto_nome" },
         { label: "Categoria", key: "categoria_nome" },
         { label: "Qtd Consumida", key: "quantidade" },
-        { label: "Custo Unitário", key: "custo_unitario" },
-        { label: "Custo Total", key: "valor_total_custo" }
+        { label: "Custo Unitário Médio", key: "custo_unitario" },
+        { label: "Custo Total", key: "valor_total_custo" },
+        { label: "Ações", key: "actions" }
       ];
 
       rowRenderer = (item) => {
@@ -1046,6 +1086,26 @@ export default function Relatorios() {
             <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350 font-semibold">{formatReportQuantidade(item.quantidade, item)}</td>
             <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{fmtBRL(item.custo_unitario)}</td>
             <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350 font-bold">{fmtBRL(item.valor_total_custo)}</td>
+            <td className="px-4 py-2.5 text-zinc-500 no-print">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors text-zinc-550 dark:text-zinc-400"
+                    title="Clique para visualizar detalhes"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleShowConsumoDetail(item);
+                    }}
+                  >
+                    <Eye className="w-4 h-4 text-[#84A59D]" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="bg-zinc-900 text-white text-xs p-2 rounded border border-zinc-850">
+                  Clique para visualizar detalhes
+                </TooltipContent>
+              </Tooltip>
+            </td>
           </>
         );
       };
@@ -1397,11 +1457,25 @@ export default function Relatorios() {
                     </td>
                   </tr>
                 ) : (
-                  sortedList.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-850/30 transition-colors">
-                      {rowRenderer(item)}
-                    </tr>
-                  ))
+                  sortedList.map((item, idx) => {
+                    const isConsumo = tabName === "estoque_consumo_insumos";
+                    return (
+                      <tr 
+                        key={idx} 
+                        onClick={() => {
+                          if (isConsumo) {
+                            handleShowConsumoDetail(item);
+                          }
+                        }}
+                        className={`hover:bg-zinc-50/50 dark:hover:bg-zinc-850/30 transition-colors ${
+                          isConsumo ? "cursor-pointer" : ""
+                        }`}
+                        title={isConsumo ? "Clique para visualizar detalhes" : undefined}
+                      >
+                        {rowRenderer(item)}
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -4056,6 +4130,96 @@ export default function Relatorios() {
 
           <DialogFooter>
             <Button onClick={() => setRentabilidadeDetailOpen(false)} className="bg-[#84A59D] hover:bg-[#6F9189] text-white text-xs px-4 h-9 rounded-lg">
+              Fechar Detalhes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Consumo de Insumo Detail Dialog */}
+      <Dialog open={consumoDetailOpen} onOpenChange={setConsumoDetailOpen}>
+        <DialogContent className="sm:max-w-4xl md:max-w-5xl lg:max-w-6xl max-h-[90vh] overflow-y-auto w-[96vw] rounded-xl p-6 md:p-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl md:text-2xl font-semibold text-[#3A4F4A] dark:text-[#EAF0EE]">
+              <Package className="w-6 h-6 text-[#84A59D]" />
+              <span>Detalhamento de Consumo: {selectedConsumoItem?.produto_nome}</span>
+            </DialogTitle>
+            <p className="text-xs sm:text-sm text-zinc-500 mt-1">
+              Histórico completo de utilização do insumo no período selecionado.
+            </p>
+          </DialogHeader>
+
+          {selectedConsumoItem && (
+            <div className="space-y-6 my-4">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Quantidade Total</span>
+                  <div className="text-2xl font-display font-bold text-zinc-800 dark:text-zinc-100 mt-1">
+                    {formatReportQuantidade(selectedConsumoItem.quantidade, selectedConsumoItem)}
+                  </div>
+                </div>
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Custo Total Consumido</span>
+                  <div className="text-2xl font-display font-bold text-orange-500 mt-1">
+                    {fmtBRL(selectedConsumoItem.valor_total_custo)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Table of Launches */}
+              <div className="space-y-2">
+                <h3 className="font-display text-sm font-bold uppercase tracking-wider text-zinc-400">Lançamentos no Período</h3>
+                {(selectedConsumoItem.launches || []).length === 0 ? (
+                  <div className="py-12 text-center text-zinc-400 text-sm border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 shadow-sm">
+                    Nenhum lançamento encontrado para este insumo.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border border-zinc-200 dark:border-zinc-800 rounded-xl max-h-[45vh] overflow-y-auto shadow-sm">
+                    <table className="w-full text-xs text-left border-collapse">
+                      <thead className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-[10px] uppercase font-bold text-zinc-500 tracking-wider">
+                        <tr>
+                          <th className="px-4 py-3">Data</th>
+                          <th className="px-4 py-3">Atendimento</th>
+                          <th className="px-4 py-3">Serviço</th>
+                          <th className="px-4 py-3 text-center">Quantidade Consumida</th>
+                          <th className="px-4 py-3 text-right">Valor Unitário</th>
+                          <th className="px-4 py-3 text-right">Valor Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-medium">
+                        {(selectedConsumoItem.launches || []).map((launch, idx) => (
+                          <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
+                            <td className="px-4 py-3 whitespace-nowrap text-zinc-500 font-mono">
+                              {launch.data ? new Date(launch.data).toLocaleString('pt-BR') : '-'}
+                            </td>
+                            <td className="px-4 py-3 text-zinc-800 dark:text-zinc-150 font-mono">
+                              {launch.agendamento_numero ? String(launch.agendamento_numero).padStart(6, '0') + ' | S' : '-'}
+                            </td>
+                            <td className="px-4 py-3 text-zinc-800 dark:text-zinc-150 font-semibold">
+                              {launch.servico_nome || '-'}
+                            </td>
+                            <td className="px-4 py-3 text-center font-mono text-zinc-700 dark:text-zinc-300">
+                              {formatReportQuantidade(launch.quantidade, launch)}
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono text-zinc-650 dark:text-zinc-350">
+                              {fmtBRL(launch.custo_unitario)}
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono font-bold text-zinc-800 dark:text-zinc-100">
+                              {fmtBRL(launch.custo_total || launch.valor_total_custo)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setConsumoDetailOpen(false)} className="bg-[#84A59D] hover:bg-[#6F9189] text-white text-xs px-4 h-9 rounded-lg">
               Fechar Detalhes
             </Button>
           </DialogFooter>
