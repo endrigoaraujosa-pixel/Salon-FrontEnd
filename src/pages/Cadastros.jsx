@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../components/Page";
 import { Card } from "../components/ui/card";
-import { CreditCard, Users, Tag, ChevronRight } from "lucide-react";
+import { CreditCard, Users, Tag, ChevronRight, Layers } from "lucide-react";
 
 export default function Cadastros() {
   const navigate = useNavigate();
@@ -34,6 +34,15 @@ export default function Cadastros() {
       active: true,
       color: "text-amber-500",
       bgColor: "bg-amber-50 dark:bg-amber-950/20"
+    },
+    {
+      title: "Motivos de Estoque",
+      description: "Cadastre e configure os motivos de movimentação e ajustes de estoque para a rotina do salão.",
+      icon: Layers,
+      route: "/cadastros/motivos-estoque",
+      active: true,
+      color: "text-[#E07A5F]",
+      bgColor: "bg-[#FDF0ED] dark:bg-[#E07A5F]/15"
     }
   ];
 

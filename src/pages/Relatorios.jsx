@@ -8,9 +8,20 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import SearchableSelect from "../components/SearchableSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
-import { FileText, Banknote, Package, TrendingUp, TrendingDown, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle, Filter, ArrowLeft } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "../components/ui/tooltip";
+import { FileText, Banknote, Package, TrendingUp, TrendingDown, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle, Filter, ArrowLeft, AlertTriangle, AlertCircle, Coins, Flame, Zap, Calendar, Sliders, ClipboardList } from "lucide-react";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+const formatReportQuantidade = (qtd, item) => {
+  const qty = Number(Number(qtd || 0).toFixed(3));
+  const qtyPerUnit = Number(item.quantidade_por_embalagem || item.quantidade_por_unidade || 0);
+  if (qtyPerUnit > 0) {
+    const eq = Number((qty / qtyPerUnit).toFixed(3));
+    return `${qty} ${item.unidade_medida_insumo || "un"} (${eq} ${item.unidade_medida || "un"})`;
+  }
+  return `${qty} ${item.unidade_medida || "un"}`;
+};
 
 const todayStr = () => {
   const d = new Date();
@@ -137,6 +148,105 @@ const REPORTS_LIST = [
     category: "Financeiro",
     badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/40",
     iconColor: "text-emerald-500"
+  },
+  {
+    id: "estoque_atual",
+    title: "Estoque Atual",
+    description: "Visão detalhada do estoque físico de produtos por categoria, incluindo quantidades atuais, custo de aquisição e valor total em estoque.",
+    icon: Package,
+    category: "Estoque",
+    badgeColor: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-455 dark:border-rose-800/40",
+    iconColor: "text-rose-500"
+  },
+  {
+    id: "estoque_movimentacao",
+    title: "Movimentação de Estoque",
+    description: "Histórico completo de entradas, saídas e ajustes manuais ou automáticos de estoque no período.",
+    icon: ArrowUpDown,
+    category: "Estoque",
+    badgeColor: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-455 dark:border-rose-800/40",
+    iconColor: "text-rose-500"
+  },
+  {
+    id: "estoque_abaixo_minimo",
+    title: "Abaixo do Estoque Mínimo",
+    description: "Lista de produtos cuja quantidade física está abaixo do limite de segurança configurado (estoque mínimo).",
+    icon: AlertTriangle,
+    category: "Estoque",
+    badgeColor: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-455 dark:border-rose-800/40",
+    iconColor: "text-rose-500"
+  },
+  {
+    id: "estoque_sem_estoque",
+    title: "Sem Estoque (Zerados)",
+    description: "Lista de produtos com saldo zerado ou negativo no estoque físico, com indicação do último movimento registrado.",
+    icon: AlertCircle,
+    category: "Estoque",
+    badgeColor: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-455 dark:border-rose-800/40",
+    iconColor: "text-rose-500"
+  },
+  {
+    id: "estoque_valorizacao",
+    title: "Valorização do Estoque",
+    description: "Análise financeira do inventário, comparando o valor total sob preço de custo com o faturamento e lucro bruto potencial de venda.",
+    icon: Coins,
+    category: "Estoque",
+    badgeColor: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-455 dark:border-rose-800/40",
+    iconColor: "text-rose-500"
+  },
+  {
+    id: "estoque_consumo_insumos",
+    title: "Consumo de Insumos",
+    description: "Relatório de materiais de consumo e insumos utilizados pelos profissionais na execução de serviços concluídos no período.",
+    icon: Flame,
+    category: "Estoque",
+    badgeColor: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-455 dark:border-rose-800/40",
+    iconColor: "text-rose-500"
+  },
+  {
+    id: "estoque_mais_movimentados",
+    title: "Mais Movimentados",
+    description: "Ranking dos produtos com maior volume de fluxo de estoque (entradas e saídas combinadas) no período.",
+    icon: Zap,
+    category: "Estoque",
+    badgeColor: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-455 dark:border-rose-800/40",
+    iconColor: "text-rose-500"
+  },
+  {
+    id: "estoque_sem_movimentacao",
+    title: "Sem Movimentação (Giro Lento)",
+    description: "Produtos que não registraram nenhuma movimentação de estoque física durante o período selecionado.",
+    icon: Calendar,
+    category: "Estoque",
+    badgeColor: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-455 dark:border-rose-800/40",
+    iconColor: "text-rose-500"
+  },
+  {
+    id: "estoque_historico_ajustes",
+    title: "Histórico de Ajustes Manuais",
+    description: "Relação de correções manuais de estoque efetuadas por usuários, detalhando quantidade anterior, ajustada e observações.",
+    icon: Sliders,
+    category: "Estoque",
+    badgeColor: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-455 dark:border-rose-800/40",
+    iconColor: "text-rose-500"
+  },
+  {
+    id: "estoque_inventario",
+    title: "Conferência de Inventário",
+    description: "Relatório de apoio para contagem física de estoque, apresentando quantidade do sistema e campos para anotação de diferenças.",
+    icon: ClipboardList,
+    category: "Estoque",
+    badgeColor: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-455 dark:border-rose-800/40",
+    iconColor: "text-rose-500"
+  },
+  {
+    id: "estoque_perdas_quebras",
+    title: "Perdas e Quebras",
+    description: "Consolidado de ajustes de estoque negativos decorrentes de desperdícios, quebras, validades expiradas ou roubos.",
+    icon: TrendingDown,
+    category: "Estoque",
+    badgeColor: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-455 dark:border-rose-800/40",
+    iconColor: "text-rose-500"
   }
 ];
 
@@ -248,12 +358,24 @@ export default function Relatorios() {
   const [sortFieldServico, setSortFieldServico] = useState("data_hora");
   const [sortDirectionServico, setSortDirectionServico] = useState("desc");
 
+  // Estoque specific states
+  const [estoqueReportData, setEstoqueReportData] = useState(null);
+  const [filterEstoqueCategorias, setFilterEstoqueCategorias] = useState([]);
+  const [filterEstoqueProduto, setFilterEstoqueProduto] = useState("todos");
+  const [searchEstoqueQuery, setSearchEstoqueQuery] = useState("");
+  const [sortEstoqueField, setSortEstoqueField] = useState("");
+  const [sortEstoqueDirection, setSortEstoqueDirection] = useState("asc");
+
   useEffect(() => {
     http.get("/colaboradores").then((r) => setColaboradores(r.data)).catch(() => {});
     http.get("/produtos").then((r) => setProdutosList(r.data)).catch(() => {});
     http.get("/servicos").then((r) => setServicosList(r.data)).catch(() => {});
     http.get("/clientes").then((r) => setClientesList(r.data)).catch(() => {});
-    http.get("/categorias").then((r) => setCategoriesList(r.data || [])).catch(() => {});
+    http.get("/categorias").then((r) => {
+      const cats = r.data || [];
+      setCategoriesList(cats);
+      setFilterEstoqueCategorias(cats.map(c => c.id));
+    }).catch(() => {});
     http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data)).catch(() => {});
   }, []);
 
@@ -358,6 +480,37 @@ export default function Relatorios() {
             produtos: [],
             vendas: []
           });
+        });
+    }
+    if (tab && tab.startsWith("estoque")) {
+      const catsParam = filterEstoqueCategorias.join(",");
+      const prodId = filterEstoqueProduto === "todos" ? undefined : filterEstoqueProduto;
+
+      let endpoint = "";
+      if (tab === "estoque_atual") endpoint = "/relatorios/estoque";
+      else if (tab === "estoque_movimentacao") endpoint = "/relatorios/estoque/movimentacao";
+      else if (tab === "estoque_abaixo_minimo") endpoint = "/relatorios/estoque/abaixo-minimo";
+      else if (tab === "estoque_sem_estoque") endpoint = "/relatorios/estoque/sem-estoque";
+      else if (tab === "estoque_valorizacao") endpoint = "/relatorios/estoque/valorizacao";
+      else if (tab === "estoque_consumo_insumos") endpoint = "/relatorios/estoque/consumo-insumos";
+      else if (tab === "estoque_mais_movimentados") endpoint = "/relatorios/estoque/mais-movimentados";
+      else if (tab === "estoque_sem_movimentacao") endpoint = "/relatorios/estoque/sem-movimentacao";
+      else if (tab === "estoque_historico_ajustes") endpoint = "/relatorios/estoque/historico-ajustes";
+      else if (tab === "estoque_inventario") endpoint = "/relatorios/estoque/inventario";
+      else if (tab === "estoque_perdas_quebras") endpoint = "/relatorios/estoque/perdas-quebras";
+
+      const queryParams = {
+        data_inicio: from,
+        data_fim: to,
+        categorias: catsParam,
+        produto_id: prodId
+      };
+
+      promise = http.get(endpoint, { params: queryParams })
+        .then((r) => setEstoqueReportData(r.data))
+        .catch((err) => {
+          console.error(`Error loading ${tab}:`, err);
+          setEstoqueReportData(null);
         });
     }
 
@@ -482,6 +635,10 @@ export default function Relatorios() {
     setTab(reportId);
     setIsGenerated(false);
     setGeneratedFilters(null);
+    setEstoqueReportData(null);
+    setSearchEstoqueQuery("");
+    setSortEstoqueField("");
+    setSortEstoqueDirection("asc");
   };
 
   const handleGenerate = () => {
@@ -491,7 +648,8 @@ export default function Relatorios() {
       filterColaborador, filterProduto, filterCategoria, filterFormaPagamento, filterCliente, filterStatus,
       filterColaboradorServico, filterServico, filterFormaPagamentoServico, filterClienteServico, filterStatusServico,
       filterDreCategory, filterDreStatus,
-      filterOperacionalColab, filterOperacionalCatServico, filterOperacionalCatProduto, filterUnidade
+      filterOperacionalColab, filterOperacionalCatServico, filterOperacionalCatProduto, filterUnidade,
+      filterEstoqueCategorias, filterEstoqueProduto
     });
     reload();
   };
@@ -521,8 +679,723 @@ export default function Relatorios() {
       generatedFilters.filterOperacionalCatServico !== filterOperacionalCatServico ||
       generatedFilters.filterOperacionalCatProduto !== filterOperacionalCatProduto ||
       generatedFilters.filterUnidade !== filterUnidade
+    )) ||
+    (tab && tab.startsWith("estoque") && (
+      JSON.stringify(generatedFilters.filterEstoqueCategorias) !== JSON.stringify(filterEstoqueCategorias) ||
+      generatedFilters.filterEstoqueProduto !== filterEstoqueProduto
     ))
   );
+
+  const renderEstoqueReport = (tabName) => {
+    if (!isGenerated) {
+      return (
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-8 text-center text-zinc-500 max-w-lg mx-auto shadow-sm">
+          <Package className="w-12 h-12 text-[#84A59D] mx-auto mb-4 animate-pulse" />
+          <h3 className="text-lg font-bold text-zinc-800 dark:text-zinc-200 mb-2">Relatório Pronto para Consulta</h3>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4 leading-relaxed">
+            Selecione as categorias de produtos e utilize os filtros temporais acima para personalizar seu relatório de estoque. Clique em "Gerar Consulta" para visualizar.
+          </p>
+        </div>
+      );
+    }
+
+    if (loadingReport) {
+      return (
+        <div className="flex flex-col items-center justify-center p-12 text-zinc-500">
+          <span className="w-8 h-8 border-4 border-[#84A59D] border-t-transparent rounded-full animate-spin mb-4"></span>
+          <p className="text-xs font-semibold">Buscando informações no estoque...</p>
+        </div>
+      );
+    }
+
+    if (!estoqueReportData) {
+      return (
+        <div className="text-center p-8 text-zinc-400">
+          Nenhum dado encontrado para o período ou filtros selecionados.
+        </div>
+      );
+    }
+
+    let dataList = [];
+    let kpis = [];
+    let headers = [];
+    let rowRenderer = null;
+    let exportTitle = "";
+    let exportHeaders = [];
+    let exportKeys = [];
+
+    if (tabName === "estoque_atual") {
+      dataList = estoqueReportData.produtos || [];
+      exportTitle = "Estoque Atual";
+      exportHeaders = ["Produto", "Categoria", "Estoque Físico", "Unidade", "Estoque Mínimo", "Custo Unitário", "Custo Total", "Preço Venda", "Venda Total", "Status"];
+      exportKeys = ["produto_nome", "categoria_nome", "quantidade_estoque", "unidade_medida", "estoque_minimo", "custo_unitario", "valor_total_custo", "preco_venda", "valor_total_venda", "situacao"];
+
+      const totalItens = estoqueReportData.totais?.total_itens || 0;
+      const totalCusto = estoqueReportData.totais?.total_custo || 0;
+      const totalVenda = estoqueReportData.totais?.total_venda || 0;
+      const itensAlerta = estoqueReportData.totais?.itens_alerta || 0;
+
+      kpis = [
+        { label: "Total de Itens", value: totalItens, icon: Package, color: "text-blue-500", bg: "bg-blue-50" },
+        { label: "Custo Total em Estoque", value: fmtBRL(totalCusto), icon: Coins, color: "text-amber-500", bg: "bg-amber-50" },
+        { label: "Valor Total de Venda", value: fmtBRL(totalVenda), icon: TrendingUp, color: "text-emerald-500", bg: "bg-emerald-50" },
+        { label: "Itens em Alerta Mínimo", value: itensAlerta, icon: AlertTriangle, color: "text-rose-500", bg: "bg-rose-50" }
+      ];
+
+      headers = [
+        { label: "Produto", key: "produto_nome" },
+        { label: "Categoria", key: "categoria_nome" },
+        { label: "Estoque Físico", key: "quantidade_estoque" },
+        { label: "Estoque Mínimo", key: "estoque_minimo" },
+        { label: "Custo Unitário", key: "custo_unitario" },
+        { label: "Custo Total", key: "valor_total_custo" },
+        { label: "Preço Venda", key: "preco_venda" },
+        { label: "Venda Total", key: "valor_total_venda" },
+        { label: "Situação", key: "situacao" }
+      ];
+
+      rowRenderer = (item) => {
+        const isAlerta = item.quantidade_estoque <= item.estoque_minimo;
+        return (
+          <>
+            <td className="px-4 py-2.5 font-medium text-zinc-850 dark:text-zinc-100">{item.produto_nome}</td>
+            <td className="px-4 py-2.5 text-zinc-500">{item.categoria_nome || "-"}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{formatReportQuantidade(item.quantidade_estoque, item)}</td>
+            <td className="px-4 py-2.5 text-zinc-500">{formatReportQuantidade(item.estoque_minimo, item)}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{fmtBRL(item.custo_unitario)}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350 font-semibold">{fmtBRL(item.valor_total_custo)}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{fmtBRL(item.preco_venda)}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350 font-semibold">{fmtBRL(item.valor_total_venda)}</td>
+            <td className="px-4 py-2.5">
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isAlerta ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+                {isAlerta ? 'Alerta Mínimo' : 'OK'}
+              </span>
+            </td>
+          </>
+        );
+      };
+    }
+    else if (tabName === "estoque_movimentacao") {
+      dataList = estoqueReportData.movimentacoes || [];
+      exportTitle = "Movimentação de Estoque";
+      exportHeaders = ["Data/Hora", "Produto", "Categoria", "Tipo", "Quantidade", "Responsável", "Motivo"];
+      exportKeys = ["criado_em", "produto_nome", "categoria_nome", "tipo", "quantidade", "usuario_nome", "motivo"];
+
+      const totalEntradas = estoqueReportData.totais?.total_entradas || 0;
+      const totalSaidas = estoqueReportData.totais?.total_saidas || 0;
+      const totalAjustes = estoqueReportData.totais?.total_ajustes || 0;
+      const totalRegs = estoqueReportData.totais?.total_movimentacoes || 0;
+
+      kpis = [
+        { 
+          label: "Entradas no Período", 
+          value: Number(Number(totalEntradas).toFixed(3)), 
+          icon: TrendingUp, 
+          color: "text-emerald-500", 
+          bg: "bg-emerald-50",
+          tooltip: "Soma das quantidades de todos os produtos que deram entrada no estoque durante o período selecionado." 
+        },
+        { 
+          label: "Saídas no Período", 
+          value: Number(Number(totalSaidas).toFixed(3)), 
+          icon: TrendingDown, 
+          color: "text-rose-500", 
+          bg: "bg-rose-50",
+          tooltip: "Soma das quantidades de todos os produtos que saíram do estoque (por venda, perda, consumo, etc.) no período." 
+        },
+        { 
+          label: "Ajustes de Estoque", 
+          value: Number(Number(totalAjustes).toFixed(3)), 
+          icon: Sliders, 
+          color: "text-amber-500", 
+          bg: "bg-amber-50",
+          tooltip: "Soma das quantidades absolutas de ajustes manuais de estoque realizados no período." 
+        },
+        { 
+          label: "Total Movimentações", 
+          value: totalRegs, 
+          icon: ArrowUpDown, 
+          color: "text-blue-500", 
+          bg: "bg-blue-50",
+          tooltip: "Contagem total de registros de movimentações (entradas, saídas ou ajustes) ocorridos no período." 
+        }
+      ];
+
+      headers = [
+        { label: "Data/Hora", key: "criado_em" },
+        { label: "Produto", key: "produto_nome" },
+        { label: "Categoria", key: "categoria_nome" },
+        { label: "Tipo", key: "tipo" },
+        { label: "Quantidade", key: "quantidade" },
+        { label: "Responsável", key: "usuario_nome" },
+        { label: "Motivo", key: "motivo" }
+      ];
+
+      rowRenderer = (item) => {
+        let typeBadge = "";
+        let IconComponent = null;
+        if (item.tipo === "entrada") {
+          typeBadge = "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30";
+          IconComponent = TrendingUp;
+        } else if (item.tipo === "saida") {
+          typeBadge = "bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/30";
+          IconComponent = TrendingDown;
+        } else if (item.tipo === "ajuste") {
+          typeBadge = "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30";
+          IconComponent = Sliders;
+        } else {
+          typeBadge = "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/30";
+          IconComponent = Clock;
+        }
+        return (
+          <>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{new Date(item.criado_em).toLocaleString("pt-BR")}</td>
+            <td className="px-4 py-2.5 font-medium text-zinc-850 dark:text-zinc-100">{item.produto_nome}</td>
+            <td className="px-4 py-2.5 text-zinc-550">{item.categoria_nome || "-"}</td>
+            <td className="px-4 py-2.5">
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold capitalize ${typeBadge}`}>
+                {IconComponent && <IconComponent className="w-3 h-3 shrink-0" />}
+                {item.tipo}
+              </span>
+            </td>
+            <td className="px-4 py-2.5 font-semibold text-zinc-700 dark:text-zinc-350">{formatReportQuantidade(item.quantidade, item)}</td>
+            <td className="px-4 py-2.5 text-zinc-650 dark:text-zinc-350">{item.usuario_nome || "Sistema"}</td>
+            <td className="px-4 py-2.5 text-zinc-550 text-xs italic max-w-xs truncate" title={item.motivo}>{item.motivo || "-"}</td>
+          </>
+        );
+      };
+    }
+    else if (tabName === "estoque_abaixo_minimo") {
+      dataList = estoqueReportData.produtos || [];
+      exportTitle = "Abaixo do Estoque Mínimo";
+      exportHeaders = ["Produto", "Categoria", "Estoque Físico", "Unidade", "Estoque Mínimo", "Diferença"];
+      exportKeys = ["produto_nome", "categoria_nome", "quantidade_estoque", "unidade_medida", "estoque_minimo", "diferenca"];
+
+      const totalCriticos = estoqueReportData.totais?.total_produtos || 0;
+
+      kpis = [
+        { label: "Itens Abaixo do Mínimo", value: totalCriticos, icon: AlertTriangle, color: "text-rose-500", bg: "bg-rose-50" }
+      ];
+
+      headers = [
+        { label: "Produto", key: "produto_nome" },
+        { label: "Categoria", key: "categoria_nome" },
+        { label: "Estoque Físico", key: "quantidade_estoque" },
+        { label: "Estoque Mínimo", key: "estoque_minimo" },
+        { label: "Diferença", key: "diferenca" }
+      ];
+
+      rowRenderer = (item) => {
+        const diff = (item.estoque_minimo || 0) - (item.quantidade_estoque || 0);
+        const baixo = item.quantidade_estoque < item.estoque_minimo;
+        const proximo = item.quantidade_estoque >= item.estoque_minimo && item.quantidade_estoque <= item.estoque_minimo * 1.2;
+        const pct = item.estoque_minimo > 0 ? (item.quantidade_estoque / item.estoque_minimo) * 100 : 100;
+
+        let statusColor = "bg-emerald-500";
+        let statusTextColor = "text-emerald-600 dark:text-emerald-400";
+        let statusText = "SAUDÁVEL";
+
+        if (baixo) {
+          statusColor = "bg-rose-500";
+          statusTextColor = "text-rose-500 dark:text-rose-400";
+          statusText = "ABAIXO DO MÍNIMO";
+        } else if (proximo && item.estoque_minimo > 0) {
+          statusColor = "bg-amber-500";
+          statusTextColor = "text-amber-600 dark:text-amber-400";
+          statusText = "PRÓXIMO AO MÍNIMO";
+        }
+
+        return (
+          <>
+            <td className="px-4 py-2.5 font-medium text-zinc-850 dark:text-zinc-100">{item.produto_nome}</td>
+            <td className="px-4 py-2.5 text-zinc-500">{item.categoria_nome || "-"}</td>
+            <td className="px-4 py-2.5 align-middle">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="w-full max-w-[120px] space-y-1.5 cursor-help">
+                    <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all ${statusColor}`}
+                        style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between items-center text-[9px] font-bold">
+                      <span className={statusTextColor}>
+                        {statusText}
+                      </span>
+                      <span className="text-zinc-500 font-mono font-bold">{formatReportQuantidade(item.quantidade_estoque, item)}</span>
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="bg-zinc-900 text-white text-xs p-2 rounded-lg border border-zinc-800 shadow-md">
+                  {pct.toFixed(0)}% do mínimo de segurança ({formatReportQuantidade(item.quantidade_estoque, item)} de {formatReportQuantidade(item.estoque_minimo, item)})
+                </TooltipContent>
+              </Tooltip>
+            </td>
+            <td className="px-4 py-2.5 text-zinc-500">{formatReportQuantidade(item.estoque_minimo, item)}</td>
+            <td className="px-4 py-2.5 text-rose-700 font-bold bg-rose-50/50">-{formatReportQuantidade(diff, item)}</td>
+          </>
+        );
+      };
+    }
+    else if (tabName === "estoque_sem_estoque") {
+      dataList = estoqueReportData.produtos || [];
+      exportTitle = "Sem Estoque (Zerados)";
+      exportHeaders = ["Produto", "Categoria", "Último Custo", "Preço Venda"];
+      exportKeys = ["produto_nome", "categoria_nome", "custo_unitario", "preco_venda"];
+
+      const totalZerados = estoqueReportData.totais?.total_sem_estoque || 0;
+
+      kpis = [
+        { label: "Itens Zerados ou Negativos", value: totalZerados, icon: AlertCircle, color: "text-rose-600", bg: "bg-rose-50" }
+      ];
+
+      headers = [
+        { label: "Produto", key: "produto_nome" },
+        { label: "Categoria", key: "categoria_nome" },
+        { label: "Último Custo", key: "custo_unitario" },
+        { label: "Preço Venda", key: "preco_venda" }
+      ];
+
+      rowRenderer = (item) => {
+        return (
+          <>
+            <td className="px-4 py-2.5 font-medium text-zinc-850 dark:text-zinc-100">{item.produto_nome}</td>
+            <td className="px-4 py-2.5 text-zinc-500">{item.categoria_nome || "-"}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{fmtBRL(item.custo_unitario)}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350 font-semibold">{fmtBRL(item.preco_venda)}</td>
+          </>
+        );
+      };
+    }
+    else if (tabName === "estoque_valorizacao") {
+      dataList = estoqueReportData.produtos || [];
+      exportTitle = "Valorização do Estoque";
+      exportHeaders = ["Produto", "Categoria", "Qtd Estoque", "Unidade", "Custo Unitário", "Custo Total", "Preço Venda Unitário", "Preço Venda Total", "Margem Potencial"];
+      exportKeys = ["produto_nome", "categoria_nome", "quantidade_estoque", "unidade_medida", "custo_unitario", "valor_total_custo", "preco_venda", "valor_total_venda", "margem_potencial"];
+
+      const totalCusto = estoqueReportData.totais?.total_custo || 0;
+      const totalVenda = estoqueReportData.totais?.total_venda || 0;
+      const margemPotencial = estoqueReportData.totais?.margem_potencial || 0;
+
+      kpis = [
+        { label: "Valor de Custo Geral", value: fmtBRL(totalCusto), icon: Coins, color: "text-amber-500", bg: "bg-amber-50" },
+        { label: "Valor de Venda Potencial", value: fmtBRL(totalVenda), icon: TrendingUp, color: "text-emerald-500", bg: "bg-emerald-50" },
+        { label: "Lucro Bruto Potencial", value: fmtBRL(margemPotencial), icon: Banknote, color: "text-indigo-500", bg: "bg-indigo-50" }
+      ];
+
+      headers = [
+        { label: "Produto", key: "produto_nome" },
+        { label: "Categoria", key: "categoria_nome" },
+        { label: "Qtd Estoque", key: "quantidade_estoque" },
+        { label: "Custo Unitário", key: "custo_unitario" },
+        { label: "Custo Total", key: "valor_total_custo" },
+        { label: "Venda Unitária", key: "preco_venda" },
+        { label: "Venda Total", key: "valor_total_venda" },
+        { label: "Lucro Potencial", key: "margem_potencial" }
+      ];
+
+      rowRenderer = (item) => {
+        return (
+          <>
+            <td className="px-4 py-2.5 font-medium text-zinc-850 dark:text-zinc-100">{item.produto_nome}</td>
+            <td className="px-4 py-2.5 text-zinc-500">{item.categoria_nome || "-"}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{formatReportQuantidade(item.quantidade_estoque, item)}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{fmtBRL(item.custo_unitario)}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350 font-semibold">{fmtBRL(item.valor_total_custo)}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{fmtBRL(item.preco_venda)}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350 font-semibold">{fmtBRL(item.valor_total_venda)}</td>
+            <td className="px-4 py-2.5 text-emerald-600 font-bold bg-emerald-50/30">{fmtBRL(item.margem_potencial)}</td>
+          </>
+        );
+      };
+    }
+    else if (tabName === "estoque_consumo_insumos") {
+      dataList = estoqueReportData.consumos || [];
+      exportTitle = "Consumo de Insumos";
+      exportHeaders = ["Insumo/Produto", "Categoria", "Qtd Consumida", "Unidade", "Custo Unitário", "Custo Total"];
+      exportKeys = ["produto_nome", "categoria_nome", "quantidade", "unidade_medida", "custo_unitario", "valor_total_custo"];
+
+      const totalCusto = estoqueReportData.totais?.total_custo || 0;
+      const totalQtd = estoqueReportData.totais?.total_quantidade || 0;
+
+      kpis = [
+        { label: "Custo Total Consumido", value: fmtBRL(totalCusto), icon: Flame, color: "text-orange-500", bg: "bg-orange-50" },
+        { label: "Qtd de Itens Consumidos", value: totalQtd, icon: Package, color: "text-blue-500", bg: "bg-blue-50" }
+      ];
+
+      headers = [
+        { label: "Insumo/Produto", key: "produto_nome" },
+        { label: "Categoria", key: "categoria_nome" },
+        { label: "Qtd Consumida", key: "quantidade" },
+        { label: "Custo Unitário", key: "custo_unitario" },
+        { label: "Custo Total", key: "valor_total_custo" }
+      ];
+
+      rowRenderer = (item) => {
+        return (
+          <>
+            <td className="px-4 py-2.5 font-medium text-zinc-850 dark:text-zinc-100">{item.produto_nome}</td>
+            <td className="px-4 py-2.5 text-zinc-500">{item.categoria_nome || "-"}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350 font-semibold">{formatReportQuantidade(item.quantidade, item)}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{fmtBRL(item.custo_unitario)}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350 font-bold">{fmtBRL(item.valor_total_custo)}</td>
+          </>
+        );
+      };
+    }
+    else if (tabName === "estoque_mais_movimentados") {
+      dataList = estoqueReportData.produtos || [];
+      exportTitle = "Mais Movimentados";
+      exportHeaders = ["Produto", "Categoria", "Entradas", "Saídas", "Ajustes", "Total Fluxo"];
+      exportKeys = ["produto_nome", "categoria_nome", "entradas_qty", "saidas_qty", "ajustes_qty", "total_qty"];
+
+      const totalFluxo = estoqueReportData.totais?.total_movimentado || 0;
+
+      kpis = [
+        { label: "Fluxo Total de Estoque", value: totalFluxo, icon: Zap, color: "text-yellow-500", bg: "bg-yellow-50" }
+      ];
+
+      headers = [
+        { label: "Produto", key: "produto_nome" },
+        { label: "Categoria", key: "categoria_nome" },
+        { label: "Entradas", key: "entradas_qty" },
+        { label: "Saídas", key: "saidas_qty" },
+        { label: "Ajustes", key: "ajustes_qty" },
+        { label: "Total Fluxo", key: "total_qty" }
+      ];
+
+      rowRenderer = (item) => {
+        return (
+          <>
+            <td className="px-4 py-2.5 font-medium text-zinc-850 dark:text-zinc-100">{item.produto_nome}</td>
+            <td className="px-4 py-2.5 text-zinc-500">{item.categoria_nome || "-"}</td>
+            <td className="px-4 py-2.5 text-emerald-600 font-semibold">+{item.entradas_qty}</td>
+            <td className="px-4 py-2.5 text-rose-600 font-semibold">-{item.saidas_qty}</td>
+            <td className="px-4 py-2.5 text-amber-600">{item.ajustes_qty}</td>
+            <td className="px-4 py-2.5 text-zinc-800 dark:text-zinc-200 font-bold bg-zinc-100/50">{item.total_qty}</td>
+          </>
+        );
+      };
+    }
+    else if (tabName === "estoque_sem_movimentacao") {
+      dataList = estoqueReportData.produtos || [];
+      exportTitle = "Sem Movimentação (Giro Lento)";
+      exportHeaders = ["Produto", "Categoria", "Estoque Atual", "Unidade", "Dias Sem Giro", "Último Movimento"];
+      exportKeys = ["produto_nome", "categoria_nome", "quantidade_estoque", "unidade_medida", "dias_sem_movimentacao", "data_ultima_movimentacao"];
+
+      const totalParados = estoqueReportData.totais?.total_produtos || 0;
+      const totalValorParado = estoqueReportData.totais?.total_valor_custo || 0;
+
+      kpis = [
+        { label: "Produtos Sem Giro", value: totalParados, icon: Calendar, color: "text-blue-500", bg: "bg-blue-50" },
+        { label: "Custo Financeiro Parado", value: fmtBRL(totalValorParado), icon: Coins, color: "text-rose-500", bg: "bg-rose-50" }
+      ];
+
+      headers = [
+        { label: "Produto", key: "produto_nome" },
+        { label: "Categoria", key: "categoria_nome" },
+        { label: "Estoque Atual", key: "quantidade_estoque" },
+        { label: "Dias Sem Giro", key: "dias_sem_movimentacao" },
+        { label: "Último Movimento", key: "data_ultima_movimentacao" }
+      ];
+
+      rowRenderer = (item) => {
+        return (
+          <>
+            <td className="px-4 py-2.5 font-medium text-zinc-850 dark:text-zinc-100">{item.produto_nome}</td>
+            <td className="px-4 py-2.5 text-zinc-500">{item.categoria_nome || "-"}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{formatReportQuantidade(item.quantidade_estoque, item)}</td>
+            <td className="px-4 py-2.5 text-rose-600 font-bold bg-rose-50/20">{item.dias_sem_movimentacao} dias</td>
+            <td className="px-4 py-2.5 text-zinc-500">{item.data_ultima_movimentacao ? new Date(item.data_ultima_movimentacao).toLocaleDateString("pt-BR") : "Nunca"}</td>
+          </>
+        );
+      };
+    }
+    else if (tabName === "estoque_historico_ajustes") {
+      dataList = estoqueReportData.ajustes || [];
+      exportTitle = "Histórico de Ajustes Manuais";
+      exportHeaders = ["Data/Hora", "Produto", "Categoria", "Qtd Anterior", "Qtd Ajustada", "Qtd Atual", "Motivo/Justificativa", "Usuário"];
+      exportKeys = ["criado_em", "produto_nome", "categoria_nome", "quantidade_anterior", "quantidade_ajustada", "quantidade_atual", "motivo", "usuario_nome"];
+
+      const totalAjustes = estoqueReportData.totais?.total_ajustes || 0;
+
+      kpis = [
+        { label: "Correções Manuais", value: totalAjustes, icon: Sliders, color: "text-amber-500", bg: "bg-amber-50" }
+      ];
+
+      headers = [
+        { label: "Data/Hora", key: "criado_em" },
+        { label: "Produto", key: "produto_nome" },
+        { label: "Categoria", key: "categoria_nome" },
+        { label: "Qtd Anterior", key: "quantidade_anterior" },
+        { label: "Qtd Ajustada", key: "quantidade_ajustada" },
+        { label: "Qtd Atual", key: "quantidade_atual" },
+        { label: "Motivo/Justificativa", key: "motivo" },
+        { label: "Usuário", key: "usuario_nome" }
+      ];
+
+      rowRenderer = (item) => {
+        const isPositivo = item.quantidade_ajustada > 0;
+        return (
+          <>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{new Date(item.criado_em).toLocaleString("pt-BR")}</td>
+            <td className="px-4 py-2.5 font-medium text-zinc-850 dark:text-zinc-100">{item.produto_nome}</td>
+            <td className="px-4 py-2.5 text-zinc-550">{item.categoria_nome || "-"}</td>
+            <td className="px-4 py-2.5 text-zinc-500">{formatReportQuantidade(item.quantidade_anterior, item)}</td>
+            <td className={`px-4 py-2.5 font-bold ${isPositivo ? 'text-emerald-600' : 'text-rose-600'}`}>
+              {isPositivo ? "+" : ""}{formatReportQuantidade(item.quantidade_ajustada, item)}
+            </td>
+            <td className="px-4 py-2.5 font-semibold text-zinc-700 dark:text-zinc-350">{formatReportQuantidade(item.quantidade_atual, item)}</td>
+            <td className="px-4 py-2.5 text-zinc-500 text-xs italic max-w-xs truncate" title={item.motivo}>{item.motivo || "-"}</td>
+            <td className="px-4 py-2.5 text-zinc-750 font-medium">{item.usuario_nome || "Desconhecido"}</td>
+          </>
+        );
+      };
+    }
+    else if (tabName === "estoque_inventario") {
+      dataList = estoqueReportData.produtos || [];
+      exportTitle = "Conferência de Inventário";
+      exportHeaders = ["Produto", "Categoria", "Unidade", "Qtd Sistema"];
+      exportKeys = ["produto_nome", "categoria_nome", "unidade_medida", "quantidade_estoque"];
+
+      const totalItens = estoqueReportData.totais?.total_itens || 0;
+      const totalCusto = estoqueReportData.totais?.total_custo || 0;
+
+      kpis = [
+        { label: "Itens para Contagem", value: totalItens, icon: ClipboardList, color: "text-blue-500", bg: "bg-blue-50" },
+        { label: "Valor de Custo Estimado", value: fmtBRL(totalCusto), icon: Coins, color: "text-amber-500", bg: "bg-amber-50" }
+      ];
+
+      headers = [
+        { label: "Produto", key: "produto_nome" },
+        { label: "Categoria", key: "categoria_nome" },
+        { label: "Qtd Sistema", key: "quantidade_estoque" },
+        { label: "Qtd Física (Contagem)", key: "contagem_fisica" },
+        { label: "Diferença", key: "diferenca" }
+      ];
+
+      rowRenderer = (item) => {
+        return (
+          <>
+            <td className="px-4 py-2.5 font-medium text-zinc-850 dark:text-zinc-100">{item.produto_nome}</td>
+            <td className="px-4 py-2.5 text-zinc-500">{item.categoria_nome || "-"}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350 font-semibold">{formatReportQuantidade(item.quantidade_estoque, item)}</td>
+            <td className="px-4 py-2.5 border-l border-r border-zinc-200 bg-zinc-50/50 w-36"></td>
+            <td className="px-4 py-2.5 bg-zinc-50/50 w-28"></td>
+          </>
+        );
+      };
+    }
+    else if (tabName === "estoque_perdas_quebras") {
+      dataList = estoqueReportData.perdas || [];
+      exportTitle = "Perdas e Quebras";
+      exportHeaders = ["Data/Hora", "Produto", "Categoria", "Qtd Perdida", "Unidade", "Custo Unitário", "Valor Total", "Motivo", "Responsável"];
+      exportKeys = ["criado_em", "produto_nome", "categoria_nome", "quantidade", "unidade_medida", "custo_unitario", "valor_total", "motivo", "usuario_nome"];
+
+      const totalQtdPerdas = estoqueReportData.totais?.total_quantidade || 0;
+      const totalValorPerdas = estoqueReportData.totais?.total_valor || 0;
+
+      kpis = [
+        { label: "Qtd Itens Perdidos", value: totalQtdPerdas, icon: TrendingDown, color: "text-rose-500", bg: "bg-rose-50" },
+        { label: "Prejuízo Financeiro Total", value: fmtBRL(totalValorPerdas), icon: Coins, color: "text-rose-600", bg: "bg-rose-50" }
+      ];
+
+      headers = [
+        { label: "Data/Hora", key: "criado_em" },
+        { label: "Produto", key: "produto_nome" },
+        { label: "Categoria", key: "categoria_nome" },
+        { label: "Qtd Perdida", key: "quantidade" },
+        { label: "Custo Unitário", key: "custo_unitario" },
+        { label: "Valor Total", key: "valor_total" },
+        { label: "Motivo", key: "motivo" },
+        { label: "Responsável", key: "usuario_nome" }
+      ];
+
+      rowRenderer = (item) => {
+        return (
+          <>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{new Date(item.criado_em).toLocaleString("pt-BR")}</td>
+            <td className="px-4 py-2.5 font-medium text-zinc-850 dark:text-zinc-100">{item.produto_nome}</td>
+            <td className="px-4 py-2.5 text-zinc-555">{item.categoria_nome || "-"}</td>
+            <td className="px-4 py-2.5 text-rose-600 font-semibold">{formatReportQuantidade(item.quantidade, item)}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{fmtBRL(item.custo_unitario)}</td>
+            <td className="px-4 py-2.5 text-rose-700 font-bold">{fmtBRL(item.valor_total)}</td>
+            <td className="px-4 py-2.5 text-zinc-555 text-xs italic">{item.motivo || "-"}</td>
+            <td className="px-4 py-2.5 text-zinc-700 font-medium">{item.usuario_nome || "Desconhecido"}</td>
+          </>
+        );
+      };
+    }
+
+    const filteredList = dataList.filter(item => {
+      if (!searchEstoqueQuery) return true;
+      const query = searchEstoqueQuery.toLowerCase();
+      
+      const prodName = (item.produto_nome || item.nome || "").toLowerCase();
+      const catName = (item.categoria_nome || item.categoria || "").toLowerCase();
+      const user = (item.usuario_nome || "").toLowerCase();
+      const mot = (item.motivo || "").toLowerCase();
+
+      return prodName.includes(query) || catName.includes(query) || user.includes(query) || mot.includes(query);
+    });
+
+    const sortedList = [...filteredList].sort((a, b) => {
+      if (!sortEstoqueField) return 0;
+      let valA = a[sortEstoqueField];
+      let valB = b[sortEstoqueField];
+
+      if (typeof valA === "string") {
+        valA = valA.toLowerCase();
+        valB = valB.toLowerCase();
+        return sortEstoqueDirection === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+      
+      if (valA === undefined || valA === null) return 1;
+      if (valB === undefined || valB === null) return -1;
+
+      return sortEstoqueDirection === "asc" ? valA - valB : valB - valA;
+    });
+
+    const handleSort = (field) => {
+      if (sortEstoqueField === field) {
+        setSortEstoqueDirection(sortEstoqueDirection === "asc" ? "desc" : "asc");
+      } else {
+        setSortEstoqueField(field);
+        setSortEstoqueDirection("asc");
+      }
+    };
+
+    return (
+      <TooltipProvider delayDuration={150}>
+        <div className="space-y-6">
+        {kpis.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {kpis.map((kpi, idx) => {
+              const IconComp = kpi.icon;
+              return (
+                <div key={idx} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm flex items-center gap-4">
+                  <div className={`p-3 rounded-lg ${kpi.bg || 'bg-zinc-50'} dark:bg-zinc-800`}>
+                    <IconComp className={`w-5 h-5 ${kpi.color || 'text-zinc-500'}`} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1">
+                      <p className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">{kpi.label}</p>
+                      {kpi.tooltip && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="cursor-help text-zinc-400 hover:text-zinc-650 inline-flex items-center">
+                              <HelpCircle className="w-3 h-3 transition-colors" />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-zinc-900 text-white text-xs p-2.5 rounded-lg border border-zinc-800 shadow-md max-w-[220px] normal-case font-normal leading-relaxed">
+                            {kpi.tooltip}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                    <p className="text-xl font-bold text-zinc-850 dark:text-zinc-55 mt-0.5">{kpi.value}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 no-print">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+            <Input
+              type="text"
+              placeholder="Pesquisar neste relatório..."
+              value={searchEstoqueQuery}
+              onChange={(e) => setSearchEstoqueQuery(e.target.value)}
+              className="pl-9 text-xs h-9 bg-zinc-50 dark:bg-zinc-950"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.print()}
+              className="text-xs font-semibold h-9 rounded-lg border-zinc-200 flex items-center gap-1.5"
+            >
+              <Printer className="w-3.5 h-3.5" /> PDF / Imprimir
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExport('xlsx', exportTitle, exportHeaders, exportKeys, sortedList)}
+              className="text-xs font-semibold h-9 rounded-lg border-zinc-200 flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700"
+            >
+              Excel
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExport('csv', exportTitle, exportHeaders, exportKeys, sortedList)}
+              className="text-xs font-semibold h-9 rounded-lg border-zinc-200 flex items-center gap-1.5 text-blue-600 hover:text-blue-700"
+            >
+              CSV
+            </Button>
+          </div>
+        </div>
+
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden">
+          {selectedReport === "estoque_movimentacao" && (
+            <div className="flex flex-wrap items-center gap-4 px-4 py-2.5 bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-[10px] font-bold text-zinc-450 dark:text-zinc-400 uppercase tracking-wider no-print">
+              <span className="text-zinc-400">Legenda:</span>
+              <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Entrada</span>
+              <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Saída</span>
+              <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Ajuste</span>
+              <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Outros / Transf.</span>
+            </div>
+          )}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950">
+                  {headers.map((h, idx) => (
+                    <th
+                      key={idx}
+                      onClick={() => handleSort(h.key)}
+                      className={`px-4 py-3 font-semibold text-zinc-650 dark:text-zinc-300 uppercase tracking-wider cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-850 select-none ${
+                        h.key === "contagem_fisica" || h.key === "diferenca" ? "pointer-events-none" : ""
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {h.label}
+                        {sortEstoqueField === h.key && (
+                          <ArrowUpDown className="w-3 h-3 text-[#84A59D]" />
+                        )}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-150 dark:divide-zinc-800">
+                {sortedList.length === 0 ? (
+                  <tr>
+                    <td colSpan={headers.length} className="text-center p-8 text-zinc-400 italic">
+                      Nenhum resultado encontrado com os filtros e busca aplicados.
+                    </td>
+                  </tr>
+                ) : (
+                  sortedList.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-850/30 transition-colors">
+                      {rowRenderer(item)}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      </TooltipProvider>
+    );
+  };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 fade-in max-w-7xl mx-auto w-full overflow-x-hidden">
@@ -561,7 +1434,7 @@ export default function Relatorios() {
           </div>
 
           {/* Categorized Groups */}
-          {["Financeiro", "Vendas", "Rentabilidade"].map((cat) => {
+          {["Financeiro", "Vendas", "Rentabilidade", "Estoque"].map((cat) => {
             const filtered = REPORTS_LIST.filter(
               (r) =>
                 r.category === cat &&
@@ -613,8 +1486,10 @@ export default function Relatorios() {
           })}
         </div>
       ) : (
-        <div>
-          {/* Back Navigation Bar */}
+        <div className="relative">
+          {/* Sticky Header Container */}
+          <div className="sticky top-[-24px] pt-4 pb-2 z-30 bg-zinc-50/95 backdrop-blur-md border-b border-zinc-200/80 mb-6 no-print -mx-6 px-6 max-h-[90vh] overflow-y-auto">
+            {/* Back Navigation Bar */}
           <div className="flex items-center justify-between mb-6 border-b border-zinc-150 pb-4 no-print">
             <button
               onClick={() => { setSelectedReport(null); setIsGenerated(false); setGeneratedFilters(null); }}
@@ -974,6 +1849,82 @@ export default function Relatorios() {
               </div>
             )}
 
+            {tab && tab.startsWith("estoque") && (
+              <div className="mt-4 border-t border-zinc-100 pt-4 space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-[10px] uppercase font-bold text-zinc-550 tracking-wider">Categorias de Produto</Label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFilterEstoqueCategorias(categoriesList.map(c => c.id))}
+                        className="text-[10px] text-emerald-600 hover:text-emerald-700 font-semibold"
+                      >
+                        Marcar Todas
+                      </button>
+                      <span className="text-zinc-300 text-[10px]">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setFilterEstoqueCategorias([])}
+                        className="text-[10px] text-zinc-500 hover:text-zinc-600 font-semibold"
+                      >
+                        Desmarcar Todas
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto p-2.5 border border-zinc-200 rounded-lg bg-zinc-50 dark:bg-zinc-950">
+                    {categoriesList.length === 0 ? (
+                      <span className="text-xs text-zinc-400">Nenhuma categoria cadastrada.</span>
+                    ) : (
+                      categoriesList.map((cat) => {
+                        const checked = filterEstoqueCategorias.includes(cat.id);
+                        return (
+                          <label
+                            key={cat.id}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs cursor-pointer select-none border transition-all ${
+                              checked
+                                ? "bg-[#84A59D]/10 text-[#3A4F4A] border-[#84A59D] font-medium"
+                                : "bg-white text-zinc-500 border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-800"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                if (checked) {
+                                  setFilterEstoqueCategorias(filterEstoqueCategorias.filter(id => id !== cat.id));
+                                } else {
+                                  setFilterEstoqueCategorias([...filterEstoqueCategorias, cat.id]);
+                                }
+                              }}
+                              className="sr-only"
+                            />
+                            {cat.nome}
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {["estoque_atual", "estoque_movimentacao", "estoque_consumo_insumos", "estoque_historico_ajustes", "estoque_perdas_quebras"].includes(tab) && (
+                  <div className="w-full md:max-w-xs">
+                    <Label className="text-[10px] uppercase font-bold text-zinc-550 tracking-wider">Produto Específico</Label>
+                    <SearchableSelect
+                      placeholder="Todos os produtos"
+                      searchPlaceholder="Pesquisar produto..."
+                      options={[
+                        { value: "todos", label: "Todos os produtos" },
+                        ...produtosList.map((p) => ({ value: p.id, label: p.nome }))
+                      ]}
+                      value={filterEstoqueProduto}
+                      onValueChange={setFilterEstoqueProduto}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Generate Button Row */}
             <div className="flex flex-wrap items-center justify-between gap-4 mt-4 pt-4 border-t border-zinc-100">
               <div className="flex items-center gap-3">
@@ -1002,6 +1953,7 @@ export default function Relatorios() {
               </div>
             </div>
           </div>
+          </div> {/* Fim do Sticky Header Container */}
 
           {/* Results Area */}
           {!isGenerated ? (
@@ -2912,6 +3864,39 @@ export default function Relatorios() {
             </div>
           )}
         </TabsContent>
+        <TabsContent value="estoque_atual">
+          {renderEstoqueReport("estoque_atual")}
+        </TabsContent>
+        <TabsContent value="estoque_movimentacao">
+          {renderEstoqueReport("estoque_movimentacao")}
+        </TabsContent>
+        <TabsContent value="estoque_abaixo_minimo">
+          {renderEstoqueReport("estoque_abaixo_minimo")}
+        </TabsContent>
+        <TabsContent value="estoque_sem_estoque">
+          {renderEstoqueReport("estoque_sem_estoque")}
+        </TabsContent>
+        <TabsContent value="estoque_valorizacao">
+          {renderEstoqueReport("estoque_valorizacao")}
+        </TabsContent>
+        <TabsContent value="estoque_consumo_insumos">
+          {renderEstoqueReport("estoque_consumo_insumos")}
+        </TabsContent>
+        <TabsContent value="estoque_mais_movimentados">
+          {renderEstoqueReport("estoque_mais_movimentados")}
+        </TabsContent>
+        <TabsContent value="estoque_sem_movimentacao">
+          {renderEstoqueReport("estoque_sem_movimentacao")}
+        </TabsContent>
+        <TabsContent value="estoque_historico_ajustes">
+          {renderEstoqueReport("estoque_historico_ajustes")}
+        </TabsContent>
+        <TabsContent value="estoque_inventario">
+          {renderEstoqueReport("estoque_inventario")}
+        </TabsContent>
+        <TabsContent value="estoque_perdas_quebras">
+          {renderEstoqueReport("estoque_perdas_quebras")}
+        </TabsContent>
       </Tabs>
     )}
       {/* Rentabilidade Detail Dialog */}
@@ -3293,6 +4278,103 @@ const renderHelpContent = (reportId) => {
               <div>• Faturamento Venda = Valor Produtos + Valor Serviços</div>
               <div>• Resultado Venda = Faturamento - CMV - Comissão - Taxas Bancárias</div>
             </div>
+          </HelpSection>
+        </div>
+      );
+    case "estoque_atual":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Apresentar a quantidade física atual de cada produto em estoque, comparando-a com o limite mínimo e calculando o valor total sob preço de custo e venda potencial.</p>
+          </HelpSection>
+          <HelpSection title="Campos Exibidos">
+            <p><strong>Quantidade em Estoque:</strong> Quantidade atual em estoque físico.</p>
+            <p><strong>Estoque Mínimo:</strong> Quantidade mínima recomendada para evitar a ruptura.</p>
+            <p><strong>Custo Unitário / Total:</strong> Custo médio de aquisição do item.</p>
+            <p><strong>Preço Venda / Venda Total:</strong> Valor esperado de venda e faturamento bruto total potencial.</p>
+          </HelpSection>
+        </div>
+      );
+    case "estoque_movimentacao":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Rastrear todo o fluxo de entrada, saída e ajuste de estoque físico, garantindo auditoria de qual usuário executou cada movimentação.</p>
+          </HelpSection>
+          <HelpSection title="Auditoria e Rastreabilidade">
+            <p>Este relatório exibe o nome e ID do usuário que autorizou ou gerou a movimentação (ex: vendas automáticas, ajustes manuais ou entradas de fornecedores).</p>
+          </HelpSection>
+        </div>
+      );
+    case "estoque_abaixo_minimo":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Identificar itens com risco de desabastecimento, permitindo planejar compras de reposição antes de interromper serviços ou vendas.</p>
+          </HelpSection>
+        </div>
+      );
+    case "estoque_sem_estoque":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Apresentar a lista de todos os produtos com saldo igual ou inferior a zero no inventário atual.</p>
+          </HelpSection>
+        </div>
+      );
+    case "estoque_valorizacao":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Valorizar financeiramente o estoque com base no custo de aquisição atual, preço de venda de varejo e margem de lucro potencial.</p>
+          </HelpSection>
+        </div>
+      );
+    case "estoque_consumo_insumos":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Apresentar o consumo físico e financeiro de insumos e materiais de uso interno aplicados pelos colaboradores durante a prestação de serviços no período.</p>
+          </HelpSection>
+        </div>
+      );
+    case "estoque_mais_movimentados":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Classificar os produtos de maior giro, destacando o fluxo total (soma de entradas e saídas) para identificar gargalos de logística.</p>
+          </HelpSection>
+        </div>
+      );
+    case "estoque_sem_movimentacao":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Identificar o chamado "estoque parado" ou sem giro no período, que imobiliza capital e corre risco de perda por validade ou depreciação.</p>
+          </HelpSection>
+        </div>
+      );
+    case "estoque_historico_ajustes":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Auditar todas as correções manuais de estoque realizadas no painel administrativo, registrando o usuário, a variação da quantidade e o motivo justificado.</p>
+          </HelpSection>
+        </div>
+      );
+    case "estoque_inventario":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Fornecer uma folha de apoio ou lista digital para que o gerente de estoque faça a conferência física e identifique quebras ou desvios.</p>
+          </HelpSection>
+        </div>
+      );
+    case "estoque_perdas_quebras":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Consolidar e quantificar financeiramente as saídas de estoque justificadas como perdas, quebras, desperdício ou roubo no período.</p>
           </HelpSection>
         </div>
       );

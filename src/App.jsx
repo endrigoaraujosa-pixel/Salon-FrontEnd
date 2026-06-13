@@ -36,6 +36,7 @@ import AgendaWhatsAppHistorico from "./pages/AgendaWhatsAppHistorico";
 import CadastroTipoPagamento from "./pages/CadastroTipoPagamento";
 import CadastroDescontos from "./pages/CadastroDescontos";
 import Cadastros from "./pages/Cadastros";
+import ConfiguracoesMotivosEstoque from "./pages/ConfiguracoesMotivosEstoque";
 
 
 
@@ -103,6 +104,7 @@ function App() {
               <Route path="/cadastros/fornecedores" element={<PermissionRoute permKey="cadastros"><ConfiguracoesFornecedores /></PermissionRoute>} />
               <Route path="/cadastros/tipo-pagamento" element={<PermissionRoute permKey="cadastros"><CadastroTipoPagamento /></PermissionRoute>} />
               <Route path="/cadastros/descontos" element={<PermissionRoute permKey="cadastros"><CadastroDescontos /></PermissionRoute>} />
+              <Route path="/cadastros/motivos-estoque" element={<PermissionRoute permKey="cadastros"><ConfiguracoesMotivosEstoque /></PermissionRoute>} />
               <Route path="/agenda/whatsapp-historico" element={<AgendaWhatsAppHistorico />} />
               <Route path="/usuarios" element={<Usuarios />} />
             </Route>

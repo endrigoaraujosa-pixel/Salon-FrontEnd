@@ -7,7 +7,8 @@ import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
-import { Package, Plus, Edit2, Trash2, AlertTriangle, Percent, History, Printer, Folder, ChevronDown, ChevronRight } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
+import { Package, Plus, Edit2, Trash2, AlertTriangle, Percent, History, Printer, Folder, ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 import { Checkbox } from "../components/ui/checkbox";
 import { toast } from "sonner";
 import AuditModal from "../components/AuditModal";
@@ -34,6 +35,26 @@ export default function Produtos() {
   const [includePrices, setIncludePrices] = useState(true);
   const [reportCategorySearch, setReportCategorySearch] = useState("");
   const [empresa, setEmpresa] = useState(null);
+
+  // Kardex state
+  const [kardexOpen, setKardexOpen] = useState(false);
+  const [kardexProduct, setKardexProduct] = useState(null);
+  const [kardexMovements, setKardexMovements] = useState([]);
+  const [loadingKardex, setLoadingKardex] = useState(false);
+
+  const openKardex = async (p) => {
+    setKardexProduct(p);
+    setKardexOpen(true);
+    setLoadingKardex(true);
+    try {
+      const res = await http.get(`/estoque/movimentacoes?produto_id=${p.id}`);
+      setKardexMovements(res.data);
+    } catch (error) {
+      toast.error("Erro ao carregar histórico do produto.");
+    } finally {
+      setLoadingKardex(false);
+    }
+  };
 
   const openReportModal = () => {
     const allIds = [
@@ -946,6 +967,7 @@ export default function Produtos() {
                                 </td>
                                 <td className="px-4 py-3 text-right">
                                   <div className="flex justify-end gap-1">
+                                    <Button size="sm" variant="ghost" onClick={() => openKardex(p)} className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-150" title="Kardex / Histórico"><History className="w-4 h-4" /></Button>
                                     <Button size="sm" variant="ghost" onClick={() => edit(p)} className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><Edit2 className="w-4 h-4" /></Button>
                                     <Button size="sm" variant="ghost" onClick={() => del(p.id)} className="text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"><Trash2 className="w-4 h-4" /></Button>
                                   </div>
@@ -1014,7 +1036,16 @@ export default function Produtos() {
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
+                             <div className="flex items-center gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => openKardex(p)}
+                                className="h-9 px-3 border-zinc-200 dark:border-zinc-700 text-zinc-650 dark:text-zinc-350 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 flex items-center justify-center"
+                                title="Kardex / Histórico"
+                              >
+                                <History className="w-4 h-4" />
+                              </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline" 
@@ -1177,6 +1208,153 @@ export default function Produtos() {
         tituloModulo="Produtos" 
         onRestoreSuccess={load}
       />
+
+      {/* Dialog Kardex (Histórico do Produto) */}
+      <Dialog open={kardexOpen} onOpenChange={setKardexOpen}>
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-4xl p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-950 shadow-2xl rounded-2xl border-0" style={{ maxHeight: "90vh" }}>
+          {/* Header */}
+          <div className="px-6 py-5 border-b border-zinc-150 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20 shrink-0">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-3 text-lg font-bold text-zinc-850 dark:text-zinc-100">
+                <div className="p-2 bg-zinc-100 dark:bg-zinc-900 text-[#3A4F4A] dark:text-[#84A59D] rounded-xl">
+                  <History className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="block font-display text-lg font-bold">Ficha Kardex (Rastreabilidade)</span>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400 font-semibold">{kardexProduct?.nome}</span>
+                </div>
+              </DialogTitle>
+            </DialogHeader>
+          </div>
+
+          {/* Product Overview Card in Kardex */}
+          {kardexProduct && (
+            <div className="px-6 py-4 bg-zinc-50/30 dark:bg-zinc-900/10 border-b border-zinc-150 dark:border-zinc-850 grid grid-cols-1 sm:grid-cols-3 gap-4 shrink-0">
+              <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Estoque Atual</span>
+                <div className="font-mono text-base font-bold mt-0.5 text-zinc-800 dark:text-zinc-200">
+                  {(() => {
+                    const qty = Number((kardexProduct.quantidade_estoque || 0).toFixed(3));
+                    const qtyPerUnit = Number(kardexProduct.quantidade_por_unidade || 0);
+                    if (qtyPerUnit > 0) {
+                      const eq = Number((qty / qtyPerUnit).toFixed(2));
+                      return `${qty} ${kardexProduct.unidade_medida_insumo || 'un'} (${eq} ${kardexProduct.unidade_medida || 'un'})`;
+                    }
+                    return `${qty} ${kardexProduct.unidade_medida || 'un'}`;
+                  })()}
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Custo Unitário</span>
+                <div className="font-mono text-base font-bold mt-0.5 text-zinc-800 dark:text-zinc-200">
+                  {fmtBRL(kardexProduct.custo_unitario)}
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Valor em Estoque</span>
+                <div className="font-mono text-base font-bold mt-0.5 text-emerald-600 dark:text-emerald-500">
+                  {fmtBRL((kardexProduct.quantidade_estoque || 0) * (kardexProduct.custo_unitario || 0))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Movements list inside Kardex */}
+          <div className="flex-1 overflow-y-auto p-6 min-h-60 bg-zinc-50/10 dark:bg-zinc-950">
+            {loadingKardex ? (
+              <div className="flex flex-col items-center justify-center py-20 text-zinc-450 dark:text-zinc-500 gap-3">
+                <RefreshCw className="w-8 h-8 animate-spin text-[#84A59D]" />
+                <span className="text-sm font-semibold">Buscando movimentações do produto...</span>
+              </div>
+            ) : kardexMovements.length === 0 ? (
+              <div className="text-center py-20 text-zinc-400 dark:text-zinc-500">
+                <Package className="w-12 h-12 mx-auto mb-3 opacity-30 text-[#84A59D]" />
+                <p className="text-sm font-semibold">Nenhuma movimentação para este produto</p>
+                <p className="text-xs mt-1">Este produto ainda não registrou entradas, saídas ou ajustes no estoque.</p>
+              </div>
+            ) : (
+              <div className="border border-zinc-250 dark:border-zinc-850 rounded-xl overflow-hidden bg-white dark:bg-zinc-900">
+                <Table>
+                  <TableHeader className="bg-zinc-50 dark:bg-zinc-900/50">
+                    <TableRow>
+                      <TableHead className="font-semibold">Data / Hora</TableHead>
+                      <TableHead className="text-center font-semibold">Tipo</TableHead>
+                      <TableHead className="text-right font-semibold">Qtd Movimentada</TableHead>
+                      <TableHead className="text-right font-semibold">Estoque Anterior</TableHead>
+                      <TableHead className="text-right font-semibold">Estoque Atual</TableHead>
+                      <TableHead className="font-semibold">Motivo / Documento</TableHead>
+                      <TableHead className="font-semibold">Responsável</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {kardexMovements.map((m) => {
+                      let typeBadge = "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400";
+                      let typeText = "Entrada";
+                      
+                      if (m.tipo === "saida") {
+                        typeBadge = "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400";
+                        typeText = "Saída";
+                      } else if (m.tipo === "ajuste") {
+                        typeBadge = "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400";
+                        typeText = "Ajuste";
+                      }
+
+                      const unitLabel = kardexProduct 
+                        ? (Number(kardexProduct.quantidade_por_unidade || 0) > 0 
+                          ? (kardexProduct.unidade_medida_insumo || 'un') 
+                          : (kardexProduct.unidade_medida || 'un')) 
+                        : 'un';
+
+                      return (
+                        <TableRow key={m.id} className="hover:bg-zinc-50/50 transition-colors">
+                          <TableCell className="font-mono text-xs whitespace-nowrap text-zinc-500">
+                            {new Date(m.createdAt).toLocaleString("pt-BR")}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${typeBadge}`}>
+                              {typeText}
+                            </span>
+                          </TableCell>
+                          <TableCell className={`text-right font-mono font-bold whitespace-nowrap ${
+                            m.quantidade > 0 
+                              ? "text-emerald-600 dark:text-emerald-500" 
+                              : m.quantidade < 0 
+                                ? "text-rose-600 dark:text-rose-500" 
+                                : "text-zinc-500"
+                          }`}>
+                            {m.quantidade > 0 ? "+" : ""}{Number(m.quantidade.toFixed(3))} {unitLabel}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-zinc-500 whitespace-nowrap">
+                            {Number(m.quantidade_anterior.toFixed(3))} {unitLabel}
+                          </TableCell>
+                          <TableCell className="text-right font-mono font-bold text-zinc-800 dark:text-zinc-200 whitespace-nowrap">
+                            {Number(m.quantidade_atual.toFixed(3))} {unitLabel}
+                          </TableCell>
+                          <TableCell className="text-xs text-zinc-600 dark:text-zinc-350 max-w-xs truncate" title={m.motivo}>
+                            {m.motivo || "-"}
+                          </TableCell>
+                          <TableCell className="text-xs text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
+                            {m.usuario_nome || "Sistema"}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-zinc-150 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20 shrink-0 flex justify-end">
+            <Button variant="outline" className="h-10 font-bold" onClick={() => setKardexOpen(false)}>
+              Fechar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
