@@ -2150,7 +2150,7 @@ export default function Relatorios() {
               </div>
 
               <div className="grid lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-4 sm:p-6 space-y-4 shadow-sm print-full-width">
+                <div className="lg:col-span-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 sm:p-6 space-y-4 shadow-sm print-full-width">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800 gap-3">
                     <h3 className="font-display text-lg font-medium text-zinc-800 dark:text-zinc-100">Demonstração de Resultado</h3>
                     <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
@@ -2285,7 +2285,7 @@ export default function Relatorios() {
                           onClick={() => handleDrilldown(`Receitas: ${cat}`, dre.detalhes?.outras_receitas.filter(r => r.categoria === cat))}
                           className="flex items-center justify-between text-xs py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 px-1.5 rounded cursor-pointer group"
                         >
-                          <span className="text-zinc-500 font-medium group-hover:text-[#3A4F4A]">{cat}</span>
+                          <span className="text-zinc-500 dark:text-zinc-400 font-medium group-hover:text-[#3A4F4A] dark:group-hover:text-[#EAF0EE]">{cat}</span>
                           <span className="font-mono text-zinc-800 dark:text-zinc-150 font-semibold">{fmtBRL(val)}</span>
                         </div>
                       ))}
@@ -2347,7 +2347,7 @@ export default function Relatorios() {
                             onClick={() => handleDrilldown(`Despesas: ${cat}`, dre.detalhes?.despesas.filter(d => d.categoria === cat))}
                             className="flex items-center justify-between text-xs py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 px-1.5 rounded cursor-pointer group"
                           >
-                            <span className="text-zinc-500 font-medium group-hover:text-[#3A4F4A]">{cat}</span>
+                            <span className="text-zinc-500 dark:text-zinc-400 font-medium group-hover:text-[#3A4F4A] dark:group-hover:text-[#EAF0EE]">{cat}</span>
                             <span className="font-mono text-zinc-800 dark:text-zinc-150 font-semibold">{fmtBRL(val)}</span>
                           </div>
                         ))}
@@ -2497,23 +2497,23 @@ export default function Relatorios() {
                  </Dialog>
               </div>
               <div className="space-y-4">
-                <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
                   <div className="text-xs uppercase tracking-wider text-zinc-400">Atendimentos</div>
-                  <div className="font-display text-4xl font-semibold mt-1 text-[#3A4F4A]">{dre.total_atendimentos}</div>
+                  <div className="font-display text-4xl font-semibold mt-1 text-[#3A4F4A] dark:text-[#EAF0EE]">{dre.total_atendimentos}</div>
                 </div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
                   <div className="text-xs uppercase tracking-wider text-zinc-400">Vendas diretas</div>
-                  <div className="font-display text-4xl font-semibold mt-1 text-[#3A4F4A]">{dre.total_vendas_diretas}</div>
+                  <div className="font-display text-4xl font-semibold mt-1 text-[#3A4F4A] dark:text-[#EAF0EE]">{dre.total_vendas_diretas}</div>
                 </div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 shadow-sm">
                   <div className="text-xs uppercase tracking-wider text-zinc-400">Taxas de cartão</div>
-                  <div className="font-display text-2xl font-semibold mt-1 text-rose-600">{fmtBRL(dre.taxas_cartao.total)}</div>
+                  <div className="font-display text-2xl font-semibold mt-1 text-rose-600 dark:text-rose-400">{fmtBRL(dre.taxas_cartao.total)}</div>
                   <div className="text-xs text-zinc-500 mt-2 space-y-0.5">
                     <div>Crédito: {fmtBRL(dre.taxas_cartao.credito)} {dre.taxas_cartao.credito_dias !== undefined && `(Prazo: ${dre.taxas_cartao.credito_dias}d)`}</div>
                     <div>Débito: {fmtBRL(dre.taxas_cartao.debito)} {dre.taxas_cartao.debito_dias !== undefined && `(Prazo: ${dre.taxas_cartao.debito_dias}d)`}</div>
                   </div>
                   {dre.taxas_cartao.pmr !== undefined && (
-                    <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-xs text-zinc-650 flex items-center justify-between font-semibold">
+                    <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-xs text-zinc-650 dark:text-zinc-400 flex items-center justify-between font-semibold">
                       <span>Prazo Médio de Recebimento (PMR)</span>
                       <span className="text-zinc-800 dark:text-zinc-100 font-bold bg-zinc-50 dark:bg-zinc-950 px-2 py-0.5 border border-zinc-150 dark:border-zinc-800 rounded">{dre.taxas_cartao.pmr} dias</span>
                     </div>
@@ -3402,12 +3402,12 @@ export default function Relatorios() {
 
               {/* Overview Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Faturamento Bruto</span>
+                    <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Faturamento Bruto</span>
                     <TrendingUp className="w-5 h-5 text-[#84A59D]" />
                   </div>
-                  <div className="font-display text-3xl font-bold mt-2 text-zinc-800">
+                  <div className="font-display text-3xl font-bold mt-2 text-zinc-800 dark:text-zinc-100">
                     {fmtBRL(resultadoOperacional.consolidado.receita_total)}
                   </div>
                   <p className="text-[10px] text-zinc-500 mt-1">
@@ -3415,12 +3415,12 @@ export default function Relatorios() {
                   </p>
                 </div>
 
-                <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Custos & Deduções</span>
+                    <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Custos & Deduções</span>
                     <TrendingDown className="w-5 h-5 text-rose-500" />
                   </div>
-                  <div className="font-display text-3xl font-bold mt-2 text-zinc-800">
+                  <div className="font-display text-3xl font-bold mt-2 text-zinc-800 dark:text-zinc-100">
                     {fmtBRL(resultadoOperacional.consolidado.cmv + resultadoOperacional.consolidado.comissoes + resultadoOperacional.consolidado.taxas)}
                   </div>
                   <p className="text-[10px] text-zinc-500 mt-1">
@@ -3430,21 +3430,23 @@ export default function Relatorios() {
 
                 <div className={`border rounded-2xl p-5 shadow-sm hover:shadow-md transition-all ${
                   resultadoOperacional.consolidado.resultado_operacional >= 0 
-                    ? "bg-emerald-50/50 border-emerald-200" 
-                    : "bg-rose-50/50 border-rose-200"
+                    ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40" 
+                    : "bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/40"
                 }`}>
                   <div className="flex items-center justify-between">
                     <span className={`text-xs font-bold uppercase tracking-wider ${
-                      resultadoOperacional.consolidado.resultado_operacional >= 0 ? "text-emerald-600" : "text-rose-600"
+                      resultadoOperacional.consolidado.resultado_operacional >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                     }`}>
                       Resultado Operacional
                     </span>
-                    <TrendingUp className={`w-5 h-5 ${
-                      resultadoOperacional.consolidado.resultado_operacional >= 0 ? "text-emerald-600" : "text-rose-600"
-                    }`} />
+                    {resultadoOperacional.consolidado.resultado_operacional >= 0 ? (
+                      <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                      <TrendingDown className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                    )}
                   </div>
                   <div className={`font-display text-3xl font-black mt-2 ${
-                    resultadoOperacional.consolidado.resultado_operacional >= 0 ? "text-emerald-700" : "text-rose-700"
+                    resultadoOperacional.consolidado.resultado_operacional >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300"
                   }`}>
                     {fmtBRL(resultadoOperacional.consolidado.resultado_operacional)}
                   </div>
@@ -3455,15 +3457,15 @@ export default function Relatorios() {
               </div>
 
               {/* Detailed Breakdown */}
-              <div className="bg-white border border-zinc-200 rounded-xl p-6 space-y-4 shadow-sm">
-                <div className="flex justify-between items-center border-b border-zinc-100 pb-3">
-                  <h3 className="font-display text-lg font-medium text-zinc-800">Resultado Operacional Consolidado</h3>
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 space-y-4 shadow-sm">
+                <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                  <h3 className="font-display text-lg font-medium text-zinc-800 dark:text-zinc-100">Resultado Operacional Consolidado</h3>
                   <div className="flex gap-2 no-print">
                     <Button 
                       onClick={() => window.print()}
                       variant="outline" 
                       size="sm"
-                      className="text-xs h-8"
+                      className="text-xs h-8 text-zinc-650 hover:text-zinc-800 border-zinc-200 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
                     >
                       <Printer className="w-4 h-4 mr-1.5" /> Exportar PDF
                     </Button>
@@ -3480,21 +3482,21 @@ export default function Relatorios() {
                       ])}
                       variant="outline" 
                       size="sm"
-                      className="text-xs h-8"
+                      className="text-xs h-8 text-zinc-650 hover:text-zinc-800 border-zinc-200 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
                     >
                       CSV
                     </Button>
                   </div>
                 </div>
 
-                <div className="space-y-3 divide-y divide-zinc-100">
+                <div className="space-y-3 divide-y divide-zinc-100 dark:divide-zinc-800">
                   <div className="pt-2">
                     <DRE_Row label="Faturamento de Serviços" value={resultadoOperacional.consolidado.receita_servicos} />
                   </div>
                   <div className="pt-2">
                     <DRE_Row label="Faturamento de Vendas de Produtos" value={resultadoOperacional.consolidado.receita_produtos} />
                   </div>
-                  <div className="border-t border-zinc-200 pt-3">
+                  <div className="border-t border-zinc-200 dark:border-zinc-800 pt-3">
                     <DRE_Row label="Faturamento Bruto Total" value={resultadoOperacional.consolidado.receita_total} bold />
                   </div>
                   <div className="pt-2">
@@ -3506,12 +3508,12 @@ export default function Relatorios() {
                   <div className="pt-2">
                     <DRE_Row label="(-) Taxas de Transação Financeiras" value={-resultadoOperacional.consolidado.taxas} negative />
                   </div>
-                  <div className="border-t border-zinc-200 pt-3">
+                  <div className="border-t border-zinc-200 dark:border-zinc-800 pt-3">
                     <DRE_Row label="Resultado Operacional" value={resultadoOperacional.consolidado.resultado_operacional} bold highlight />
                   </div>
                   <div className="pt-2 flex justify-between items-center text-sm font-semibold">
-                    <span className="text-zinc-500">Margem Operacional (%)</span>
-                    <span className="text-zinc-800 font-mono">{(resultadoOperacional.consolidado.margem_operacional || 0).toFixed(2)}%</span>
+                    <span className="text-zinc-500 dark:text-zinc-400">Margem Operacional (%)</span>
+                    <span className="text-zinc-800 dark:text-zinc-200 font-mono">{(resultadoOperacional.consolidado.margem_operacional || 0).toFixed(2)}%</span>
                   </div>
                 </div>
               </div>
@@ -4246,9 +4248,9 @@ export default function Relatorios() {
 }
 
 const Row = ({ label, value, bold, negative, highlight }) => (
-  <div className={`flex items-center justify-between py-1 ${bold ? "text-base font-semibold" : "text-sm"} ${highlight ? "text-[#3A4F4A]" : ""}`}>
+  <div className={`flex items-center justify-between py-1 ${bold ? "text-base font-semibold" : "text-sm"} ${highlight ? "text-[#3A4F4A] dark:text-[#EAF0EE]" : ""}`}>
     <span className="text-zinc-600 dark:text-zinc-300 font-medium">{label}</span>
-    <span className={`font-display ${bold ? "text-xl font-bold" : ""} ${negative ? "text-rose-600" : "text-zinc-800 dark:text-zinc-150"} ${highlight ? "text-2xl text-[#3A4F4A] dark:text-[#EAF0EE]" : ""}`}>{fmtBRL(value)}</span>
+    <span className={`font-display ${bold ? "text-xl font-bold" : ""} ${negative ? "text-rose-600 dark:text-rose-400" : "text-zinc-800 dark:text-zinc-150"} ${highlight ? "text-2xl text-[#3A4F4A] dark:text-[#EAF0EE]" : ""}`}>{fmtBRL(value)}</span>
   </div>
 );
 
@@ -4261,7 +4263,7 @@ const DRE_Row = ({ label, value, bold, negative, highlight, onClick }) => (
       {label}
       {onClick && <span className="ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-normal text-[#84A59D]">(Ver Detalhes)</span>}
     </span>
-    <span className={`font-display ${bold ? "text-xl font-bold" : ""} ${negative ? "text-rose-600" : "text-zinc-800 dark:text-zinc-150"} ${highlight ? "text-2xl text-[#3A4F4A] dark:text-[#EAF0EE]" : ""}`}>{fmtBRL(value)}</span>
+    <span className={`font-display ${bold ? "text-xl font-bold" : ""} ${negative ? "text-rose-600 dark:text-rose-400" : "text-zinc-800 dark:text-zinc-150"} ${highlight ? "text-2xl text-[#3A4F4A] dark:text-[#EAF0EE]" : ""}`}>{fmtBRL(value)}</span>
   </div>
 );
 
