@@ -40,6 +40,7 @@ const Stat = ({ icon: Icon, label, value, hint, tone = "default", onClick }) => 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtDate = (s) => s ? new Date(s).toLocaleDateString("pt-BR") : "—";
 const fmtDateTime = (s) => s ? new Date(s).toLocaleString("pt-BR") : "—";
+const fmtTime = (s) => s ? new Date(s).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' }) : "—";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -271,56 +272,139 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Secondary Row: Top Services & Low Stock Products */}
+      {/* Secondary Row: Top Services, Scheduled Services & Low Stock Products */}
       <div className="grid lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-display font-medium text-lg text-zinc-900 dark:text-zinc-100">Top Serviços do Período</h3>
-            <ArrowUpRight className="w-4 h-4 text-zinc-400" />
-          </div>
-          {topServicos.length === 0 && <div className="text-sm text-zinc-400 dark:text-zinc-500 py-8 text-center font-medium">Sem dados no período</div>}
-          {topServicos.length > 0 && (
-            <ul className="divide-y divide-zinc-150 dark:divide-zinc-800">
-              {topServicos.map((s, i) => (
-                <li 
-                  key={i} 
-                  onClick={() => handleOpenDetail("top_servico", s.nome)}
-                  className="py-3 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800 px-2 rounded-lg cursor-pointer transition-colors group animate-fade-in"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-semibold text-zinc-650 dark:text-zinc-300">
-                      {i + 1}
-                    </span>
-                    <span className="font-semibold text-sm text-zinc-800 dark:text-zinc-200 group-hover:text-[#84A59D] dark:group-hover:text-[#84A59D] transition-colors">
-                      {s.nome}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      {isAdmin && <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{fmtBRL(s.total)}</div>}
-                      <div className="text-xs text-zinc-400 dark:text-zinc-500 font-semibold">{s.qtd}x atendimentos</div>
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-display font-medium text-lg text-zinc-900 dark:text-zinc-100">Top Serviços do Período</h3>
+              <ArrowUpRight className="w-4 h-4 text-zinc-400" />
+            </div>
+            {topServicos.length === 0 && <div className="text-sm text-zinc-400 dark:text-zinc-500 py-8 text-center font-medium">Sem dados no período</div>}
+            {topServicos.length > 0 && (
+              <ul className="divide-y divide-zinc-150 dark:divide-zinc-800 max-h-[300px] overflow-y-auto pr-1">
+                {topServicos.map((s, i) => (
+                  <li 
+                    key={i} 
+                    onClick={() => handleOpenDetail("top_servico", s.nome)}
+                    className="py-3 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800 px-2 rounded-lg cursor-pointer transition-colors group animate-fade-in"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-semibold text-zinc-650 dark:text-zinc-300">
+                        {i + 1}
+                      </span>
+                      <span className="font-semibold text-sm text-zinc-800 dark:text-zinc-200 group-hover:text-[#84A59D] dark:group-hover:text-[#84A59D] transition-colors">
+                        {s.nome}
+                      </span>
                     </div>
-                    <ArrowUpRight className="w-3.5 h-3.5 text-zinc-300 group-hover:text-[#84A59D] transition-all opacity-0 group-hover:opacity-100 transform translate-x-[-4px] group-hover:translate-x-0" />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        {isAdmin && <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{fmtBRL(s.total)}</div>}
+                        <div className="text-xs text-zinc-400 dark:text-zinc-500 font-semibold">{s.qtd}x atendimentos</div>
+                      </div>
+                      <ArrowUpRight className="w-3.5 h-3.5 text-zinc-300 group-hover:text-[#84A59D] transition-all opacity-0 group-hover:opacity-100 transform translate-x-[-4px] group-hover:translate-x-0" />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
+
+        {/* Serviços Agendados */}
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-display font-medium text-lg text-zinc-900 dark:text-zinc-100">Serviços Agendados</h3>
+              <button 
+                onClick={() => handleOpenDetail("servicos_agendados")}
+                className="text-xs text-[#84A59D] hover:underline font-bold flex items-center gap-0.5"
+              >
+                DETALHES <ArrowUpRight className="w-3.5 h-3.5 text-[#84A59D]" />
+              </button>
+            </div>
+            <div 
+              onClick={() => handleOpenDetail("servicos_agendados")}
+              className="text-xs font-bold text-zinc-550 dark:text-zinc-400 mb-4 bg-zinc-50 dark:bg-zinc-800/40 p-2 rounded-lg border border-zinc-100 dark:border-zinc-800/20 inline-block cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors"
+            >
+              Total de Serviços Agendados: <span className="text-[#84A59D] font-extrabold">{d.total_servicos_agendados || 0}</span>
+            </div>
+            {(!d.servicos_agendados || d.servicos_agendados.length === 0) ? (
+              <div className="text-sm text-zinc-400 dark:text-zinc-500 py-8 text-center font-medium">
+                Nenhum serviço agendado para o período informado.
+              </div>
+            ) : (
+              <ul className="divide-y divide-zinc-150 dark:divide-zinc-800 max-h-[300px] overflow-y-auto pr-1">
+                {d.servicos_agendados.map((s, i) => {
+                  let rankBadge = null;
+                  if (i === 0) {
+                    rankBadge = (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-450 border border-amber-250 dark:border-amber-900/60 uppercase tracking-wider">
+                        1º
+                      </span>
+                    );
+                  } else if (i === 1) {
+                    rankBadge = (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-slate-100 text-slate-800 dark:bg-slate-900/40 dark:text-slate-400 border border-slate-200 dark:border-slate-800/60 uppercase tracking-wider">
+                        2º
+                      </span>
+                    );
+                  } else if (i === 2) {
+                    rankBadge = (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-orange-105 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400 border border-orange-200 dark:border-orange-900/40 uppercase tracking-wider">
+                        3º
+                      </span>
+                    );
+                  } else {
+                    rankBadge = (
+                      <span className="w-5 h-5 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-semibold text-zinc-550 dark:text-zinc-400">
+                        {i + 1}
+                      </span>
+                    );
+                  }
+
+                  return (
+                    <li 
+                      key={i} 
+                      onClick={() => handleOpenDetail("servicos_agendados_detalhe", s.nome)}
+                      className="py-3 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800 px-2 rounded-lg cursor-pointer transition-colors group animate-fade-in"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        {rankBadge}
+                        <span className="font-semibold text-sm text-zinc-800 dark:text-zinc-200 group-hover:text-[#84A59D] dark:group-hover:text-[#84A59D] transition-colors">
+                          {s.nome}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <div className="text-xs text-zinc-450 dark:text-zinc-400 font-bold">{s.qtd} {s.qtd === 1 ? 'agendamento' : 'agendamentos'}</div>
+                        </div>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-zinc-300 group-hover:text-[#84A59D] transition-all opacity-0 group-hover:opacity-100 transform translate-x-[-4px] group-hover:translate-x-0" />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+
         <div 
           onClick={() => handleOpenDetail("estoque")}
-          className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm cursor-pointer hover:shadow-md hover:border-[#84A59D] dark:hover:border-[#84A59D] transition-all group"
+          className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm cursor-pointer hover:shadow-md hover:border-[#84A59D] dark:hover:border-[#84A59D] transition-all group flex flex-col justify-between"
         >
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-2">
-              <Package className="w-4 h-4 text-zinc-400 dark:text-[#84A59D]" />
-              <h3 className="font-display font-medium text-lg text-zinc-900 dark:text-zinc-100">Estoque</h3>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4 text-zinc-400 dark:text-[#84A59D]" />
+                <h3 className="font-display font-medium text-lg text-zinc-900 dark:text-zinc-100">Estoque</h3>
+              </div>
+              <ArrowUpRight className="w-3.5 h-3.5 text-zinc-300 group-hover:text-[#84A59D] transition-colors" />
             </div>
-            <ArrowUpRight className="w-3.5 h-3.5 text-zinc-300 group-hover:text-[#84A59D] transition-colors" />
-          </div>
-          <p className="text-sm text-zinc-550 dark:text-zinc-450 mb-4 font-medium">Produtos com nível baixo</p>
-          <div className="font-display text-5xl font-semibold tracking-tight text-[#3A4F4A] dark:text-rose-400 transition-colors group-hover:scale-105 transform origin-left duration-250">
-            {d.estoque_baixo || 0}
+            <p className="text-sm text-zinc-550 dark:text-zinc-455 mb-4 font-medium">Produtos com nível baixo</p>
+            <div className="font-display text-5xl font-semibold tracking-tight text-[#3A4F4A] dark:text-rose-400 transition-colors group-hover:scale-105 transform origin-left duration-250">
+              {d.estoque_baixo || 0}
+            </div>
           </div>
           <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-2.5 flex items-center gap-1 font-bold uppercase tracking-wider">
             precisam reposição <span className="text-rose-500 dark:text-rose-400 group-hover:underline">(Ver lista)</span>
@@ -340,6 +424,8 @@ export default function Dashboard() {
               {selectedMetric === "clientes" && <Users className="w-6 h-6 text-[#84A59D]" />}
               {selectedMetric === "estoque" && <Package className="w-6 h-6 text-[#84A59D]" />}
               {selectedMetric === "top_servico" && <ArrowUpRight className="w-6 h-6 text-[#84A59D]" />}
+              {selectedMetric === "servicos_agendados" && <Calendar className="w-6 h-6 text-[#84A59D]" />}
+              {selectedMetric === "servicos_agendados_detalhe" && <Calendar className="w-6 h-6 text-[#84A59D]" />}
               
               {selectedMetric === "faturamento" && "Detalhamento de Faturamento"}
               {selectedMetric === "agendamentos" && "Agendamentos no Período"}
@@ -348,6 +434,8 @@ export default function Dashboard() {
               {selectedMetric === "clientes" && "Lista de Clientes do Sistema"}
               {selectedMetric === "estoque" && "Produtos com Estoque Baixo"}
               {selectedMetric === "top_servico" && `Detalhamento de Atendimentos: ${selectedServiceName}`}
+              {selectedMetric === "servicos_agendados" && "Serviços Agendados no Período"}
+              {selectedMetric === "servicos_agendados_detalhe" && `Detalhamento de Agendamentos: ${selectedServiceName}`}
             </DialogTitle>
             <div className="text-[11px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider mt-1.5">
               Período: {fmtDate(dataInicio)} a {fmtDate(dataFim)}
@@ -467,6 +555,24 @@ export default function Dashboard() {
                     );
                   })}
 
+                  {selectedMetric === "servicos_agendados" && detailData.map((item, idx) => (
+                    <div 
+                      key={idx} 
+                      onClick={() => handleOpenDetail("servicos_agendados_detalhe", item.nome)}
+                      className="bg-white dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-800/80 rounded-xl p-4 flex items-center justify-between shadow-sm cursor-pointer hover:border-[#84A59D] dark:hover:border-[#84A59D] transition-colors group"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-650 dark:text-zinc-300">
+                          {idx + 1}º
+                        </span>
+                        <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 group-hover:text-[#84A59D] transition-colors">{item.nome}</span>
+                      </div>
+                      <div className="text-xs font-bold text-[#84A59D] dark:text-[#84A59D]">
+                        {item.qtd} {item.qtd === 1 ? 'agendamento' : 'agendamentos'}
+                      </div>
+                    </div>
+                  ))}
+
                   {selectedMetric === "top_servico" && detailData.map((item, idx) => (
                     <div key={idx} className="bg-white dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-800/80 rounded-xl p-4 space-y-2.5 shadow-sm">
                       <div className="flex items-center justify-between">
@@ -477,10 +583,34 @@ export default function Dashboard() {
                       </div>
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 truncate">Atendimento #{item.numero ? String(item.numero).padStart(6, '0') : '—'}</span>
-                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{fmtBRL(item.valor)}</span>
+                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-450">{fmtBRL(item.valor)}</span>
                       </div>
                       <div className="text-xs text-zinc-650 dark:text-zinc-350 space-y-1 pt-1.5 border-t border-zinc-100 dark:border-zinc-800/30">
                         <div><span className="font-semibold text-zinc-500">Cliente:</span> {item.cliente_nome}</div>
+                        <div><span className="font-semibold text-zinc-500">Serviço:</span> {item.servico_nome}</div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {selectedMetric === "servicos_agendados_detalhe" && detailData.map((item, idx) => (
+                    <div key={idx} className="bg-white dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-800/80 rounded-xl p-4 space-y-2.5 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">{fmtDateTime(item.data_hora)}</span>
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                          item.status === 'confirmado' 
+                            ? 'bg-blue-50 text-blue-700 border border-blue-150 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/60'
+                            : 'bg-amber-50 text-amber-700 border border-amber-150 dark:bg-amber-950/40 dark:text-amber-455 dark:border-amber-900/60'
+                        }`}>
+                          {item.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 truncate">Atendimento #{item.numero ? String(item.numero).padStart(6, '0') : '—'}</span>
+                        <span className="text-sm font-bold text-[#84A59D] dark:text-[#84A59D]">{fmtBRL(item.valor)}</span>
+                      </div>
+                      <div className="text-xs text-zinc-650 dark:text-zinc-350 space-y-1 pt-1.5 border-t border-zinc-100 dark:border-zinc-800/30">
+                        <div><span className="font-semibold text-zinc-500">Cliente:</span> {item.cliente_nome}</div>
+                        <div><span className="font-semibold text-zinc-500">Profissional:</span> {item.colaborador_nome}</div>
                         <div><span className="font-semibold text-zinc-500">Serviço:</span> {item.servico_nome}</div>
                       </div>
                     </div>
@@ -553,6 +683,29 @@ export default function Dashboard() {
                             <th className="px-4 py-3 text-left font-bold">Serviço</th>
                             <th className="px-4 py-3 text-center font-bold">Status</th>
                             <th className="px-4 py-3 text-right font-bold">Valor</th>
+                          </tr>
+                        </thead>
+                      )}
+
+                      {selectedMetric === "servicos_agendados" && (
+                        <thead className="bg-zinc-50 dark:bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold border-b border-zinc-200 dark:border-zinc-800">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-bold">Posição</th>
+                            <th className="px-4 py-3 text-left font-bold">Nome do Serviço</th>
+                            <th className="px-4 py-3 text-right font-bold">Quantidade de Agendamentos</th>
+                          </tr>
+                        </thead>
+                      )}
+
+                      {selectedMetric === "servicos_agendados_detalhe" && (
+                        <thead className="bg-zinc-50 dark:bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold border-b border-zinc-200 dark:border-zinc-800">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-bold">Data</th>
+                            <th className="px-4 py-3 text-left font-bold">Horário</th>
+                            <th className="px-4 py-3 text-left font-bold">Cliente</th>
+                            <th className="px-4 py-3 text-left font-bold">Profissional</th>
+                            <th className="px-4 py-3 text-center font-bold">Status</th>
+                            <th className="px-4 py-3 text-right font-bold">Valor Combinado</th>
                           </tr>
                         </thead>
                       )}
@@ -655,6 +808,41 @@ export default function Dashboard() {
                             <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-450">{fmtBRL(item.valor)}</td>
                           </tr>
                         ))}
+
+                        {selectedMetric === "servicos_agendados" && detailData.map((item, idx) => (
+                          <tr 
+                            key={idx} 
+                            onClick={() => handleOpenDetail("servicos_agendados_detalhe", item.nome)}
+                            className="hover:bg-zinc-50/30 dark:hover:bg-zinc-800/30 transition-colors cursor-pointer group"
+                          >
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-650 dark:text-zinc-300">
+                                {idx + 1}º
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-zinc-850 dark:text-zinc-200 font-bold group-hover:text-[#84A59D] transition-colors">{item.nome}</td>
+                            <td className="px-4 py-3 text-right font-semibold text-zinc-700 dark:text-zinc-300">{item.qtd} {item.qtd === 1 ? 'agendamento' : 'agendamentos'}</td>
+                          </tr>
+                        ))}
+
+                        {selectedMetric === "servicos_agendados_detalhe" && detailData.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-800/30 transition-colors">
+                            <td className="px-4 py-3 text-zinc-550 dark:text-zinc-450 text-xs whitespace-nowrap">{fmtDate(item.data_hora)}</td>
+                            <td className="px-4 py-3 text-zinc-550 dark:text-zinc-450 font-mono text-xs whitespace-nowrap">{fmtTime(item.data_hora)}</td>
+                            <td className="px-4 py-3 text-zinc-750 dark:text-zinc-200 font-semibold">{item.cliente_nome}</td>
+                            <td className="px-4 py-3 text-zinc-650 dark:text-zinc-350 font-medium">{item.colaborador_nome}</td>
+                            <td className="px-4 py-3 text-center whitespace-nowrap font-semibold">
+                              <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                item.status === 'confirmado' 
+                                  ? 'bg-blue-50 text-blue-700 border border-blue-150 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/60'
+                                  : 'bg-amber-50 text-amber-700 border border-amber-150 dark:bg-amber-950/40 dark:text-amber-455 dark:border-amber-900/60'
+                              }`}>
+                                {item.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right font-bold text-[#84A59D] dark:text-[#84A59D]">{fmtBRL(item.valor)}</td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
@@ -672,6 +860,8 @@ export default function Dashboard() {
               {selectedMetric === "clientes" && `Total Clientes Ativos: ${detailData.length}`}
               {selectedMetric === "estoque" && `Total Itens Alerta: ${detailData.length}`}
               {selectedMetric === "top_servico" && (isAdmin ? `Faturamento do Serviço: ${fmtBRL(detailData.reduce((acc, x) => acc + x.valor, 0))} (${detailData.length}x)` : `Total de Atendimentos: ${detailData.length}`)}
+              {selectedMetric === "servicos_agendados" && `Total de Serviços Agendados: ${detailData.reduce((acc, x) => acc + x.qtd, 0)}`}
+              {selectedMetric === "servicos_agendados_detalhe" && `Total Agendados: ${detailData.length} agendamento(s) | Valor Estimado: ${fmtBRL(detailData.reduce((acc, x) => acc + x.valor, 0))}`}
             </div>
             <Button onClick={() => setDetailsOpen(false)} className="bg-zinc-800 hover:bg-zinc-900 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-100 text-white shadow-sm font-semibold">
               Fechar Detalhamento
