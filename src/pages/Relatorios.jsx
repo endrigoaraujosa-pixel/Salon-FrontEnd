@@ -1065,8 +1065,22 @@ export default function Relatorios() {
       const totalQtd = estoqueReportData.totais?.total_quantidade || 0;
 
       kpis = [
-        { label: "Custo Total Consumido", value: fmtBRL(totalCusto), icon: Flame, color: "text-orange-500", bg: "bg-orange-50" },
-        { label: "Qtd de Itens Consumidos", value: totalQtd, icon: Package, color: "text-blue-500", bg: "bg-blue-50" }
+        { 
+          label: "Custo Total Consumido", 
+          value: fmtBRL(totalCusto), 
+          icon: Flame, 
+          color: "text-orange-500", 
+          bg: "bg-orange-50",
+          tooltip: "Soma do custo dos insumos/produtos utilizados em todos os agendamentos concluídos no período."
+        },
+        { 
+          label: "Qtd de Itens Consumidos", 
+          value: totalQtd, 
+          icon: Package, 
+          color: "text-blue-500", 
+          bg: "bg-blue-50",
+          tooltip: "Soma das quantidades físicas de insumos consumidos em todos os agendamentos concluídos no período."
+        }
       ];
 
       headers = [
