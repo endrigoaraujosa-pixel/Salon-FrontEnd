@@ -778,7 +778,7 @@ export default function Relatorios() {
             <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{fmtBRL(item.preco_venda)}</td>
             <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350 font-semibold">{fmtBRL(item.valor_total_venda)}</td>
             <td className="px-4 py-2.5">
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isAlerta ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap ${isAlerta ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800/50' : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/50'}`}>
                 {isAlerta ? 'Alerta Mínimo' : 'OK'}
               </span>
             </td>
@@ -948,7 +948,7 @@ export default function Relatorios() {
               </Tooltip>
             </td>
             <td className="px-4 py-2.5 text-zinc-500">{formatReportQuantidade(item.estoque_minimo, item)}</td>
-            <td className="px-4 py-2.5 text-rose-700 font-bold bg-rose-50/50">-{formatReportQuantidade(diff, item)}</td>
+            <td className="px-4 py-2.5 text-rose-700 dark:text-rose-400 font-bold bg-rose-50/50 dark:bg-rose-950/20">-{formatReportQuantidade(diff, item)}</td>
           </>
         );
       };
@@ -1020,7 +1020,7 @@ export default function Relatorios() {
             <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350 font-semibold">{fmtBRL(item.valor_total_custo)}</td>
             <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{fmtBRL(item.preco_venda)}</td>
             <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350 font-semibold">{fmtBRL(item.valor_total_venda)}</td>
-            <td className="px-4 py-2.5 text-emerald-600 font-bold bg-emerald-50/30">{fmtBRL(item.margem_potencial)}</td>
+            <td className="px-4 py-2.5 text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50/30 dark:bg-emerald-950/20">{fmtBRL(item.margem_potencial)}</td>
           </>
         );
       };
@@ -3571,11 +3571,11 @@ export default function Relatorios() {
               </div>
 
               {/* Table */}
-              <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left border-collapse">
                     <thead>
-                      <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-bold uppercase tracking-wider">
+                      <tr className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">
                         <th className="px-4 py-3">
                           <SortHeader label="Serviço" field="servico_nome" currentField={sortServicoField} direction={sortServicoDirection} onSort={(f) => {
                             if (sortServicoField === f) setSortServicoDirection(d => d === 'asc' ? 'desc' : 'asc');
@@ -3626,27 +3626,27 @@ export default function Relatorios() {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-200">
+                    <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                       {sortedAndFilteredServicos.length === 0 ? (
                         <tr>
                           <td colSpan={8} className="text-center py-8 text-zinc-400">Nenhum serviço encontrado.</td>
                         </tr>
                       ) : sortedAndFilteredServicos.map((s, idx) => (
                         <tr key={idx} className="hover:bg-zinc-100 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors" onClick={() => handleShowRentabilidadeDetail(s, 'servico')}>
-                          <td className="px-4 py-3 font-semibold text-zinc-700">{s.servico_nome}</td>
+                          <td className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{s.servico_nome}</td>
                           <td className="px-4 py-3 text-center font-mono">{(s.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}</td>
-                          <td className="px-4 py-3 text-right font-mono text-zinc-800">{fmtBRL(s.faturamento)}</td>
-                          <td className="px-4 py-3 text-right font-mono text-rose-500">{fmtBRL(s.insumos)}</td>
-                          <td className="px-4 py-3 text-right font-mono text-amber-600">{fmtBRL(s.comissao)}</td>
-                          <td className="px-4 py-3 text-right font-mono text-amber-700">{fmtBRL(s.taxas)}</td>
-                          <td className={`px-4 py-3 text-right font-mono font-bold ${s.resultado_operacional >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{fmtBRL(s.resultado_operacional)}</td>
+                          <td className="px-4 py-3 text-right font-mono text-zinc-800 dark:text-zinc-200">{fmtBRL(s.faturamento)}</td>
+                          <td className="px-4 py-3 text-right font-mono text-rose-550 dark:text-rose-400">{fmtBRL(s.insumos)}</td>
+                          <td className="px-4 py-3 text-right font-mono text-amber-600 dark:text-amber-400">{fmtBRL(s.comissao)}</td>
+                          <td className="px-4 py-3 text-right font-mono text-amber-700 dark:text-amber-500">{fmtBRL(s.taxas)}</td>
+                          <td className={`px-4 py-3 text-right font-mono font-bold ${s.resultado_operacional >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>{fmtBRL(s.resultado_operacional)}</td>
                           <td className="px-4 py-3 text-center font-mono">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border whitespace-nowrap ${
                               s.margem >= 50 
-                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/50' 
                                 : s.margem >= 20 
-                                ? 'bg-amber-50 text-amber-600 border border-amber-200' 
-                                : 'bg-rose-50 text-rose-600 border border-rose-200'
+                                ? 'bg-amber-50 text-amber-650 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/50' 
+                                : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800/50'
                             }`}>
                               {(s.margem || 0).toFixed(1)}%
                             </span>
@@ -3713,11 +3713,11 @@ export default function Relatorios() {
               </div>
 
               {/* Table */}
-              <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left border-collapse">
                     <thead>
-                      <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-bold uppercase tracking-wider">
+                      <tr className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-850 text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">
                         <th className="px-4 py-3">
                           <SortHeader label="Produto" field="produto_nome" currentField={sortProdutoField} direction={sortProdutoDirection} onSort={(f) => {
                             if (sortProdutoField === f) setSortProdutoDirection(d => d === 'asc' ? 'desc' : 'asc');
@@ -3768,27 +3768,27 @@ export default function Relatorios() {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-200">
+                    <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                       {sortedAndFilteredProdutos.length === 0 ? (
                         <tr>
                           <td colSpan={8} className="text-center py-8 text-zinc-400">Nenhum produto encontrado.</td>
                         </tr>
                       ) : sortedAndFilteredProdutos.map((p, idx) => (
                         <tr key={idx} className="hover:bg-zinc-100 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors" onClick={() => handleShowRentabilidadeDetail(p, 'produto')}>
-                          <td className="px-4 py-3 font-semibold text-zinc-700">{p.produto_nome}</td>
+                          <td className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{p.produto_nome}</td>
                           <td className="px-4 py-3 text-center font-mono">{(p.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}</td>
-                          <td className="px-4 py-3 text-right font-mono text-zinc-800">{fmtBRL(p.faturamento)}</td>
-                          <td className="px-4 py-3 text-right font-mono text-rose-500">{fmtBRL(p.cmv)}</td>
-                          <td className="px-4 py-3 text-right font-mono text-amber-600">{fmtBRL(p.comissao)}</td>
-                          <td className="px-4 py-3 text-right font-mono text-amber-700">{fmtBRL(p.taxas)}</td>
-                          <td className={`px-4 py-3 text-right font-mono font-bold ${p.resultado_operacional >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{fmtBRL(p.resultado_operacional)}</td>
+                          <td className="px-4 py-3 text-right font-mono text-zinc-800 dark:text-zinc-200">{fmtBRL(p.faturamento)}</td>
+                          <td className="px-4 py-3 text-right font-mono text-rose-550 dark:text-rose-400">{fmtBRL(p.cmv)}</td>
+                          <td className="px-4 py-3 text-right font-mono text-amber-600 dark:text-amber-400">{fmtBRL(p.comissao)}</td>
+                          <td className="px-4 py-3 text-right font-mono text-amber-700 dark:text-amber-500">{fmtBRL(p.taxas)}</td>
+                          <td className={`px-4 py-3 text-right font-mono font-bold ${p.resultado_operacional >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>{fmtBRL(p.resultado_operacional)}</td>
                           <td className="px-4 py-3 text-center font-mono">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border whitespace-nowrap ${
                               p.margem >= 40 
-                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/50' 
                                 : p.margem >= 15 
-                                ? 'bg-amber-50 text-amber-600 border border-amber-200' 
-                                : 'bg-rose-50 text-rose-600 border border-rose-200'
+                                ? 'bg-amber-50 text-amber-650 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/50' 
+                                : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800/50'
                             }`}>
                               {(p.margem || 0).toFixed(1)}%
                             </span>
