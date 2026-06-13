@@ -869,7 +869,13 @@ export default function Comissoes() {
                   <TooltipProvider delayDuration={200}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <HelpCircle className="w-3 h-3 text-zinc-350 dark:text-zinc-500 cursor-help shrink-0" />
+                        <button
+                          type="button"
+                          title="Valor real recebido pelo salão — cada atendimento é contado uma única vez. A soma da coluna 'Serviços Executados' pode ser maior pois atendimentos com auxiliar são distribuídos para dois profissionais."
+                          className="cursor-help text-zinc-350 dark:text-zinc-500 hover:text-zinc-650 focus:outline-none focus:ring-0 shrink-0 inline-flex items-center"
+                        >
+                          <HelpCircle className="w-3 h-3" />
+                        </button>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="max-w-[260px] text-center leading-relaxed">
                         Valor real recebido pelo salão — cada atendimento é contado <strong>uma única vez</strong>. A soma da coluna &quot;Serviços Executados&quot; pode ser maior pois atendimentos com auxiliar são distribuídos para dois profissionais.
@@ -941,7 +947,13 @@ export default function Comissoes() {
                         <TooltipProvider delayDuration={200}>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <HelpCircle className="w-3 h-3 text-zinc-350 dark:text-zinc-500 cursor-help shrink-0" />
+                              <button
+                                type="button"
+                                title="Soma dos serviços em que o profissional participou como Principal ou Auxiliar. Atendimentos com auxiliar somam o mesmo valor para dois profissionais — por isso o total desta coluna pode superar o Faturamento Bruto."
+                                className="cursor-help text-zinc-350 dark:text-zinc-500 hover:text-zinc-650 focus:outline-none focus:ring-0 shrink-0 inline-flex items-center"
+                              >
+                                <HelpCircle className="w-3 h-3" />
+                              </button>
                             </TooltipTrigger>
                             <TooltipContent side="top" className="max-w-[280px] text-center leading-relaxed">
                               Soma dos serviços em que o profissional participou como <strong>Principal</strong> ou <strong>Auxiliar</strong>. Atendimentos com auxiliar somam o mesmo valor para dois profissionais — por isso o total desta coluna pode superar o Faturamento Bruto.

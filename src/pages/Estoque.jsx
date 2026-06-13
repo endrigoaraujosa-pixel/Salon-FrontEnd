@@ -216,7 +216,7 @@ export default function Estoque() {
               <div>
                 <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Saldo Total de Itens</span>
                 <div className="font-display text-3xl font-extrabold mt-1 text-zinc-900 dark:text-zinc-50 tracking-tight">
-                  {Number(totalItens.toFixed(2))} <span className="text-sm font-normal text-zinc-400">itens</span>
+                  {(totalItens || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })} <span className="text-sm font-normal text-zinc-400">itens</span>
                 </div>
                 <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1.5 font-medium">{produtos.length} produtos catalogados</p>
               </div>
@@ -363,7 +363,11 @@ export default function Estoque() {
                           <TableCell className="align-middle">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div className="w-full max-w-[120px] mx-auto space-y-1.5 cursor-help">
+                                <button 
+                                  type="button"
+                                  title={`${pct.toFixed(0)}% do mínimo de segurança (${(p.quantidade_estoque || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })} de ${(p.estoque_minimo || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })} ${p.unidade_medida || "un"})`}
+                                  className="w-full max-w-[120px] mx-auto space-y-1.5 cursor-help text-left focus:outline-none focus:ring-0 block"
+                                >
                                   <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
                                     <div 
                                       className={`h-full rounded-full transition-all ${statusColor}`}
@@ -374,12 +378,12 @@ export default function Estoque() {
                                     <span className={statusTextColor}>
                                       {statusText}
                                     </span>
-                                    <span className="text-zinc-400">Min: {p.estoque_minimo}</span>
+                                    <span className="text-zinc-400">Min: {(p.estoque_minimo || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}</span>
                                   </div>
-                                </div>
+                                </button>
                               </TooltipTrigger>
                               <TooltipContent className="bg-zinc-900 text-white text-xs p-2 rounded-lg border border-zinc-800 shadow-md">
-                                {pct.toFixed(0)}% do mínimo de segurança ({Number(p.quantidade_estoque.toFixed(2))} de {p.estoque_minimo} {p.unidade_medida || "un"})
+                                {pct.toFixed(0)}% do mínimo de segurança ({(p.quantidade_estoque || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })} de {(p.estoque_minimo || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })} {p.unidade_medida || "un"})
                               </TooltipContent>
                             </Tooltip>
                           </TableCell>
@@ -387,12 +391,14 @@ export default function Estoque() {
                             <span className={baixo ? "text-rose-600 dark:text-rose-400" : "text-zinc-700 dark:text-zinc-300"}>
                               {(() => {
                                 const qty = Number((p.quantidade_estoque || 0).toFixed(3));
+                                const formattedQty = qty.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 });
                                 const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
                                 if (qtyPerUnit > 0) {
-                                  const eq = Number((qty / qtyPerUnit).toFixed(2));
-                                  return `${qty} ${p.unidade_medida_insumo || "un"} (${eq} ${p.unidade_medida || "un"})`;
+                                  const eq = Number((qty / qtyPerUnit).toFixed(3));
+                                  const formattedEq = eq.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+                                  return `${formattedQty} ${p.unidade_medida_insumo || "un"} (${formattedEq} ${p.unidade_medida || "un"})`;
                                 }
-                                return `${qty} ${p.unidade_medida || "un"}`;
+                                return `${formattedQty} ${p.unidade_medida || "un"}`;
                               })()}
                             </span>
                           </TableCell>
@@ -456,10 +462,14 @@ export default function Estoque() {
                           <h4 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">Lançar Movimentação</h4>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <HelpCircle 
-                                onClick={(e) => e.stopPropagation()} 
-                                className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 cursor-help hover:text-zinc-650 shrink-0" 
-                              />
+                              <button
+                                type="button"
+                                onClick={(e) => e.stopPropagation()}
+                                title="Registra movimentações manuais avulsas como saídas, quebras, perdas, consumo de insumos na loja ou ajustes pontuais."
+                                className="cursor-help text-zinc-400 dark:text-zinc-500 hover:text-zinc-650 focus:outline-none focus:ring-0 shrink-0 inline-flex items-center"
+                              >
+                                <HelpCircle className="w-3.5 h-3.5" />
+                              </button>
                             </TooltipTrigger>
                             <TooltipContent side="top" className="max-w-[240px] bg-zinc-900 dark:bg-zinc-800 text-white text-xs p-2.5 rounded-lg border border-zinc-800 shadow-md">
                               Registra movimentações manuais avulsas como saídas, quebras, perdas, consumo de insumos na loja ou ajustes pontuais.
@@ -487,10 +497,14 @@ export default function Estoque() {
                         <h4 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">Entrada de Produtos</h4>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <HelpCircle 
-                              onClick={(e) => e.stopPropagation()} 
-                              className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 cursor-help hover:text-zinc-600 shrink-0" 
-                            />
+                            <button
+                              type="button"
+                              onClick={(e) => e.stopPropagation()}
+                              title="Registra compras com fornecedores, atualiza quantidades no estoque e lança custos de aquisição."
+                              className="cursor-help text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 focus:outline-none focus:ring-0 shrink-0 inline-flex items-center"
+                            >
+                              <HelpCircle className="w-3.5 h-3.5" />
+                            </button>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-[240px] bg-zinc-900 dark:bg-zinc-800 text-white text-xs p-2.5 rounded-lg border border-zinc-800 shadow-md">
                             Registra compras com fornecedores, atualiza quantidades no estoque e lança custos de aquisição.
@@ -530,10 +544,14 @@ export default function Estoque() {
                         </h4>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <HelpCircle 
-                              onClick={(e) => e.stopPropagation()} 
-                              className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 cursor-help hover:text-zinc-600 shrink-0" 
-                            />
+                            <button
+                              type="button"
+                              onClick={(e) => e.stopPropagation()}
+                              title="Inicia uma contagem física geral em lote, calcula divergências com o sistema e gera protocolos de auditoria."
+                              className="cursor-help text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 focus:outline-none focus:ring-0 shrink-0 inline-flex items-center"
+                            >
+                              <HelpCircle className="w-3.5 h-3.5" />
+                            </button>
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-[240px] bg-zinc-900 dark:bg-zinc-800 text-white text-xs p-2.5 rounded-lg border border-zinc-800 shadow-md">
                             Inicia uma contagem física geral em lote, calcula divergências com o sistema e gera protocolos de auditoria.
@@ -605,10 +623,10 @@ export default function Estoque() {
                           isPositive ? "text-emerald-600" : "text-rose-600"
                         }`}>
                           {isPositive ? <ArrowUp className="w-3 h-3 mr-0.5 shrink-0" /> : <ArrowDown className="w-3 h-3 mr-0.5 shrink-0" />}
-                          {isPositive ? "+" : ""}{Number(m.quantidade.toFixed(3))}
+                          {isPositive ? "+" : ""}{(m.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}
                         </div>
                         <div className="text-[9px] text-zinc-400 mt-0.5 font-mono">
-                          Saldo: {Number(m.quantidade_atual.toFixed(3))}
+                          Saldo: {(m.quantidade_atual || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}
                         </div>
                       </div>
                     </div>
@@ -768,12 +786,14 @@ export default function Estoque() {
                 <div className="font-mono text-base font-bold mt-0.5 text-zinc-800 dark:text-zinc-250">
                   {(() => {
                     const qty = Number((kardexProduct.quantidade_estoque || 0).toFixed(3));
+                    const formattedQty = qty.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 });
                     const qtyPerUnit = Number(kardexProduct.quantidade_por_unidade || 0);
                     if (qtyPerUnit > 0) {
-                      const eq = Number((qty / qtyPerUnit).toFixed(2));
-                      return `${qty} ${kardexProduct.unidade_medida_insumo || 'un'} (${eq} ${kardexProduct.unidade_medida || 'un'})`;
+                      const eq = Number((qty / qtyPerUnit).toFixed(3));
+                      const formattedEq = eq.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+                      return `${formattedQty} ${kardexProduct.unidade_medida_insumo || 'un'} (${formattedEq} ${kardexProduct.unidade_medida || 'un'})`;
                     }
-                    return `${qty} ${kardexProduct.unidade_medida || 'un'}`;
+                    return `${formattedQty} ${kardexProduct.unidade_medida || 'un'}`;
                   })()}
                 </div>
               </div>
@@ -857,13 +877,13 @@ export default function Estoque() {
                                 ? "text-rose-600" 
                                 : "text-zinc-500"
                           }`}>
-                            {m.quantidade > 0 ? "+" : ""}{Number(m.quantidade.toFixed(3))} {unitLabel}
+                            {m.quantidade > 0 ? "+" : ""}{(m.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })} {unitLabel}
                           </TableCell>
                           <TableCell className="text-right font-mono text-zinc-500 whitespace-nowrap">
-                            {Number(m.quantidade_anterior.toFixed(3))} {unitLabel}
+                            {(m.quantidade_anterior || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })} {unitLabel}
                           </TableCell>
                           <TableCell className="text-right font-mono font-bold text-zinc-800 dark:text-zinc-200 whitespace-nowrap">
-                            {Number(m.quantidade_atual.toFixed(3))} {unitLabel}
+                            {(m.quantidade_atual || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })} {unitLabel}
                           </TableCell>
                           <TableCell className="text-xs text-zinc-650 dark:text-zinc-350 max-w-xs truncate" title={m.motivo}>
                             {m.motivo || "-"}

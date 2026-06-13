@@ -15,12 +15,14 @@ const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", curr
 
 const formatReportQuantidade = (qtd, item) => {
   const qty = Number(Number(qtd || 0).toFixed(3));
-  const qtyPerUnit = Number(item.quantidade_por_embalagem || item.quantidade_por_unidade || 0);
+  const formattedQty = qty.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+  const qtyPerUnit = Number(item?.quantidade_por_embalagem || item?.quantidade_por_unidade || 0);
   if (qtyPerUnit > 0) {
     const eq = Number((qty / qtyPerUnit).toFixed(3));
-    return `${qty} ${item.unidade_medida_insumo || "un"} (${eq} ${item.unidade_medida || "un"})`;
+    const formattedEq = eq.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+    return `${formattedQty} ${item.unidade_medida_insumo || "un"} (${formattedEq} ${item.unidade_medida || "un"})`;
   }
-  return `${qty} ${item.unidade_medida || "un"}`;
+  return `${formattedQty} ${item?.unidade_medida || "un"}`;
 };
 
 const todayStr = () => {
@@ -912,7 +914,11 @@ export default function Relatorios() {
             <td className="px-4 py-2.5 align-middle">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="w-full max-w-[120px] space-y-1.5 cursor-help">
+                  <button 
+                    type="button"
+                    title={`${pct.toFixed(0)}% do mínimo de segurança (${formatReportQuantidade(item.quantidade_estoque, item)} de ${formatReportQuantidade(item.estoque_minimo, item)})`}
+                    className="w-full max-w-[120px] space-y-1.5 cursor-help text-left focus:outline-none focus:ring-0 block"
+                  >
                     <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
                       <div 
                         className={`h-full rounded-full transition-all ${statusColor}`}
@@ -925,7 +931,7 @@ export default function Relatorios() {
                       </span>
                       <span className="text-zinc-500 font-mono font-bold">{formatReportQuantidade(item.quantidade_estoque, item)}</span>
                     </div>
-                  </div>
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent className="bg-zinc-900 text-white text-xs p-2 rounded-lg border border-zinc-800 shadow-md">
                   {pct.toFixed(0)}% do mínimo de segurança ({formatReportQuantidade(item.quantidade_estoque, item)} de {formatReportQuantidade(item.estoque_minimo, item)})
@@ -1284,9 +1290,13 @@ export default function Relatorios() {
                       {kpi.tooltip && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="cursor-help text-zinc-400 hover:text-zinc-650 inline-flex items-center">
-                              <HelpCircle className="w-3 h-3 transition-colors" />
-                            </span>
+                            <button 
+                              type="button" 
+                              title={kpi.tooltip}
+                              className="cursor-help text-zinc-400 hover:text-zinc-650 inline-flex items-center focus:outline-none focus:ring-0"
+                            >
+                              <HelpCircle className="w-3.5 h-3.5 transition-colors" />
+                            </button>
                           </TooltipTrigger>
                           <TooltipContent className="bg-zinc-900 text-white text-xs p-2.5 rounded-lg border border-zinc-800 shadow-md max-w-[220px] normal-case font-normal leading-relaxed">
                             {kpi.tooltip}
@@ -1294,7 +1304,12 @@ export default function Relatorios() {
                         </Tooltip>
                       )}
                     </div>
-                    <p className="text-xl font-bold text-zinc-850 dark:text-zinc-55 mt-0.5">{kpi.value}</p>
+                    <p className="text-xl font-bold text-zinc-850 dark:text-zinc-55 mt-0.5">
+                      {typeof kpi.value === 'number' 
+                        ? kpi.value.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })
+                        : kpi.value
+                      }
+                    </p>
                   </div>
                 </div>
               );
@@ -2718,8 +2733,13 @@ export default function Relatorios() {
 
                     <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm hover:shadow transition-shadow">
                       <div className="text-xs uppercase tracking-wider text-zinc-400 font-semibold">Quantidade Vendida</div>
-                      <div className="font-display text-2xl lg:text-3xl font-bold mt-1.5 text-zinc-700">{totalQuantidade} <span className="text-xs font-normal text-zinc-400">itens</span></div>
-                      <div className="text-[10px] text-zinc-400 mt-1">Média de {(totalQuantidade / Math.max(1, filteredVendas.length)).toFixed(1)} itens por venda</div>
+                      <div className="font-display text-2xl lg:text-3xl font-bold mt-1.5 text-zinc-700">
+                        {(totalQuantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}{" "}
+                        <span className="text-xs font-normal text-zinc-400">itens</span>
+                      </div>
+                      <div className="text-[10px] text-zinc-400 mt-1">
+                        Média de {((totalQuantidade || 0) / Math.max(1, filteredVendas.length)).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 1 })} itens por venda
+                      </div>
                     </div>
 
                     <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm hover:shadow transition-shadow">
@@ -2837,7 +2857,7 @@ export default function Relatorios() {
                                     {v.colaborador_nome}
                                   </td>
                                   <td className="px-4 py-3 text-right font-mono text-zinc-800">
-                                    {v.quantidade}
+                                    {(v.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}
                                   </td>
                                   <td className="px-4 py-3 text-right font-mono font-normal">
                                     {fmtBRL(v.valor_unitario)}
@@ -3526,7 +3546,7 @@ export default function Relatorios() {
                       ) : sortedAndFilteredServicos.map((s, idx) => (
                         <tr key={idx} className="hover:bg-zinc-100 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors" onClick={() => handleShowRentabilidadeDetail(s, 'servico')}>
                           <td className="px-4 py-3 font-semibold text-zinc-700">{s.servico_nome}</td>
-                          <td className="px-4 py-3 text-center font-mono">{s.quantidade}</td>
+                          <td className="px-4 py-3 text-center font-mono">{(s.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}</td>
                           <td className="px-4 py-3 text-right font-mono text-zinc-800">{fmtBRL(s.faturamento)}</td>
                           <td className="px-4 py-3 text-right font-mono text-rose-500">{fmtBRL(s.insumos)}</td>
                           <td className="px-4 py-3 text-right font-mono text-amber-600">{fmtBRL(s.comissao)}</td>
@@ -3668,7 +3688,7 @@ export default function Relatorios() {
                       ) : sortedAndFilteredProdutos.map((p, idx) => (
                         <tr key={idx} className="hover:bg-zinc-100 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors" onClick={() => handleShowRentabilidadeDetail(p, 'produto')}>
                           <td className="px-4 py-3 font-semibold text-zinc-700">{p.produto_nome}</td>
-                          <td className="px-4 py-3 text-center font-mono">{p.quantidade}</td>
+                          <td className="px-4 py-3 text-center font-mono">{(p.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}</td>
                           <td className="px-4 py-3 text-right font-mono text-zinc-800">{fmtBRL(p.faturamento)}</td>
                           <td className="px-4 py-3 text-right font-mono text-rose-500">{fmtBRL(p.cmv)}</td>
                           <td className="px-4 py-3 text-right font-mono text-amber-600">{fmtBRL(p.comissao)}</td>
@@ -3918,7 +3938,9 @@ export default function Relatorios() {
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <div className="bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Quantidade</span>
-                  <div className="text-2xl font-display font-bold text-zinc-800 dark:text-zinc-100 mt-1">{selectedDetailItem.quantidade}</div>
+                  <div className="text-2xl font-display font-bold text-zinc-800 dark:text-zinc-100 mt-1">
+                    {(selectedDetailItem.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}
+                  </div>
                 </div>
                 <div className="bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Faturamento Bruto</span>
@@ -3992,7 +4014,7 @@ export default function Relatorios() {
                               </td>
                               {detailType === 'produto' && (
                                 <td className="px-4 py-3 text-center font-mono font-semibold text-zinc-700 dark:text-zinc-300">
-                                  {launch.quantidade}
+                                  {(launch.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}
                                 </td>
                               )}
                               <td className="px-4 py-3 text-right font-mono font-semibold text-zinc-800 dark:text-zinc-100">
