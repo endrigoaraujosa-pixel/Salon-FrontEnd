@@ -243,15 +243,24 @@ export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
                 {data.pagamentos && data.pagamentos.length > 0 ? (
                   <div className="space-y-2">
                     {data.pagamentos.map((p, idx) => (
-                      <div key={idx} className="flex justify-between text-sm items-center bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-2.5 border border-zinc-100 dark:border-zinc-800 print:border-none print:bg-transparent print:p-0">
-                        <div className="flex flex-col">
+                      <div key={idx} className="flex flex-col bg-zinc-50 dark:bg-zinc-800/50 rounded-lg p-2.5 border border-zinc-100 dark:border-zinc-800 print:border-none print:bg-transparent print:p-0">
+                        <div className="flex justify-between items-center w-full">
                           <span className="font-bold text-zinc-700 dark:text-zinc-300 capitalize flex items-center gap-1.5 print:text-black">
                             <CreditCard className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 print:hidden" />
                             {p.forma_pagamento}
                           </span>
-                          {p.observacao && <span className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5 print:text-zinc-700">{p.observacao}</span>}
+                          <span className="font-mono font-bold text-zinc-800 dark:text-zinc-200 print:text-black">{fmtBRL(p.valor)}</span>
                         </div>
-                        <span className="font-mono font-bold text-zinc-800 dark:text-zinc-200 print:text-black">{fmtBRL(p.valor)}</span>
+                        {(Number(p.troco) > 0 || (p.valor_recebido !== undefined && Number(p.valor_recebido) !== Number(p.valor))) && (
+                          <div className="flex justify-between items-center mt-1 text-xs text-zinc-500 dark:text-zinc-400 pl-5">
+                            <span>
+                              Bruto: {fmtBRL(p.valor_recebido || p.valor)}
+                              {Number(p.troco) > 0 && ` · Troco: ${fmtBRL(p.troco)}`}
+                            </span>
+                            <span>Líquido: {fmtBRL(p.valor)}</span>
+                          </div>
+                        )}
+                        {p.observacao && <span className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-1 pl-5 print:text-zinc-700">{p.observacao}</span>}
                       </div>
                     ))}
                     <div className="flex justify-between text-sm font-bold text-zinc-600 dark:text-zinc-400 pt-2 px-1 border-t border-zinc-100 dark:border-zinc-800 mt-2 print:text-black print:border-zinc-800">

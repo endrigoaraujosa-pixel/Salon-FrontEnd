@@ -25,7 +25,7 @@ export default function ConfiguracoesWhatsApp() {
   });
 
   const [localStatus, setLocalStatus] = useState({
-    status: 'disconnected',
+    status: 'connecting',
     qr: null,
     user: null
   });
@@ -47,10 +47,10 @@ export default function ConfiguracoesWhatsApp() {
           instancia: response.data.instancia || "",
           token: response.data.token || ""
         });
-        const mode = !response.data.api_url 
-          ? 'simulation' 
-          : response.data.api_url === 'local' 
-            ? 'local' 
+        const mode = !response.data.api_url
+          ? 'simulation'
+          : response.data.api_url === 'local'
+            ? 'local'
             : 'external';
         setConnectionMode(mode);
       }
@@ -61,6 +61,24 @@ export default function ConfiguracoesWhatsApp() {
     }
   };
 
+  const teste = async () => {
+    if (connectionMode === "external") {
+      const subdominio = window.location.hostname.split('.')[0];
+      const res = await http.get(`/configuracoes/whatsapp/status-integracao/${subdominio}`);
+
+      const status = {
+        "open": "connected",
+        "close": "disconnected",
+        "connecting": "connecting"
+      }
+      console.log(res.data?.instance?.state, status[res.data?.instance?.state]);
+
+      setLocalStatus({
+        ...localStatus,
+        status: status[res.data?.instance?.state] || 'disconnected'
+      })
+    }
+  }
   const loadLocalStatus = async () => {
     try {
       const response = await http.get("/configuracoes/whatsapp/local-status");
@@ -71,19 +89,68 @@ export default function ConfiguracoesWhatsApp() {
   };
 
   useEffect(() => {
+    teste()
+  }, [connectionMode])
+
+  useEffect(() => {
     loadData();
   }, []);
 
   useEffect(() => {
-    let interval = null;
+    let statusInterval = null;
+    let qrInterval = null;
     if (form.api_url === 'local') {
       loadLocalStatus();
-      interval = setInterval(loadLocalStatus, 5000);
+      statusInterval = setInterval(loadLocalStatus, 5000);
+    } else if (connectionMode === 'external') {
+      const loadExternalStatus = async () => {
+        try {
+          const subdominio = window.location.hostname.split('.')[0];
+          const res = await http.get(`/configuracoes/whatsapp/status-integracao/${subdominio}`);
+          if (res.data?.instance?.state === 'open') {
+            setLocalStatus(prev => ({ ...prev, status: 'connected', qr: undefined }));
+            if (statusInterval) clearInterval(statusInterval);
+            if (qrInterval) clearInterval(qrInterval);
+          } else if (res.data?.instance?.state === 'close') {
+            setLocalStatus(prev => ({ ...prev, status: 'disconnected' }));
+          } else if (res.data?.instance?.state === 'connecting') {
+            if (statusInterval) clearInterval(statusInterval);
+          }
+        } catch (e) {
+          console.error("Erro ao obter status do WhatsApp externo:", e);
+        }
+      };
+
+      const loadExternalQrCode = async () => {
+        try {
+          const subdominio = window.location.hostname.split('.')[0];
+          const res = await http.get(`/configuracoes/whatsapp/qr-code/${subdominio}`);
+          if (res.data?.base64) {
+            setLocalStatus(prev => ({ ...prev, qr: res.data.base64 }));
+          }
+        } catch (e) {
+          console.error("Erro ao atualizar QR Code:", e);
+        }
+      };
+
+      loadExternalStatus();
+      statusInterval = setInterval(loadExternalStatus, 5000);
+      let tentativa = 0;
+
+      qrInterval = setInterval(async () => {
+        if (tentativa > 5) {
+          clearInterval(qrInterval);
+          return;
+        }
+        await loadExternalQrCode();
+        tentativa++;
+      }, 20000);
     }
     return () => {
-      if (interval) clearInterval(interval);
+      if (statusInterval) clearInterval(statusInterval);
+      if (qrInterval) clearInterval(qrInterval);
     };
-  }, [form.api_url]);
+  }, [form.api_url, connectionMode]);
 
   const handleConnectionModeChange = (mode) => {
     setConnectionMode(mode);
@@ -109,13 +176,6 @@ export default function ConfiguracoesWhatsApp() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      if (connectionMode === 'external') {
-        if (!form.api_url || !form.instancia) {
-          toast.error("Por favor, preencha a URL da API e o Nome da Instância para o Provedor Externo.");
-          setSaving(false);
-          return;
-        }
-      }
       await http.post("/configuracoes/whatsapp", form);
       toast.success("Configurações do WhatsApp salvas com sucesso!");
       window.dispatchEvent(new Event("whatsapp_config_updated"));
@@ -138,28 +198,47 @@ export default function ConfiguracoesWhatsApp() {
       .replace(/{profissional}/g, "Gabriela Costa");
   };
 
+  const handleStartIntegration = async () => {
+    try {
+      const subdominio = window.location.hostname.split('.')[0];
+      const respone = await http.post("/configuracoes/whatsapp/iniciar-integracao", { subdominio });
+      const { data, success } = respone.data
+      if (success) {
+        setLocalStatus({
+          ...localStatus,
+          status: 'connected',
+          qr: data?.qrcode?.base64,
+          user: null
+        })
+      }
+      toast.success("Integração iniciada com sucesso!");
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Erro ao iniciar integração externa.");
+    }
+  }
+
   return (
     <div className="p-6 lg:p-8 fade-in min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200">
-      
+
       {/* Back Button */}
-      <Button 
-        variant="ghost" 
-        onClick={() => navigate("/configuracoes")} 
+      <Button
+        variant="ghost"
+        onClick={() => navigate("/configuracoes")}
         className="mb-4 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
       >
         <ArrowLeft className="w-4 h-4 mr-1" /> Voltar para Configurações
       </Button>
 
-      <PageHeader 
-        overline="Configurações" 
-        title="WhatsApp & Lembretes Automáticos" 
+      <PageHeader
+        overline="Configurações"
+        title="WhatsApp & Lembretes Automáticos"
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-6 max-w-7xl">
-        
+
         {/* Left column: configurations */}
         <div className="lg:col-span-2 space-y-6">
-          
+
           {/* Main Activation Card */}
           <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
             <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-5">
@@ -168,8 +247,8 @@ export default function ConfiguracoesWhatsApp() {
             </h3>
 
             <div className="flex items-start gap-3 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850">
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 id="ativo"
                 checked={form.ativo === 1}
                 onChange={(e) => setForm({ ...form, ativo: e.target.checked ? 1 : 0 })}
@@ -203,11 +282,10 @@ export default function ConfiguracoesWhatsApp() {
                 <button
                   type="button"
                   onClick={() => handleConnectionModeChange('simulation')}
-                  className={`p-4 rounded-xl border text-left transition-all ${
-                    connectionMode === 'simulation'
-                      ? 'border-emerald-500 bg-emerald-50/10 text-emerald-950 dark:text-emerald-100 ring-2 ring-emerald-500/20'
-                      : 'border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-950/30'
-                  }`}
+                  className={`p-4 rounded-xl border text-left transition-all ${connectionMode === 'simulation'
+                    ? 'border-emerald-500 bg-emerald-50/10 text-emerald-950 dark:text-emerald-100 ring-2 ring-emerald-500/20'
+                    : 'border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-950/30'
+                    }`}
                 >
                   <span className="block text-sm font-bold">Modo Simulação</span>
                   <span className="block text-xs text-zinc-500 dark:text-zinc-400 mt-1">Apenas simula o envio no histórico (grátis)</span>
@@ -216,11 +294,10 @@ export default function ConfiguracoesWhatsApp() {
                 <button
                   type="button"
                   onClick={() => handleConnectionModeChange('local')}
-                  className={`p-4 rounded-xl border text-left transition-all ${
-                    connectionMode === 'local'
-                      ? 'border-emerald-500 bg-emerald-50/10 text-emerald-950 dark:text-emerald-100 ring-2 ring-emerald-500/20'
-                      : 'border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-950/30'
-                  }`}
+                  className={`p-4 rounded-xl border text-left transition-all ${connectionMode === 'local'
+                    ? 'border-emerald-500 bg-emerald-50/10 text-emerald-950 dark:text-emerald-100 ring-2 ring-emerald-500/20'
+                    : 'border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-950/30'
+                    }`}
                 >
                   <span className="block text-sm font-bold flex items-center gap-1.5">
                     Modo Local
@@ -232,11 +309,10 @@ export default function ConfiguracoesWhatsApp() {
                 <button
                   type="button"
                   onClick={() => handleConnectionModeChange('external')}
-                  className={`p-4 rounded-xl border text-left transition-all ${
-                    connectionMode === 'external'
-                      ? 'border-emerald-500 bg-emerald-50/10 text-emerald-950 dark:text-emerald-100 ring-2 ring-emerald-500/20'
-                      : 'border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-950/30'
-                  }`}
+                  className={`p-4 rounded-xl border text-left transition-all ${connectionMode === 'external'
+                    ? 'border-emerald-500 bg-emerald-50/10 text-emerald-950 dark:text-emerald-100 ring-2 ring-emerald-500/20'
+                    : 'border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-950/30'
+                    }`}
                 >
                   <span className="block text-sm font-bold">Provedor Externo</span>
                   <span className="block text-xs text-zinc-500 dark:text-zinc-400 mt-1">Conecta com Evolution API ou Z-API comercial</span>
@@ -273,7 +349,7 @@ export default function ConfiguracoesWhatsApp() {
                         Desconectar Celular
                       </Button>
                     </div>
-                  ) : localStatus.status === 'connecting' ? (
+                  ) : localStatus.status === 'connecting' && !localStatus.qr ? (
                     <div className="py-6 flex flex-col items-center justify-center text-center space-y-3">
                       <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
                       <div>
@@ -290,10 +366,10 @@ export default function ConfiguracoesWhatsApp() {
                       <div className="flex flex-col items-center justify-center py-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl">
                         {localStatus.qr ? (
                           <div className="space-y-3 flex flex-col items-center">
-                            <img 
-                              src={localStatus.qr} 
-                              alt="WhatsApp QR Code" 
-                              className="w-52 h-52 p-2 bg-white rounded-lg shadow-sm border border-zinc-100" 
+                            <img
+                              src={localStatus.qr}
+                              alt="WhatsApp QR Code"
+                              className="w-52 h-52 p-2 bg-white rounded-lg shadow-sm border border-zinc-100"
                             />
                             <span className="text-[11px] font-semibold text-zinc-450 dark:text-zinc-400 animate-pulse flex items-center gap-1">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -314,44 +390,50 @@ export default function ConfiguracoesWhatsApp() {
 
               {/* Mode B: External API Form Fields */}
               {connectionMode === 'external' && (
-                <div className="space-y-4 p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="api_url">URL da API</Label>
-                      <input 
-                        type="text" 
-                        id="api_url"
-                        placeholder="Ex: http://localhost:8080"
-                        value={form.api_url || ""}
-                        onChange={(e) => setForm({ ...form, api_url: e.target.value })}
-                        className="w-full h-10 px-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
+                <div className="flex flex-col items-center justify-center space-y-4 p-8 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850">
+                  <h4 className="text-sm font-bold text-zinc-950 dark:text-zinc-150">
+                    Integração com Provedor Externo
+                  </h4>
+                  {
+                    localStatus.status === 'disconnected'
+                      ? (<>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center max-w-sm leading-relaxed">
+                          Clique no botão abaixo para iniciar a integração com o WhatsApp.
+                        </p>
+                        <Button
+                          type="button"
+                          onClick={() => handleStartIntegration()}
+                          className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white font-bold h-10 px-6 rounded-lg shadow-sm">
+                          Iniciar integração com whatsapp
+                        </Button></>)
+                      : ""}
+                  {localStatus.status !== 'disconnected' && (
+                    <div className="flex flex-col items-center justify-center py-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl w-full mt-4">
+                      {localStatus.qr ? (
+                        <div className="space-y-3 flex flex-col items-center">
+                          <img
+                            src={localStatus.qr.startsWith('data:image') ? localStatus.qr : `data:image/png;base64,${localStatus.qr}`}
+                            alt="WhatsApp QR Code"
+                            className="w-52 h-52 p-2 bg-white rounded-lg shadow-sm border border-zinc-100 object-contain"
+                          />
+                          <span className="text-[11px] font-semibold text-zinc-450 dark:text-zinc-400 animate-pulse flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            QR Code gerado. Aguardando leitura do celular...
+                          </span>
+                        </div>
+                      ) : localStatus.status === 'connected'
+                        ? (<div className="py-8 flex flex-col items-center justify-center space-y-2 text-zinc-400">
+                          <CheckCircle2 color="#10b981ff" className="w-8 h-8 text-zinc-350" />
+                          <p className="text-xs">Conectado com sucesso!</p>
+                        </div>)
+                        : (
+                          <div className="py-8 flex flex-col items-center justify-center space-y-2 text-zinc-400">
+                            <AlertCircle className="w-8 h-8 animate-bounce text-zinc-350" />
+                            <p className="text-xs">Gerando QR Code... Por favor, aguarde.</p>
+                          </div>
+                        )}
                     </div>
-
-                    <div className="space-y-1.5">
-                      <Label htmlFor="instancia">Nome da Instância</Label>
-                      <input 
-                        type="text" 
-                        id="instancia"
-                        placeholder="Ex: SalaoPrincipal"
-                        value={form.instancia || ""}
-                        onChange={(e) => setForm({ ...form, instancia: e.target.value })}
-                        className="w-full h-10 px-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="token">Token / API Key</Label>
-                    <input 
-                      type="password" 
-                      id="token"
-                      placeholder="Seu token de segurança"
-                      value={form.token || ""}
-                      onChange={(e) => setForm({ ...form, token: e.target.value })}
-                      className="w-full h-10 px-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                  </div>
+                  )}
                 </div>
               )}
 
@@ -377,9 +459,9 @@ export default function ConfiguracoesWhatsApp() {
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              
+
               <label className="flex items-center gap-3 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-950/50 cursor-pointer transition-colors">
-                <input 
+                <input
                   type="checkbox"
                   checked={form.lembrete_24h === 1}
                   onChange={(e) => setForm({ ...form, lembrete_24h: e.target.checked ? 1 : 0 })}
@@ -392,7 +474,7 @@ export default function ConfiguracoesWhatsApp() {
               </label>
 
               <label className="flex items-center gap-3 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-950/50 cursor-pointer transition-colors">
-                <input 
+                <input
                   type="checkbox"
                   checked={form.lembrete_2h === 1}
                   onChange={(e) => setForm({ ...form, lembrete_2h: e.target.checked ? 1 : 0 })}
@@ -405,7 +487,7 @@ export default function ConfiguracoesWhatsApp() {
               </label>
 
               <label className="flex items-center gap-3 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-950/50 cursor-pointer transition-colors">
-                <input 
+                <input
                   type="checkbox"
                   checked={form.lembrete_1h === 1}
                   onChange={(e) => setForm({ ...form, lembrete_1h: e.target.checked ? 1 : 0 })}
@@ -426,8 +508,8 @@ export default function ConfiguracoesWhatsApp() {
               <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
                 Modelo da Mensagem
               </h3>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="xs"
                 onClick={() => setForm({ ...form, modelo_mensagem: `Olá, {nome}!\n\nPassando para lembrar que você possui um horário agendado.\n\n📅 Data: {data}\n⏰ Hora: {hora}\n💇 Serviço: {servico}\n👤 Profissional: {profissional}\n\nEstamos esperando você.` })}
                 className="text-xs text-zinc-500 hover:text-zinc-700"
@@ -439,7 +521,7 @@ export default function ConfiguracoesWhatsApp() {
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="modelo_mensagem">Template da Mensagem</Label>
-                <Textarea 
+                <Textarea
                   id="modelo_mensagem"
                   value={form.modelo_mensagem}
                   onChange={(e) => setForm({ ...form, modelo_mensagem: e.target.value })}
@@ -489,14 +571,14 @@ export default function ConfiguracoesWhatsApp() {
               <CheckCircle2 className="w-5 h-5 text-emerald-500" />
               <span>Prévia da Mensagem</span>
             </h3>
-            
+
             <p className="text-xs text-zinc-550 dark:text-zinc-400 mb-5 leading-relaxed">
               Veja como o cliente receberá a mensagem no WhatsApp. Os campos dinâmicos serão preenchidos automaticamente com os dados do agendamento.
             </p>
 
             {/* Simulated WhatsApp screen */}
             <div className="flex-grow rounded-2xl bg-[#E5DDD5] dark:bg-zinc-950 p-4 border border-zinc-200 dark:border-zinc-850 relative overflow-hidden flex flex-col min-h-[350px]">
-              
+
               {/* Wallpaper pattern mock */}
               <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: "radial-gradient(#000 10%, transparent 10%)", backgroundSize: "20px 20px" }} />
 
@@ -512,23 +594,23 @@ export default function ConfiguracoesWhatsApp() {
           </Card>
         </div>
 
-      </div>
+      </div >
 
       {/* Action Buttons */}
-      <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-zinc-200 dark:border-zinc-900 max-w-7xl">
+      < div className="flex justify-end gap-3 mt-8 pt-4 border-t border-zinc-200 dark:border-zinc-900 max-w-7xl" >
         <Button variant="outline" onClick={loadData} className="h-10 text-xs rounded-lg px-4">
           Cancelar
         </Button>
-        <Button 
-          onClick={handleSave} 
+        <Button
+          onClick={handleSave}
           disabled={saving}
           className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white h-10 text-xs rounded-lg font-bold flex items-center gap-1.5 px-5 shadow-sm"
         >
           <Save className="w-4 h-4" />
           <span>{saving ? "Salvando..." : "Salvar Configurações"}</span>
         </Button>
-      </div>
+      </div >
 
-    </div>
+    </div >
   );
 }
