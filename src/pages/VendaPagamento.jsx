@@ -75,6 +75,33 @@ export default function VendaPagamento() {
   const temDescontoAplicado = !!descontoMeta;
   const valorOriginalVenda = temDescontoAplicado ? (v.valor_total + (descontoMeta?.total_descontado || 0)) : v.valor_total;
 
+  const getConsolidadoPorForma = () => {
+    const totalPorForma = {};
+    (v.pagamentos || []).forEach(p => {
+      totalPorForma[p.forma_pagamento] = (totalPorForma[p.forma_pagamento] || 0) + Number(p.valor);
+    });
+    
+    let tempSaldo = saldo;
+    const validos = novos.filter(p => Number(p.valor) > 0);
+    validos.forEach(p => {
+      let pVal = Number(p.valor);
+      let netVal = pVal;
+      if (p.forma_pagamento === "dinheiro" && pVal > tempSaldo) {
+        netVal = Math.max(0, tempSaldo);
+        tempSaldo = 0;
+      } else {
+        tempSaldo = Number((tempSaldo - pVal).toFixed(2));
+      }
+      totalPorForma[p.forma_pagamento] = (totalPorForma[p.forma_pagamento] || 0) + netVal;
+    });
+
+    return Object.entries(totalPorForma).map(([forma, total]) => ({
+      forma,
+      label: FORMAS.find(f => f.v === forma)?.l || forma,
+      total
+    })).filter(x => x.total > 0.01);
+  };
+
   const isDescontoAplicavel = (desconto) => {
     let vinculados = null;
     if (desconto.itens_vinculados) {
@@ -250,37 +277,25 @@ export default function VendaPagamento() {
     
     const totalInformado = validos.reduce((sum, p) => sum + Number(p.valor), 0);
     const finalizar = totalInformado >= (saldo - 0.01);
-
-    // Ajustar valor em dinheiro caso passe do saldo para registrar apenas o saldo real
-    let saldoRestante = saldo;
-    let pagamentosAEnviar = [];
-    let valorTroco = 0;
-    let temTroco = false;
-
-    for (let p of validos) {
-      let valorOriginal = Number(p.valor);
-      let valorAEnviar = valorOriginal;
-      let observacao = p.observacao || "";
-
-      if (p.forma_pagamento === "dinheiro" && valorOriginal > saldoRestante) {
-        temTroco = true;
-        valorTroco = valorOriginal - saldoRestante;
-        valorAEnviar = Math.max(0, saldoRestante);
-        observacao = `Troco: ${fmtBRL(valorTroco)}` + (p.observacao ? ` - ${p.observacao}` : "");
-        saldoRestante = 0;
-      } else {
-        saldoRestante -= valorOriginal;
-      }
-
-      pagamentosAEnviar.push({
-        valor: valorAEnviar,
-        forma_pagamento: p.forma_pagamento,
-        observacao: observacao
-      });
+    const excessoTotal = totalInformado > saldo ? Number((totalInformado - saldo).toFixed(2)) : 0;
+    const temTroco = excessoTotal > 0 && novos.some(p => p.forma_pagamento === "dinheiro");
+    
+    if (temTroco && (excessoTotal > 200 || excessoTotal > saldo)) {
+      const confirmacao = window.confirm(
+        `ATENÇÃO: O troco calculado de ${fmtBRL(excessoTotal)} é muito alto.\n\n` +
+        `Valor recebido (bruto): ${fmtBRL(totalInformado)}\n` +
+        `Saldo devido: ${fmtBRL(saldo)}\n\n` +
+        `Deseja prosseguir com o registro do pagamento e entrega do troco?`
+      );
+      if (!confirmacao) return;
     }
 
     const payload = { 
-      pagamentos: pagamentosAEnviar, 
+      pagamentos: validos.map(p => ({
+        valor: Number(p.valor),
+        forma_pagamento: p.forma_pagamento,
+        observacao: p.observacao || ""
+      })), 
       finalizar 
     };
     
@@ -288,7 +303,7 @@ export default function VendaPagamento() {
       await http.post(`/vendas-diretas/${id}/pagamentos`, payload);
       
       if (temTroco) {
-        toast.success(`Pagamento registrado com sucesso! Devolva o troco de ${fmtBRL(valorTroco)}`);
+        toast.success(`Pagamento registrado com sucesso! Devolva o troco de ${fmtBRL(excessoTotal)}`);
       } else {
         toast.success(finalizar ? "Venda finalizada com sucesso!" : `Pagamento registrado! Restante pendente: ${fmtBRL(saldo - totalInformado)}`);
       }
@@ -383,7 +398,7 @@ export default function VendaPagamento() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 fade-in max-w-4xl w-full overflow-x-hidden">
+    <div className="p-4 sm:p-6 lg:p-8 fade-in max-w-7xl w-full overflow-x-hidden">
       <Button variant="ghost" onClick={() => nav(-1)} className="mb-4"><ArrowLeft className="w-4 h-4 mr-1" /> Voltar</Button>
       <div className="text-xs uppercase tracking-wider text-zinc-400">Venda de Produto</div>
       <h1 className="font-display text-2xl sm:text-4xl font-semibold tracking-tight mt-1 flex flex-wrap items-center gap-2 sm:gap-3">
@@ -410,359 +425,366 @@ export default function VendaPagamento() {
         </div>
       )}
 
-      {/* Itens do carrinho */}
-      {Array.isArray(v.itens) && v.itens.length > 1 ? (
-        <div className="mt-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
-          <div className="px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-100 dark:border-zinc-800">
-            <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Itens da venda ({v.itens.length} produtos)</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400 bg-zinc-50/50 dark:bg-zinc-900">
-                <tr>
-                  <th className="px-4 py-2 text-left">Produto</th>
-                  <th className="px-4 py-2 text-center">Qtd</th>
-                  <th className="px-4 py-2 text-right">Unit.</th>
-                  <th className="px-4 py-2 text-right">Subtotal</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {v.itens.map((item, i) => (
-                  <tr key={i} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50 transition-colors">
-                    <td className="px-4 py-2.5 font-bold text-zinc-800 dark:text-zinc-100">{item.produto_nome}</td>
-                    <td className="px-4 py-2.5 text-center font-medium text-zinc-600 dark:text-zinc-300">{item.quantidade}</td>
-                    <td className="px-4 py-2.5 text-right font-medium text-zinc-600 dark:text-zinc-300">{fmtBRL(item.preco_unitario)}</td>
-                    <td className="px-4 py-2.5 text-right font-black text-[#3A4F4A] dark:text-emerald-400">{fmtBRL(item.subtotal)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          Qtd: <strong className="text-zinc-800 dark:text-zinc-200">{v.quantidade}</strong>
-        </div>
-      )}
-
-      {/* Resumo Financeiro com Desconto */}
-      {temDescontoAplicado ? (
-        <div className="my-6 space-y-3">
-          {/* Cards: Valor Original → Desconto → Valor a Pagar */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 items-center">
-              <div className="text-center sm:text-left">
-                <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-zinc-400 dark:text-zinc-500">Valor Original</div>
-                <div className="font-display text-xl sm:text-2xl font-black mt-1 text-zinc-500 dark:text-zinc-400 line-through">{fmtBRL(valorOriginalVenda)}</div>
+      {/* Grid Responsivo em Duas Colunas */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mt-4">
+        {/* Coluna Esquerda: Listas de Itens e Registrar Pagamento */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Itens do carrinho */}
+          {Array.isArray(v.itens) && v.itens.length > 1 ? (
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm fade-in">
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Itens da venda ({v.itens.length} produtos)</h3>
               </div>
-              <div className="text-center">
-                <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-rose-500 dark:text-rose-400">Desconto Aplicado</div>
-                <div className="font-display text-xl sm:text-2xl font-black mt-1 text-rose-600 dark:text-rose-400">- {fmtBRL(descontoMeta?.total_descontado)}</div>
-                <div className="text-[10px] text-rose-500/80 dark:text-rose-400/60 font-semibold mt-0.5">
-                  {descontoMeta?.codigo} ({descontoMeta?.tipo === 'porcentagem' ? `${descontoMeta?.valor_desconto}%` : fmtBRL(descontoMeta?.valor_desconto)})
-                </div>
-              </div>
-              <div className="text-center sm:text-right">
-                <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-emerald-600 dark:text-emerald-400">Valor a Pagar</div>
-                <div className="font-display text-2xl sm:text-3xl font-black mt-1 text-emerald-700 dark:text-emerald-400">{fmtBRL(v.valor_total)}</div>
-              </div>
-            </div>
-          </div>
-          {/* Cards menores: Pago / Saldo */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm">
-              <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-zinc-400 dark:text-zinc-500">Pago</div>
-              <div className="font-display text-xl sm:text-2xl font-black mt-1 text-emerald-600 dark:text-emerald-400">{fmtBRL(v.total_pago)}</div>
-            </div>
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm">
-              <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-zinc-400 dark:text-zinc-500">Saldo Restante</div>
-              <div className={`font-display text-xl sm:text-2xl font-black mt-1 ${saldo > 0.01 ? "text-amber-600 dark:text-amber-500" : "text-emerald-600 dark:text-emerald-400"}`}>{fmtBRL(saldo)}</div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 my-6">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
-            <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-zinc-400 dark:text-zinc-500">Total</div>
-            <div className="font-display text-2xl sm:text-3xl font-black mt-1 text-zinc-900 dark:text-zinc-50">{fmtBRL(v.valor_total)}</div>
-          </div>
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
-            <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-zinc-400 dark:text-zinc-500">Pago</div>
-            <div className="font-display text-2xl sm:text-3xl font-black mt-1 text-emerald-600 dark:text-emerald-400">{fmtBRL(v.total_pago)}</div>
-          </div>
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
-            <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-zinc-400 dark:text-zinc-500">Saldo</div>
-            <div className={`font-display text-2xl sm:text-3xl font-black mt-1 ${saldo > 0.01 ? "text-amber-600 dark:text-amber-500" : "text-emerald-600 dark:text-emerald-400"}`}>{fmtBRL(saldo)}</div>
-          </div>
-        </div>
-      )}
-
-      {/* Seção de Descontos - info do desconto sempre visível, seletor apenas sem pagamentos */}
-      {temDescontoAplicado ? (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm mb-6">
-          <h3 className="font-display text-base font-bold mb-3 text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
-            🏷️ Desconto Aplicado
-          </h3>
-          <div className="space-y-3">
-            {/* Cabeçalho do desconto aplicado */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-lg shrink-0">
-                  🏷️
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-emerald-800 dark:text-emerald-300">
-                    {descontoMeta?.codigo || "Desconto aplicado"}
-                    <span className="text-xs font-normal ml-1.5 text-emerald-600 dark:text-emerald-400">
-                      ({descontoMeta?.tipo === 'porcentagem' 
-                        ? `${descontoMeta?.valor_desconto}%` 
-                        : fmtBRL(descontoMeta?.valor_desconto)})
-                    </span>
-                  </div>
-                  {descontoMeta?.descricao && (
-                    <div className="text-xs text-emerald-700/70 dark:text-emerald-400/70 mt-0.5">{descontoMeta.descricao}</div>
-                  )}
-                  <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
-                    Total descontado: <strong>{fmtBRL(descontoMeta?.total_descontado)}</strong>
-                    {descontoMeta?.incide_comissao === false && (
-                      <span className="ml-2 text-[10px] bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full">Não incide na comissão</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              {pagamentos.length === 0 && (
-                <Button 
-                  variant="destructive" 
-                  size="sm" 
-                  onClick={handleRemoveDesconto}
-                  disabled={loadingDesconto}
-                  className="shrink-0"
-                >
-                  {loadingDesconto ? "Processando..." : "Remover"}
-                </Button>
-              )}
-            </div>
-            
-            {/* Detalhamento por item */}
-            <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-zinc-50 dark:bg-zinc-900 text-xs uppercase text-zinc-500 dark:text-zinc-400">
-                  <tr>
-                    <th className="px-4 py-2 text-left">Produto</th>
-                    <th className="px-4 py-2 text-right">Original</th>
-                    <th className="px-4 py-2 text-right">Desconto</th>
-                    <th className="px-4 py-2 text-right">Final</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                  {v.itens?.map((item, i) => (
-                    <tr key={i} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30">
-                      <td className="px-4 py-2 font-medium text-zinc-800 dark:text-zinc-200">{item.produto_nome}</td>
-                      <td className="px-4 py-2 text-right text-zinc-500 dark:text-zinc-400">
-                        {item.preco_unitario_original !== undefined 
-                          ? <span className="line-through">{fmtBRL(item.preco_unitario_original * item.quantidade)}</span>
-                          : fmtBRL(item.subtotal)}
-                      </td>
-                      <td className="px-4 py-2 text-right text-rose-600 dark:text-rose-400 font-semibold">
-                        {item.preco_unitario_original !== undefined 
-                          ? `- ${fmtBRL((item.preco_unitario_original * item.quantidade) - item.subtotal)}` 
-                          : "—"}
-                      </td>
-                      <td className="px-4 py-2 text-right font-bold text-zinc-900 dark:text-zinc-100">{fmtBRL(item.subtotal)}</td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400 bg-zinc-50/50 dark:bg-zinc-900">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Produto</th>
+                      <th className="px-4 py-2 text-center">Qtd</th>
+                      <th className="px-4 py-2 text-right">Unit.</th>
+                      <th className="px-4 py-2 text-right">Subtotal</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {v.itens.map((item, i) => (
+                      <tr key={i} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50 transition-colors">
+                        <td className="px-4 py-2.5 font-bold text-zinc-800 dark:text-zinc-100">{item.produto_nome}</td>
+                        <td className="px-4 py-2.5 text-center font-medium text-zinc-600 dark:text-zinc-300">{item.quantidade}</td>
+                        <td className="px-4 py-2.5 text-right font-medium text-zinc-600 dark:text-zinc-300">{fmtBRL(item.preco_unitario)}</td>
+                        <td className="px-4 py-2.5 text-right font-black text-[#3A4F4A] dark:text-emerald-400">{fmtBRL(item.subtotal)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
+          ) : (
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm fade-in">
+              <div className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">
+                Produto: <strong className="text-zinc-800 dark:text-zinc-200">{v.produto_nome}</strong>
+              </div>
+              <div className="text-sm text-zinc-500 dark:text-zinc-400 mt-2 font-medium">
+                Qtd: <strong className="text-zinc-800 dark:text-zinc-200">{v.quantidade}</strong>
+              </div>
+              <div className="text-sm text-zinc-500 dark:text-zinc-400 mt-2 font-medium">
+                Valor Unitário: <strong className="text-zinc-800 dark:text-zinc-200">{fmtBRL(v.valor_total / v.quantidade)}</strong>
+              </div>
+            </div>
+          )}
 
-            {/* Trocar por outro desconto - só sem pagamentos */}
-            {pagamentos.length === 0 && (
-              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                <Label className="text-xs text-zinc-500 dark:text-zinc-400">Substituir por outro desconto:</Label>
-                <div className="flex gap-2 mt-1">
+          {/* Seção de Descontos */}
+          {temDescontoAplicado ? (
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-sm">
+              <h3 className="font-display text-sm font-bold mb-3 text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
+                🏷️ Desconto Aplicado
+              </h3>
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 rounded-xl p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-lg shrink-0">
+                      🏷️
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-emerald-800 dark:text-emerald-300">
+                        {descontoMeta?.codigo || "Desconto aplicado"}
+                        <span className="text-xs font-normal ml-1.5 text-emerald-600 dark:text-emerald-400">
+                          ({descontoMeta?.tipo === 'porcentagem' 
+                            ? `${descontoMeta?.valor_desconto}%` 
+                            : fmtBRL(descontoMeta?.valor_desconto)})
+                        </span>
+                      </div>
+                      {descontoMeta?.descricao && (
+                        <div className="text-xs text-emerald-700/70 dark:text-emerald-400/70 mt-0.5">{descontoMeta.descricao}</div>
+                      )}
+                      <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
+                        Total descontado: <strong>{fmtBRL(descontoMeta?.total_descontado)}</strong>
+                        {descontoMeta?.incide_comissao === false && (
+                          <span className="ml-2 text-[10px] bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full">Não incide na comissão</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  {pagamentos.length === 0 && (
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      onClick={handleRemoveDesconto}
+                      disabled={loadingDesconto}
+                      className="shrink-0"
+                    >
+                      {loadingDesconto ? "Processando..." : "Remover"}
+                    </Button>
+                  )}
+                </div>
+                
+                {/* Detalhamento por item */}
+                <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-zinc-50 dark:bg-zinc-900 text-xs uppercase text-zinc-500 dark:text-zinc-400">
+                      <tr>
+                        <th className="px-4 py-2 text-left">Produto</th>
+                        <th className="px-4 py-2 text-right">Original</th>
+                        <th className="px-4 py-2 text-right">Desconto</th>
+                        <th className="px-4 py-2 text-right">Final</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                      {v.itens?.map((item, i) => (
+                        <tr key={i} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30">
+                          <td className="px-4 py-2 font-medium text-zinc-800 dark:text-zinc-200">{item.produto_nome}</td>
+                          <td className="px-4 py-2 text-right text-zinc-500 dark:text-zinc-400">
+                            {item.preco_unitario_original !== undefined 
+                              ? <span className="line-through">{fmtBRL(item.preco_unitario_original * item.quantidade)}</span>
+                              : fmtBRL(item.subtotal)}
+                          </td>
+                          <td className="px-4 py-2 text-right text-rose-600 dark:text-rose-400 font-semibold">
+                            {item.preco_unitario_original !== undefined 
+                              ? `- ${fmtBRL((item.preco_unitario_original * item.quantidade) - item.subtotal)}` 
+                              : "—"}
+                          </td>
+                          <td className="px-4 py-2 text-right font-bold text-zinc-900 dark:text-zinc-100">{fmtBRL(item.subtotal)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Substituir por outro desconto */}
+                {pagamentos.length === 0 && (
+                  <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                    <Label className="text-xs text-zinc-500 dark:text-zinc-400">Substituir por outro desconto:</Label>
+                    <div className="flex gap-2 mt-1">
+                      <Select onValueChange={handleSelectDesconto} disabled={loadingDesconto}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Selecione outro desconto..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {descontos.filter(d => isDescontoAplicavel(d) && d.id !== descontoMeta?.desconto_id).map(d => (
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.codigo} - {d.descricao || ""} ({d.tipo === 'porcentagem' ? `${d.valor}%` : fmtBRL(d.valor)}) {d.requer_autorizacao ? "🔒" : ""}
+                            </SelectItem>
+                          ))}
+                          {descontos.filter(d => isDescontoAplicavel(d) && d.id !== descontoMeta?.desconto_id).length === 0 && (
+                            <SelectItem disabled value="none">Nenhum outro desconto disponível</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : pagamentos.length === 0 && (
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-sm">
+              <h3 className="font-display text-base font-bold mb-3 text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
+                🏷️ Desconto
+              </h3>
+              <div className="space-y-2">
+                <Label className="text-xs text-zinc-500">Selecione um desconto para aplicar a esta venda:</Label>
+                <div className="flex gap-2">
                   <Select onValueChange={handleSelectDesconto} disabled={loadingDesconto}>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione outro desconto..." />
+                      <SelectValue placeholder="Selecione um desconto..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {descontos.filter(d => isDescontoAplicavel(d) && d.id !== descontoMeta?.desconto_id).map(d => (
+                      {descontos.filter(isDescontoAplicavel).map(d => (
                         <SelectItem key={d.id} value={d.id}>
                           {d.codigo} - {d.descricao || ""} ({d.tipo === 'porcentagem' ? `${d.valor}%` : fmtBRL(d.valor)}) {d.requer_autorizacao ? "🔒" : ""}
                         </SelectItem>
                       ))}
-                      {descontos.filter(d => isDescontoAplicavel(d) && d.id !== descontoMeta?.desconto_id).length === 0 && (
-                        <SelectItem disabled value="none">Nenhum outro desconto disponível</SelectItem>
+                      {descontos.filter(isDescontoAplicavel).length === 0 && (
+                        <SelectItem disabled value="none">Nenhum desconto disponível</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
-      ) : pagamentos.length === 0 && (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm mb-6">
-          <h3 className="font-display text-base font-bold mb-3 text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
-            🏷️ Desconto
-          </h3>
-          <div className="space-y-2">
-            <Label className="text-xs text-zinc-500">Selecione um desconto para aplicar a esta venda:</Label>
-            <div className="flex gap-2">
-              <Select onValueChange={handleSelectDesconto} disabled={loadingDesconto}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Selecione um desconto..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {descontos.filter(isDescontoAplicavel).map(d => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.codigo} - {d.descricao || ""} ({d.tipo === 'porcentagem' ? `${d.valor}%` : fmtBRL(d.valor)}) {d.requer_autorizacao ? "🔒" : ""}
-                    </SelectItem>
-                  ))}
-                  {descontos.filter(isDescontoAplicavel).length === 0 && (
-                    <SelectItem disabled value="none">Nenhum desconto disponível</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 sm:p-7 mb-6 shadow-sm">
-        <h3 className="font-display text-base sm:text-lg font-bold mb-5 text-zinc-800 dark:text-zinc-100">Registrar pagamento</h3>
-        <div className="space-y-4">
-          {novos.map((p, i) => (
-            <div key={i} className="border border-zinc-200 dark:border-zinc-800 sm:border-0 rounded-xl p-4 sm:p-0 bg-zinc-50 dark:bg-zinc-950 sm:bg-transparent sm:dark:bg-transparent space-y-3 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-4 sm:items-end relative">
-              {novos.length > 1 && (
-                <div className="sm:hidden absolute top-2 right-2">
-                  <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30" onClick={() => removeLine(i)} disabled={!temPermissaoPagamento}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              )}
-              <div className="col-span-3">
-                <Label className="text-xs sm:text-sm font-semibold text-zinc-700 dark:text-zinc-300">Valor *</Label>
-                <Input 
-                  data-testid={`vpay-valor-${i}`} 
-                  type="number" 
-                  step="0.01" 
-                  value={p.valor} 
-                  onChange={(e) => updateLine(i, "valor", e.target.value)}
-                  placeholder={p.forma_pagamento === "dinheiro" && saldo > 0 ? `Troco se > ${fmtBRL(saldo)}` : "Digite o valor"}
-                  className="bg-white dark:bg-zinc-900 sm:bg-zinc-50 sm:dark:bg-zinc-950 border-zinc-300 dark:border-zinc-700 mt-1.5 focus:ring-[#84A59D] font-bold"
-                  disabled={!temPermissaoPagamento}
-                />
-              </div>
-              <div className="col-span-4">
-                <Label className="text-xs sm:text-sm font-semibold text-zinc-700 dark:text-zinc-300">Forma de Pagamento *</Label>
-                <Select value={p.forma_pagamento} onValueChange={(val) => updateLine(i, "forma_pagamento", val)} disabled={!temPermissaoPagamento}>
-                  <SelectTrigger data-testid={`vpay-forma-${i}`} className="bg-white dark:bg-zinc-900 sm:bg-zinc-50 sm:dark:bg-zinc-950 border-zinc-300 dark:border-zinc-700 mt-1.5 font-bold" disabled={!temPermissaoPagamento}><SelectValue /></SelectTrigger>
-                  <SelectContent className="dark:bg-zinc-900 dark:border-zinc-800">{FORMAS.map((f) => <SelectItem key={f.v} value={f.v} className="dark:focus:bg-zinc-800 dark:text-zinc-200">{f.l}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="col-span-4">
-                <Label className="text-xs sm:text-sm font-semibold text-zinc-700 dark:text-zinc-300">Observação</Label>
-                <Input 
-                  value={p.observacao} 
-                  onChange={(e) => updateLine(i, "observacao", e.target.value)}
-                  placeholder={p.forma_pagamento === "dinheiro" && Number(p.valor) > saldo ? `Troco: ${fmtBRL(Number(p.valor) - saldo)}` : "Opcional"}
-                  className="bg-white dark:bg-zinc-900 sm:bg-zinc-50 sm:dark:bg-zinc-950 border-zinc-300 dark:border-zinc-700 mt-1.5"
-                  disabled={!temPermissaoPagamento}
-                />
-              </div>
-              <div className="hidden sm:block col-span-1 text-center">
-                {novos.length > 1 && (
-                  <Button size="icon" variant="ghost" onClick={() => removeLine(i)} disabled={!temPermissaoPagamento}>
-                    <Trash2 className="w-5 h-5 text-rose-500 hover:text-rose-600" />
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Aviso de troco */}
-        {trocoTotal > 0 && (
-          <div className="mt-5 p-5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-xl flex items-start gap-4 fade-in animate-pulse-subtle">
-            <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-500 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-emerald-900 dark:text-emerald-100">
-              <span className="font-bold">Troco calculado:</span>
-              <span className="text-xl font-black ml-2 text-emerald-700 dark:text-emerald-400">{fmtBRL(trocoTotal)}</span>
-              <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400/80 mt-1.5">
-                O valor registrado no sistema será de {fmtBRL(saldo)} (quitando o saldo), e o troco de {fmtBRL(trocoTotal)} deve ser devolvido ao cliente.
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6 pt-6 border-t border-zinc-100 dark:border-zinc-800">
-          <Button variant="outline" onClick={addLine} className="h-11 justify-center border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-bold dark:text-zinc-200" disabled={!temPermissaoPagamento}><Plus className="w-4 h-4 mr-1.5" /> Adicionar forma</Button>
-          <Button data-testid="vpay-finish" onClick={executePayment} className="h-11 bg-[#84A59D] hover:bg-[#6F9189] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white font-bold justify-center shadow-md" disabled={!temPermissaoPagamento}><CheckCircle2 className="w-5 h-5 mr-2" /> Registrar e Finalizar</Button>
-        </div>
-      </div>
-
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl mt-6 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
-          <h3 className="font-display text-lg font-bold text-zinc-800 dark:text-zinc-100">Pagamentos anteriores</h3>
-        </div>
-        {pagamentos.length === 0 ? <div className="p-8 text-center text-sm font-medium text-zinc-400 dark:text-zinc-500">Nenhum pagamento registrado</div> : (
-          <>
-            {/* Mobile View */}
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-800 sm:hidden">
-              {pagamentos.map((p) => (
-                <div key={p.id} className="p-5 flex flex-col gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">{fmtDT(p.data_hora)}</span>
-                    <span className="font-black text-[#3A4F4A] dark:text-emerald-400 text-lg">{fmtBRL(p.valor)}</span>
-                  </div>
-                  <div className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
-                    {FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}
-                  </div>
-                  {p.observacao && (
-                    <div className="text-xs text-zinc-600 dark:text-zinc-400 italic bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl mt-1 border border-zinc-100 dark:border-zinc-800">
-                      "{p.observacao}"
+          {/* Registrar Pagamento */}
+          <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-4 sm:p-6 shadow-sm">
+            <h3 className="font-display text-base sm:text-lg font-medium text-zinc-800 dark:text-zinc-100 mb-4">Registrar Pagamento</h3>
+            <div className="space-y-4">
+              {novos.map((p, i) => (
+                <div key={i} className="border border-zinc-150 sm:border-0 rounded-xl p-4 sm:p-0 bg-zinc-50/50 sm:bg-transparent dark:bg-zinc-955/20 space-y-3 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end relative">
+                  {novos.length > 1 && (
+                    <div className="sm:hidden absolute top-2 right-2">
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-955/20" onClick={() => removeLine(i)} disabled={!temPermissaoPagamento}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   )}
-                  <div className="flex items-center justify-end gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-3 mt-2">
-                    <Button size="sm" variant="outline" className="h-9 border-zinc-200 dark:border-zinc-700 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30" onClick={() => startDelete(p.id)}>
-                      <Trash2 className="w-4 h-4 mr-1.5" /> Excluir
-                    </Button>
+                  <div className="col-span-3">
+                    <Label className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-400 font-medium">Valor *</Label>
+                    <Input 
+                      data-testid={`vpay-valor-${i}`} 
+                      type="number" 
+                      step="0.01" 
+                      value={p.valor} 
+                      onChange={(e) => updateLine(i, "valor", e.target.value)}
+                      placeholder="0.00"
+                      className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1.5 h-9 text-sm focus:ring-[#84A59D] font-mono"
+                      disabled={!temPermissaoPagamento}
+                    />
+                  </div>
+                  <div className="col-span-4">
+                    <Label className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-400 font-medium">Forma *</Label>
+                    <Select value={p.forma_pagamento} onValueChange={(val) => updateLine(i, "forma_pagamento", val)} disabled={!temPermissaoPagamento}>
+                      <SelectTrigger data-testid={`vpay-forma-${i}`} className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1.5 h-9 text-xs" disabled={!temPermissaoPagamento}><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {FORMAS.map((f) => <SelectItem key={f.v} value={f.v} className="text-xs">{f.l}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-4">
+                    <Label className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-400 font-medium">Observação</Label>
+                    <Input 
+                      value={p.observacao} 
+                      onChange={(e) => updateLine(i, "observacao", e.target.value)}
+                      placeholder="Observações adicionais"
+                      className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1.5 h-9 text-xs focus:ring-[#84A59D]"
+                      disabled={!temPermissaoPagamento}
+                    />
+                  </div>
+                  <div className="hidden sm:block col-span-1 text-center">
+                    {novos.length > 1 && (
+                      <Button size="icon" variant="ghost" onClick={() => removeLine(i)} disabled={!temPermissaoPagamento}>
+                        <Trash2 className="w-4 h-4 text-rose-500" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
-
-            {/* Desktop View */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-zinc-50 dark:bg-zinc-950 text-xs uppercase tracking-widest font-bold text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-800">
-                  <tr>
-                    <th className="px-6 py-4 text-left">Data</th>
-                    <th className="px-6 py-4 text-left">Forma</th>
-                    <th className="px-6 py-4 text-right">Valor</th>
-                    <th className="px-6 py-4 text-left">Observação</th>
-                    <th className="px-6 py-4 text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                  {pagamentos.map((p) => (
-                    <tr key={p.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                      <td className="px-6 py-4 text-zinc-700 dark:text-zinc-300 font-medium">{fmtDT(p.data_hora)}</td>
-                      <td className="px-6 py-4 text-zinc-900 dark:text-zinc-100 font-bold">{FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}</td>
-                      <td className="px-6 py-4 text-right font-black text-[#3A4F4A] dark:text-emerald-400">{fmtBRL(p.valor)}</td>
-                      <td className="px-6 py-4 text-sm text-zinc-600 dark:text-zinc-400 italic">{p.observacao}</td>
-                      <td className="px-6 py-4 text-right space-x-2">
-                        <Button size="icon" variant="ghost" onClick={() => startDelete(p.id)} className="hover:bg-rose-50 dark:hover:bg-rose-900/30">
-                          <Trash2 className="w-4 h-4 text-rose-500 dark:text-rose-400" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6">
+              <Button variant="outline" size="sm" onClick={addLine} className="justify-center h-9 text-xs" disabled={!temPermissaoPagamento}><Plus className="w-3 h-3 mr-1" /> Adicionar forma</Button>
+              <Button data-testid="vpay-finish-btn" onClick={() => executePayment()} className="bg-[#84A59D] hover:bg-[#6F9189] justify-center text-white h-9 text-xs font-semibold" disabled={!temPermissaoPagamento}><CheckCircle2 className="w-4 h-4 mr-1" /> Registrar e Finalizar</Button>
             </div>
-          </>
-        )}
+          </div>
+        </div>
+
+        {/* Coluna Direita (Sticky Sidebar): Resumo Financeiro Dinâmico, Consolidado e Pagamentos Anteriores */}
+        <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-8">
+          {/* Card Resumo Financeiro */}
+          <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-5 shadow-sm border-t-4 border-t-[#84A59D]">
+            <h3 className="font-display text-sm font-bold text-zinc-850 dark:text-zinc-100 mb-4 flex items-center gap-1.5">
+              📊 Resumo Financeiro
+            </h3>
+            <div className="space-y-3.5">
+              {temDescontoAplicado && (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-zinc-550 dark:text-zinc-400">Total Original</span>
+                  <span className="font-semibold text-zinc-500 line-through">{fmtBRL(valorOriginalVenda)}</span>
+                </div>
+              )}
+              
+              {temDescontoAplicado && (
+                <div className="flex justify-between items-center text-xs text-rose-500 font-medium">
+                  <span>Desconto Aplicado</span>
+                  <span>- {fmtBRL(descontoMeta?.total_descontado)}</span>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center text-xs font-semibold">
+                <span className="text-zinc-500">Saldo Devido (Operação)</span>
+                <span className="text-zinc-850 dark:text-zinc-250 font-bold">{fmtBRL(v.valor_total)}</span>
+              </div>
+
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-zinc-500 font-medium">Total Pago (Já Registrado)</span>
+                <span className="font-semibold text-emerald-600">{fmtBRL(v.total_pago)}</span>
+              </div>
+
+              <div className="h-px bg-zinc-100 dark:bg-zinc-850 my-1.5" />
+
+              <div className="flex justify-between items-center text-xs font-semibold">
+                <span className="text-zinc-555 dark:text-zinc-400">Saldo Restante Devido</span>
+                <span className="text-zinc-850 dark:text-zinc-200 font-mono">{fmtBRL(saldo)}</span>
+              </div>
+
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-zinc-500">Total Digitado (Atual)</span>
+                <span className="font-bold text-zinc-800 dark:text-zinc-200 font-mono">{fmtBRL(totalInformado)}</span>
+              </div>
+
+              {trocoTotal > 0 && (
+                <div className="flex justify-between items-center text-xs bg-emerald-50 dark:bg-emerald-950/20 p-2.5 rounded-lg text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-900/50">
+                  <span>Troco a Devolver</span>
+                  <span className="font-mono text-sm">{fmtBRL(trocoTotal)}</span>
+                </div>
+              )}
+
+              <div className="h-px bg-zinc-100 dark:bg-zinc-850 my-1.5" />
+
+              <div className={`flex justify-between items-center p-3 rounded-xl border transition-colors ${
+                (saldo - (totalInformado - trocoTotal)) > 0.01 
+                  ? "bg-amber-50/50 dark:bg-amber-950/10 border-amber-200 dark:border-amber-900/40 text-amber-700 dark:text-amber-400" 
+                  : "bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-900/40 text-emerald-750 dark:text-emerald-450"
+              }`}>
+                <div className="text-[10px] uppercase tracking-wider font-extrabold">Saldo Restante</div>
+                <div className="font-display text-lg font-black font-mono">{fmtBRL(Math.max(0, Number((saldo - (totalInformado - trocoTotal)).toFixed(2))))}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Resumo por Forma de Pagamento */}
+          {getConsolidadoPorForma().length > 0 && (
+            <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-sm">
+              <h3 className="font-display text-xs font-bold text-zinc-850 dark:text-zinc-100 mb-3 flex items-center gap-1.5">
+                💳 Resumo por Forma de Pagamento
+              </h3>
+              <div className="space-y-1.5">
+                {getConsolidadoPorForma().map((x) => (
+                  <div key={x.forma} className="flex justify-between items-center text-xs p-2 bg-zinc-50 dark:bg-zinc-950/40 rounded-lg border border-zinc-100 dark:border-zinc-850">
+                    <span className="text-zinc-500 font-medium capitalize">{x.label}</span>
+                    <span className="font-bold text-zinc-800 dark:text-zinc-200 font-mono">{fmtBRL(x.total)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Pagamentos Anteriores */}
+          <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-sm">
+            <h3 className="font-display text-xs font-bold text-zinc-850 dark:text-zinc-100 mb-3 flex items-center gap-1.5">
+              💰 Pagamentos Anteriores
+            </h3>
+            {pagamentos.length === 0 ? (
+              <div className="text-center text-xs text-zinc-400 py-4 italic">Nenhum pagamento registrado</div>
+            ) : (
+              <div className="space-y-3">
+                {pagamentos.map((p) => (
+                  <div key={p.id} className="p-3 bg-zinc-50 dark:bg-zinc-950/40 rounded-xl border border-zinc-155 dark:border-zinc-850 flex flex-col gap-1.5 text-xs">
+                    <div className="flex justify-between items-center w-full">
+                      <span className="font-semibold text-zinc-700 dark:text-zinc-350 capitalize">
+                        {FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}
+                      </span>
+                      <span className="font-mono font-bold text-zinc-855 dark:text-zinc-250">{fmtBRL(p.valor)}</span>
+                    </div>
+                    {(Number(p.troco) > 0 || (p.valor_recebido !== undefined && Number(p.valor_recebido) !== Number(p.valor))) && (
+                      <div className="flex justify-between items-center text-[10px] text-zinc-550 dark:text-zinc-400">
+                        <span>
+                          Bruto: {fmtBRL(p.valor_recebido || p.valor)}
+                          {Number(p.troco) > 0 && ` · Troco: ${fmtBRL(p.troco)}`}
+                        </span>
+                        <span>Líquido: {fmtBRL(p.valor)}</span>
+                      </div>
+                    )}
+                    {p.observacao && <span className="text-[10px] text-zinc-550 dark:text-zinc-400 italic">"{p.observacao}"</span>}
+                    <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-zinc-100/50 dark:border-zinc-850/60">
+                      <span className="text-[9px] text-zinc-400">{fmtDT(p.data_hora)}</span>
+                      <Button size="icon" variant="ghost" className="h-6 w-6 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20" onClick={() => startDelete(p.id)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Dialog de edição de pagamento */}

@@ -107,6 +107,33 @@ export default function Pagamento() {
   const temDescontoAplicado = !!descontoMeta;
   const valorOriginalAgendamento = temDescontoAplicado ? (ag.valor_total + (descontoMeta?.total_descontado || 0)) : ag.valor_total;
 
+  const getConsolidadoPorForma = () => {
+    const totalPorForma = {};
+    (ag.pagamentos || []).forEach(p => {
+      totalPorForma[p.forma_pagamento] = (totalPorForma[p.forma_pagamento] || 0) + Number(p.valor);
+    });
+    
+    let tempSaldo = saldo;
+    const validos = novos.filter(p => Number(p.valor) > 0);
+    validos.forEach(p => {
+      let pVal = Number(p.valor);
+      let netVal = pVal;
+      if (p.forma_pagamento === "dinheiro" && pVal > tempSaldo) {
+        netVal = Math.max(0, tempSaldo);
+        tempSaldo = 0;
+      } else {
+        tempSaldo = Number((tempSaldo - pVal).toFixed(2));
+      }
+      totalPorForma[p.forma_pagamento] = (totalPorForma[p.forma_pagamento] || 0) + netVal;
+    });
+
+    return Object.entries(totalPorForma).map(([forma, total]) => ({
+      forma,
+      label: FORMAS.find(f => f.v === forma)?.l || forma,
+      total
+    })).filter(x => x.total > 0.01);
+  };
+
   const isDescontoAplicavel = (desconto) => {
     let vinculados = null;
     if (desconto.itens_vinculados) {
@@ -247,7 +274,19 @@ export default function Pagamento() {
     
     const totalInformado = validos.reduce((sum, p) => sum + Number(p.valor), 0);
     const finalizar = totalInformado >= (saldo - 0.01);
-
+    const excessoTotal = totalInformado > saldo ? Number((totalInformado - saldo).toFixed(2)) : 0;
+    const temTroco = excessoTotal > 0 && novos.some(p => p.forma_pagamento === "dinheiro");
+    
+    if (temTroco && (excessoTotal > 200 || excessoTotal > saldo)) {
+      const confirmacao = window.confirm(
+        `ATENÇÃO: O troco calculado de ${fmtBRL(excessoTotal)} é muito alto.\n\n` +
+        `Valor recebido (bruto): ${fmtBRL(totalInformado)}\n` +
+        `Saldo devido: ${fmtBRL(saldo)}\n\n` +
+        `Deseja prosseguir com o registro do pagamento e entrega do troco?`
+      );
+      if (!confirmacao) return;
+    }
+    
     if (finalizar) {
       for (const item of customAg.itens || []) {
         if (!item.colaborador_id || item.colaborador_id === "none") {
@@ -257,41 +296,32 @@ export default function Pagamento() {
       }
     }
 
-    // 1. Ajustar o dinheiro se exceder o saldo total (para troco)
-    let saldoRestante = saldo;
-    let adjustedPayments = [];
-    let valorTroco = 0;
-    let temTroco = false;
-
+    // 1. Calculate net value for each payment, capping at the unified saldo due
+    let tempSaldo = saldo;
+    let netPaymentsPool = [];
     for (let p of validos) {
-      let valorOriginal = Number(p.valor);
-      let valorAEnviar = valorOriginal;
-      let observacao = p.observacao || "";
-
-      if (p.forma_pagamento === "dinheiro" && valorOriginal > saldoRestante) {
-        temTroco = true;
-        valorTroco = valorOriginal - saldoRestante;
-        valorAEnviar = Math.max(0, saldoRestante);
-        observacao = `Troco: ${fmtBRL(valorTroco)}` + (p.observacao ? ` - ${p.observacao}` : "");
-        saldoRestante = 0;
+      let pVal = Number(p.valor);
+      let netVal = pVal;
+      if (p.forma_pagamento === "dinheiro" && pVal > tempSaldo) {
+        netVal = Math.max(0, tempSaldo);
+        tempSaldo = 0;
       } else {
-        saldoRestante -= valorOriginal;
+        tempSaldo = Number((tempSaldo - pVal).toFixed(2));
       }
-
-      adjustedPayments.push({
+      netPaymentsPool.push({
         ...p,
-        valor: valorAEnviar,
-        observacao: observacao
+        valor: netVal, // Net value allocated for distribution
+        valor_original: pVal // Raw amount paid by customer
       });
     }
 
-    // 2. Distribuir os pagamentos sequencialmente
+    // 2. Distribute net payments across items
     let items = [
       { type: 'agendamento', id: id, saldo: saldoAgendamento },
       ...pendingSales.filter(s => s.selected).map(s => ({ type: 'sale', id: s.id, saldo: s.valor_total - s.valor_pago }))
     ];
 
-    let paymentsPool = adjustedPayments.map(p => ({ ...p, valor: Number(p.valor) }));
+    let paymentsPool = netPaymentsPool.map(p => ({ ...p, valor: p.valor }));
     let itemPayments = {};
 
     for (let item of items) {
@@ -303,8 +333,8 @@ export default function Pagamento() {
         if (remainingSaldo <= 0) break;
 
         let payAmount = Math.min(p.valor, remainingSaldo);
-        p.valor -= payAmount;
-        remainingSaldo -= payAmount;
+        p.valor = Number((p.valor - payAmount).toFixed(2));
+        remainingSaldo = Number((remainingSaldo - payAmount).toFixed(2));
 
         itemPags.push({
           valor: Number(payAmount.toFixed(2)),
@@ -319,8 +349,25 @@ export default function Pagamento() {
       };
     }
 
+    // 3. Attach the excess to the last distributed cash payment so backend calculates troco
+    if (excessoTotal > 0) {
+      let found = false;
+      const itemKeys = [...pendingSales.filter(s => s.selected).map(s => s.id), 'agendamento'];
+      for (const key of itemKeys) {
+        const itemPay = itemPayments[key];
+        if (itemPay && itemPay.pagamentos) {
+          const dinheiroPag = itemPay.pagamentos.find(p => p.forma_pagamento === 'dinheiro');
+          if (dinheiroPag) {
+            dinheiroPag.valor = Number((dinheiroPag.valor + excessoTotal).toFixed(2));
+            found = true;
+            break;
+          }
+        }
+      }
+    }
+
     try {
-      // 3. Registrar os pagamentos no backend de forma totalmente separada (cada um com seu próprio registro)
+      // 4. Save payments in the backend
       const agPayInfo = itemPayments['agendamento'];
       if (agPayInfo && agPayInfo.pagamentos.length > 0) {
         await http.post(`/agendamentos/${id}/pagamentos`, {
@@ -340,7 +387,7 @@ export default function Pagamento() {
       }
 
       if (temTroco) {
-        toast.success(`Pagamento registrado com sucesso! Devolva o troco de ${fmtBRL(valorTroco)}`);
+        toast.success(`Pagamento registrado com sucesso! Devolva o troco de ${fmtBRL(excessoTotal)}`);
       } else {
         toast.success(finalizar ? "Atendimento e vendas finalizados com sucesso!" : `Pagamento registrado! Restante pendente: ${fmtBRL(saldo - totalInformado)}`);
       }
@@ -528,7 +575,7 @@ export default function Pagamento() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 fade-in max-w-4xl w-full overflow-x-hidden">
+    <div className="p-4 sm:p-6 lg:p-8 fade-in max-w-7xl w-full overflow-x-hidden">
       <Button variant="ghost" onClick={() => nav(-1)} className="mb-4"><ArrowLeft className="w-4 h-4 mr-1" /> Voltar</Button>
       <div className="text-xs uppercase tracking-wider text-zinc-400">Pagamento</div>
       <h1 className="font-display text-2xl sm:text-4xl font-semibold tracking-tight mt-1 flex flex-wrap items-center gap-2 sm:gap-3">
@@ -549,422 +596,437 @@ export default function Pagamento() {
           </div>
         </div>
       )}
-      {/* Serviços Realizados */}
-      {ag.itens && Array.isArray(ag.itens) && ag.itens.length > 0 && (
-        <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-5 sm:p-6 mt-5 shadow-sm fade-in">
-          <h3 className="font-display text-base sm:text-lg font-extrabold text-zinc-800 dark:text-zinc-100 mb-5 flex items-center gap-2">
-            <CheckCircle2 className="w-5.5 h-5.5 text-[#84A59D]" />
-            Serviços Realizados neste Atendimento
-          </h3>
-          <div className="space-y-4">
-            {ag.itens.map((item, idx) => {
-              const colabNome = getColabName(item.colaborador_id);
-              const auxNome = getColabName(item.auxiliar_id);
-              return (
-                <div key={idx} className="flex items-center justify-between gap-4 pb-4 border-b border-zinc-100 dark:border-zinc-800/60 last:border-0 last:pb-0">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-2 h-2 rounded-full bg-[#84A59D] shrink-0"></div>
-                    <div className="min-w-0">
-                      <div className="text-base sm:text-lg font-bold text-zinc-800 dark:text-zinc-100 leading-tight">
-                        {item.nome || "Serviço"}
-                      </div>
-                      {(colabNome || auxNome) && (
-                        <div className="text-xs sm:text-sm text-zinc-450 dark:text-zinc-500 font-medium mt-1">
-                          {colabNome && (
-                            <span>
-                              Profissional: <strong className="text-zinc-650 dark:text-zinc-400 font-semibold">{colabNome}</strong>
-                            </span>
-                          )}
-                          {auxNome && (
-                            <span>
-                              {" "}· Auxiliar: <strong className="text-zinc-650 dark:text-zinc-400 font-semibold">{auxNome}</strong>
-                            </span>
+
+      {/* Grid Responsivo em Duas Colunas */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mt-4">
+        {/* Coluna Esquerda: Listas de Itens e Registrar Pagamento */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Serviços Realizados */}
+          {ag.itens && Array.isArray(ag.itens) && ag.itens.length > 0 && (
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 sm:p-6 shadow-sm fade-in">
+              <h3 className="font-display text-base sm:text-lg font-extrabold text-zinc-850 dark:text-zinc-100 mb-5 flex items-center gap-2">
+                <CheckCircle2 className="w-5.5 h-5.5 text-[#84A59D]" />
+                Serviços Realizados neste Atendimento
+              </h3>
+              <div className="space-y-4">
+                {ag.itens.map((item, idx) => {
+                  const colabNome = getColabName(item.colaborador_id);
+                  const auxNome = getColabName(item.auxiliar_id);
+                  return (
+                    <div key={idx} className="flex items-center justify-between gap-4 pb-4 border-b border-zinc-100 dark:border-zinc-800/60 last:border-0 last:pb-0">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-2 h-2 rounded-full bg-[#84A59D] shrink-0"></div>
+                        <div className="min-w-0">
+                          <div className="text-base sm:text-lg font-bold text-zinc-800 dark:text-zinc-100 leading-tight">
+                            {item.nome || "Serviço"}
+                          </div>
+                          {(colabNome || auxNome) && (
+                            <div className="text-xs sm:text-sm text-zinc-450 dark:text-zinc-500 font-medium mt-1">
+                              {colabNome && (
+                                <span>
+                                  Profissional: <strong className="text-zinc-650 dark:text-zinc-400 font-semibold">{colabNome}</strong>
+                                </span>
+                              )}
+                              {auxNome && (
+                                <span>
+                                  {" "}· Auxiliar: <strong className="text-zinc-650 dark:text-zinc-400 font-semibold">{auxNome}</strong>
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
-                      )}
+                      </div>
+                      <div className="text-base sm:text-lg font-black text-zinc-850 dark:text-zinc-200 text-right font-mono shrink-0">
+                        {fmtBRL(item.valor)}
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-base sm:text-lg font-black text-zinc-800 dark:text-zinc-200 text-right font-mono shrink-0">
-                    {fmtBRL(item.valor)}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
-      {/* Resumo Financeiro */}
-      {temDescontoAplicado ? (
-        <div className="my-6 space-y-3">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 items-center">
-              <div className="text-center sm:text-left">
-                <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-zinc-400 dark:text-zinc-500">Valor Original</div>
-                <div className="font-display text-xl sm:text-2xl font-black mt-1 text-zinc-500 dark:text-zinc-400 line-through">{fmtBRL(valorOriginalAgendamento)}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-rose-500 dark:text-rose-400">Desconto Aplicado</div>
-                <div className="font-display text-xl sm:text-2xl font-black mt-1 text-rose-600 dark:text-rose-400">- {fmtBRL(descontoMeta?.total_descontado)}</div>
-                <div className="text-[10px] text-rose-500/80 dark:text-rose-400/60 font-semibold mt-0.5">
-                  {descontoMeta?.codigo} ({descontoMeta?.tipo === 'porcentagem' ? `${descontoMeta?.valor_desconto}%` : fmtBRL(descontoMeta?.valor_desconto)})
-                </div>
-              </div>
-              <div className="text-center sm:text-right">
-                <div className="text-[10px] sm:text-xs uppercase tracking-widest font-bold text-emerald-600 dark:text-emerald-400">Valor a Pagar</div>
-                <div className="font-display text-2xl sm:text-3xl font-black mt-1 text-emerald-700 dark:text-emerald-400">{fmtBRL(ag.valor_total)}</div>
-              </div>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 shadow-sm">
-              <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Serviço (A Pagar)</div>
-              <div className="font-display text-xl sm:text-2xl font-semibold mt-1 text-zinc-800 dark:text-zinc-100">{fmtBRL(saldoAgendamento)}</div>
-            </div>
-            <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 shadow-sm">
-              <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Vendas Diretas</div>
-              <div className="font-display text-xl sm:text-2xl font-semibold mt-1 text-[#84A59D] dark:text-emerald-400">{fmtBRL(totalSalesSelected)}</div>
-            </div>
-            <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 shadow-sm">
-              <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Total Unificado</div>
-              <div className="font-display text-xl sm:text-2xl font-semibold mt-1 text-[#84A59D] dark:text-emerald-400">{fmtBRL(saldo)}</div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 my-6">
-          <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-5">
-            <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Serviço (A Pagar)</div>
-            <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-zinc-800 dark:text-zinc-100">{fmtBRL(saldoAgendamento)}</div>
-          </div>
-          <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-5">
-            <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Vendas Diretas</div>
-            <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-[#84A59D] dark:text-emerald-400">{fmtBRL(totalSalesSelected)}</div>
-          </div>
-          <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-5">
-            <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Total Unificado</div>
-            <div className="font-display text-2xl sm:text-3xl font-semibold mt-1 text-[#84A59D] dark:text-emerald-400">{fmtBRL(saldo)}</div>
-          </div>
-        </div>
-      )}
+          {/* Vendas Diretas Pendentes */}
+          {pendingSales.length > 0 && (
+            <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-5 sm:p-6 mb-6 fade-in shadow-sm">
+              <h3 className="font-display text-base font-semibold text-zinc-850 dark:text-zinc-200 mb-3 flex items-center gap-2">
+                <ShoppingCart className="w-5 h-5 text-[#84A59D]" />
+                Vendas Diretas Pendentes deste Cliente
+              </h3>
+              <p className="text-xs text-zinc-500 mb-4">
+                Este cliente possui vendas diretas de produtos com pagamento pendente. Você pode selecioná-las para incluir neste pagamento unificado.
+              </p>
+              <div className="space-y-3">
+                {pendingSales.map((s) => (
+                  <div 
+                    key={s.id} 
+                    className={`p-3.5 sm:p-4 rounded-xl border transition-all space-y-3 ${
+                      s.selected 
+                        ? "bg-zinc-50 dark:bg-zinc-900/40 border-[#84A59D] dark:border-[#84A59D]/60 shadow-sm" 
+                        : "bg-white dark:bg-zinc-900/10 border-zinc-200 dark:border-zinc-800 opacity-60"
+                    }`}
+                  >
+                    {/* Cabeçalho da Venda */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <input 
+                          type="checkbox" 
+                          checked={!!s.selected} 
+                          onChange={() => toggleSaleSelection(s.id)}
+                          className="w-4 h-4 rounded text-[#84A59D] focus:ring-[#84A59D] border-zinc-300 dark:border-zinc-700 dark:bg-zinc-850 cursor-pointer"
+                        />
+                        <div className="font-semibold text-sm sm:text-base text-zinc-800 dark:text-zinc-200">
+                          Venda #{s.numero_venda ? String(s.numero_venda).padStart(6, "0") : "Direta"}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-sm sm:text-base text-zinc-700 dark:text-zinc-200">
+                          {fmtBRL(s.valor_total - s.valor_pago)}
+                        </div>
+                        <div className="text-[10px] sm:text-xs text-zinc-450 dark:text-zinc-550 mt-0.5">
+                          Total: {fmtBRL(s.valor_total)}
+                        </div>
+                      </div>
+                    </div>
 
-      {pendingSales.length > 0 && (
-        <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-6 mb-6 fade-in">
-          <h3 className="font-display text-base font-semibold text-zinc-800 dark:text-zinc-200 mb-3 flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-[#84A59D]" />
-            Vendas Diretas Pendentes deste Cliente
-          </h3>
-          <p className="text-xs text-zinc-500 mb-4">
-            Este cliente possui vendas diretas de produtos com pagamento pendente. Você pode selecioná-las para incluir neste pagamento unificado.
-          </p>
-          <div className="space-y-3">
-            {pendingSales.map((s) => (
-              <div 
-                key={s.id} 
-                className={`p-3.5 sm:p-4 rounded-xl border transition-all space-y-3 ${
-                  s.selected 
-                    ? "bg-zinc-50 dark:bg-zinc-900/40 border-[#84A59D] dark:border-[#84A59D]/60 shadow-sm" 
-                    : "bg-white dark:bg-zinc-900/10 border-zinc-200 dark:border-zinc-800 opacity-60"
-                }`}
-              >
-                {/* Cabeçalho da Venda */}
-                <div className="flex items-center justify-between">
+                    {/* Itens Detalhados Alinhados */}
+                    {s.itens && Array.isArray(s.itens) && s.itens.length > 0 ? (
+                      <div className="pt-2.5 border-t border-zinc-100 dark:border-zinc-800/50 pl-7 space-y-2">
+                        {s.itens.map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-xs sm:text-sm text-zinc-650 dark:text-zinc-300 font-medium">
+                            <div className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700 flex-shrink-0"></span>
+                              <span>{item.produto_nome}</span>
+                            </div>
+                            <div className="flex items-center gap-4 text-right">
+                              <span className="text-zinc-400 dark:text-zinc-500 font-normal">{item.quantidade}x {fmtBRL(item.preco_unitario)}</span>
+                              <span className="text-zinc-700 dark:text-zinc-200 font-semibold min-w-[70px]">{fmtBRL(item.subtotal || (item.quantidade * item.preco_unitario))}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/50 pl-7 text-xs sm:text-sm text-zinc-500 dark:text-zinc-450 font-medium">
+                        {s.produto_nome} ({s.quantidade} {s.quantidade === 1 ? 'item' : 'itens'})
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                <span className="text-xs font-semibold text-zinc-550">Subtotal das Vendas Diretas:</span>
+                <span className="text-sm font-bold text-[#84A59D] dark:text-emerald-400">{fmtBRL(totalSalesSelected)}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Seção de Descontos */}
+          {temDescontoAplicado ? (
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-sm">
+              <h3 className="font-display text-sm font-bold mb-3 text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
+                🏷️ Desconto Aplicado
+              </h3>
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 rounded-xl p-4">
                   <div className="flex items-center gap-3">
-                    <input 
-                      type="checkbox" 
-                      checked={!!s.selected} 
-                      onChange={() => toggleSaleSelection(s.id)}
-                      className="w-4 h-4 rounded text-[#84A59D] focus:ring-[#84A59D] border-zinc-300 dark:border-zinc-700 dark:bg-zinc-850 cursor-pointer"
-                    />
-                    <div className="font-semibold text-sm sm:text-base text-zinc-800 dark:text-zinc-200">
-                      Venda #{s.numero_venda ? String(s.numero_venda).padStart(6, "0") : "Direta"}
+                    <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-lg shrink-0">
+                      🏷️
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-emerald-800 dark:text-emerald-300">
+                        {descontoMeta?.codigo || "Desconto aplicado"}
+                        <span className="text-xs font-normal ml-1.5 text-emerald-600 dark:text-emerald-400">
+                          ({descontoMeta?.tipo === 'porcentagem' 
+                            ? `${descontoMeta?.valor_desconto}%` 
+                            : fmtBRL(descontoMeta?.valor_desconto)})
+                        </span>
+                      </div>
+                      {descontoMeta?.descricao && (
+                        <div className="text-xs text-emerald-700/70 dark:text-emerald-400/70 mt-0.5">{descontoMeta.descricao}</div>
+                      )}
+                      <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
+                        Total descontado: <strong>{fmtBRL(descontoMeta?.total_descontado)}</strong>
+                        {descontoMeta?.incide_comissao === false && (
+                          <span className="ml-2 text-[10px] bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full">Não incide na comissão</span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-bold text-sm sm:text-base text-zinc-700 dark:text-zinc-200">
-                      {fmtBRL(s.valor_total - s.valor_pago)}
-                    </div>
-                    <div className="text-[10px] sm:text-xs text-zinc-450 dark:text-zinc-550 mt-0.5">
-                      Total: {fmtBRL(s.valor_total)}
-                    </div>
-                  </div>
+                  {ag.pagamentos?.length === 0 && (
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      onClick={handleRemoveDesconto}
+                      disabled={loadingDesconto}
+                      className="shrink-0"
+                    >
+                      {loadingDesconto ? "Processando..." : "Remover"}
+                    </Button>
+                  )}
+                </div>
+                
+                {/* Detalhamento por serviço */}
+                <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-zinc-50 dark:bg-zinc-900 text-xs uppercase text-zinc-500 dark:text-zinc-400">
+                      <tr>
+                        <th className="px-4 py-2 text-left">Serviço</th>
+                        <th className="px-4 py-2 text-right">Original</th>
+                        <th className="px-4 py-2 text-right">Desconto</th>
+                        <th className="px-4 py-2 text-right">Final</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                      {ag.itens?.map((item, i) => (
+                        <tr key={i} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30">
+                          <td className="px-4 py-2 font-medium text-zinc-800 dark:text-zinc-200">{item.nome || "Serviço"}</td>
+                          <td className="px-4 py-2 text-right text-zinc-500 dark:text-zinc-400">
+                            {item.valor_original !== undefined && item.valor_original !== item.valor
+                              ? <span className="line-through">{fmtBRL(item.valor_original)}</span>
+                              : fmtBRL(item.valor)}
+                          </td>
+                          <td className="px-4 py-2 text-right text-rose-600 dark:text-rose-400 font-semibold">
+                            {item.valor_original !== undefined && item.valor_original !== item.valor
+                              ? `- ${fmtBRL(item.valor_original - item.valor)}` 
+                              : "—"}
+                          </td>
+                          <td className="px-4 py-2 text-right font-bold text-zinc-900 dark:text-zinc-100">{fmtBRL(item.valor)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
 
-                {/* Itens Detalhados Alinhados */}
-                {s.itens && Array.isArray(s.itens) && s.itens.length > 0 ? (
-                  <div className="pt-2.5 border-t border-zinc-105 dark:border-zinc-800/50 pl-7 space-y-2">
-                    {s.itens.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-xs sm:text-sm text-zinc-650 dark:text-zinc-300 font-medium">
-                        <div className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700 flex-shrink-0"></span>
-                          <span>{item.produto_nome}</span>
-                        </div>
-                        <div className="flex items-center gap-4 text-right">
-                          <span className="text-zinc-400 dark:text-zinc-500 font-normal">{item.quantidade}x {fmtBRL(item.preco_unitario)}</span>
-                          <span className="text-zinc-700 dark:text-zinc-200 font-semibold min-w-[70px]">{fmtBRL(item.subtotal || (item.quantidade * item.preco_unitario))}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="pt-2 border-t border-zinc-105 dark:border-zinc-800/50 pl-7 text-xs sm:text-sm text-zinc-500 dark:text-zinc-450 font-medium">
-                    {s.produto_nome} ({s.quantidade} {s.quantidade === 1 ? 'item' : 'itens'})
+                {/* Trocar por outro desconto - só sem pagamentos */}
+                {ag.pagamentos?.length === 0 && (
+                  <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                    <Label className="text-xs text-zinc-500 dark:text-zinc-400">Substituir por outro desconto:</Label>
+                    <div className="flex gap-2 mt-1">
+                      <Select onValueChange={handleSelectDesconto} disabled={loadingDesconto}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Selecione outro desconto..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {descontos.filter(d => isDescontoAplicavel(d) && d.id !== descontoMeta?.desconto_id).map(d => (
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.codigo} - {d.descricao || ""} ({d.tipo === 'porcentagem' ? `${d.valor}%` : fmtBRL(d.valor)}) {d.requer_autorizacao ? "🔒" : ""}
+                            </SelectItem>
+                          ))}
+                          {descontos.filter(d => isDescontoAplicavel(d) && d.id !== descontoMeta?.desconto_id).length === 0 && (
+                            <SelectItem disabled value="none">Nenhum outro desconto disponível</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 )}
               </div>
-            ))}
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-550">Subtotal das Vendas Diretas:</span>
-            <span className="text-sm font-bold text-[#84A59D] dark:text-emerald-400">{fmtBRL(totalSalesSelected)}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Seção de Descontos - info sempre visível, seletor apenas sem pagamentos */}
-      {temDescontoAplicado ? (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 sm:p-6 mb-6 shadow-sm">
-          <h3 className="font-display text-base font-bold mb-3 text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
-            🏷️ Desconto Aplicado
-          </h3>
-          <div className="space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-lg shrink-0">
-                  🏷️
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-emerald-800 dark:text-emerald-300">
-                    {descontoMeta?.codigo || "Desconto aplicado"}
-                    <span className="text-xs font-normal ml-1.5 text-emerald-600 dark:text-emerald-400">
-                      ({descontoMeta?.tipo === 'porcentagem' 
-                        ? `${descontoMeta?.valor_desconto}%` 
-                        : fmtBRL(descontoMeta?.valor_desconto)})
-                    </span>
-                  </div>
-                  {descontoMeta?.descricao && (
-                    <div className="text-xs text-emerald-700/70 dark:text-emerald-400/70 mt-0.5">{descontoMeta.descricao}</div>
-                  )}
-                  <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
-                    Total descontado: <strong>{fmtBRL(descontoMeta?.total_descontado)}</strong>
-                    {descontoMeta?.incide_comissao === false && (
-                      <span className="ml-2 text-[10px] bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full">Não incide na comissão</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              {ag.pagamentos?.length === 0 && (
-                <Button 
-                  variant="destructive" 
-                  size="sm" 
-                  onClick={handleRemoveDesconto}
-                  disabled={loadingDesconto}
-                  className="shrink-0"
-                >
-                  {loadingDesconto ? "Processando..." : "Remover"}
-                </Button>
-              )}
             </div>
-            
-            {/* Detalhamento por serviço */}
-            <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-zinc-50 dark:bg-zinc-900 text-xs uppercase text-zinc-500 dark:text-zinc-400">
-                  <tr>
-                    <th className="px-4 py-2 text-left">Serviço</th>
-                    <th className="px-4 py-2 text-right">Original</th>
-                    <th className="px-4 py-2 text-right">Desconto</th>
-                    <th className="px-4 py-2 text-right">Final</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                  {ag.itens?.map((item, i) => (
-                    <tr key={i} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30">
-                      <td className="px-4 py-2 font-medium text-zinc-800 dark:text-zinc-200">{item.nome || "Serviço"}</td>
-                      <td className="px-4 py-2 text-right text-zinc-500 dark:text-zinc-400">
-                        {item.valor_original !== undefined && item.valor_original !== item.valor
-                          ? <span className="line-through">{fmtBRL(item.valor_original)}</span>
-                          : fmtBRL(item.valor)}
-                      </td>
-                      <td className="px-4 py-2 text-right text-rose-600 dark:text-rose-400 font-semibold">
-                        {item.valor_original !== undefined && item.valor_original !== item.valor
-                          ? `- ${fmtBRL(item.valor_original - item.valor)}` 
-                          : "—"}
-                      </td>
-                      <td className="px-4 py-2 text-right font-bold text-zinc-900 dark:text-zinc-100">{fmtBRL(item.valor)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Trocar por outro desconto - só sem pagamentos */}
-            {ag.pagamentos?.length === 0 && (
-              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                <Label className="text-xs text-zinc-500 dark:text-zinc-400">Substituir por outro desconto:</Label>
-                <div className="flex gap-2 mt-1">
+          ) : ag.pagamentos?.length === 0 && (
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 sm:p-6 shadow-sm">
+              <h3 className="font-display text-base font-bold mb-3 text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
+                🏷️ Desconto
+              </h3>
+              <div className="space-y-2">
+                <Label className="text-xs text-zinc-500">Selecione um desconto para aplicar a este agendamento:</Label>
+                <div className="flex gap-2">
                   <Select onValueChange={handleSelectDesconto} disabled={loadingDesconto}>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione outro desconto..." />
+                      <SelectValue placeholder="Selecione um desconto..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {descontos.filter(d => isDescontoAplicavel(d) && d.id !== descontoMeta?.desconto_id).map(d => (
+                      {descontos.filter(isDescontoAplicavel).map(d => (
                         <SelectItem key={d.id} value={d.id}>
                           {d.codigo} - {d.descricao || ""} ({d.tipo === 'porcentagem' ? `${d.valor}%` : fmtBRL(d.valor)}) {d.requer_autorizacao ? "🔒" : ""}
                         </SelectItem>
                       ))}
-                      {descontos.filter(d => isDescontoAplicavel(d) && d.id !== descontoMeta?.desconto_id).length === 0 && (
-                        <SelectItem disabled value="none">Nenhum outro desconto disponível</SelectItem>
+                      {descontos.filter(isDescontoAplicavel).length === 0 && (
+                        <SelectItem disabled value="none">Nenhum desconto disponível</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
-      ) : ag.pagamentos?.length === 0 && (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 sm:p-6 mb-6 shadow-sm">
-          <h3 className="font-display text-base font-bold mb-3 text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
-            🏷️ Desconto
-          </h3>
-          <div className="space-y-2">
-            <Label className="text-xs text-zinc-500">Selecione um desconto para aplicar a este agendamento:</Label>
-            <div className="flex gap-2">
-              <Select onValueChange={handleSelectDesconto} disabled={loadingDesconto}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Selecione um desconto..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {descontos.filter(isDescontoAplicavel).map(d => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.codigo} - {d.descricao || ""} ({d.tipo === 'porcentagem' ? `${d.valor}%` : fmtBRL(d.valor)}) {d.requer_autorizacao ? "🔒" : ""}
-                    </SelectItem>
-                  ))}
-                  {descontos.filter(isDescontoAplicavel).length === 0 && (
-                    <SelectItem disabled value="none">Nenhum desconto disponível</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-6 mb-6">
-        <h3 className="font-display text-base sm:text-lg font-medium text-zinc-800 dark:text-zinc-100 mb-4">Registrar pagamento</h3>
-        <div className="space-y-4">
-          {novos.map((p, i) => (
-            <div key={i} className="border border-zinc-150 sm:border-0 rounded-xl p-4 sm:p-0 bg-zinc-50/50 sm:bg-transparent dark:bg-zinc-950/20 space-y-3 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end relative">
-              {novos.length > 1 && (
-                <div className="sm:hidden absolute top-2 right-2">
-                  <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20" onClick={() => removeLine(i)} disabled={!temPermissaoPagamento}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              )}
-              <div className="col-span-3">
-                <Label className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">Valor</Label>
-                <Input 
-                  data-testid={`pay-valor-${i}`} 
-                  type="number" 
-                  step="0.01" 
-                  value={p.valor} 
-                  onChange={(e) => updateLine(i, "valor", e.target.value)}
-                  placeholder={p.forma_pagamento === "dinheiro" && saldo > 0 ? `Troco se > ${fmtBRL(saldo)}` : "Digite o valor"}
-                  className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1"
-                  disabled={!temPermissaoPagamento}
-                />
-              </div>
-              <div className="col-span-4">
-                <Label className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">Forma</Label>
-                <Select value={p.forma_pagamento} onValueChange={(v) => updateLine(i, "forma_pagamento", v)} disabled={!temPermissaoPagamento}>
-                  <SelectTrigger data-testid={`pay-forma-${i}`} className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1" disabled={!temPermissaoPagamento}><SelectValue /></SelectTrigger>
-                  <SelectContent>{FORMAS.map((f) => <SelectItem key={f.v} value={f.v}>{f.l}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="col-span-4">
-                <Label className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">Observação</Label>
-                <Input 
-                  value={p.observacao} 
-                  onChange={(e) => updateLine(i, "observacao", e.target.value)}
-                  placeholder={p.forma_pagamento === "dinheiro" && Number(p.valor) > saldo ? `Troco: ${fmtBRL(Number(p.valor) - saldo)}` : ""}
-                  className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1"
-                  disabled={!temPermissaoPagamento}
-                />
-              </div>
-              <div className="hidden sm:block col-span-1 text-center">
-                {novos.length > 1 && (
-                  <Button size="icon" variant="ghost" onClick={() => removeLine(i)} disabled={!temPermissaoPagamento}>
-                    <Trash2 className="w-4 h-4 text-rose-500" />
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-        
-        {/* Aviso de troco */}
-        {trocoTotal > 0 && (
-          <div className="mt-4 p-4 bg-zinc-50 dark:bg-zinc-950/40 border border-zinc-200 dark:border-zinc-800 rounded-xl flex items-start gap-3 fade-in animate-pulse-subtle">
-            <CheckCircle2 className="w-5 h-5 text-[#84A59D] flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-zinc-800 dark:text-zinc-200">
-              <span className="font-semibold">Troco calculado:</span>
-              <span className="text-lg font-bold ml-2 text-[#84A59D] dark:text-emerald-450">{fmtBRL(trocoTotal)}</span>
-              <p className="text-xs text-zinc-500 mt-1">O valor registrado no sistema será de {fmtBRL(saldo)} (quitando o saldo), e o troco de {fmtBRL(trocoTotal)} deve ser devolvido ao cliente.</p>
-            </div>
-          </div>
-        )}
-        
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6">
-          <Button variant="outline" size="sm" onClick={addLine} className="justify-center" disabled={!temPermissaoPagamento}><Plus className="w-3 h-3 mr-1" /> Adicionar forma</Button>
-          <Button data-testid="pay-finish-btn" onClick={submit} className="bg-[#84A59D] hover:bg-[#6F9189] justify-center text-white" disabled={!temPermissaoPagamento}><CheckCircle2 className="w-4 h-4 mr-1" /> Registrar e Finalizar</Button>
-        </div>
-      </div>
-
-      <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800"><h3 className="font-display text-lg font-semibold text-zinc-800 dark:text-zinc-100">Pagamentos anteriores</h3></div>
-        {ag.pagamentos.length === 0 ? <div className="p-6 text-center text-sm text-zinc-400">Nenhum pagamento</div> : (
-          <>
-            {/* Mobile View */}
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-800 sm:hidden bg-white dark:bg-zinc-900">
-              {ag.pagamentos.map((p) => (
-                <div key={p.id} className="p-4 flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-400 dark:text-zinc-500">{fmtDT(p.data_hora)}</span>
-                    <span className="font-semibold text-[#3A4F4A] dark:text-zinc-200">{fmtBRL(p.valor)}</span>
-                  </div>
-                  <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
-                    {FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}
-                  </div>
-                  {p.observacao && (
-                    <div className="text-xs text-zinc-500 dark:text-zinc-400 italic bg-zinc-50 dark:bg-zinc-950 p-2 rounded-lg mt-1">
-                      "{p.observacao}"
+          {/* Registrar Pagamento */}
+          <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-6">
+            <h3 className="font-display text-base sm:text-lg font-medium text-zinc-800 dark:text-zinc-100 mb-4">Registrar Pagamento</h3>
+            <div className="space-y-4">
+              {novos.map((p, i) => (
+                <div key={i} className="border border-zinc-150 sm:border-0 rounded-xl p-4 sm:p-0 bg-zinc-50/50 sm:bg-transparent dark:bg-zinc-955/20 space-y-3 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end relative">
+                  {novos.length > 1 && (
+                    <div className="sm:hidden absolute top-2 right-2">
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20" onClick={() => removeLine(i)} disabled={!temPermissaoPagamento}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   )}
-                  <div className="flex items-center justify-end gap-2 border-t border-zinc-50 dark:border-zinc-800/60 pt-2 mt-1">
-                    <Button size="sm" variant="outline" className="h-8 border-zinc-200 dark:border-zinc-700 text-rose-600 dark:text-rose-450 hover:bg-rose-50 dark:hover:bg-rose-950/20" onClick={() => startDelete(p.id)}>
-                      <Trash2 className="w-3.5 h-3.5 mr-1" /> Excluir
-                    </Button>
+                  <div className="col-span-3">
+                    <Label className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-400">Valor *</Label>
+                    <Input 
+                      data-testid={`pay-valor-${i}`} 
+                      type="number" 
+                      step="0.01" 
+                      value={p.valor} 
+                      onChange={(e) => updateLine(i, "valor", e.target.value)}
+                      placeholder="0.00"
+                      className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1 h-9 text-sm focus:ring-[#84A59D]"
+                      disabled={!temPermissaoPagamento}
+                    />
+                  </div>
+                  <div className="col-span-4">
+                    <Label className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-400">Forma *</Label>
+                    <Select value={p.forma_pagamento} onValueChange={(v) => updateLine(i, "forma_pagamento", v)} disabled={!temPermissaoPagamento}>
+                      <SelectTrigger data-testid={`pay-forma-${i}`} className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1 h-9 text-xs" disabled={!temPermissaoPagamento}><SelectValue /></SelectTrigger>
+                      <SelectContent>{FORMAS.map((f) => <SelectItem key={f.v} value={f.v} className="text-xs">{f.l}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-4">
+                    <Label className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-400">Observação</Label>
+                    <Input 
+                      value={p.observacao} 
+                      onChange={(e) => updateLine(i, "observacao", e.target.value)}
+                      placeholder="Observações adicionais"
+                      className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1 h-9 text-xs focus:ring-[#84A59D]"
+                      disabled={!temPermissaoPagamento}
+                    />
+                  </div>
+                  <div className="hidden sm:block col-span-1 text-center">
+                    {novos.length > 1 && (
+                      <Button size="icon" variant="ghost" onClick={() => removeLine(i)} disabled={!temPermissaoPagamento}>
+                        <Trash2 className="w-4 h-4 text-rose-500" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
-
-            {/* Desktop View */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-zinc-50 dark:bg-zinc-950 text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400"><tr><th className="px-4 py-3 text-left">Data</th><th className="px-4 py-3 text-left">Forma</th><th className="px-4 py-3 text-right">Valor</th><th className="px-4 py-3 text-left">Observação</th><th className="px-4 py-3 text-right">Ações</th></tr></thead>
-                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                  {ag.pagamentos.map((p) => (
-                    <tr key={p.id} className="hover:bg-zinc-50/20 dark:hover:bg-zinc-800/10"><td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">{fmtDT(p.data_hora)}</td><td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">{FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}</td><td className="px-4 py-3 text-right font-semibold text-zinc-800 dark:text-zinc-200">{fmtBRL(p.valor)}</td><td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">{p.observacao}</td><td className="px-4 py-3 text-right space-x-2"><Button size="icon" variant="ghost" onClick={() => startDelete(p.id)}><Trash2 className="w-4 h-4 text-rose-500" /></Button></td></tr>
-                  ))}
-                </tbody>
-              </table>
+            
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6">
+              <Button variant="outline" size="sm" onClick={addLine} className="justify-center h-9 text-xs" disabled={!temPermissaoPagamento}><Plus className="w-3 h-3 mr-1" /> Adicionar forma</Button>
+              <Button data-testid="pay-finish-btn" onClick={() => submit()} className="bg-[#84A59D] hover:bg-[#6F9189] justify-center text-white h-9 text-xs font-semibold" disabled={!temPermissaoPagamento}><CheckCircle2 className="w-4 h-4 mr-1" /> Registrar e Finalizar</Button>
             </div>
-          </>
-        )}
+          </div>
+        </div>
+
+        {/* Coluna Direita (Sticky Sidebar): Resumo Financeiro Dinâmico, Consolidado e Pagamentos Anteriores */}
+        <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-8">
+          {/* Card Resumo Financeiro */}
+          <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-5 shadow-sm border-t-4 border-t-[#84A59D]">
+            <h3 className="font-display text-sm font-bold text-zinc-850 dark:text-zinc-100 mb-4 flex items-center gap-1.5">
+              📊 Resumo Financeiro
+            </h3>
+            <div className="space-y-3.5">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-zinc-550 dark:text-zinc-400">Total Serviços</span>
+                <span className="font-semibold text-zinc-700 dark:text-zinc-300">{fmtBRL(saldoAgendamento)}</span>
+              </div>
+              
+              {totalSalesSelected > 0 && (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-zinc-550 dark:text-zinc-400 font-medium">Vendas Diretas</span>
+                  <span className="font-semibold text-[#84A59D]">{fmtBRL(totalSalesSelected)}</span>
+                </div>
+              )}
+
+              {temDescontoAplicado && (
+                <div className="flex justify-between items-center text-xs text-rose-500 font-medium">
+                  <span>Desconto Aplicado</span>
+                  <span>- {fmtBRL(descontoMeta?.total_descontado)}</span>
+                </div>
+              )}
+
+              <div className="h-px bg-zinc-100 dark:bg-zinc-850 my-1.5" />
+
+              <div className="flex justify-between items-center text-xs font-semibold">
+                <span className="text-zinc-500">Saldo Devido (Operação)</span>
+                <span className="text-zinc-850 dark:text-zinc-200">{fmtBRL(saldo)}</span>
+              </div>
+
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-zinc-500">Total Digitado (Atual)</span>
+                <span className="font-bold text-zinc-800 dark:text-zinc-200 font-mono">{fmtBRL(totalInformado)}</span>
+              </div>
+
+              {trocoTotal > 0 && (
+                <div className="flex justify-between items-center text-xs bg-emerald-50 dark:bg-emerald-950/20 p-2.5 rounded-lg text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-900/50">
+                  <span>Troco a Devolver</span>
+                  <span className="font-mono text-sm">{fmtBRL(trocoTotal)}</span>
+                </div>
+              )}
+
+              <div className="h-px bg-zinc-100 dark:bg-zinc-850 my-1.5" />
+
+              <div className={`flex justify-between items-center p-3 rounded-xl border transition-colors ${
+                (saldo - (totalInformado - trocoTotal)) > 0.01 
+                  ? "bg-amber-50/50 dark:bg-amber-950/10 border-amber-200 dark:border-amber-900/40 text-amber-700 dark:text-amber-400" 
+                  : "bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-900/40 text-emerald-750 dark:text-emerald-450"
+              }`}>
+                <div className="text-[10px] uppercase tracking-wider font-extrabold">Saldo Restante</div>
+                <div className="font-display text-lg font-black font-mono">{fmtBRL(Math.max(0, Number((saldo - (totalInformado - trocoTotal)).toFixed(2))))}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Resumo por Forma de Pagamento */}
+          {getConsolidadoPorForma().length > 0 && (
+            <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-sm">
+              <h3 className="font-display text-xs font-bold text-zinc-850 dark:text-zinc-100 mb-3 flex items-center gap-1.5">
+                💳 Resumo por Forma de Pagamento
+              </h3>
+              <div className="space-y-1.5">
+                {getConsolidadoPorForma().map((x) => (
+                  <div key={x.forma} className="flex justify-between items-center text-xs p-2 bg-zinc-50 dark:bg-zinc-950/40 rounded-lg border border-zinc-100 dark:border-zinc-850">
+                    <span className="text-zinc-500 font-medium capitalize">{x.label}</span>
+                    <span className="font-bold text-zinc-800 dark:text-zinc-200 font-mono">{fmtBRL(x.total)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Pagamentos Anteriores */}
+          <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-sm">
+            <h3 className="font-display text-xs font-bold text-zinc-850 dark:text-zinc-100 mb-3 flex items-center gap-1.5">
+              💰 Pagamentos Anteriores
+            </h3>
+            {ag.pagamentos.length === 0 ? (
+              <div className="text-center text-xs text-zinc-400 py-4 italic">Nenhum pagamento registrado</div>
+            ) : (
+              <div className="space-y-3">
+                {ag.pagamentos.map((p) => (
+                  <div key={p.id} className="p-3 bg-zinc-50 dark:bg-zinc-950/40 rounded-xl border border-zinc-150 dark:border-zinc-850 flex flex-col gap-1.5 text-xs">
+                    <div className="flex justify-between items-center w-full">
+                      <span className="font-semibold text-zinc-700 dark:text-zinc-350 capitalize">
+                        {FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}
+                      </span>
+                      <span className="font-mono font-bold text-zinc-800 dark:text-zinc-250">{fmtBRL(p.valor)}</span>
+                    </div>
+                    {(Number(p.troco) > 0 || (p.valor_recebido !== undefined && Number(p.valor_recebido) !== Number(p.valor))) && (
+                      <div className="flex justify-between items-center text-[10px] text-zinc-550 dark:text-zinc-400">
+                        <span>
+                          Bruto: {fmtBRL(p.valor_recebido || p.valor)}
+                          {Number(p.troco) > 0 && ` · Troco: ${fmtBRL(p.troco)}`}
+                        </span>
+                        <span>Líquido: {fmtBRL(p.valor)}</span>
+                      </div>
+                    )}
+                    {p.observacao && <span className="text-[10px] text-zinc-500 dark:text-zinc-400 italic">"{p.observacao}"</span>}
+                    <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-zinc-100/50 dark:border-zinc-800/60">
+                      <span className="text-[9px] text-zinc-400">{fmtDT(p.data_hora)}</span>
+                      <Button size="icon" variant="ghost" className="h-6 w-6 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20" onClick={() => startDelete(p.id)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Dialog de edição de pagamento */}

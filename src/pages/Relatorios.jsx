@@ -2528,22 +2528,38 @@ export default function Relatorios() {
         <TabsContent value="caixa">
           {!caixa ? <div className="text-zinc-400 p-8 text-center">Carregando...</div> : (
             <div className="space-y-6">
-              <div className="bg-white border border-zinc-200 rounded-xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-zinc-400">
-                    {colaboradorId === "todos" 
-                      ? "Total recebido no período (Todos os usuários)" 
-                      : `Total recebido por ${colaboradores.find(c => c.id === colaboradorId)?.nome}`}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm flex items-center justify-between">
+                  <div>
+                    <div className="text-xs uppercase tracking-wider text-zinc-400 font-bold">Total Pago (Bruto)</div>
+                    <div className="font-display text-2xl sm:text-3xl font-black mt-1 text-zinc-800">{fmtBRL(caixa.totais.bruto || (caixa.totais.geral + (caixa.totais.troco || 0)))}</div>
+                    <div className="text-xs text-zinc-500 mt-1">{caixa.total_pagamentos} pagamentos registrados</div>
                   </div>
-                  <div className="font-display text-3xl sm:text-4xl font-semibold mt-1 text-[#3A4F4A]">{fmtBRL(caixa.totais.geral)}</div>
-                  <div className="text-xs text-zinc-500 mt-1">{caixa.total_pagamentos} pagamentos registrados</div>
+                  <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-full">
+                    <TrendingUp className="w-6 h-6 text-zinc-500 dark:text-zinc-400" />
+                  </div>
                 </div>
-                <div className="bg-[#84A59D]/10 p-3 rounded-full self-start sm:self-auto">
-                  {colaboradorId === "todos" ? (
-                    <TrendingUp className="w-8 h-8 text-[#84A59D]" />
-                  ) : (
-                    <User className="w-8 h-8 text-[#84A59D]" />
-                  )}
+                
+                <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm flex items-center justify-between">
+                  <div>
+                    <div className="text-xs uppercase tracking-wider text-rose-500 font-bold">Total de Troco Concedido</div>
+                    <div className="font-display text-2xl sm:text-3xl font-black mt-1 text-rose-600 dark:text-rose-400">{fmtBRL(caixa.totais.troco || 0)}</div>
+                    <div className="text-xs text-zinc-500 mt-1">Devolvido ao cliente</div>
+                  </div>
+                  <div className="bg-rose-50 dark:bg-rose-950/20 p-3 rounded-full">
+                    <TrendingDown className="w-6 h-6 text-rose-500" />
+                  </div>
+                </div>
+
+                <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm flex items-center justify-between border-l-4 border-l-[#84A59D]">
+                  <div>
+                    <div className="text-xs uppercase tracking-wider text-[#84A59D] font-bold">Total Líquido (No Caixa)</div>
+                    <div className="font-display text-2xl sm:text-3xl font-black mt-1 text-[#3A4F4A] dark:text-[#EAF0EE]">{fmtBRL(caixa.totais.geral)}</div>
+                    <div className="text-xs text-zinc-500 mt-1">Saldo real líquido</div>
+                  </div>
+                  <div className="bg-[#84A59D]/10 p-3 rounded-full">
+                    <Coins className="w-6 h-6 text-[#84A59D]" />
+                  </div>
                 </div>
               </div>
               
@@ -2660,7 +2676,9 @@ export default function Relatorios() {
                               <th className="px-4 py-3">Profissional</th>
                               <th className="px-4 py-3">Recebido Por</th>
                               <th className="px-4 py-3 text-center">Forma</th>
-                              <th className="px-4 py-3 text-right">Valor Recebido</th>
+                              <th className="px-4 py-3 text-right">Vl. Pago (Bruto)</th>
+                              <th className="px-4 py-3 text-right">Troco</th>
+                              <th className="px-4 py-3 text-right">Vl. Líquido</th>
                               <th className="px-4 py-3 text-right">Total Op.</th>
                               <th className="px-4 py-3 text-center">Status</th>
                             </tr>
@@ -2699,6 +2717,12 @@ export default function Relatorios() {
                                   <span className="px-2 py-0.5 bg-zinc-100 border border-zinc-200 text-zinc-600 rounded text-[9px] uppercase font-bold dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300">
                                     {FORMA_LABELS[p.forma_pagamento] || p.forma_pagamento}
                                   </span>
+                                </td>
+                                <td className="px-4 py-3 text-right font-mono text-zinc-700 dark:text-zinc-350 whitespace-nowrap">
+                                  {fmtBRL(p.valor_recebido || p.valor)}
+                                </td>
+                                <td className="px-4 py-3 text-right font-mono text-amber-600 dark:text-amber-500 whitespace-nowrap">
+                                  {Number(p.troco) > 0 ? fmtBRL(p.troco) : "—"}
                                 </td>
                                 <td className="px-4 py-3 text-right font-mono font-bold text-[#3A4F4A] dark:text-[#EAF0EE] whitespace-nowrap">
                                   {fmtBRL(p.valor)}
