@@ -11,28 +11,28 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from ".
 const Stat = ({ icon: Icon, label, value, hint, tone = "default", onClick }) => (
   <div 
     onClick={onClick}
-    className={`bg-white border border-zinc-200 rounded-xl p-5 transition-all select-none dark:bg-zinc-900 dark:border-zinc-800 ${
+    className={`bg-white border border-zinc-200 rounded-xl p-4 sm:p-5 transition-all select-none dark:bg-zinc-900 dark:border-zinc-800 ${
       onClick 
         ? "cursor-pointer hover:shadow-md hover:border-[#84A59D] dark:hover:border-[#84A59D] active:scale-98" 
         : ""
     }`} 
     data-testid={`kpi-${label.toLowerCase().replace(/\s/g, '-')}`}
   >
-    <div className="flex items-start justify-between">
-      <div className="w-9 h-9 rounded-lg bg-[#EAF0EE] dark:bg-zinc-800 flex items-center justify-center animate-pulse-subtle">
+    <div className="flex items-start justify-between gap-2">
+      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#EAF0EE] dark:bg-zinc-800 flex items-center justify-center flex-shrink-0 animate-pulse-subtle">
         <Icon className="w-4 h-4 text-[#3A4F4A] dark:text-[#84A59D]" />
       </div>
       {onClick && (
-        <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-150 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 opacity-70 font-bold hover:opacity-100 transition-opacity">
+        <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-zinc-150 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 opacity-70 font-bold hover:opacity-100 transition-opacity flex-shrink-0">
           Detalhes
         </span>
       )}
-      {tone === "warning" && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Alerta</span>}
+      {tone === "warning" && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 flex-shrink-0">Alerta</span>}
     </div>
-    <div className="mt-4">
-      <div className="text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-medium">{label}</div>
-      <div className="font-display text-3xl font-semibold tracking-tight mt-1 text-zinc-900 dark:text-zinc-100">{value}</div>
-      {hint && <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 font-medium">{hint}</div>}
+    <div className="mt-3 sm:mt-4">
+      <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-medium leading-tight">{label}</div>
+      <div className="font-display text-lg min-[380px]:text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight mt-1 text-zinc-900 dark:text-zinc-100 leading-none">{value}</div>
+      {hint && <div className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400 mt-1.5 font-medium leading-normal">{hint}</div>}
     </div>
   </div>
 );
@@ -186,9 +186,9 @@ export default function Dashboard() {
 
       {/* Control Bar / Painel de Filtros */}
       <div className="bg-white/90 backdrop-blur-md border border-zinc-200/80 dark:bg-zinc-900/90 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex flex-wrap items-end gap-5">
-        <div className="space-y-1.5 flex-1 min-w-[200px]">
+        <div className="space-y-1.5 w-full sm:flex-1 sm:min-w-[200px]">
           <Label className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-wider">Data de Início</Label>
-          <div className="relative">
+          <div className="relative w-full">
             <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
             <Input 
               type="date" 
@@ -198,9 +198,9 @@ export default function Dashboard() {
             />
           </div>
         </div>
-        <div className="space-y-1.5 flex-1 min-w-[200px]">
+        <div className="space-y-1.5 w-full sm:flex-1 sm:min-w-[200px]">
           <Label className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-wider">Data de Término</Label>
-          <div className="relative">
+          <div className="relative w-full">
             <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
             <Input 
               type="date" 
@@ -210,7 +210,7 @@ export default function Dashboard() {
             />
           </div>
         </div>
-        <div className="space-y-1.5 flex-1 min-w-[200px]">
+        <div className="space-y-1.5 w-full sm:flex-1 sm:min-w-[200px]">
           <Label className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-wider">Colaborador</Label>
           <Select value={selectedColab} onValueChange={(v) => setSelectedColab(v)}>
             <SelectTrigger id="dashboard-colab-filter" data-testid="dashboard-colab-filter" className="bg-zinc-50 border-zinc-200 focus:bg-white dark:bg-zinc-800 dark:border-zinc-700 dark:focus:bg-zinc-950 dark:text-zinc-100 transition-colors rounded-lg font-medium">
@@ -224,13 +224,13 @@ export default function Dashboard() {
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={loadDashboard} className="bg-[#84A59D] hover:bg-[#6F9189] dark:bg-[#84A59D] dark:hover:bg-[#6F9189] dark:text-zinc-950 shadow-sm text-white px-5 font-semibold">
+        <Button onClick={loadDashboard} className="bg-[#84A59D] hover:bg-[#6F9189] dark:bg-[#84A59D] dark:hover:bg-[#6F9189] dark:text-zinc-950 shadow-sm text-white px-5 font-semibold w-full sm:w-auto">
           <Filter className="w-4 h-4 mr-1.5" /> Filtrar Período
         </Button>
       </div>
 
       {/* KPI Cards Grid */}
-      <div className={`grid grid-cols-2 ${isAdmin ? "lg:grid-cols-5" : "lg:grid-cols-4"} gap-4`}>
+      <div className={`grid grid-cols-2 ${isAdmin ? "lg:grid-cols-5" : "lg:grid-cols-4"} gap-3 sm:gap-4`}>
         {isAdmin && (
           <Stat 
             icon={DollarSign} 

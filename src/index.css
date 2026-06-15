@@ -321,4 +321,21 @@ h1, h2, h3, h4, h5, .font-display {
   color: hsl(var(--muted-foreground)) !important;
 }
 
+/* Fix for native date inputs on iOS Chrome/Safari and general min-width resets */
+input[type="date"] {
+  min-width: 0 !important;
+  width: 100% !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  box-sizing: border-box !important;
+}
+
+/* Align text to the left in native iOS inputs and center vertically */
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left !important;
+  min-height: 1.25rem !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
 
