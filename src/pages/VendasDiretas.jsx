@@ -53,6 +53,7 @@ export default function VendasDiretas() {
   const [carrinhoData, setCarrinhoData] = useState(null);
   const [carrinhoLoading, setCarrinhoLoading] = useState(false);
   const [carrinhoSaving, setCarrinhoSaving] = useState(false);
+  const [configSistema, setConfigSistema] = useState(null);
   const [confirmRemoveIdx, setConfirmRemoveIdx] = useState(null);
   const [editingQtdIdx, setEditingQtdIdx] = useState(null);
   const [editingQtdVal, setEditingQtdVal] = useState("");
@@ -84,6 +85,7 @@ export default function VendasDiretas() {
       // Filtramos ativos no frontend para evitar problemas de parsing boolean (true/'true'/1) no backend SQLite
       setCategorias(all.filter(c => c.ativo !== false && c.ativo !== 0 && c.ativo !== '0'));
     });
+    http.get("/configuracoes/sistema").then((r) => setConfigSistema(r.data || null)).catch(() => {});
   }, []);
 
   // Open new sale dialog pre-filled with client when navigated from Agenda
@@ -162,11 +164,11 @@ export default function VendasDiretas() {
     } catch (e) {
       console.error("Erro:", e);
       if (e.response?.data?.code === 'ESTOQUE_INSUFICIENTE') {
-        const confirmResult = window.confirm(
-          `${e.response.data.detail}\n\nDeseja continuar mesmo deixando o estoque negativo?`
-        );
-        if (confirmResult) {
+        if (configSistema?.permitir_estoque_negativo) {
+          toast.warning("Estoque insuficiente. A operação será concluída e o produto ficará com saldo negativo.");
           await handleCreateNovaVenda(true);
+        } else {
+          toast.error(e.response.data.detail || "Estoque insuficiente para concluir esta venda.");
         }
       } else {
         toast.error(e.response?.data?.detail || "Erro ao criar venda");
@@ -200,20 +202,24 @@ export default function VendasDiretas() {
     if (itemExistenteIdx !== -1) {
       const novaQtd = novaVendaItens[itemExistenteIdx].quantidade + qtd;
       if (novaQtd > maxAllowed) {
-        const confirmResult = window.confirm(
-          `Estoque insuficiente para "${prod.nome}". Disponível: ${formattedMax}\n\nDeseja continuar mesmo deixando o estoque negativo?`
-        );
-        if (!confirmResult) return;
+        if (configSistema?.permitir_estoque_negativo) {
+          toast.warning(`Estoque insuficiente. A operação será concluída e o produto "${prod.nome}" ficará com saldo negativo.`);
+        } else {
+          toast.error(`Estoque insuficiente para "${prod.nome}". Disponível: ${formattedMax}`);
+          return;
+        }
       }
       const copia = [...novaVendaItens];
       copia[itemExistenteIdx].quantidade = novaQtd;
       setNovaVendaItens(copia);
     } else {
       if (qtd > maxAllowed) {
-        const confirmResult = window.confirm(
-          `Estoque insuficiente para "${prod.nome}". Disponível: ${formattedMax}\n\nDeseja continuar mesmo deixando o estoque negativo?`
-        );
-        if (!confirmResult) return;
+        if (configSistema?.permitir_estoque_negativo) {
+          toast.warning(`Estoque insuficiente. A operação será concluída e o produto "${prod.nome}" ficará com saldo negativo.`);
+        } else {
+          toast.error(`Estoque insuficiente para "${prod.nome}". Disponível: ${formattedMax}`);
+          return;
+        }
       }
       setNovaVendaItens([
         ...novaVendaItens,
@@ -241,13 +247,15 @@ export default function VendasDiretas() {
       const qtyPerUnit = Number(prod.quantidade_por_unidade || 0);
       const maxAllowed = qtyPerUnit > 0 ? (prod.quantidade_estoque / qtyPerUnit) : prod.quantidade_estoque;
       if (novaQtd > maxAllowed) {
-        const formattedMax = qtyPerUnit > 0 
-          ? `${Number(maxAllowed.toFixed(2))} ${prod.unidade_medida || 'un'} (${Number(prod.quantidade_estoque.toFixed(3))} ${prod.unidade_medida_insumo || 'un'})`
-          : `${Number(prod.quantidade_estoque.toFixed(3))} ${prod.unidade_medida || 'un'}`;
-        const confirmResult = window.confirm(
-          `Estoque insuficiente para "${prod.nome}". Disponível: ${formattedMax}\n\nDeseja continuar mesmo deixando o estoque negativo?`
-        );
-        if (!confirmResult) return;
+        if (configSistema?.permitir_estoque_negativo) {
+          toast.warning(`Estoque insuficiente. A operação será concluída e o produto "${prod.nome}" ficará com saldo negativo.`);
+        } else {
+          const formattedMax = qtyPerUnit > 0 
+            ? `${Number(maxAllowed.toFixed(2))} ${prod.unidade_medida || 'un'} (${Number(prod.quantidade_estoque.toFixed(3))} ${prod.unidade_medida_insumo || 'un'})`
+            : `${Number(prod.quantidade_estoque.toFixed(3))} ${prod.unidade_medida || 'un'}`;
+          toast.error(`Estoque insuficiente para "${prod.nome}". Disponível: ${formattedMax}`);
+          return;
+        }
       }
     }
     const copia = [...novaVendaItens];
@@ -336,11 +344,11 @@ export default function VendasDiretas() {
         load();
       } catch (e) {
         if (e.response?.data?.code === 'ESTOQUE_INSUFICIENTE') {
-          const confirmResult = window.confirm(
-            `${e.response.data.detail}\n\nDeseja continuar mesmo deixando o estoque negativo?`
-          );
-          if (confirmResult) {
+          if (configSistema?.permitir_estoque_negativo) {
+            toast.warning("Estoque insuficiente. A operação será concluída e o produto ficará com saldo negativo.");
             await update(true);
+          } else {
+            toast.error(e.response.data.detail || "Estoque insuficiente.");
           }
         } else {
           toast.error(e.response?.data?.detail || "Erro ao atualizar quantidade.");
@@ -368,11 +376,11 @@ export default function VendasDiretas() {
         load();
       } catch (e) {
         if (e.response?.data?.code === 'ESTOQUE_INSUFICIENTE') {
-          const confirmResult = window.confirm(
-            `${e.response.data.detail}\n\nDeseja continuar mesmo deixando o estoque negativo?`
-          );
-          if (confirmResult) {
+          if (configSistema?.permitir_estoque_negativo) {
+            toast.warning("Estoque insuficiente. A operação será concluída e o produto ficará com saldo negativo.");
             await update(true);
+          } else {
+            toast.error(e.response.data.detail || "Estoque insuficiente.");
           }
         } else {
           toast.error(e.response?.data?.detail || "Erro ao atualizar quantidade.");

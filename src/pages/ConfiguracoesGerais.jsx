@@ -6,7 +6,7 @@ import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
-import { ArrowLeft, Save, Sliders, AlertCircle, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Save, Sliders, AlertCircle, ShieldAlert, Package } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ConfiguracoesGerais() {
@@ -14,6 +14,7 @@ export default function ConfiguracoesGerais() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [bloquearValorMenor, setBloquearValorMenor] = useState(false);
+  const [permitirEstoqueNegativo, setPermitirEstoqueNegativo] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -21,6 +22,7 @@ export default function ConfiguracoesGerais() {
       const response = await http.get("/configuracoes/sistema");
       if (response.data) {
         setBloquearValorMenor(!!response.data.bloquear_valor_agendamento_menor);
+        setPermitirEstoqueNegativo(!!response.data.permitir_estoque_negativo);
       }
     } catch (e) {
       toast.error("Erro ao carregar configurações do sistema");
@@ -37,7 +39,8 @@ export default function ConfiguracoesGerais() {
     setSaving(true);
     try {
       await http.post("/configuracoes/sistema", {
-        bloquear_valor_agendamento_menor: bloquearValorMenor
+        bloquear_valor_agendamento_menor: bloquearValorMenor,
+        permitir_estoque_negativo: permitirEstoqueNegativo
       });
       toast.success("Configurações salvas com sucesso!");
     } catch (e) {
@@ -106,6 +109,35 @@ export default function ConfiguracoesGerais() {
                 id="bloquear-valor"
                 checked={bloquearValorMenor}
                 onCheckedChange={setBloquearValorMenor}
+              />
+            </div>
+          </div>
+        </Card>
+
+        {/* Controle de Estoque e Inventário Card */}
+        <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
+          <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-5">
+            <Package className="w-5 h-5 text-[#84A59D]" />
+            <span>Controle de Estoque e Inventário</span>
+          </h3>
+
+          <div className="flex items-start justify-between gap-4 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850">
+            <div className="space-y-1 flex-1">
+              <Label 
+                htmlFor="permitir-estoque-negativo" 
+                className="text-sm font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer"
+              >
+                Permitir estoque negativo
+              </Label>
+              <p className="text-xs text-zinc-550 dark:text-zinc-400 leading-relaxed max-w-xl">
+                Quando ativado, o sistema permite concluir a venda de produtos e o lançamento de insumos em atendimentos mesmo se a quantidade em estoque for insuficiente. O saldo do produto ficará negativo após a movimentação.
+              </p>
+            </div>
+            <div className="pt-1">
+              <Switch 
+                id="permitir-estoque-negativo"
+                checked={permitirEstoqueNegativo}
+                onCheckedChange={setPermitirEstoqueNegativo}
               />
             </div>
           </div>

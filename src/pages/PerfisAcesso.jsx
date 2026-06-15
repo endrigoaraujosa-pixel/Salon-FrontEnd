@@ -40,7 +40,12 @@ const defaultPermissions = {
     editar: false,
     excluir: false,
     realizar_pagamento: false,
-    is_admin: false
+    is_admin: false,
+    "estoque.visualizar": false,
+    "estoque.movimentar": false,
+    "estoque.ajustar": false,
+    "estoque.inventariar": false,
+    "estoque.zerar": false
   }
 };
 
@@ -263,7 +268,7 @@ export default function PerfisAcesso() {
                         <div className="bg-zinc-50 dark:bg-zinc-950/40 p-2.5 rounded-xl border border-zinc-150 dark:border-zinc-850/50">
                           <span className="text-zinc-400 dark:text-zinc-500 block text-[9px] uppercase font-bold">Ações & Operações</span>
                           <span className="font-bold text-zinc-800 dark:text-zinc-200 mt-1 block">
-                            {activeAcoesCount} de 5
+                            {activeAcoesCount} de 9
                           </span>
                         </div>
                       </div>
@@ -477,6 +482,106 @@ export default function PerfisAcesso() {
                         form.permissoes.acoes.realizar_pagamento ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
                       }`}>
                         {form.permissoes.acoes.realizar_pagamento && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </div>
+                    </div>
+
+                    {/* Visualizar Estoque */}
+                    <div 
+                      onClick={() => handleToggleAcao("estoque.visualizar")}
+                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
+                        form.permissoes.acoes["estoque.visualizar"] 
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
+                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
+                      }`}
+                    >
+                      <div>
+                        <span className="text-xs font-bold block">Visualizar Estoque</span>
+                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Visualizar painéis, quantidades e relatórios de estoque</span>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
+                        form.permissoes.acoes["estoque.visualizar"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
+                      }`}>
+                        {form.permissoes.acoes["estoque.visualizar"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </div>
+                    </div>
+
+                    {/* Lançar Movimentação */}
+                    <div 
+                      onClick={() => handleToggleAcao("estoque.movimentar")}
+                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
+                        form.permissoes.acoes["estoque.movimentar"] 
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
+                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
+                      }`}
+                    >
+                      <div>
+                        <span className="text-xs font-bold block">Movimentar Estoque</span>
+                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Lançar saídas manuais, perdas e consumo interno</span>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
+                        form.permissoes.acoes["estoque.movimentar"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
+                      }`}>
+                        {form.permissoes.acoes["estoque.movimentar"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </div>
+                    </div>
+
+                    {/* Ajustar Estoque */}
+                    <div 
+                      onClick={() => handleToggleAcao("estoque.ajustar")}
+                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
+                        form.permissoes.acoes["estoque.ajustar"] 
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
+                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
+                      }`}
+                    >
+                      <div>
+                        <span className="text-xs font-bold block">Ajustar Estoque</span>
+                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Realizar ajustes manuais unitários de estoque físico</span>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
+                        form.permissoes.acoes["estoque.ajustar"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
+                      }`}>
+                        {form.permissoes.acoes["estoque.ajustar"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </div>
+                    </div>
+
+                    {/* Realizar Inventário */}
+                    <div 
+                      onClick={() => handleToggleAcao("estoque.inventariar")}
+                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
+                        form.permissoes.acoes["estoque.inventariar"] 
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
+                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
+                      }`}
+                    >
+                      <div>
+                        <span className="text-xs font-bold block">Inventariar (Lote)</span>
+                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Concluir contagens físicas em lote (Inventário Assistido)</span>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
+                        form.permissoes.acoes["estoque.inventariar"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
+                      }`}>
+                        {form.permissoes.acoes["estoque.inventariar"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </div>
+                    </div>
+
+                    {/* Permitir Zerar Estoque */}
+                    <div 
+                      onClick={() => handleToggleAcao("estoque.zerar")}
+                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
+                        form.permissoes.acoes["estoque.zerar"] 
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
+                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
+                      }`}
+                    >
+                      <div>
+                        <span className="text-xs font-bold block">Permitir Zerar Estoque</span>
+                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Autoriza o zeramento da contagem física em lote no Inventário Assistido</span>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
+                        form.permissoes.acoes["estoque.zerar"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
+                      }`}>
+                        {form.permissoes.acoes["estoque.zerar"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                       </div>
                     </div>
                   </div>

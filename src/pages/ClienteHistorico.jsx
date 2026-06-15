@@ -605,13 +605,44 @@ export default function ClienteHistorico() {
                 </div>
 
                 {/* Valores Totais */}
-                <div className="total-box mt-auto p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 shadow-sm flex items-center justify-between">
+                <div className="total-box p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 shadow-sm flex items-center justify-between">
                   <div className="total-label flex items-center gap-1 text-zinc-500 dark:text-zinc-450 font-medium">
                     <Clock className="w-4 h-4 text-[#84A59D]" />
                     Duração Total: {selectedAgendamento.itens?.reduce((sum, item) => sum + (item.duracao_minutos || 0), 0)} min
                   </div>
                   <div className="total-value text-xl font-extrabold text-[#3A4F4A] dark:text-[#EAF0EE]">{fmtBRL(selectedAgendamento.valor_total)}</div>
                 </div>
+
+                {/* Pagamentos Vinculados */}
+                {selectedAgendamento.pagamentos && selectedAgendamento.pagamentos.length > 0 && (
+                  <div className="space-y-3 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+                    <h4 className="text-xs uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-bold flex items-center gap-1.5">
+                      <DollarSign className="w-4 h-4 text-[#84A59D]" /> Pagamentos Vinculados
+                    </h4>
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                      {selectedAgendamento.pagamentos.map((p, idx) => (
+                        <div key={idx} className="bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] p-3 rounded-xl flex flex-col gap-1.5 shadow-xs text-xs">
+                          <div className="flex justify-between items-center w-full">
+                            <span className="font-semibold text-zinc-700 dark:text-zinc-350 capitalize">
+                              {p.forma_pagamento}
+                            </span>
+                            <span className="font-mono font-bold text-zinc-800 dark:text-zinc-200">{fmtBRL(p.valor)}</span>
+                          </div>
+                          {(Number(p.troco) > 0 || (p.valor_recebido !== undefined && Number(p.valor_recebido) !== Number(p.valor))) && (
+                            <div className="flex justify-between items-center text-zinc-500 dark:text-zinc-400">
+                              <span>
+                                Bruto: {fmtBRL(p.valor_recebido || p.valor)}
+                                {Number(p.troco) > 0 && ` · Troco: ${fmtBRL(p.troco)}`}
+                              </span>
+                              <span>Líquido: {fmtBRL(p.valor)}</span>
+                            </div>
+                          )}
+                          {p.observacao && <span className="text-[10px] text-zinc-500 dark:text-zinc-400 italic">"{p.observacao}"</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
             </div>
