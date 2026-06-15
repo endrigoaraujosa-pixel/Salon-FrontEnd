@@ -13,15 +13,13 @@ export default function ConfiguracoesWhatsApp() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
   const [form, setForm] = useState({
     ativo: 0,
     lembrete_24h: 1,
     lembrete_2h: 1,
     lembrete_1h: 1,
-    modelo_mensagem: "",
-    api_url: "",
-    instancia: "",
-    token: ""
+    modelo_mensagem: ""
   });
 
   const [localStatus, setLocalStatus] = useState({
@@ -178,6 +176,7 @@ export default function ConfiguracoesWhatsApp() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      console.log(form)
       await http.post("/configuracoes/whatsapp", form);
       toast.success("Configurações do WhatsApp salvas com sucesso!");
       window.dispatchEvent(new Event("whatsapp_config_updated"));
@@ -202,6 +201,7 @@ export default function ConfiguracoesWhatsApp() {
 
   const handleStartIntegration = async () => {
     try {
+      setStatusLoading(true)
       const subdominio = window.location.hostname.split('.')[0];
       const respone = await http.post("/configuracoes/whatsapp/iniciar-integracao", { subdominio });
       const { data, success } = respone.data
@@ -216,6 +216,8 @@ export default function ConfiguracoesWhatsApp() {
       toast.success("Integração iniciada com sucesso!");
     } catch (e) {
       toast.error(e.response?.data?.detail || "Erro ao iniciar integração externa.");
+    } finally {
+      setStatusLoading(false)
     }
   }
 
@@ -253,7 +255,10 @@ export default function ConfiguracoesWhatsApp() {
                 type="checkbox"
                 id="ativo"
                 checked={form.ativo === 1}
-                onChange={(e) => setForm({ ...form, ativo: e.target.checked ? 1 : 0 })}
+                onChange={(e) => {
+                  console.log(e.target.checked);
+                  setForm({ ...form, ativo: e.target.checked ? 1 : 0 })
+                }}
                 className="w-5 h-5 text-emerald-600 border-zinc-300 dark:border-zinc-750 rounded focus:ring-emerald-500 focus:ring-2 mt-0.5 cursor-pointer"
               />
               <div className="space-y-1">
@@ -404,9 +409,11 @@ export default function ConfiguracoesWhatsApp() {
                         </p>
                         <Button
                           type="button"
+                          disabled={statusLoading}
                           onClick={() => handleStartIntegration()}
                           className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white font-bold h-10 px-6 rounded-lg shadow-sm">
                           Iniciar integração com whatsapp
+                          <span>{statusLoading ? "Conectando..." : "Conectar whatsapp"}</span>
                         </Button></>)
                       : ""}
                   {localStatus.status !== 'disconnected' && (
