@@ -37,6 +37,7 @@ export default function VendaPagamento() {
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
   const [autoPayConfirmOpen, setAutoPayConfirmOpen] = useState(false);
+  const [finalizarConfirmOpen, setFinalizarConfirmOpen] = useState(false);
 
   // Novos estados para Descontos
   const [descontos, setDescontos] = useState([]);
@@ -240,7 +241,7 @@ export default function VendaPagamento() {
     }
   };
 
-  const executePayment = async (forceSaldo = false) => {
+  const executePayment = async (forceSaldo = false, forceFinalizarConfirm = false) => {
     if (!temPermissaoPagamento) {
       toast.error("Você não tem permissão para realizar pagamentos.");
       return;
@@ -277,6 +278,12 @@ export default function VendaPagamento() {
     
     const totalInformado = validos.reduce((sum, p) => sum + Number(p.valor), 0);
     const finalizar = totalInformado >= (saldo - 0.01);
+    
+    if (finalizar && !forceFinalizarConfirm) {
+      setFinalizarConfirmOpen(true);
+      return;
+    }
+
     const excessoTotal = totalInformado > saldo ? Number((totalInformado - saldo).toFixed(2)) : 0;
     const temTroco = excessoTotal > 0 && novos.some(p => p.forma_pagamento === "dinheiro");
     
@@ -364,6 +371,36 @@ export default function VendaPagamento() {
     }
   };
 
+  const executeDelete = async (paymentId) => {
+    try {
+      await http.delete(`/vendas-diretas/${id}/pagamentos/${paymentId}`);
+      toast.success("Pagamento removido com sucesso");
+      load();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Erro ao remover pagamento");
+    }
+  };
+
+  const executeEdit = async () => {
+    if (!editingPayment) return;
+    try {
+      await http.put(
+        `/vendas-diretas/${id}/pagamentos/${editingPayment.id}`,
+        {
+          valor: Number(editingPayment.valor),
+          forma_pagamento: editingPayment.forma_pagamento,
+          observacao: editingPayment.observacao || ""
+        }
+      );
+      toast.success("Pagamento atualizado com sucesso");
+      setEditFormOpen(false);
+      setEditingPayment(null);
+      load();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Erro ao atualizar pagamento");
+    }
+  };
+
   // Iniciar processo de edição
   const startEdit = (payment) => {
     if (!temPermissaoPagamento) {
@@ -379,8 +416,12 @@ export default function VendaPagamento() {
       toast.error("Você não tem permissão para realizar pagamentos.");
       return;
     }
-    setPendingAction({ type: 'delete', paymentId });
-    setPasswordDialogOpen(true);
+    if (v.status !== 'pago') {
+      executeDelete(paymentId);
+    } else {
+      setPendingAction({ type: 'delete', paymentId });
+      setPasswordDialogOpen(true);
+    }
   };
 
   // Salvar edição
@@ -393,8 +434,12 @@ export default function VendaPagamento() {
       toast.error("Valor deve ser maior que zero");
       return;
     }
-    setPendingAction({ type: 'edit' });
-    setPasswordDialogOpen(true);
+    if (v.status !== 'pago') {
+      executeEdit();
+    } else {
+      setPendingAction({ type: 'edit' });
+      setPasswordDialogOpen(true);
+    }
   };
 
   return (
@@ -574,31 +619,42 @@ export default function VendaPagamento() {
                 )}
               </div>
             </div>
-          ) : pagamentos.length === 0 && (
+          ) : (
             <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-sm">
               <h3 className="font-display text-base font-bold mb-3 text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
                 🏷️ Desconto
               </h3>
-              <div className="space-y-2">
-                <Label className="text-xs text-zinc-500">Selecione um desconto para aplicar a esta venda:</Label>
-                <div className="flex gap-2">
-                  <Select onValueChange={handleSelectDesconto} disabled={loadingDesconto}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione um desconto..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {descontos.filter(isDescontoAplicavel).map(d => (
-                        <SelectItem key={d.id} value={d.id}>
-                          {d.codigo} - {d.descricao || ""} ({d.tipo === 'porcentagem' ? `${d.valor}%` : fmtBRL(d.valor)}) {d.requer_autorizacao ? "🔒" : ""}
-                        </SelectItem>
-                      ))}
-                      {descontos.filter(isDescontoAplicavel).length === 0 && (
-                        <SelectItem disabled value="none">Nenhum desconto disponível</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+              {pagamentos.length === 0 ? (
+                <div className="space-y-2">
+                  <Label className="text-xs text-zinc-500">Selecione um desconto para aplicar a esta venda:</Label>
+                  <div className="flex gap-2">
+                    <Select onValueChange={handleSelectDesconto} disabled={loadingDesconto}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione um desconto..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {descontos.filter(isDescontoAplicavel).map(d => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.codigo} - {d.descricao || ""} ({d.tipo === 'porcentagem' ? `${d.valor}%` : fmtBRL(d.valor)}) {d.requer_autorizacao ? "🔒" : ""}
+                          </SelectItem>
+                        ))}
+                        {descontos.filter(isDescontoAplicavel).length === 0 && (
+                          <SelectItem disabled value="none">Nenhum desconto disponível</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-3 bg-amber-50/50 dark:bg-amber-950/10 border border-amber-200/60 dark:border-amber-900/40 rounded-xl">
+                  <p className="text-xs text-amber-700 dark:text-amber-450 font-medium">
+                    ⚠️ Não é possível aplicar descontos em vendas que já possuem pagamentos registrados.
+                  </p>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
+                    Para aplicar um desconto, exclua os pagamentos anteriores na seção de <strong>"Pagamentos Anteriores"</strong> primeiro.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -672,59 +728,90 @@ export default function VendaPagamento() {
             <h3 className="font-display text-sm font-bold text-zinc-850 dark:text-zinc-100 mb-4 flex items-center gap-1.5">
               📊 Resumo Financeiro
             </h3>
-            <div className="space-y-3.5">
-              {temDescontoAplicado && (
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-zinc-550 dark:text-zinc-400">Total Original</span>
-                  <span className="font-semibold text-zinc-500 line-through">{fmtBRL(valorOriginalVenda)}</span>
+            <div className="space-y-4">
+              {/* Detalhes de composição (se houver descontos ou pagamentos anteriores) */}
+              {(temDescontoAplicado || v.total_pago > 0) && (
+                <div className="bg-zinc-50/50 dark:bg-zinc-950/30 border border-zinc-150 dark:border-zinc-800/80 rounded-xl p-3.5 space-y-2 text-xs">
+                  {temDescontoAplicado && (
+                    <div className="flex justify-between items-center text-zinc-500">
+                      <span>Total Original</span>
+                      <span className="font-mono line-through">{fmtBRL(valorOriginalVenda)}</span>
+                    </div>
+                  )}
+                  
+                  {temDescontoAplicado && (
+                    <div className="flex justify-between items-center text-rose-500 font-medium">
+                      <span>Desconto Aplicado</span>
+                      <span className="font-mono font-bold">- {fmtBRL(descontoMeta?.total_descontado)}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center text-zinc-555 dark:text-zinc-400">
+                    <span>Valor Total da Venda</span>
+                    <span className="font-mono font-semibold">{fmtBRL(v.valor_total)}</span>
+                  </div>
+
+                  {v.total_pago > 0 && (
+                    <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-medium">
+                      <span>Total Pago (Anteriormente)</span>
+                      <span className="font-mono font-bold">{fmtBRL(v.total_pago)}</span>
+                    </div>
+                  )}
                 </div>
               )}
-              
-              {temDescontoAplicado && (
-                <div className="flex justify-between items-center text-xs text-rose-500 font-medium">
-                  <span>Desconto Aplicado</span>
-                  <span>- {fmtBRL(descontoMeta?.total_descontado)}</span>
+
+              {/* Destaque 1: Valor a Pagar (Saldo Restante Devido) */}
+              <div className="bg-[#EAF0EE] dark:bg-[#1E2D2A] border border-[#C2D3CE] dark:border-[#334E47] p-4 rounded-xl flex items-center justify-between shadow-xs">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#3A4F4A] dark:text-[#84A59D] block">Valor a Pagar</span>
+                  <span className="text-[11px] text-[#4A645F] dark:text-[#678B81] mt-0.5 block font-medium">Total devido desta venda</span>
                 </div>
-              )}
-
-              <div className="flex justify-between items-center text-xs font-semibold">
-                <span className="text-zinc-500">Saldo Devido (Operação)</span>
-                <span className="text-zinc-850 dark:text-zinc-250 font-bold">{fmtBRL(v.valor_total)}</span>
+                <div className="text-right">
+                  <span className="text-2xl font-black text-[#2D3E3A] dark:text-[#EAF0EE] font-mono tracking-tight">{fmtBRL(saldo)}</span>
+                </div>
               </div>
 
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-zinc-500 font-medium">Total Pago (Já Registrado)</span>
-                <span className="font-semibold text-emerald-600">{fmtBRL(v.total_pago)}</span>
+              {/* Destaque 2: Valor Pago / Digitado (Atual) */}
+              <div className="bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl flex items-center justify-between shadow-xs">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block">Valor Digitado</span>
+                  <span className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5 block font-medium">Soma das formas de pagamento</span>
+                </div>
+                <div className="text-right flex flex-col items-end">
+                  <span className="text-2xl font-black text-zinc-800 dark:text-zinc-200 font-mono tracking-tight">{fmtBRL(totalInformado)}</span>
+                </div>
               </div>
 
-              <div className="h-px bg-zinc-100 dark:bg-zinc-850 my-1.5" />
-
-              <div className="flex justify-between items-center text-xs font-semibold">
-                <span className="text-zinc-555 dark:text-zinc-400">Saldo Restante Devido</span>
-                <span className="text-zinc-850 dark:text-zinc-200 font-mono">{fmtBRL(saldo)}</span>
-              </div>
-
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-zinc-500">Total Digitado (Atual)</span>
-                <span className="font-bold text-zinc-800 dark:text-zinc-200 font-mono">{fmtBRL(totalInformado)}</span>
-              </div>
-
+              {/* Destaque 3: Troco a Devolver */}
               {trocoTotal > 0 && (
-                <div className="flex justify-between items-center text-xs bg-emerald-50 dark:bg-emerald-950/20 p-2.5 rounded-lg text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-900/50">
-                  <span>Troco a Devolver</span>
-                  <span className="font-mono text-sm">{fmtBRL(trocoTotal)}</span>
+                <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 p-4 rounded-xl flex items-center justify-between shadow-xs animate-pulse">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-455 block">Troco a Devolver</span>
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-500 mt-0.5 block font-medium">Entregar ao cliente em dinheiro</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-2xl font-black text-emerald-600 dark:text-emerald-455 font-mono tracking-tight">{fmtBRL(trocoTotal)}</span>
+                  </div>
                 </div>
               )}
 
-              <div className="h-px bg-zinc-100 dark:bg-zinc-850 my-1.5" />
-
-              <div className={`flex justify-between items-center p-3 rounded-xl border transition-colors ${
+              {/* Destaque 4: Saldo Restante */}
+              <div className={`p-4 rounded-xl border flex items-center justify-between transition-all shadow-xs ${
                 (saldo - (totalInformado - trocoTotal)) > 0.01 
-                  ? "bg-amber-50/50 dark:bg-amber-950/10 border-amber-200 dark:border-amber-900/40 text-amber-700 dark:text-amber-400" 
-                  : "bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-900/40 text-emerald-750 dark:text-emerald-450"
+                  ? "bg-amber-50/50 dark:bg-amber-950/10 border-amber-200 dark:border-amber-900/40 text-amber-700 dark:text-amber-455" 
+                  : "bg-emerald-55/10 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-400"
               }`}>
-                <div className="text-[10px] uppercase tracking-wider font-extrabold">Saldo Restante</div>
-                <div className="font-display text-lg font-black font-mono">{fmtBRL(Math.max(0, Number((saldo - (totalInformado - trocoTotal)).toFixed(2))))}</div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider block">Saldo Restante</span>
+                  <span className="text-[11px] opacity-80 mt-0.5 block font-medium">
+                    {(saldo - (totalInformado - trocoTotal)) > 0.01 ? "Aguardando pagamento" : "Totalmente quitado"}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-2xl font-black font-mono tracking-tight">
+                    {fmtBRL(Math.max(0, Number((saldo - (totalInformado - trocoTotal)).toFixed(2))))}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -900,6 +987,30 @@ export default function VendaPagamento() {
               disabled={loadingDesconto || !authEmail?.trim() || !authPassword?.trim()}
             >
               {loadingDesconto ? "Autorizando..." : "Autorizar & Aplicar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de confirmação de finalização de pagamento/venda */}
+      <Dialog open={finalizarConfirmOpen} onOpenChange={setFinalizarConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display text-lg font-bold flex items-center gap-2 text-zinc-800 dark:text-zinc-100">
+              <CheckCircle2 className="w-6 h-6 text-[#84A59D]" />
+              Confirmar Conclusão
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-zinc-650 dark:text-zinc-300 font-medium">
+            O valor total foi recebido. Deseja finalizar o pagamento e concluir a venda/atendimento?
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setFinalizarConfirmOpen(false)}>Cancelar</Button>
+            <Button onClick={async () => {
+              setFinalizarConfirmOpen(false);
+              await executePayment(false, true);
+            }} className="bg-[#84A59D] hover:bg-[#6F9189] text-white">
+              Confirmar e Concluir
             </Button>
           </DialogFooter>
         </DialogContent>
