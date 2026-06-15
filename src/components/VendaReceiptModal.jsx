@@ -62,6 +62,7 @@ export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl w-full p-0 gap-0 overflow-hidden bg-white dark:bg-zinc-900 print:shadow-none print:max-w-none print:w-full print:border-none">
+        <DialogTitle className="sr-only">Detalhes da Venda</DialogTitle>
         {/* Helper print styles global injection for this modal */}
         <style dangerouslySetInnerHTML={{__html: `
           @media print {
@@ -118,9 +119,9 @@ export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
           <div className="receipt-print-area flex flex-col h-full bg-white dark:bg-zinc-900 print:bg-white print:p-8">
             {/* Header / Actions (no-print) */}
             <div className="flex items-center justify-between pl-6 pr-16 py-4 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50 no-print">
-              <DialogTitle className="text-sm font-bold flex items-center gap-2 text-zinc-800 dark:text-zinc-100">
+              <div className="text-sm font-bold flex items-center gap-2 text-zinc-800 dark:text-zinc-100">
                 <Receipt className="w-4 h-4 text-zinc-500 dark:text-zinc-400" /> Detalhes da Venda
-              </DialogTitle>
+              </div>
               <div className="flex items-center gap-2">
                 <button 
                   onClick={handlePrint} 
