@@ -388,7 +388,11 @@ export default function Estoque() {
                             </Tooltip>
                           </TableCell>
                           <TableCell className="text-right font-mono font-bold align-middle">
-                            <span className={baixo ? "text-rose-600 dark:text-rose-400" : "text-zinc-700 dark:text-zinc-300"}>
+                            <span className={
+                              p.quantidade_estoque < 0
+                                ? "inline-block px-2 py-1 rounded bg-rose-50 text-rose-650 dark:bg-rose-950/40 dark:text-rose-400 font-extrabold border border-rose-250 text-xs"
+                                : (baixo ? "text-rose-600 dark:text-rose-400" : "text-zinc-700 dark:text-zinc-300")
+                            }>
                               {(() => {
                                 const qty = Number((p.quantidade_estoque || 0).toFixed(3));
                                 const formattedQty = qty.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 });

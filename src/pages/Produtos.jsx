@@ -942,8 +942,12 @@ export default function Produtos() {
                                   {p.fornecedor && <div className="text-[11px] text-zinc-400 mt-0.5">{p.fornecedor}</div>}
                                 </td>
                                 <td className="px-4 py-3 text-right">
-                                  <span className={`inline-flex items-center gap-1 ${baixo ? "text-amber-700 dark:text-amber-500 font-bold" : "text-zinc-700 dark:text-zinc-300"}`}>
-                                    {baixo && <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
+                                  <span className={
+                                    p.quantidade_estoque < 0
+                                      ? "inline-block px-2 py-1 rounded bg-rose-50 text-rose-650 dark:bg-rose-950/40 dark:text-rose-400 font-extrabold border border-rose-250 text-xs font-mono"
+                                      : `inline-flex items-center gap-1 ${baixo ? "text-amber-700 dark:text-amber-500 font-bold" : "text-zinc-700 dark:text-zinc-300"}`
+                                  }>
+                                    {p.quantidade_estoque >= 0 && baixo && <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
                                     {(() => {
                                       const qty = Number(Number(p.quantidade_estoque || 0).toFixed(3));
                                       const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
@@ -1017,8 +1021,12 @@ export default function Produtos() {
                             <div className="grid grid-cols-2 gap-3 py-2 border-y border-zinc-100 dark:border-zinc-800 text-xs">
                               <div className="space-y-0.5">
                                 <span className="text-[9px] uppercase font-bold tracking-wider text-zinc-400 dark:text-zinc-500 block">Estoque</span>
-                                <span className={`inline-flex items-center gap-1 font-bold text-sm ${baixo ? "text-amber-700 dark:text-amber-500" : "text-zinc-800 dark:text-zinc-250"}`}>
-                                  {baixo && <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
+                                <span className={
+                                  p.quantidade_estoque < 0
+                                    ? "inline-block px-2 py-1 rounded bg-rose-50 text-rose-650 dark:bg-rose-950/40 dark:text-rose-400 font-extrabold border border-rose-250 text-xs font-mono"
+                                    : `inline-flex items-center gap-1 font-bold text-sm ${baixo ? "text-amber-700 dark:text-amber-500" : "text-zinc-800 dark:text-zinc-250"}`
+                                }>
+                                  {p.quantidade_estoque >= 0 && baixo && <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
                                   {(() => {
                                     const qty = Number(Number(p.quantidade_estoque || 0).toFixed(3));
                                     const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
