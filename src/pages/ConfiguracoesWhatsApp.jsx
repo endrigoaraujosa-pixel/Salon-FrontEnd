@@ -63,20 +63,22 @@ export default function ConfiguracoesWhatsApp() {
 
   const teste = async () => {
     if (connectionMode === "external") {
-      const subdominio = window.location.hostname.split('.')[0];
-      const res = await http.get(`/configuracoes/whatsapp/status-integracao/${subdominio}`);
+      try {
+        const subdominio = window.location.hostname.split('.')[0];
+        const res = await http.get(`/configuracoes/whatsapp/status-integracao/${subdominio}`);
+        const status = {
+          "open": "connected",
+          "close": "disconnected",
+          "connecting": "connecting"
+        }
 
-      const status = {
-        "open": "connected",
-        "close": "disconnected",
-        "connecting": "connecting"
+        setLocalStatus({
+          ...localStatus,
+          status: status[res.data?.instance?.state] || 'disconnected'
+        })
+      } catch (error) {
+        console.log("erro ", error);        
       }
-      console.log(res.data?.instance?.state, status[res.data?.instance?.state]);
-
-      setLocalStatus({
-        ...localStatus,
-        status: status[res.data?.instance?.state] || 'disconnected'
-      })
     }
   }
   const loadLocalStatus = async () => {
