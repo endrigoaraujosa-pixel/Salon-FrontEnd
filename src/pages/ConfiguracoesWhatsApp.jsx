@@ -159,7 +159,7 @@ export default function ConfiguracoesWhatsApp() {
     } else if (mode === 'local') {
       setForm({ ...form, api_url: "local", instancia: "local", token: "" });
     } else {
-      setForm({ ...form, api_url: "", instancia: "", token: "" });
+      setForm({ ...form, api_url: "external", instancia: "", token: "" });
     }
   };
 
@@ -211,7 +211,13 @@ export default function ConfiguracoesWhatsApp() {
           status: 'connected',
           qr: data?.qrcode?.base64,
           user: null
-        })
+        });
+        setForm(prev => ({
+          ...prev,
+          api_url: "external",
+          instancia: data?.instance?.instanceName || "",
+          token: data?.hash || ""
+        }));
       }
       toast.success("Integração iniciada com sucesso!");
     } catch (e) {
