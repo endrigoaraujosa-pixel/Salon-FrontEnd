@@ -69,11 +69,6 @@ export default function Dashboard() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedServiceName, setSelectedServiceName] = useState("");
 
-  useEffect(() => {
-    if (user?.colaborador_id) {
-      setSelectedColab(user.colaborador_id);
-    }
-  }, [user]);
 
   const loadDashboard = () => {
     http.get("/dashboard", {
