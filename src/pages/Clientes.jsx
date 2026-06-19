@@ -6,7 +6,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
-import { Users, Plus, Edit2, Trash2, Search, History, Printer, TrendingUp, Calendar, List, Loader2 } from "lucide-react";
+import { Users, Plus, Edit2, Trash2, Search, History, Printer, TrendingUp, Calendar, List, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import AuditModal from "../components/AuditModal";
@@ -38,7 +38,9 @@ export default function Clientes() {
   const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState(blank);
   const [auditOpen, setAuditOpen] = useState(false);
+  const [permitirClienteDuplicado, setPermitirClienteDuplicado] = useState(false);
   const [nameError, setNameError] = useState(false);
+  const [duplicateConfirm, setDuplicateConfirm] = useState({ open: false, message: "", resolve: null });
   const [whatsappStatus, setWhatsappStatus] = useState(null); // null, 'checking', 'exists', 'not_exists', 'error'
   const nomeInputRef = useRef(null);
   const nav = useNavigate();
@@ -97,6 +99,11 @@ export default function Clientes() {
   const load = () => {
     http.get("/clientes").then((r) => setList(r.data));
     http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data)).catch(() => { });
+    http.get("/configuracoes/sistema").then((r) => {
+      if (r.data) {
+        setPermitirClienteDuplicado(!!r.data.permitir_cliente_duplicado);
+      }
+    }).catch(() => { });
   };
   useEffect(() => { load(); }, []);
 
@@ -108,22 +115,48 @@ export default function Clientes() {
       return;
     }
 
+    let cleanPhoneDigits = "";
     if (form.telefone) {
-      const cleanInput = form.telefone.replace(/\D/g, "");
-      if (cleanInput.length > 0) {
-        if (cleanInput.length < 10) {
+      cleanPhoneDigits = form.telefone.replace(/\D/g, "");
+      if (cleanPhoneDigits.length > 0) {
+        if (cleanPhoneDigits.length < 10) {
           toast.error("O número de telefone deve conter o DDD e pelo menos 8 ou 9 dígitos.");
           return;
         }
+      }
+    }
 
-        const duplicate = list.find(c =>
-          c.id !== form.id &&
-          (c.telefone || "").replace(/\D/g, "") === cleanInput
-        );
-        if (duplicate) {
-          toast.error(`Já existe um cliente cadastrado com este número de telefone (${duplicate.nome}).`);
-          return;
-        }
+    const cleanNameInput = form.nome.trim().toLowerCase();
+    const duplicateName = list.find(c =>
+      c.id !== form.id &&
+      (c.nome || "").trim().toLowerCase() === cleanNameInput
+    );
+
+    let duplicatePhone = null;
+    if (cleanPhoneDigits) {
+      duplicatePhone = list.find(c =>
+        c.id !== form.id &&
+        (c.telefone || "").replace(/\D/g, "") === cleanPhoneDigits
+      );
+    }
+
+    if (permitirClienteDuplicado) {
+      if (duplicateName) {
+        const confirmName = await showDuplicateConfirm("Já existe um cliente cadastrado com esse nome. Deseja continuar mesmo assim?");
+        if (!confirmName) return;
+      }
+      if (duplicatePhone) {
+        const confirmPhone = await showDuplicateConfirm(`Já existe um cliente cadastrado com este número de telefone. O cliente é: ${duplicatePhone.nome}. Deseja continuar mesmo assim?`);
+        if (!confirmPhone) return;
+      }
+    } else {
+      if (duplicateName) {
+        toast.error("Já existe um cliente cadastrado com esse nome.");
+        return;
+      }
+      if (duplicatePhone) {
+        toast.error(`Já existe um cliente cadastrado com este número de telefone (${duplicatePhone.nome}).`);
+        return;
       }
     }
 
@@ -133,6 +166,19 @@ export default function Clientes() {
       toast.success("Cliente salvo");
       setOpen(false); setForm(blank); load();
     } catch (e) { toast.error(e.response?.data?.detail || "Erro ao salvar"); }
+  };
+
+  const showDuplicateConfirm = (message) => {
+    return new Promise((resolve) => {
+      setDuplicateConfirm({ open: true, message, resolve });
+    });
+  };
+
+  const handleDuplicateConfirmResponse = (accepted) => {
+    if (duplicateConfirm.resolve) {
+      duplicateConfirm.resolve(accepted);
+    }
+    setDuplicateConfirm({ open: false, message: "", resolve: null });
   };
 
   const del = (id) => {
@@ -732,6 +778,36 @@ export default function Clientes() {
           <DialogFooter className="flex flex-col sm:flex-row gap-2.5 mt-2 pt-2 border-t border-zinc-150 dark:border-zinc-850">
             <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)} className="w-full sm:w-auto border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-350">Cancelar</Button>
             <Button onClick={confirmDelete} className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white font-bold">Excluir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de confirmação de duplicidade de cliente */}
+      <Dialog open={duplicateConfirm.open} onOpenChange={(v) => { if (!v) handleDuplicateConfirmResponse(false); }}>
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
+          <DialogHeader>
+            <DialogTitle className="text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-500" />
+              Confirmação de duplicidade
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-zinc-650 dark:text-zinc-400 leading-relaxed">
+            {duplicateConfirm.message}
+          </div>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2.5 mt-2 pt-2 border-t border-zinc-150 dark:border-zinc-850">
+            <Button
+              variant="outline"
+              onClick={() => handleDuplicateConfirmResponse(false)}
+              className="w-full sm:w-auto border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-350 font-semibold"
+            >
+              Não
+            </Button>
+            <Button
+              onClick={() => handleDuplicateConfirmResponse(true)}
+              className="w-full sm:w-auto bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold"
+            >
+              Sim
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
