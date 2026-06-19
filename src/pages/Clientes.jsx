@@ -6,7 +6,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
-import { Users, Plus, Edit2, Trash2, Search, History, Printer, TrendingUp, Calendar, List } from "lucide-react";
+import { Users, Plus, Edit2, Trash2, Search, History, Printer, TrendingUp, Calendar, List, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import AuditModal from "../components/AuditModal";
@@ -17,7 +17,7 @@ const formatPhone = (val) => {
   if (!val) return "";
   const digits = val.replace(/\D/g, "");
   const cleanDigits = digits.slice(0, 11);
-  
+
   if (cleanDigits.length <= 2) {
     return cleanDigits;
   }
@@ -39,6 +39,7 @@ export default function Clientes() {
   const [form, setForm] = useState(blank);
   const [auditOpen, setAuditOpen] = useState(false);
   const [nameError, setNameError] = useState(false);
+  const [whatsappStatus, setWhatsappStatus] = useState(null); // null, 'checking', 'exists', 'not_exists', 'error'
   const nomeInputRef = useRef(null);
   const nav = useNavigate();
 
@@ -95,7 +96,7 @@ export default function Clientes() {
 
   const load = () => {
     http.get("/clientes").then((r) => setList(r.data));
-    http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data)).catch(() => {});
+    http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data)).catch(() => { });
   };
   useEffect(() => { load(); }, []);
 
@@ -115,8 +116,8 @@ export default function Clientes() {
           return;
         }
 
-        const duplicate = list.find(c => 
-          c.id !== form.id && 
+        const duplicate = list.find(c =>
+          c.id !== form.id &&
           (c.telefone || "").replace(/\D/g, "") === cleanInput
         );
         if (duplicate) {
@@ -152,10 +153,32 @@ export default function Clientes() {
     }
   };
 
-  const edit = (c) => { 
+  const edit = async (c) => {
     setNameError(false);
-    setForm({ ...c, telefone: formatPhone(c.telefone || "") }); 
-    setOpen(true); 
+    setWhatsappStatus(null);
+    const phone = formatPhone(c.telefone || "")
+    setForm({ ...c, telefone: phone });
+    await checkWhatsapp(phone)
+    setOpen(true);
+  };
+
+  const checkWhatsapp = async (value) => {
+    if (!value || value.replace(/\D/g, "").length < 10) {
+      setWhatsappStatus(null);
+      return;
+    }
+    setWhatsappStatus("checking");
+    try {
+      const { data } = await http.post("/configuracoes/whatsapp/check-number", { phone: value });
+      if (data.exists) {
+        setWhatsappStatus("exists");
+      } else {
+        setWhatsappStatus("not_exists");
+      }
+    } catch (e) {
+      console.error("Erro ao checar whatsapp:", e);
+      setWhatsappStatus("error");
+    }
   };
 
   const generatePDF = async () => {
@@ -177,10 +200,10 @@ export default function Clientes() {
       }
 
       const isRanking = rankingType !== "todos";
-      const rankingTitleText = rankingType === "consumo" 
-        ? "TOP 10 Clientes por Consumo Financeiro" 
-        : rankingType === "visitas" 
-          ? "TOP 10 Clientes por Frequência de Visitas" 
+      const rankingTitleText = rankingType === "consumo"
+        ? "TOP 10 Clientes por Consumo Financeiro"
+        : rankingType === "visitas"
+          ? "TOP 10 Clientes por Frequência de Visitas"
           : "Relatório Geral - Clientes Cadastrados";
 
       const filterPeriodText = (startDate || endDate)
@@ -427,8 +450,8 @@ export default function Clientes() {
 
   return (
     <div className="p-6 lg:p-8 fade-in">
-      <PageHeader 
-        overline="Cadastro" 
+      <PageHeader
+        overline="Cadastro"
         title={
           <span className="flex items-center gap-2">
             Clientes
@@ -439,7 +462,7 @@ export default function Clientes() {
         }
         action={
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <Button 
+            <Button
               onClick={() => {
                 setStartDate("");
                 setEndDate("");
@@ -452,7 +475,7 @@ export default function Clientes() {
               <Printer className="w-4 h-4" /> Emitir PDF
             </Button>
 
-            <Dialog open={open} onOpenChange={(v) => { setOpen(v); setNameError(false); if (!v) setForm(blank); }}>
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); setNameError(false); setWhatsappStatus(null); if (!v) setForm(blank); }}>
               <DialogTrigger asChild>
                 <Button data-testid="add-cliente-btn" className="flex-1 sm:flex-initial bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold h-10 flex items-center justify-center gap-1.5">
                   <Plus className="w-4 h-4" /> Novo cliente
@@ -497,29 +520,37 @@ export default function Clientes() {
                   </div>
                   <div>
                     <Label className={`font-semibold ${nameError ? "text-rose-500" : "text-zinc-700 dark:text-zinc-300"}`}>Nome *</Label>
-                    <Input 
+                    <Input
                       ref={nomeInputRef}
-                      data-testid="cliente-nome" 
-                      value={form.nome} 
+                      data-testid="cliente-nome"
+                      value={form.nome}
                       onChange={(e) => {
                         setForm({ ...form, nome: e.target.value });
                         if (e.target.value.trim()) {
                           setNameError(false);
                         }
-                      }} 
-                      className={`h-10 mt-1 dark:bg-zinc-950 ${nameError ? "border-rose-500 focus-visible:ring-rose-500 focus-visible:border-rose-500" : ""}`} 
+                      }}
+                      className={`h-10 mt-1 dark:bg-zinc-950 ${nameError ? "border-rose-500 focus-visible:ring-rose-500 focus-visible:border-rose-500" : ""}`}
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Telefone</Label>
-                      <Input 
-                        data-testid="cliente-telefone" 
-                        value={form.telefone} 
-                        onChange={(e) => setForm({ ...form, telefone: formatPhone(e.target.value) })} 
-                        placeholder="(XX) XXXXX-XXXX" 
-                        className="h-10 mt-1 dark:bg-zinc-950" 
+                      <Input
+                        data-testid="cliente-telefone"
+                        value={form.telefone}
+                        onChange={(e) => {
+                          setForm({ ...form, telefone: formatPhone(e.target.value) });
+                          if (whatsappStatus) setWhatsappStatus(null);
+                        }}
+                        onBlur={(e) => checkWhatsapp(e.target.value)}
+                        placeholder="(XX) XXXXX-XXXX"
+                        className="h-10 mt-1 dark:bg-zinc-950"
                       />
+                      {whatsappStatus === "checking" && <span className="text-[11px] text-zinc-500 mt-1 flex items-center gap-1">Verificando WhatsApp... <Loader2 className="w-3 h-3 animate-spin" /></span>}
+                      {whatsappStatus === "exists" && <span className="text-[11px] text-[#84A59D] font-medium mt-1 block">✓ Possui WhatsApp</span>}
+                      {whatsappStatus === "not_exists" && <span className="text-[11px] text-amber-500 font-medium mt-1 block">⚠ Não possui WhatsApp</span>}
+                      {whatsappStatus === "error" && <span className="text-[11px] text-rose-500 font-medium mt-1 block">Erro ao verificar WhatsApp</span>}
                     </div>
                     <div>
                       <Label className="font-semibold text-zinc-700 dark:text-zinc-300">Email</Label>
@@ -540,17 +571,17 @@ export default function Clientes() {
                   </div>
                 </div>
                 <DialogFooter className="flex flex-col sm:flex-row gap-2.5 mt-4 pt-4 border-t border-zinc-150 dark:border-zinc-800">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => setOpen(false)}
                     className="w-full sm:w-auto h-10 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 font-semibold"
                   >
                     Cancelar
                   </Button>
-                  <Button 
-                    data-testid="save-cliente-btn" 
-                    onClick={save} 
+                  <Button
+                    data-testid="save-cliente-btn"
+                    onClick={save}
                     className="w-full sm:w-auto bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold h-10"
                   >
                     Salvar
@@ -559,7 +590,7 @@ export default function Clientes() {
               </DialogContent>
             </Dialog>
           </div>
-        } 
+        }
       />
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -567,8 +598,8 @@ export default function Clientes() {
           <Search className="w-4.5 h-4.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
           <Input data-testid="search-clientes" placeholder="Buscar por nome ou telefone..." value={q} onChange={(e) => setQ(e.target.value)} className="pl-9 w-full h-10" />
         </div>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={() => setAuditOpen(true)}
           className="flex items-center justify-center gap-1.5 text-sm font-semibold text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 w-full sm:w-auto h-10 shrink-0"
         >
@@ -612,7 +643,7 @@ export default function Clientes() {
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button size="sm" variant="ghost" onClick={() => nav(`/clientes/${c.id}/historico`)} title="Histórico" className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><History className="w-4 h-4" /></Button>
-                        <Button size="sm" variant="ghost" onClick={() => edit(c)} data-testid={`edit-cliente-${c.id}`} title="Editar" className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><Edit2 className="w-4 h-4" /></Button>
+                        <Button size="sm" variant="ghost" onClick={async() =>  await edit(c)} data-testid={`edit-cliente-${c.id}`} title="Editar" className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><Edit2 className="w-4 h-4" /></Button>
                         <Button size="sm" variant="ghost" onClick={() => del(c.id)} data-testid={`delete-cliente-${c.id}`} title="Excluir" className="text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"><Trash2 className="w-4 h-4" /></Button>
                       </div>
                     </td>
@@ -625,8 +656,8 @@ export default function Clientes() {
           {/* Visualização em Lista de Cards para Mobile */}
           <div className="block sm:hidden space-y-4">
             {filtered.map((c) => (
-              <div 
-                key={c.id} 
+              <div
+                key={c.id}
                 className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4.5 rounded-xl shadow-xs flex flex-col gap-3"
                 data-testid={`cliente-card-${c.id}`}
               >
@@ -656,26 +687,26 @@ export default function Clientes() {
                 </div>
 
                 <div className="flex items-center gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800 mt-1">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={() => nav(`/clientes/${c.id}/historico`)}
                     className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
                   >
                     <History className="w-3.5 h-3.5" /> Histórico
                   </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={() => edit(c)}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => await edit(c)}
                     data-testid={`edit-cliente-card-${c.id}`}
                     className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
                   >
                     <Edit2 className="w-3.5 h-3.5" /> Editar
                   </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={() => del(c.id)}
                     data-testid={`delete-cliente-card-${c.id}`}
                     className="h-9 px-3 border-zinc-200 dark:border-zinc-700 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center justify-center"
@@ -705,10 +736,10 @@ export default function Clientes() {
         </DialogContent>
       </Dialog>
 
-      <AuditModal 
-        isOpen={auditOpen} 
-        onClose={() => setAuditOpen(false)} 
-        modulo="cliente" 
+      <AuditModal
+        isOpen={auditOpen}
+        onClose={() => setAuditOpen(false)}
+        modulo="cliente"
         tituloModulo="Clientes"
         onRestoreSuccess={load}
       />
@@ -728,39 +759,36 @@ export default function Clientes() {
             <div>
               <Label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 block mb-2.5">Tipo do Relatório</Label>
               <div className="grid grid-cols-3 gap-2.5">
-                <div 
+                <div
                   onClick={() => setRankingType("consumo")}
-                  className={`p-3.5 rounded-xl border-2 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[110px] ${
-                    rankingType === "consumo" 
-                      ? "border-[#84A59D] bg-[#84A59D]/5 text-zinc-900 dark:text-zinc-50" 
-                      : "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-zinc-500"
-                  }`}
+                  className={`p-3.5 rounded-xl border-2 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[110px] ${rankingType === "consumo"
+                    ? "border-[#84A59D] bg-[#84A59D]/5 text-zinc-900 dark:text-zinc-50"
+                    : "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-zinc-500"
+                    }`}
                 >
                   <TrendingUp className={`w-5 h-5 mb-1.5 ${rankingType === "consumo" ? "text-[#84A59D]" : "text-zinc-400"}`} />
                   <span className="text-xs font-bold block leading-tight">TOP 10 Consumo</span>
                   <span className="text-[9px] text-zinc-400 block mt-1 leading-normal">Por valor gasto</span>
                 </div>
-                
-                <div 
+
+                <div
                   onClick={() => setRankingType("visitas")}
-                  className={`p-3.5 rounded-xl border-2 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[110px] ${
-                    rankingType === "visitas" 
-                      ? "border-[#84A59D] bg-[#84A59D]/5 text-zinc-900 dark:text-zinc-50" 
-                      : "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-zinc-500"
-                  }`}
+                  className={`p-3.5 rounded-xl border-2 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[110px] ${rankingType === "visitas"
+                    ? "border-[#84A59D] bg-[#84A59D]/5 text-zinc-900 dark:text-zinc-50"
+                    : "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-zinc-500"
+                    }`}
                 >
                   <Users className={`w-5 h-5 mb-1.5 ${rankingType === "visitas" ? "text-[#84A59D]" : "text-zinc-400"}`} />
                   <span className="text-xs font-bold block leading-tight">TOP 10 Visitas</span>
                   <span className="text-[9px] text-zinc-400 block mt-1 leading-normal">Por atendimentos</span>
                 </div>
 
-                <div 
+                <div
                   onClick={() => setRankingType("todos")}
-                  className={`p-3.5 rounded-xl border-2 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[110px] ${
-                    rankingType === "todos" 
-                      ? "border-[#84A59D] bg-[#84A59D]/5 text-zinc-900 dark:text-zinc-50" 
-                      : "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-zinc-500"
-                  }`}
+                  className={`p-3.5 rounded-xl border-2 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[110px] ${rankingType === "todos"
+                    ? "border-[#84A59D] bg-[#84A59D]/5 text-zinc-900 dark:text-zinc-50"
+                    : "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-zinc-500"
+                    }`}
                 >
                   <List className={`w-5 h-5 mb-1.5 ${rankingType === "todos" ? "text-[#84A59D]" : "text-zinc-400"}`} />
                   <span className="text-xs font-bold block leading-tight">Lista Completa</span>
@@ -777,10 +805,10 @@ export default function Clientes() {
                   <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block">De:</span>
                   <div className="relative">
                     <Calendar className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
-                    <Input 
-                      type="date" 
-                      value={startDate} 
-                      onChange={(e) => setStartDate(e.target.value)} 
+                    <Input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
                       className="pl-9 h-10 text-xs bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
                     />
                   </div>
@@ -789,10 +817,10 @@ export default function Clientes() {
                   <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400 block">Até:</span>
                   <div className="relative">
                     <Calendar className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
-                    <Input 
-                      type="date" 
-                      value={endDate} 
-                      onChange={(e) => setEndDate(e.target.value)} 
+                    <Input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
                       className="pl-9 h-10 text-xs bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
                     />
                   </div>
@@ -806,8 +834,8 @@ export default function Clientes() {
             <Button variant="outline" onClick={() => setReportOpen(false)} className="w-full sm:w-auto h-10 font-semibold border-zinc-200 dark:border-zinc-800">
               Cancelar
             </Button>
-            <Button 
-              onClick={generatePDF} 
+            <Button
+              onClick={generatePDF}
               className="bg-[#84A59D] hover:bg-[#6F9189] text-white w-full sm:w-auto h-10 font-bold"
             >
               <Printer className="w-4 h-4 mr-1.5" />
