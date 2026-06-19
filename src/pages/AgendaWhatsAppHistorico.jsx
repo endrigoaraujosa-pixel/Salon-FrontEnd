@@ -189,6 +189,7 @@ export default function AgendaWhatsAppHistorico() {
 
   const getCleanReminderType = (type) => {
     if (!type) return "-";
+    if (type.includes("agradecimento")) return "Agradecimento";
     if (type.includes("24h")) return "24 Horas";
     if (type.includes("2h")) return "2 Horas";
     if (type.includes("1h")) return "1 Hora";
