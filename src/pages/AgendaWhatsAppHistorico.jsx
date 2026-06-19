@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { PageHeader } from "../components/Page";
 import http from "../api";
+import { useAuth } from "../auth";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -24,6 +25,10 @@ const getTodayDateString = () => {
 };
 
 export default function AgendaWhatsAppHistorico() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const hasConfigPerm = isAdmin || !!(user?.perfil?.permissoes?.menus?.configuracoes);
+
   const todayStr = getTodayDateString();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -217,12 +222,18 @@ export default function AgendaWhatsAppHistorico() {
               O histórico de envios não está disponível porque a rotina de lembretes automáticos do WhatsApp está desativada nas configurações do sistema.
             </p>
           </div>
-          <Button 
-            onClick={() => window.location.href = '/configuracoes/whatsapp'}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
-          >
-            Ativar nas Configurações
-          </Button>
+          {hasConfigPerm ? (
+            <Button 
+              onClick={() => window.location.href = '/configuracoes/whatsapp'}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+            >
+              Ativar nas Configurações
+            </Button>
+          ) : (
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 italic">
+              Entre em contato com um administrador para ativar o serviço.
+            </p>
+          )}
         </Card>
       </div>
     );

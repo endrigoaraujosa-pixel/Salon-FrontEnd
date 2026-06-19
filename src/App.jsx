@@ -105,7 +105,7 @@ function App() {
               <Route path="/cadastros/tipo-pagamento" element={<PermissionRoute permKey="cadastros"><CadastroTipoPagamento /></PermissionRoute>} />
               <Route path="/cadastros/descontos" element={<PermissionRoute permKey="cadastros"><CadastroDescontos /></PermissionRoute>} />
               <Route path="/cadastros/motivos-estoque" element={<PermissionRoute permKey="cadastros"><ConfiguracoesMotivosEstoque /></PermissionRoute>} />
-              <Route path="/agenda/whatsapp-historico" element={<AgendaWhatsAppHistorico />} />
+              <Route path="/agenda/whatsapp-historico" element={<PermissionRoute permKey="agenda"><AgendaWhatsAppHistorico /></PermissionRoute>} />
               <Route path="/usuarios" element={<Usuarios />} />
             </Route>
           </Routes>
