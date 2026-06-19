@@ -5,23 +5,43 @@ import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { 
-  Search, RotateCcw, Eye, Calendar, MessageSquare, AlertCircle, X, Check, XCircle, Info
+  Search, RotateCcw, Eye, Calendar, MessageSquare, AlertCircle, X, Check, XCircle, Info,
+  ChevronLeft, ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+} from "../components/ui/pagination";
+
+const getTodayDateString = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export default function AgendaWhatsAppHistorico() {
+  const todayStr = getTodayDateString();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [resendingId, setResendingId] = useState(null);
   const [whatsappAtivo, setWhatsappAtivo] = useState(true);
   const [checkingActive, setCheckingActive] = useState(true);
 
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+
   // Filters
   const [cliente, setCliente] = useState("");
   const [numero, setNumero] = useState("");
   const [status, setStatus] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(todayStr);
+  const [endDate, setEndDate] = useState(todayStr);
 
   // Modal details
   const [selectedLog, setSelectedLog] = useState(null);
@@ -39,18 +59,31 @@ export default function AgendaWhatsAppHistorico() {
     }
   };
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (pageNumber = 1, currentStartDate = startDate, currentEndDate = endDate) => {
     setLoading(true);
     try {
-      const params = {};
+      const params = {
+        page: pageNumber,
+        limit: 50
+      };
       if (cliente) params.cliente = cliente;
       if (numero) params.numero = numero;
       if (status) params.status = status;
-      if (startDate) params.startDate = startDate;
-      if (endDate) params.endDate = endDate;
+      if (currentStartDate) params.startDate = currentStartDate;
+      if (currentEndDate) params.endDate = currentEndDate;
 
       const response = await http.get("/configuracoes/whatsapp/historico", { params });
-      setHistory(response.data || []);
+      if (response.data) {
+        setHistory(response.data.data || []);
+        setPage(response.data.page || 1);
+        setTotalPages(response.data.pages || 1);
+        setTotalRecords(response.data.total || 0);
+      } else {
+        setHistory([]);
+        setPage(1);
+        setTotalPages(1);
+        setTotalRecords(0);
+      }
     } catch (e) {
       toast.error("Erro ao carregar histórico de mensagens.");
     } finally {
@@ -64,24 +97,25 @@ export default function AgendaWhatsAppHistorico() {
 
   useEffect(() => {
     if (!checkingActive && whatsappAtivo) {
-      fetchHistory();
+      fetchHistory(1);
     }
   }, [checkingActive, whatsappAtivo]);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    fetchHistory();
+    fetchHistory(1);
   };
 
   const handleClearFilters = () => {
     setCliente("");
     setNumero("");
     setStatus("");
-    setStartDate("");
-    setEndDate("");
+    const today = getTodayDateString();
+    setStartDate(today);
+    setEndDate(today);
     // Execute search with cleared filters
     setTimeout(() => {
-      fetchHistory();
+      fetchHistory(1, today, today);
     }, 0);
   };
 
@@ -90,7 +124,7 @@ export default function AgendaWhatsAppHistorico() {
     try {
       await http.post(`/configuracoes/whatsapp/reenviar/${id}`);
       toast.success("Mensagem reenviada com sucesso!");
-      fetchHistory();
+      fetchHistory(page);
     } catch (e) {
       toast.error(e.response?.data?.detail || "Erro ao reenviar lembrete.");
     } finally {
@@ -303,84 +337,148 @@ export default function AgendaWhatsAppHistorico() {
             Nenhum registro de lembrete WhatsApp encontrado.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="bg-zinc-50 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 text-xs font-bold uppercase tracking-wider">
-                  <th className="p-4 pl-6 w-24">Nº Serviço</th>
-                  <th className="p-4">Cliente</th>
-                  <th className="p-4">Tipo</th>
-                  <th className="p-4">Data Agendamento</th>
-                  <th className="p-4">Data Programada</th>
-                  <th className="p-4">Data Envio</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4 pr-6 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                {history.map((log) => (
-                  <tr key={log.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20 transition-colors">
-                    <td className="p-4 pl-6 font-mono text-xs font-bold text-zinc-500 dark:text-zinc-400">
-                      {log.agendamento_numero ? `#${String(log.agendamento_numero).padStart(6, '0')}` : '—'}
-                    </td>
-                    <td className="p-4 font-semibold text-zinc-900 dark:text-zinc-100">
-                      <div>{log.cliente_nome}</div>
-                      {log.cliente_telefone && (
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400 font-normal mt-0.5">{log.cliente_telefone}</div>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">
-                        {getCleanReminderType(log.tipo_lembrete)}
-                      </span>
-                    </td>
-                    <td className="p-4 text-zinc-600 dark:text-zinc-300">
-                      {formatDateTime(log.agendamento_data_hora)}
-                    </td>
-                    <td className="p-4 text-zinc-600 dark:text-zinc-300">
-                      {formatDateTime(log.data_programada)}
-                    </td>
-                    <td className="p-4 text-zinc-600 dark:text-zinc-300">
-                      {formatDateTime(log.data_envio)}
-                    </td>
-                    <td className="p-4">
-                      {getStatusBadge(log.status)}
-                    </td>
-                    <td className="p-4 pr-6 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        
-                        {/* Action: Details */}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setSelectedLog(log)}
-                          title="Visualizar Mensagem/Detalhes"
-                          className="h-8 w-8 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-
-                        {/* Action: Resend */}
-                        {log.status === "Falhou" && (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-sm">
+                <thead>
+                  <tr className="bg-zinc-50 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 text-xs font-bold uppercase tracking-wider">
+                    <th className="p-4 pl-6 w-24">Nº Serviço</th>
+                    <th className="p-4">Cliente</th>
+                    <th className="p-4">Tipo</th>
+                    <th className="p-4">Data Agendamento</th>
+                    <th className="p-4">Data Programada</th>
+                    <th className="p-4">Data Envio</th>
+                    <th className="p-4">Status</th>
+                    <th className="p-4 pr-6 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                  {history.map((log) => (
+                    <tr key={log.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20 transition-colors">
+                      <td className="p-4 pl-6 font-mono text-xs font-bold text-zinc-500 dark:text-zinc-400">
+                        {log.agendamento_numero ? `#${String(log.agendamento_numero).padStart(6, '0')}` : '—'}
+                      </td>
+                      <td className="p-4 font-semibold text-zinc-900 dark:text-zinc-100">
+                        <div>{log.cliente_nome}</div>
+                        {log.cliente_telefone && (
+                          <div className="text-xs text-zinc-500 dark:text-zinc-400 font-normal mt-0.5">{log.cliente_telefone}</div>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                          {getCleanReminderType(log.tipo_lembrete)}
+                        </span>
+                      </td>
+                      <td className="p-4 text-zinc-600 dark:text-zinc-300">
+                        {formatDateTime(log.agendamento_data_hora)}
+                      </td>
+                      <td className="p-4 text-zinc-600 dark:text-zinc-300">
+                        {formatDateTime(log.data_programada)}
+                      </td>
+                      <td className="p-4 text-zinc-600 dark:text-zinc-300">
+                        {formatDateTime(log.data_envio)}
+                      </td>
+                      <td className="p-4">
+                        {getStatusBadge(log.status)}
+                      </td>
+                      <td className="p-4 pr-6 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          
+                          {/* Action: Details */}
                           <Button
                             variant="ghost"
                             size="icon"
-                            disabled={resendingId === log.id}
-                            onClick={() => handleResend(log.id)}
-                            title="Reenviar Mensagem"
-                            className="h-8 w-8 text-amber-600 hover:text-amber-750 hover:bg-amber-50 dark:text-amber-500 dark:hover:text-amber-400 dark:hover:bg-amber-950/20"
+                            onClick={() => setSelectedLog(log)}
+                            title="Visualizar Mensagem/Detalhes"
+                            className="h-8 w-8 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
                           >
-                            <RotateCcw className={`w-4 h-4 ${resendingId === log.id ? 'animate-spin' : ''}`} />
+                            <Eye className="w-4 h-4" />
                           </Button>
-                        )}
-                        
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+
+                          {/* Action: Resend */}
+                          {log.status === "Falhou" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={resendingId === log.id}
+                              onClick={() => handleResend(log.id)}
+                              title="Reenviar Mensagem"
+                              className="h-8 w-8 text-amber-600 hover:text-amber-750 hover:bg-amber-50 dark:text-amber-500 dark:hover:text-amber-400 dark:hover:bg-amber-950/20"
+                            >
+                              <RotateCcw className={`w-4 h-4 ${resendingId === log.id ? 'animate-spin' : ''}`} />
+                            </Button>
+                          )}
+                          
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/20">
+                <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Mostrando <strong>{(page - 1) * 50 + 1}</strong> a <strong>{Math.min(page * 50, totalRecords)}</strong> de <strong>{totalRecords}</strong> registros
+                </div>
+                <Pagination className="mx-0 w-auto">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={page === 1}
+                        onClick={() => fetchHistory(page - 1)}
+                        className="flex items-center gap-1 text-xs"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        <span>Anterior</span>
+                      </Button>
+                    </PaginationItem>
+
+                    {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((p) => {
+                      if (p === 1 || p === totalPages || (p >= page - 2 && p <= page + 2)) {
+                        return (
+                          <PaginationItem key={p}>
+                            <Button
+                              variant={p === page ? "outline" : "ghost"}
+                              size="sm"
+                              onClick={() => fetchHistory(p)}
+                              className={`h-8 w-8 text-xs p-0 ${p === page ? 'font-bold border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800' : ''}`}
+                            >
+                              {p}
+                            </Button>
+                          </PaginationItem>
+                        );
+                      } else if (p === page - 3 || p === page + 3) {
+                        return (
+                          <PaginationItem key={p}>
+                            <span className="px-2 text-zinc-400 text-xs">...</span>
+                          </PaginationItem>
+                        );
+                      }
+                      return null;
+                    })}
+
+                    <PaginationItem>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={page === totalPages}
+                        onClick={() => fetchHistory(page + 1)}
+                        className="flex items-center gap-1 text-xs"
+                      >
+                        <span>Próximo</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+          </>
         )}
       </Card>
 

@@ -6,7 +6,7 @@ import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
-import { ArrowLeft, Save, Sliders, AlertCircle, ShieldAlert, Package } from "lucide-react";
+import { ArrowLeft, Save, Sliders, AlertCircle, ShieldAlert, Package, Users } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ConfiguracoesGerais() {
@@ -15,6 +15,7 @@ export default function ConfiguracoesGerais() {
   const [saving, setSaving] = useState(false);
   const [bloquearValorMenor, setBloquearValorMenor] = useState(false);
   const [permitirEstoqueNegativo, setPermitirEstoqueNegativo] = useState(false);
+  const [permitirClienteDuplicado, setPermitirClienteDuplicado] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -23,6 +24,7 @@ export default function ConfiguracoesGerais() {
       if (response.data) {
         setBloquearValorMenor(!!response.data.bloquear_valor_agendamento_menor);
         setPermitirEstoqueNegativo(!!response.data.permitir_estoque_negativo);
+        setPermitirClienteDuplicado(!!response.data.permitir_cliente_duplicado);
       }
     } catch (e) {
       toast.error("Erro ao carregar configurações do sistema");
@@ -40,7 +42,8 @@ export default function ConfiguracoesGerais() {
     try {
       await http.post("/configuracoes/sistema", {
         bloquear_valor_agendamento_menor: bloquearValorMenor,
-        permitir_estoque_negativo: permitirEstoqueNegativo
+        permitir_estoque_negativo: permitirEstoqueNegativo,
+        permitir_cliente_duplicado: permitirClienteDuplicado
       });
       toast.success("Configurações salvas com sucesso!");
     } catch (e) {
@@ -138,6 +141,35 @@ export default function ConfiguracoesGerais() {
                 id="permitir-estoque-negativo"
                 checked={permitirEstoqueNegativo}
                 onCheckedChange={setPermitirEstoqueNegativo}
+              />
+            </div>
+          </div>
+        </Card>
+
+        {/* Cadastro de Clientes Card */}
+        <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
+          <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-5">
+            <Users className="w-5 h-5 text-[#84A59D]" />
+            <span>Cadastro de Clientes</span>
+          </h3>
+
+          <div className="flex items-start justify-between gap-4 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850">
+            <div className="space-y-1 flex-1">
+              <Label 
+                htmlFor="permitir-cliente-duplicado" 
+                className="text-sm font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer"
+              >
+                Permitir cadastro/edição de clientes com nome ou telefone duplicado
+              </Label>
+              <p className="text-xs text-zinc-550 dark:text-zinc-400 leading-relaxed max-w-xl">
+                Quando ativado, o sistema permite salvar o cadastro ou a edição de clientes mesmo que já exista outro cliente com o mesmo nome ou telefone (exibindo avisos de confirmação antes de gravar). Quando desativado, o sistema bloqueia qualquer cadastro com nome ou telefone duplicado.
+              </p>
+            </div>
+            <div className="pt-1">
+              <Switch 
+                id="permitir-cliente-duplicado"
+                checked={permitirClienteDuplicado}
+                onCheckedChange={setPermitirClienteDuplicado}
               />
             </div>
           </div>
