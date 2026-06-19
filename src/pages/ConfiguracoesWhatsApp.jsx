@@ -6,7 +6,7 @@ import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
-import { ArrowLeft, Save, MessageSquare, AlertCircle, Sparkles, CheckCircle2, Sliders } from "lucide-react";
+import { ArrowLeft, Save, MessageSquare, AlertCircle, Sparkles, CheckCircle2, Sliders, Heart } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ConfiguracoesWhatsApp() {
@@ -19,7 +19,10 @@ export default function ConfiguracoesWhatsApp() {
     lembrete_24h: 1,
     lembrete_2h: 1,
     lembrete_1h: 1,
-    modelo_mensagem: ""
+    modelo_mensagem: "",
+    agradecimento_ativo: 0,
+    agradecimento_tempo_minutos: 30,
+    agradecimento_modelo_mensagem: ""
   });
 
   const [localStatus, setLocalStatus] = useState({
@@ -43,7 +46,10 @@ export default function ConfiguracoesWhatsApp() {
           modelo_mensagem: response.data.modelo_mensagem || "",
           api_url: response.data.api_url || "",
           instancia: response.data.instancia || "",
-          token: response.data.token || ""
+          token: response.data.token || "",
+          agradecimento_ativo: response.data.agradecimento_ativo || 0,
+          agradecimento_tempo_minutos: response.data.agradecimento_tempo_minutos || 30,
+          agradecimento_modelo_mensagem: response.data.agradecimento_modelo_mensagem || ""
         });
         const mode = !response.data.api_url
           ? 'simulation'
@@ -191,6 +197,16 @@ export default function ConfiguracoesWhatsApp() {
 
   const mockMessage = () => {
     let tpl = form.modelo_mensagem || `Olá, {nome}!\n\nPassando para lembrar que você possui um horário agendado.\n\n📅 Data: {data}\n⏰ Hora: {hora}\n💇 Serviço: {servico}\n👤 Profissional: {profissional}\n\nEstamos esperando você.`;
+    return tpl
+      .replace(/{nome}/g, "Maria da Silva")
+      .replace(/{data}/g, "15/06/2026")
+      .replace(/{hora}/g, "14:30")
+      .replace(/{servico}/g, "Corte Feminino + Escova")
+      .replace(/{profissional}/g, "Gabriela Costa");
+  };
+
+  const mockMessageAgradecimento = () => {
+    let tpl = form.agradecimento_modelo_mensagem || `Olá, {nome}!\n\nAgradecemos por escolher nossos serviços. Foi um prazer atendê-lo(a) no dia {data}, às {hora}, para o serviço de {servico}.\n\nEsperamos revê-lo(a) em breve. Conte sempre com nossa equipe!\n\nAtenciosamente.`;
     return tpl
       .replace(/{nome}/g, "Maria da Silva")
       .replace(/{data}/g, "15/06/2026")
@@ -577,14 +593,125 @@ export default function ConfiguracoesWhatsApp() {
             </div>
           </Card>
 
+          {/* Thank You Message Configuration Card */}
+          <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
+            <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-5">
+              <Heart className="w-5 h-5 text-rose-500" />
+              <span>Mensagem de Agradecimento</span>
+            </h3>
+
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-5 leading-relaxed">
+              Envie automaticamente uma mensagem de agradecimento ao cliente após a conclusão de um atendimento na agenda.
+            </p>
+
+            <div className="space-y-6">
+
+              {/* Activation toggle */}
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850">
+                <input
+                  type="checkbox"
+                  id="agradecimento_ativo"
+                  checked={form.agradecimento_ativo === 1}
+                  onChange={(e) => setForm({ ...form, agradecimento_ativo: e.target.checked ? 1 : 0 })}
+                  className="w-5 h-5 text-rose-600 border-zinc-300 dark:border-zinc-750 rounded focus:ring-rose-500 focus:ring-2 mt-0.5 cursor-pointer"
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="agradecimento_ativo" className="text-sm font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer">
+                    Ativar envio automático de mensagem de agradecimento
+                  </Label>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                    Quando ativo, o sistema enviará uma mensagem de agradecimento ao cliente após o atendimento ser marcado como concluído.
+                  </p>
+                </div>
+              </div>
+
+              {/* Time configuration */}
+              {form.agradecimento_ativo === 1 && (
+                <div className="space-y-5">
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="agradecimento_tempo_minutos" className="text-sm font-semibold">
+                      Tempo de envio após conclusão do serviço (em minutos)
+                    </Label>
+                    <input
+                      type="number"
+                      id="agradecimento_tempo_minutos"
+                      min="1"
+                      max="1440"
+                      value={form.agradecimento_tempo_minutos}
+                      onChange={(e) => setForm({ ...form, agradecimento_tempo_minutos: Math.max(1, parseInt(e.target.value) || 1) })}
+                      className="w-full h-10 px-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-rose-500 max-w-[200px]"
+                    />
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500">
+                      A mensagem será enviada após este tempo decorrido desde a conclusão. Mínimo: 1 minuto.
+                    </p>
+                  </div>
+
+                  {/* Message template */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="agradecimento_modelo_mensagem">Texto da mensagem de agradecimento</Label>
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => setForm({ ...form, agradecimento_modelo_mensagem: `Olá, {nome}!\n\nAgradecemos por escolher nossos serviços. Foi um prazer atendê-lo(a) no dia {data}, às {hora}, para o serviço de {servico}.\n\nEsperamos revê-lo(a) em breve. Conte sempre com nossa equipe!\n\nAtenciosamente.` })}
+                        className="text-xs text-zinc-500 hover:text-zinc-700"
+                      >
+                        Restaurar Padrão
+                      </Button>
+                    </div>
+                    <Textarea
+                      id="agradecimento_modelo_mensagem"
+                      value={form.agradecimento_modelo_mensagem}
+                      onChange={(e) => setForm({ ...form, agradecimento_modelo_mensagem: e.target.value })}
+                      placeholder="Escreva a mensagem de agradecimento..."
+                      className="min-h-[220px] font-mono text-sm bg-zinc-50 border-zinc-200 dark:bg-zinc-950 dark:border-zinc-850 focus:bg-white"
+                    />
+                  </div>
+
+                  {/* Variables reference table */}
+                  <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-zinc-50/50 dark:bg-zinc-950/20">
+                    <div className="p-3 bg-zinc-100 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
+                      <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Variáveis Disponíveis</span>
+                    </div>
+                    <div className="divide-y divide-zinc-200 dark:divide-zinc-800 text-xs">
+                      <div className="grid grid-cols-3 p-2.5">
+                        <span className="font-mono text-rose-600 dark:text-rose-400 font-semibold">{"{nome}"}</span>
+                        <span className="col-span-2 text-zinc-650 dark:text-zinc-400">Nome do cliente</span>
+                      </div>
+                      <div className="grid grid-cols-3 p-2.5">
+                        <span className="font-mono text-rose-600 dark:text-rose-400 font-semibold">{"{data}"}</span>
+                        <span className="col-span-2 text-zinc-650 dark:text-zinc-400">Data do agendamento</span>
+                      </div>
+                      <div className="grid grid-cols-3 p-2.5">
+                        <span className="font-mono text-rose-600 dark:text-rose-400 font-semibold">{"{hora}"}</span>
+                        <span className="col-span-2 text-zinc-650 dark:text-zinc-400">Hora do agendamento</span>
+                      </div>
+                      <div className="grid grid-cols-3 p-2.5">
+                        <span className="font-mono text-rose-600 dark:text-rose-400 font-semibold">{"{servico}"}</span>
+                        <span className="col-span-2 text-zinc-650 dark:text-zinc-400">Serviço agendado</span>
+                      </div>
+                      <div className="grid grid-cols-3 p-2.5">
+                        <span className="font-mono text-rose-600 dark:text-rose-400 font-semibold">{"{profissional}"}</span>
+                        <span className="col-span-2 text-zinc-650 dark:text-zinc-400">Profissional responsável</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+            </div>
+          </Card>
+
         </div>
 
         {/* Right column: Preview */}
         <div className="space-y-6">
-          <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm h-full flex flex-col">
+          <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm flex flex-col">
             <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-4">
               <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-              <span>Prévia da Mensagem</span>
+              <span>Prévia do Lembrete</span>
             </h3>
 
             <p className="text-xs text-zinc-550 dark:text-zinc-400 mb-5 leading-relaxed">
@@ -607,6 +734,36 @@ export default function ConfiguracoesWhatsApp() {
 
             </div>
           </Card>
+
+          {/* Preview Agradecimento */}
+          {form.agradecimento_ativo === 1 && (
+            <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm flex flex-col">
+              <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-4">
+                <Heart className="w-5 h-5 text-rose-500" />
+                <span>Prévia do Agradecimento</span>
+              </h3>
+
+              <p className="text-xs text-zinc-550 dark:text-zinc-400 mb-5 leading-relaxed">
+                Prévia da mensagem de agradecimento que será enviada {form.agradecimento_tempo_minutos || 30} minutos após a conclusão do atendimento.
+              </p>
+
+              {/* Simulated WhatsApp screen */}
+              <div className="flex-grow rounded-2xl bg-[#E5DDD5] dark:bg-zinc-950 p-4 border border-zinc-200 dark:border-zinc-850 relative overflow-hidden flex flex-col min-h-[300px]">
+
+                {/* Wallpaper pattern mock */}
+                <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: "radial-gradient(#000 10%, transparent 10%)", backgroundSize: "20px 20px" }} />
+
+                {/* Chat Message Bubble */}
+                <div className="relative self-start bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 p-3.5 rounded-2xl rounded-tl-none shadow-sm max-w-[85%] text-sm whitespace-pre-wrap leading-relaxed">
+                  {mockMessageAgradecimento()}
+                  <div className="text-[10px] text-zinc-450 text-right mt-1.5">
+                    15:05 ✓✓
+                  </div>
+                </div>
+
+              </div>
+            </Card>
+          )}
         </div>
 
       </div >
