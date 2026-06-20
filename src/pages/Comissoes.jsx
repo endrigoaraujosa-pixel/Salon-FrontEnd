@@ -600,6 +600,7 @@ export default function Comissoes() {
                 const docNum = item.numero != null 
                   ? `${String(item.numero).padStart(6, "0")} | ${item.tipo === 'servico' ? 'S' : 'V'}`
                   : "—";
+                const clientName = item.numero != null ? (item.cliente_nome || "Consumidor") : "";
 
                 const typeLabel = item.tipo === 'servico' ? 'Serviço' : 'Produto';
                 const statusBadge = item.pago 
@@ -613,7 +614,10 @@ export default function Comissoes() {
                 htmlContent += `
                   <tr>
                     <td class="font-mono" style="font-size: 9px; white-space: nowrap;">${new Date(item.data).toLocaleString("pt-BR")}</td>
-                    <td class="font-mono font-semibold" style="font-size: 9px;">${docNum}</td>
+                    <td class="font-mono" style="font-size: 9px;">
+                      <div style="font-weight: 600;">${docNum}</div>
+                      ${clientName ? `<div style="font-size: 8px; color: #6b7280; font-weight: 500; margin-top: 1px;">${clientName}</div>` : ""}
+                    </td>
                     <td style="font-weight: 500;">${typeLabel}</td>
                     <td style="color: #4b5563;">${item.papel}</td>
                     <td style="font-weight: 600; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
@@ -1322,12 +1326,19 @@ export default function Comissoes() {
                           <tr key={idx} className="hover:bg-zinc-55/30 dark:hover:bg-zinc-800/30 transition-colors">
                             <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400 font-mono text-xs whitespace-nowrap">{fmtDateTime(item.data)}</td>
                             <td className="px-4 py-3 whitespace-nowrap">
-                              <span className="text-zinc-600 dark:text-zinc-450 font-mono text-xs font-bold">
-                                {item.numero != null 
-                                  ? `${String(item.numero).padStart(6, "0")} | ${item.tipo === 'servico' ? 'S' : 'V'}`
-                                  : "—"
-                                }
-                              </span>
+                              <div className="flex flex-col">
+                                <span className="text-zinc-600 dark:text-zinc-450 font-mono text-xs font-bold">
+                                  {item.numero != null 
+                                    ? `${String(item.numero).padStart(6, "0")} | ${item.tipo === 'servico' ? 'S' : 'V'}`
+                                    : "—"
+                                  }
+                                </span>
+                                {item.numero != null && (
+                                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium">
+                                    {item.cliente_nome || "Consumidor"}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
                               <span className={`inline-flex px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
@@ -1429,9 +1440,16 @@ export default function Comissoes() {
                         </div>
                         <div>
                           <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase font-bold block mb-0.5">Documento</span>
-                          <span className="font-mono text-zinc-650 dark:text-zinc-350">
-                            {item.numero != null ? `${String(item.numero).padStart(6, "0")} | ${item.tipo === 'servico' ? 'S' : 'V'}` : "—"}
-                          </span>
+                          <div className="flex flex-col">
+                            <span className="font-mono text-zinc-650 dark:text-zinc-350">
+                              {item.numero != null ? `${String(item.numero).padStart(6, "0")} | ${item.tipo === 'servico' ? 'S' : 'V'}` : "—"}
+                            </span>
+                            {item.numero != null && (
+                              <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium">
+                                {item.cliente_nome || "Consumidor"}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div>
                           <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase font-bold block mb-0.5">Papel / Valor</span>
