@@ -1224,7 +1224,7 @@ export default function Comissoes() {
 
       {/* Dialog Detalhado de Comissões */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[80vw] max-h-[90vh] p-4 sm:p-6 overflow-y-auto overflow-x-hidden rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[80vw] max-h-[80vh] sm:max-h-[90vh] p-4 sm:p-6 overflow-y-auto overflow-x-hidden rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
           <DialogHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
             <DialogTitle className="font-display text-lg sm:text-xl md:text-2xl font-extrabold tracking-tight text-[#3A4F4A] dark:text-zinc-100 flex items-center gap-2 sm:gap-3">
               {(() => {

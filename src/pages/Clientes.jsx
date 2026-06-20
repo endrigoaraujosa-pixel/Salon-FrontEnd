@@ -527,7 +527,7 @@ export default function Clientes() {
                   <Plus className="w-4 h-4" /> Novo cliente
                 </Button>
               </DialogTrigger>
-              <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
+              <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg max-h-[80vh] sm:max-h-[90vh] overflow-y-auto p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
                 <DialogHeader><DialogTitle className="text-zinc-900 dark:text-zinc-50">{form.id ? "Editar" : "Novo"} cliente</DialogTitle></DialogHeader>
                 <div className="space-y-3">
                   <div className="flex flex-col items-center justify-center gap-2 pb-2">
@@ -822,7 +822,7 @@ export default function Clientes() {
 
       {/* Modal de Emissão do Relatório / Ranking de Clientes */}
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg p-5 sm:p-6 bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-150 dark:border-zinc-850 shadow-2xl">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg max-h-[80vh] sm:max-h-[90vh] overflow-y-auto p-5 sm:p-6 bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-150 dark:border-zinc-850 shadow-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Printer className="w-5 h-5 text-[#84A59D]" />
