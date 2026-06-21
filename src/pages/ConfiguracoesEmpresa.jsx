@@ -6,7 +6,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card } from "../components/ui/card";
-import { ArrowLeft, Building, Save, MapPin, Mail, Phone, AlertCircle } from "lucide-react";
+import { ArrowLeft, Building, Save, MapPin, Mail, Phone, AlertCircle, Image as ImageIcon, Upload, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ConfiguracoesEmpresa() {
@@ -25,7 +25,8 @@ export default function ConfiguracoesEmpresa() {
     endereco_numero: "",
     endereco_bairro: "",
     endereco_cidade: "",
-    endereco_uf: ""
+    endereco_uf: "",
+    logomarca: null
   });
 
   const loadData = async () => {
@@ -45,7 +46,8 @@ export default function ConfiguracoesEmpresa() {
           endereco_numero: response.data.endereco_numero || "",
           endereco_bairro: response.data.endereco_bairro || "",
           endereco_cidade: response.data.endereco_cidade || "",
-          endereco_uf: response.data.endereco_uf || ""
+          endereco_uf: response.data.endereco_uf || "",
+          logomarca: response.data.logomarca || null
         });
       }
     } catch (e) {
@@ -53,6 +55,54 @@ export default function ConfiguracoesEmpresa() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("A imagem deve ter no máximo 5MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 512;
+        const MAX_HEIGHT = 512;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        // Clear canvas context to ensure transparency is preserved
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // PNG format explicitly preserves the alpha (transparency) channel!
+        const base64 = canvas.toDataURL("image/png");
+        setForm(prev => ({ ...prev, logomarca: base64 }));
+        toast.success("Imagem carregada com sucesso!");
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
   };
 
   useEffect(() => {
@@ -126,6 +176,73 @@ export default function ConfiguracoesEmpresa() {
 
         {/* Form Grid */}
         <div className="grid gap-6">
+           {/* Card: Logomarca da Empresa */}
+          <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+            <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-5">
+              <ImageIcon className="w-5 h-5 text-[#84A59D]" />
+              <span>Logomarca da Empresa</span>
+            </h3>
+            
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div 
+                className="relative group cursor-pointer w-32 h-32 rounded-xl overflow-hidden border-2 border-dashed border-zinc-300 dark:border-zinc-700 flex items-center justify-center hover:border-[#84A59D] transition-colors shrink-0 shadow-inner"
+                style={{ 
+                  backgroundImage: 'conic-gradient(#f4f4f5 25%, #e4e4e7 0 50%, #f4f4f5 0 75%, #e4e4e7 0)', 
+                  backgroundSize: '16px 16px' 
+                }}
+                onClick={() => document.getElementById("logo-upload-input").click()}
+                title="Upload Logomarca"
+              >
+                {form.logomarca ? (
+                  <img src={form.logomarca} alt="Logomarca" className="w-full h-full object-contain p-2" />
+                ) : (
+                  <div className="flex flex-col items-center gap-2 text-zinc-500 bg-white/80 dark:bg-zinc-900/85 p-2 rounded-lg">
+                    <Upload className="w-6 h-6 text-zinc-400" />
+                    <span className="text-xs font-semibold text-center px-1">Upload</span>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="text-white text-xs font-semibold">Alterar Logo</span>
+                </div>
+              </div>
+              <input
+                id="logo-upload-input"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleLogoChange}
+              />
+              
+              <div className="flex-1 space-y-2 text-center sm:text-left">
+                <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Logomarca do Estabelecimento</h4>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-md leading-relaxed">
+                  Esta imagem será exibida no cabeçalho superior da aplicação e nos cabeçalhos de todos os relatórios impressos/PDF emitidos pelo sistema. Recomendamos utilizar imagens com fundo transparente (formato PNG).
+                </p>
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs font-semibold"
+                    onClick={() => document.getElementById("logo-upload-input").click()}
+                  >
+                    Selecionar Imagem
+                  </Button>
+                  {form.logomarca && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-xs h-8 px-3 font-semibold"
+                      onClick={() => setForm(prev => ({ ...prev, logomarca: null }))}
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-1" /> Remover Logomarca
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Card>
           
           {/* Card 1: Identificação */}
           <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl">

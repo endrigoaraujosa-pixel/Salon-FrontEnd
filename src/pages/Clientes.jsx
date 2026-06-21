@@ -444,8 +444,13 @@ export default function Clientes() {
           <table class="header-table">
             <tr>
               <td>
-                <div class="subtitle">Sistema de Gestão</div>
-                <div class="logo-section">${empresa?.nome_fantasia || "Salon Studio"}</div>
+                ${empresa?.logomarca 
+                  ? `<img src="${empresa.logomarca}" style="max-height: 80px; max-width: 240px; object-fit: contain; margin-bottom: 5px;" />` 
+                  : `
+                    <div class="subtitle">Sistema de Gestão</div>
+                    <div class="logo-section">${empresa?.nome_fantasia || "Salon Studio"}</div>
+                  `
+                }
               </td>
               <td class="report-title-section">
                 <h1 class="report-title">${rankingTitleText}</h1>

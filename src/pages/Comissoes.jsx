@@ -438,7 +438,10 @@ export default function Comissoes() {
       <p>Gerado a partir das movimentações de atendimentos e vendas.</p>
     </div>
     <div class="header-right">
-      <div class="brand">${empresa?.nome_fantasia || "Salon Studio"}</div>
+      ${empresa?.logomarca 
+        ? `<img src="${empresa.logomarca}" style="max-height: 80px; max-width: 240px; object-fit: contain; margin-bottom: 5px;" />` 
+        : `<div class="brand">${empresa?.nome_fantasia || "Salon Studio"}</div>`
+      }
       <div>Gerado em ${currentDate} às ${currentTime}</div>
     </div>
   </div>

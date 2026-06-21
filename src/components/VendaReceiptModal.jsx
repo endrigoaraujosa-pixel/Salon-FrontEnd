@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Printer, X, Download, Receipt, Calendar, User, ShoppingBag, CreditCard, CheckCircle2, Clock } from "lucide-react";
 import http from "../api";
+import { useTheme } from "../ThemeProvider";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtDT = (s) => new Date(s).toLocaleString("pt-BR");
 import { toast } from "sonner";
 
 export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
+  const { theme } = useTheme();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [empresa, setEmpresa] = useState(null);
@@ -144,9 +146,27 @@ export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
                     {empresa.nome_fantasia}
                   </div>
                 )}
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-zinc-100 dark:bg-zinc-800 print:bg-transparent print:border print:border-zinc-800 rounded-full mb-2">
-                  <ShoppingBag className="w-6 h-6 text-[#3A4F4A] dark:text-emerald-500 print:text-black" />
-                </div>
+                 {empresa?.logomarca ? (
+                  <>
+                    {/* On screen, display the logo with theme fallback */}
+                    <div className="inline-flex items-center justify-center h-20 w-auto max-w-[200px] overflow-hidden rounded-lg mb-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 shadow-sm print:hidden mx-auto">
+                      <img 
+                        src={empresa.logomarca} 
+                        alt="Logo" 
+                        className="h-full w-auto object-contain" 
+                        style={theme === "dark" ? { filter: "drop-shadow(0px 0px 3px rgba(255, 255, 255, 0.85))" } : undefined}
+                      />
+                    </div>
+                    {/* For printing, always display the light/default logo */}
+                    <div className="hidden print:inline-flex items-center justify-center h-20 w-auto max-w-[200px] overflow-hidden mb-2 mx-auto">
+                      <img src={empresa.logomarca} alt="Logo" className="h-full w-auto object-contain" />
+                    </div>
+                  </>
+                ) : (
+                  <div className="inline-flex items-center justify-center w-12 h-12 bg-zinc-100 dark:bg-zinc-800 print:bg-transparent print:border print:border-zinc-800 rounded-full mb-2 mx-auto">
+                    <ShoppingBag className="w-6 h-6 text-[#3A4F4A] dark:text-emerald-500 print:text-black" />
+                  </div>
+                )}
                 <h2 className="text-2xl font-black font-display text-zinc-900 dark:text-zinc-50 leading-none">
                   Venda #{String(data.numero_venda).padStart(6, '0')} | V
                 </h2>
