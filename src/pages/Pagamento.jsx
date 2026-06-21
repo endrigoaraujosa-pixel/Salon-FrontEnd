@@ -116,7 +116,8 @@ export default function Pagamento() {
     });
     
     let tempSaldo = saldo;
-    const validos = novos.filter(p => Number(p.valor) > 0);
+    const isZeroSaldo = saldo <= 0.01;
+    const validos = novos.filter(p => isZeroSaldo ? Number(p.valor) >= 0 : Number(p.valor) > 0);
     validos.forEach(p => {
       let pVal = Number(p.valor);
       let netVal = pVal;
@@ -270,8 +271,9 @@ export default function Pagamento() {
     }
   };
 
-  const executePayment = async (customAg, forceFinalizarConfirm = false) => {
-    const validos = novos.filter((p) => Number(p.valor) > 0);
+  const executePayment = async (customAg, forceFinalizarConfirm = false, customValidos = null) => {
+    const isZeroSaldo = saldo <= 0.01;
+    const validos = customValidos || novos.filter((p) => isZeroSaldo ? Number(p.valor) >= 0 : Number(p.valor) > 0);
     if (validos.length === 0) { toast.error("Informe ao menos um pagamento"); return; }
     
     const totalInformado = validos.reduce((sum, p) => sum + Number(p.valor), 0);
@@ -425,12 +427,13 @@ export default function Pagamento() {
       }
     }
 
-    let validos = novos.filter((p) => Number(p.valor) > 0);
+    const isZeroSaldo = saldo <= 0.01;
+    let validos = novos.filter((p) => isZeroSaldo ? Number(p.valor) >= 0 : Number(p.valor) > 0);
     
     if (validos.length === 0) {
       if (novos.length === 1) {
         if (forceSaldo) {
-          const valorAutomatico = String(saldo);
+          const valorAutomatico = String(Math.max(0, saldo));
           const novosComSaldo = [{
             ...novos[0],
             valor: valorAutomatico
@@ -457,14 +460,16 @@ export default function Pagamento() {
           servico_id: item.servico_id,
           nome: item.nome,
           colaborador_id: item.colaborador_id && item.colaborador_id !== "none" ? item.colaborador_id : "",
-          auxiliar_id: item.auxiliar_id && item.auxiliar_id !== "none" ? item.auxiliar_id : ""
+          auxiliar_id: item.auxiliar_id && item.auxiliar_id !== "none" ? item.auxiliar_id : "",
+          valor: item.valor,
+          valor_original: item.valor_original
         })));
         setProfsDialogOpen(true);
         return;
       }
     }
 
-    await executePayment(ag);
+    await executePayment(ag, false, validos);
   };
 
   const confirmAndFinish = async () => {
@@ -487,7 +492,9 @@ export default function Pagamento() {
         itens_selecionados: missingProfs.map(x => ({
           servico_id: x.servico_id,
           colaborador_id: x.colaborador_id,
-          auxiliar_id: x.auxiliar_id === "none" ? null : x.auxiliar_id
+          auxiliar_id: x.auxiliar_id === "none" ? null : x.auxiliar_id,
+          valor: x.valor,
+          valor_original: x.valor_original
         }))
       };
 

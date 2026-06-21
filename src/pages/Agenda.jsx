@@ -1181,7 +1181,9 @@ export default function Agenda() {
             servico_id: item.servico_id,
             nome: item.nome,
             colaborador_id: item.colaborador_id && item.colaborador_id !== "none" ? item.colaborador_id : "",
-            auxiliar_id: item.auxiliar_id && item.auxiliar_id !== "none" ? item.auxiliar_id : ""
+            auxiliar_id: item.auxiliar_id && item.auxiliar_id !== "none" ? item.auxiliar_id : "",
+            valor: item.valor,
+            valor_original: item.valor_original
           })));
           setProfsDialogOpen(true);
           return;
@@ -1236,7 +1238,9 @@ export default function Agenda() {
         itens_selecionados: missingProfs.map(x => ({
           servico_id: x.servico_id,
           colaborador_id: x.colaborador_id,
-          auxiliar_id: x.auxiliar_id === "none" ? null : x.auxiliar_id
+          auxiliar_id: x.auxiliar_id === "none" ? null : x.auxiliar_id,
+          valor: x.valor,
+          valor_original: x.valor_original
         }))
       };
 
@@ -1310,7 +1314,15 @@ export default function Agenda() {
   const updateItemValor = (index, val) => {
     setForm(f => {
       const itens = [...f.itens_selecionados];
-      itens[index].valor = val === "" ? "" : Number(val);
+      const valNum = val === "" ? "" : Number(val);
+      itens[index].valor = valNum;
+      
+      const temDesconto = !!f.desconto_aplicado;
+      const temPagamento = Number(f.valor_pago || 0) > 0;
+      
+      if (!temDesconto && !temPagamento) {
+        itens[index].valor_original = valNum;
+      }
       return { ...f, itens_selecionados: itens };
     });
   };
@@ -1377,7 +1389,10 @@ export default function Agenda() {
       cliente_id: "",
       data_hora: new Date().toISOString().substring(0, 10) + 'T' + new Date().toLocaleTimeString().substring(0, 5),
       itens_selecionados: [],
-      observacoes: ""
+      observacoes: "",
+      status: "agendado",
+      valor_pago: 0,
+      desconto_aplicado: null
     });
     
     setOpen(true);
@@ -1395,7 +1410,10 @@ export default function Agenda() {
       cliente_id: a.cliente_id,
       data_hora: toDatetimeLocalInput(a.data_hora),
       itens_selecionados: a.itens || [],
-      observacoes: a.observacoes || ""
+      observacoes: a.observacoes || "",
+      status: a.status,
+      valor_pago: a.valor_pago,
+      desconto_aplicado: a.desconto_aplicado
     });
     setOpen(true);
   };
@@ -1784,7 +1802,8 @@ export default function Agenda() {
                             placeholder="0,00"
                             value={item.valor !== undefined ? item.valor : (s?.valor || "")}
                             onChange={(e) => updateItemValor(index, e.target.value)}
-                            className="h-8 text-xs bg-white border border-zinc-200 rounded px-2"
+                            disabled={Number(form.valor_pago || 0) > 0 || form.status === 'concluido'}
+                            className="h-8 text-xs bg-white border border-zinc-200 rounded px-2 disabled:opacity-70 disabled:bg-zinc-50"
                           />
                         </div>
                       </div>
