@@ -206,13 +206,14 @@ export default function ConfiguracoesWhatsApp() {
   };
 
   const mockMessageAgradecimento = () => {
-    let tpl = form.agradecimento_modelo_mensagem || `Olá, {nome}!\n\nAgradecemos por escolher nossos serviços. Foi um prazer atendê-lo(a) no dia {data}, às {hora}, para o serviço de {servico}.\n\nEsperamos revê-lo(a) em breve. Conte sempre com nossa equipe!\n\nAtenciosamente.`;
+    let tpl = form.agradecimento_modelo_mensagem || `Olá, {nome}!\n\nAgradecemos por escolher nossos serviços. Foi um prazer atendê-lo(a) no dia {data}, às {hora}.\n\nServiços realizados:\n{servicos_valores}\n\nEsperamos revê-lo(a) em breve. Conte sempre com nossa equipe!\n\nAtenciosamente.`;
     return tpl
       .replace(/{nome}/g, "Maria da Silva")
       .replace(/{data}/g, "15/06/2026")
       .replace(/{hora}/g, "14:30")
       .replace(/{servico}/g, "Corte Feminino + Escova")
-      .replace(/{profissional}/g, "Gabriela Costa");
+      .replace(/{profissional}/g, "Gabriela Costa")
+      .replace(/{servicos_valores}/g, "Corte Feminino - R$ 80,00\nEscova - R$ 60,00\nHidratação - R$ 70,00");
   };
 
   const handleStartIntegration = async () => {
@@ -654,7 +655,7 @@ export default function ConfiguracoesWhatsApp() {
                       <Button
                         variant="outline"
                         size="xs"
-                        onClick={() => setForm({ ...form, agradecimento_modelo_mensagem: `Olá, {nome}!\n\nAgradecemos por escolher nossos serviços. Foi um prazer atendê-lo(a) no dia {data}, às {hora}, para o serviço de {servico}.\n\nEsperamos revê-lo(a) em breve. Conte sempre com nossa equipe!\n\nAtenciosamente.` })}
+                        onClick={() => setForm({ ...form, agradecimento_modelo_mensagem: `Olá, {nome}!\n\nAgradecemos por escolher nossos serviços. Foi um prazer atendê-lo(a) no dia {data}, às {hora}.\n\nServiços realizados:\n{servicos_valores}\n\nEsperamos revê-lo(a) em breve. Conte sempre com nossa equipe!\n\nAtenciosamente.` })}
                         className="text-xs text-zinc-500 hover:text-zinc-700"
                       >
                         Restaurar Padrão
@@ -681,19 +682,23 @@ export default function ConfiguracoesWhatsApp() {
                       </div>
                       <div className="grid grid-cols-3 p-2.5">
                         <span className="font-mono text-rose-600 dark:text-rose-400 font-semibold">{"{data}"}</span>
-                        <span className="col-span-2 text-zinc-650 dark:text-zinc-400">Data do agendamento</span>
+                        <span className="col-span-2 text-zinc-650 dark:text-zinc-400">Data do atendimento</span>
                       </div>
                       <div className="grid grid-cols-3 p-2.5">
                         <span className="font-mono text-rose-600 dark:text-rose-400 font-semibold">{"{hora}"}</span>
-                        <span className="col-span-2 text-zinc-650 dark:text-zinc-400">Hora do agendamento</span>
+                        <span className="col-span-2 text-zinc-650 dark:text-zinc-400">Hora do atendimento</span>
                       </div>
                       <div className="grid grid-cols-3 p-2.5">
                         <span className="font-mono text-rose-600 dark:text-rose-400 font-semibold">{"{servico}"}</span>
-                        <span className="col-span-2 text-zinc-650 dark:text-zinc-400">Serviço agendado</span>
+                        <span className="col-span-2 text-zinc-650 dark:text-zinc-400">Serviço(s) realizado(s) — nomes separados por vírgula</span>
                       </div>
                       <div className="grid grid-cols-3 p-2.5">
                         <span className="font-mono text-rose-600 dark:text-rose-400 font-semibold">{"{profissional}"}</span>
                         <span className="col-span-2 text-zinc-650 dark:text-zinc-400">Profissional responsável</span>
+                      </div>
+                      <div className="grid grid-cols-3 p-2.5 bg-rose-50/40 dark:bg-rose-950/10">
+                        <span className="font-mono text-rose-600 dark:text-rose-400 font-semibold">{"{servicos_valores}"}</span>
+                        <span className="col-span-2 text-zinc-650 dark:text-zinc-400">Lista de serviços com valores (ex: <em>Corte - R$ 50,00</em>, um por linha)</span>
                       </div>
                     </div>
                   </div>
