@@ -8,7 +8,7 @@ import { Textarea } from "../components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import StatusBadge, { STATUS_LABELS } from "../components/StatusBadge";
-import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle, ShoppingCart, Loader2, Printer, AlertTriangle } from "lucide-react";
+import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle, ShoppingCart, Loader2, Printer, AlertTriangle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import AgendaTimeline from "../components/AgendaTimeline";
@@ -134,6 +134,10 @@ export default function Agenda() {
   const [openNewClient, setOpenNewClient] = useState(false);
   const [clientForm, setClientForm] = useState({ nome: "", telefone: "", email: "" });
   const [savingClient, setSavingClient] = useState(false);
+  const [clientNameError, setClientNameError] = useState(false);
+  const [clientWhatsappStatus, setClientWhatsappStatus] = useState(null); // null, 'checking', 'exists', 'not_exists', 'error'
+  const [duplicateConfirm, setDuplicateConfirm] = useState({ open: false, message: "", resolve: null });
+  const clientNomeInputRef = useRef(null);
   const [openEditSenha, setOpenEditSenha] = useState(false);
   const [pendingEditAgendamento, setPendingEditAgendamento] = useState(null);
   const [authCredentials, setAuthCredentials] = useState(null);
@@ -861,11 +865,108 @@ export default function Agenda() {
     await saveUtilizedProductsWithCreds(utilizedAuthCredentials);
   };
 
-  const saveNewClient = async () => {
-    if (!clientForm.nome || !clientForm.nome.trim()) {
-      toast.error("Nome do cliente é obrigatório");
+  const formatPhone = (val) => {
+    if (!val) return "";
+    const digits = val.replace(/\D/g, "");
+    const cleanDigits = digits.slice(0, 11);
+
+    if (cleanDigits.length <= 2) {
+      return cleanDigits;
+    }
+    if (cleanDigits.length <= 6) {
+      return `(${cleanDigits.slice(0, 2)}) ${cleanDigits.slice(2)}`;
+    }
+    if (cleanDigits.length <= 10) {
+      return `(${cleanDigits.slice(0, 2)}) ${cleanDigits.slice(2, 6)}-${cleanDigits.slice(6)}`;
+    }
+    return `(${cleanDigits.slice(0, 2)}) ${cleanDigits.slice(2, 7)}-${cleanDigits.slice(7)}`;
+  };
+
+  const checkClientWhatsapp = async (value) => {
+    if (!value || value.replace(/\D/g, "").length < 10) {
+      setClientWhatsappStatus(null);
       return;
     }
+    setClientWhatsappStatus("checking");
+    try {
+      const { data } = await http.post("/configuracoes/whatsapp/check-number", { phone: value });
+      if (data.exists) {
+        setClientWhatsappStatus("exists");
+      } else {
+        setClientWhatsappStatus("not_exists");
+      }
+    } catch (e) {
+      console.error("Erro ao checar whatsapp:", e);
+      setClientWhatsappStatus("error");
+    }
+  };
+
+  const showDuplicateConfirm = (message) => {
+    return new Promise((resolve) => {
+      setDuplicateConfirm({ open: true, message, resolve });
+    });
+  };
+
+  const handleDuplicateConfirmResponse = (accepted) => {
+    if (duplicateConfirm.resolve) {
+      duplicateConfirm.resolve(accepted);
+    }
+    setDuplicateConfirm({ open: false, message: "", resolve: null });
+  };
+
+  const saveNewClient = async () => {
+    if (!clientForm.nome || !clientForm.nome.trim()) {
+      toast.error("O preenchimento do campo Nome é obrigatório para a conclusão do cadastro.");
+      setClientNameError(true);
+      clientNomeInputRef.current?.focus();
+      return;
+    }
+
+    let cleanPhoneDigits = "";
+    if (clientForm.telefone) {
+      cleanPhoneDigits = clientForm.telefone.replace(/\D/g, "");
+      if (cleanPhoneDigits.length > 0) {
+        if (cleanPhoneDigits.length < 10) {
+          toast.error("O número de telefone deve conter o DDD e pelo menos 8 ou 9 dígitos.");
+          return;
+        }
+      }
+    }
+
+    const cleanNameInput = clientForm.nome.trim().toLowerCase();
+    const duplicateName = clientes.find(c =>
+      (c.nome || "").trim().toLowerCase() === cleanNameInput
+    );
+
+    let duplicatePhone = null;
+    if (cleanPhoneDigits) {
+      duplicatePhone = clientes.find(c =>
+        (c.telefone || "").replace(/\D/g, "") === cleanPhoneDigits
+      );
+    }
+
+    const permitirClienteDuplicado = !!configSistema?.permitir_cliente_duplicado;
+
+    if (permitirClienteDuplicado) {
+      if (duplicateName) {
+        const confirmName = await showDuplicateConfirm("Já existe um cliente cadastrado com esse nome. Deseja continuar mesmo assim?");
+        if (!confirmName) return;
+      }
+      if (duplicatePhone) {
+        const confirmPhone = await showDuplicateConfirm(`Já existe um cliente cadastrado com este número de telefone. O cliente é: ${duplicatePhone.nome}. Deseja continuar mesmo assim?`);
+        if (!confirmPhone) return;
+      }
+    } else {
+      if (duplicateName) {
+        toast.error("Já existe um cliente cadastrado com esse nome.");
+        return;
+      }
+      if (duplicatePhone) {
+        toast.error(`Já existe um cliente cadastrado com este número de telefone (${duplicatePhone.nome}).`);
+        return;
+      }
+    }
+
     setSavingClient(true);
     try {
       const res = await http.post("/clientes", clientForm);
@@ -877,6 +978,8 @@ export default function Agenda() {
 
       setForm(f => ({ ...f, cliente_id: newClient.id }));
       setOpenNewClient(false);
+      setClientNameError(false);
+      setClientWhatsappStatus(null);
     } catch (e) {
       toast.error(e.response?.data?.detail || "Erro ao cadastrar cliente");
     } finally {
@@ -1836,7 +1939,15 @@ export default function Agenda() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={openNewClient} onOpenChange={setOpenNewClient}>
+      <Dialog
+        open={openNewClient}
+        onOpenChange={(v) => {
+          setOpenNewClient(v);
+          setClientNameError(false);
+          setClientWhatsappStatus(null);
+          if (!v) setClientForm({ nome: "", telefone: "", email: "" });
+        }}
+      >
         <DialogContent className="dialog-content w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800" style={{ maxWidth: "26rem" }} aria-describedby="dialog-novo-cliente">
           <DialogHeader className="dialog-header">
             <DialogTitle className="dialog-title">Novo Cliente</DialogTitle>
@@ -1844,24 +1955,38 @@ export default function Agenda() {
           <div id="dialog-novo-cliente" className="sr-only">Cadastrar um novo cliente no sistema</div>
           <div className="dialog-body">
             <div className="form-group mb-3">
-              <Label className="form-label">Nome *</Label>
+              <Label className={`form-label ${clientNameError ? "text-rose-500" : ""}`}>Nome *</Label>
               <Input
+                ref={clientNomeInputRef}
                 placeholder="Nome do cliente"
                 value={clientForm.nome}
-                onChange={(e) => setClientForm({ ...clientForm, nome: e.target.value })}
+                onChange={(e) => {
+                  setClientForm({ ...clientForm, nome: e.target.value });
+                  if (e.target.value.trim()) {
+                    setClientNameError(false);
+                  }
+                }}
                 disabled={savingClient}
-                className="form-input"
+                className={`form-input ${clientNameError ? "border-rose-500 focus-visible:ring-rose-500 focus-visible:border-rose-500" : ""}`}
               />
             </div>
             <div className="form-group mb-3">
               <Label className="form-label">Telefone</Label>
               <Input
-                placeholder="(00) 00000-0000"
+                placeholder="(XX) XXXXX-XXXX"
                 value={clientForm.telefone}
-                onChange={(e) => setClientForm({ ...clientForm, telefone: e.target.value })}
+                onChange={(e) => {
+                  setClientForm({ ...clientForm, telefone: formatPhone(e.target.value) });
+                  if (clientWhatsappStatus) setClientWhatsappStatus(null);
+                }}
+                onBlur={(e) => checkClientWhatsapp(e.target.value)}
                 disabled={savingClient}
                 className="form-input"
               />
+              {clientWhatsappStatus === "checking" && <span className="text-[11px] text-zinc-500 mt-1 flex items-center gap-1">Verificando WhatsApp... <Loader2 className="w-3 h-3 animate-spin" /></span>}
+              {clientWhatsappStatus === "exists" && <span className="text-[11px] text-[#84A59D] font-medium mt-1 block">✓ Possui WhatsApp</span>}
+              {clientWhatsappStatus === "not_exists" && <span className="text-[11px] text-amber-500 font-medium mt-1 block">⚠ Não possui WhatsApp</span>}
+              {clientWhatsappStatus === "error" && <span className="text-[11px] text-rose-500 font-medium mt-1 block">Erro ao verificar WhatsApp</span>}
             </div>
             <div className="form-group mb-4">
               <Label className="form-label">Email</Label>
@@ -1892,6 +2017,38 @@ export default function Agenda() {
               className="btn-primary px-4 py-2 bg-[#84A59D] hover:bg-[#6F9189]"
             >
               {savingClient ? "Salvando..." : "Salvar Cliente"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de confirmação de duplicidade de cliente */}
+      <Dialog open={duplicateConfirm.open} onOpenChange={(v) => { if (!v) handleDuplicateConfirmResponse(false); }}>
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
+          <DialogHeader>
+            <DialogTitle className="text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-500" />
+              Confirmação de duplicidade
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-zinc-650 dark:text-zinc-400 leading-relaxed">
+            {duplicateConfirm.message}
+          </div>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2.5 mt-2 pt-2 border-t border-zinc-150 dark:border-zinc-850">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleDuplicateConfirmResponse(false)}
+              className="w-full sm:w-auto border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-350 font-semibold"
+            >
+              Não
+            </Button>
+            <Button
+              type="button"
+              onClick={() => handleDuplicateConfirmResponse(true)}
+              className="w-full sm:w-auto bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold"
+            >
+              Sim
             </Button>
           </DialogFooter>
         </DialogContent>
