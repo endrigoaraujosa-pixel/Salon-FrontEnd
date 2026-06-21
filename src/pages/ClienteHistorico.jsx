@@ -248,6 +248,47 @@ export default function ClienteHistorico() {
               const numAgs = day.agendamentos.length;
               const numVends = day.vendas.length;
 
+              // Calcular desconto acumulado do dia
+              let dayDiscount = 0;
+              day.agendamentos.forEach(a => {
+                let desc = a.desconto_aplicado;
+                if (typeof desc === 'string') {
+                  try { desc = JSON.parse(desc); } catch (e) {}
+                }
+                if (desc && desc.total_descontado) {
+                  dayDiscount += Number(desc.total_descontado);
+                } else {
+                  const totalOriginal = a.itens?.reduce((sum, item) => sum + (item.valor_original !== undefined && item.valor_original !== null ? Number(item.valor_original) : Number(item.valor || 0)), 0) || 0;
+                  const totalCobrado = a.itens?.reduce((sum, item) => sum + Number(item.valor || 0), 0) || 0;
+                  if (totalOriginal > totalCobrado) {
+                    dayDiscount += (totalOriginal - totalCobrado);
+                  }
+                }
+              });
+
+              day.vendas.forEach(v => {
+                let desc = v.desconto_aplicado;
+                if (typeof desc === 'string') {
+                  try { desc = JSON.parse(desc); } catch (e) {}
+                }
+                if (desc && desc.total_descontado) {
+                  dayDiscount += Number(desc.total_descontado);
+                } else {
+                  let totalOriginal = 0;
+                  let totalCobrado = 0;
+                  if (Array.isArray(v.itens)) {
+                    v.itens.forEach(item => {
+                      const orig = item.preco_unitario_original !== undefined ? item.preco_unitario_original * item.quantidade : (item.subtotal || 0);
+                      totalOriginal += orig;
+                      totalCobrado += (item.subtotal || 0);
+                    });
+                  }
+                  if (totalOriginal > totalCobrado) {
+                    dayDiscount += (totalOriginal - totalCobrado);
+                  }
+                }
+              });
+
               return (
                 <div key={day.date} className="transition-all duration-200">
                   {/* Linha do Dia Clicável */}
@@ -290,9 +331,16 @@ export default function ClienteHistorico() {
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0">
-                      <div className="text-right">
+                      <div className="text-right flex flex-col items-end">
                         <span className="text-[9px] uppercase font-bold text-zinc-400 dark:text-zinc-500 block">Total consumido</span>
-                        <span className="font-display font-bold text-sm sm:text-base text-[#3A4F4A] dark:text-[#EAF0EE]">{fmtBRL(day.total)}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {dayDiscount > 0.01 && (
+                            <span className="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-[10px] px-1.5 py-0.5 rounded-md font-semibold border border-emerald-100 dark:border-emerald-900/40">
+                              -{fmtBRL(dayDiscount)} desc.
+                            </span>
+                          )}
+                          <span className="font-display font-bold text-sm sm:text-base text-[#3A4F4A] dark:text-[#EAF0EE]">{fmtBRL(day.total)}</span>
+                        </div>
                       </div>
                       <div className="text-zinc-400 dark:text-zinc-500">
                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -342,6 +390,36 @@ export default function ClienteHistorico() {
                                       </td>
                                       <td className="px-2 sm:px-4 py-3 text-zinc-800 dark:text-zinc-200 font-semibold min-w-[150px] sm:min-w-[200px]">
                                         <div>{a.itens?.map((i) => i.nome).join(", ")}</div>
+                                        {(() => {
+                                          let desc = a.desconto_aplicado;
+                                          if (typeof desc === 'string') {
+                                            try { desc = JSON.parse(desc); } catch (e) {}
+                                          }
+                                          if (desc) {
+                                            return (
+                                              <div className="mt-1">
+                                                <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-[10px] px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-900 font-semibold">
+                                                  🏷️ Desconto: {desc.codigo} (-{fmtBRL(desc.total_descontado)})
+                                                </span>
+                                              </div>
+                                            );
+                                          }
+
+                                          // Check for manual discount
+                                          const totalOriginal = a.itens?.reduce((sum, item) => sum + (item.valor_original !== undefined && item.valor_original !== null ? Number(item.valor_original) : Number(item.valor || 0)), 0) || 0;
+                                          const totalCobrado = a.itens?.reduce((sum, item) => sum + Number(item.valor || 0), 0) || 0;
+                                          const diff = totalOriginal - totalCobrado;
+                                          if (diff > 0.01) {
+                                            return (
+                                              <div className="mt-1">
+                                                <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-[10px] px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-900 font-semibold">
+                                                  🏷️ Desconto Manual (-{fmtBRL(diff)})
+                                                </span>
+                                              </div>
+                                            );
+                                          }
+                                          return null;
+                                        })()}
                                         {a.observacoes && (
                                           <div className="mt-1.5 text-[11px] font-normal text-amber-800 dark:text-zinc-300 bg-amber-50/70 dark:bg-zinc-900/60 border border-amber-200/50 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 max-w-lg shadow-sm flex items-start gap-1.5 leading-relaxed">
                                             <span className="shrink-0 mt-0.5">📝</span>
@@ -404,7 +482,36 @@ export default function ClienteHistorico() {
                                           {v.numero_venda ? `${String(v.numero_venda).padStart(6, '0')} | V` : "-"}
                                         </td>
                                         <td className="px-2 sm:px-4 py-3 text-zinc-800 dark:text-zinc-200 font-semibold min-w-[150px] sm:min-w-[200px]">
-                                          {item.produto_nome}
+                                          <div>{item.produto_nome}</div>
+                                          {(() => {
+                                            let desc = v.desconto_aplicado;
+                                            if (typeof desc === 'string') {
+                                              try { desc = JSON.parse(desc); } catch (e) {}
+                                            }
+                                            if (desc) {
+                                              return (
+                                                <div className="mt-1">
+                                                  <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-[10px] px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-900 font-semibold">
+                                                    🏷️ Desconto: {desc.codigo} (-{fmtBRL(desc.total_descontado)})
+                                                  </span>
+                                                </div>
+                                              );
+                                            }
+
+                                            // Check manual discount on product item
+                                            const orig = item.preco_unitario_original !== undefined ? item.preco_unitario_original : item.preco_unitario;
+                                            const diff = (orig - item.preco_unitario) * item.quantidade;
+                                            if (diff > 0.01) {
+                                              return (
+                                                <div className="mt-1">
+                                                  <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-[10px] px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-900 font-semibold">
+                                                    🏷️ Desconto Manual (-{fmtBRL(diff)})
+                                                  </span>
+                                                </div>
+                                              );
+                                            }
+                                            return null;
+                                          })()}
                                         </td>
                                         <td className="px-2 sm:px-4 py-3 text-zinc-500 dark:text-zinc-400">
                                           {v.colaborador_nome || "-"}
@@ -605,12 +712,60 @@ export default function ClienteHistorico() {
                 </div>
 
                 {/* Valores Totais */}
-                <div className="total-box p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 shadow-sm flex items-center justify-between">
-                  <div className="total-label flex items-center gap-1 text-zinc-500 dark:text-zinc-450 font-medium">
-                    <Clock className="w-4 h-4 text-[#84A59D]" />
-                    Duração Total: {selectedAgendamento.itens?.reduce((sum, item) => sum + (item.duracao_minutos || 0), 0)} min
+                <div className="space-y-3">
+                  {(() => {
+                    let desc = selectedAgendamento.desconto_aplicado;
+                    if (typeof desc === 'string') {
+                      try { desc = JSON.parse(desc); } catch (e) {}
+                    }
+                    if (desc) {
+                      return (
+                        <div className="bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-200/60 dark:border-emerald-900/40 p-4 rounded-xl text-xs space-y-1.5">
+                          <div className="flex justify-between items-center text-emerald-800 dark:text-emerald-350 font-semibold">
+                            <span>🏷️ Desconto Aplicado:</span>
+                            <span>{desc.codigo}</span>
+                          </div>
+                          {desc.descricao && (
+                            <div className="text-[11px] text-emerald-600 dark:text-emerald-400 italic">
+                              {desc.descricao}
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center font-bold text-emerald-700 dark:text-emerald-400 pt-1 border-t border-dashed border-emerald-200 dark:border-emerald-800">
+                            <span>Total Descontado:</span>
+                            <span>-{fmtBRL(desc.total_descontado)}</span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Check for manual discount
+                    const totalOriginal = selectedAgendamento.itens?.reduce((sum, item) => sum + (item.valor_original !== undefined && item.valor_original !== null ? Number(item.valor_original) : Number(item.valor || 0)), 0) || 0;
+                    const totalCobrado = selectedAgendamento.itens?.reduce((sum, item) => sum + Number(item.valor || 0), 0) || 0;
+                    const diff = totalOriginal - totalCobrado;
+                    if (diff > 0.01) {
+                      return (
+                        <div className="bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-200/60 dark:border-emerald-900/40 p-4 rounded-xl text-xs space-y-1.5">
+                          <div className="flex justify-between items-center text-emerald-800 dark:text-emerald-350 font-semibold">
+                            <span>🏷️ Desconto Aplicado:</span>
+                            <span>Manual / Customizado</span>
+                          </div>
+                          <div className="flex justify-between items-center font-bold text-emerald-700 dark:text-emerald-400 pt-1 border-t border-dashed border-emerald-200 dark:border-emerald-800">
+                            <span>Total Descontado:</span>
+                            <span>-{fmtBRL(diff)}</span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  <div className="total-box p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 shadow-sm flex items-center justify-between">
+                    <div className="total-label flex items-center gap-1 text-zinc-500 dark:text-zinc-450 font-medium">
+                      <Clock className="w-4 h-4 text-[#84A59D]" />
+                      Duração Total: {selectedAgendamento.itens?.reduce((sum, item) => sum + (item.duracao_minutos || 0), 0)} min
+                    </div>
+                    <div className="total-value text-xl font-extrabold text-[#3A4F4A] dark:text-[#EAF0EE]">{fmtBRL(selectedAgendamento.valor_total)}</div>
                   </div>
-                  <div className="total-value text-xl font-extrabold text-[#3A4F4A] dark:text-[#EAF0EE]">{fmtBRL(selectedAgendamento.valor_total)}</div>
                 </div>
 
                 {/* Pagamentos Vinculados */}

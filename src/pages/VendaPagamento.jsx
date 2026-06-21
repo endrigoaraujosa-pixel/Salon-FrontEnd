@@ -83,7 +83,8 @@ export default function VendaPagamento() {
     });
     
     let tempSaldo = saldo;
-    const validos = novos.filter(p => Number(p.valor) > 0);
+    const isZeroSaldo = saldo <= 0.01;
+    const validos = novos.filter(p => isZeroSaldo ? Number(p.valor) >= 0 : Number(p.valor) > 0);
     validos.forEach(p => {
       let pVal = Number(p.valor);
       let netVal = pVal;
@@ -241,7 +242,7 @@ export default function VendaPagamento() {
     }
   };
 
-  const executePayment = async (forceSaldo = false, forceFinalizarConfirm = false) => {
+  const executePayment = async (forceSaldo = false, forceFinalizarConfirm = false, customValidos = null) => {
     if (!temPermissaoPagamento) {
       toast.error("Você não tem permissão para realizar pagamentos.");
       return;
@@ -254,12 +255,13 @@ export default function VendaPagamento() {
       }
     }
 
-    let validos = novos.filter((p) => Number(p.valor) > 0);
+    const isZeroSaldo = saldo <= 0.01;
+    let validos = customValidos || novos.filter((p) => isZeroSaldo ? Number(p.valor) >= 0 : Number(p.valor) > 0);
     
     if (validos.length === 0) {
       if (novos.length === 1) {
         if (forceSaldo) {
-          const valorAutomatico = String(saldo);
+          const valorAutomatico = String(Math.max(0, saldo));
           const novosComSaldo = [{
             ...novos[0],
             valor: valorAutomatico
