@@ -6,7 +6,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
-import { Users, Plus, Edit2, Trash2, Search, History, Printer, TrendingUp, Calendar, List, Loader2, AlertCircle } from "lucide-react";
+import { Users, Plus, Edit2, Trash2, Search, History, Printer, TrendingUp, Calendar, List, Loader2, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import AuditModal from "../components/AuditModal";
@@ -44,6 +44,9 @@ export default function Clientes() {
   const [whatsappStatus, setWhatsappStatus] = useState(null); // null, 'checking', 'exists', 'not_exists', 'error'
   const nomeInputRef = useRef(null);
   const nav = useNavigate();
+
+  // Controle de Paginação
+  const [currentPage, setCurrentPage] = useState(1);
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
@@ -494,6 +497,16 @@ export default function Clientes() {
   const normalizeText = (str) => !str ? "" : str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const filtered = list.filter((c) => normalizeText(c.nome).includes(normalizeText(q)) || c.telefone?.includes(q));
 
+  // Resetar página atual quando a busca (q) mudar
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [q]);
+
+  const itemsPerPage = 50;
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const activePage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));
+  const paginatedItems = filtered.slice((activePage - 1) * itemsPerPage, activePage * itemsPerPage);
+
   return (
     <div className="p-6 lg:p-8 fade-in">
       <PageHeader
@@ -670,7 +683,7 @@ export default function Clientes() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-700 dark:text-zinc-300">
-                {filtered.map((c) => (
+                {paginatedItems.map((c) => (
                   <tr key={c.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors" data-testid={`cliente-row-${c.id}`}>
                     <td className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-100">
                       <div className="flex items-center gap-3">
@@ -701,7 +714,7 @@ export default function Clientes() {
 
           {/* Visualização em Lista de Cards para Mobile */}
           <div className="block sm:hidden space-y-4">
-            {filtered.map((c) => (
+            {paginatedItems.map((c) => (
               <div
                 key={c.id}
                 className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4.5 rounded-xl shadow-xs flex flex-col gap-3"
@@ -763,6 +776,100 @@ export default function Clientes() {
               </div>
             ))}
           </div>
+
+          {/* Controles de Paginação */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-xs select-none">
+              <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+                Exibindo <span className="font-semibold text-zinc-800 dark:text-zinc-200">{Math.min(filtered.length, (activePage - 1) * itemsPerPage + 1)}</span> a{" "}
+                <span className="font-semibold text-zinc-800 dark:text-zinc-200">{Math.min(filtered.length, activePage * itemsPerPage)}</span> de{" "}
+                <span className="font-semibold text-zinc-800 dark:text-zinc-200">{filtered.length}</span> registros
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={activePage === 1}
+                  className="h-8 px-2.5 text-xs font-semibold gap-1 dark:border-zinc-800"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Anterior
+                </Button>
+                
+                {/* Botões das Páginas */}
+                {(() => {
+                  const pages = [];
+                  const maxVisiblePages = 5;
+                  let startPage = Math.max(1, activePage - Math.floor(maxVisiblePages / 2));
+                  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                  
+                  if (endPage - startPage + 1 < maxVisiblePages) {
+                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                  }
+
+                  if (startPage > 1) {
+                    pages.push(
+                      <Button
+                        key={1}
+                        variant={activePage === 1 ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(1)}
+                        className={`h-8 w-8 text-xs font-bold ${activePage === 1 ? "bg-[#84A59D] hover:bg-[#6F9189] text-white border-[#84A59D]" : "dark:border-zinc-800 text-zinc-650 dark:text-zinc-300"}`}
+                      >
+                        1
+                      </Button>
+                    );
+                    if (startPage > 2) {
+                      pages.push(<span key="dots-start" className="text-zinc-400 dark:text-zinc-600 px-1 text-xs">...</span>);
+                    }
+                  }
+
+                  for (let p = startPage; p <= endPage; p++) {
+                    pages.push(
+                      <Button
+                        key={p}
+                        variant={activePage === p ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(p)}
+                        className={`h-8 w-8 text-xs font-bold ${activePage === p ? "bg-[#84A59D] hover:bg-[#6F9189] text-white border-[#84A59D]" : "dark:border-zinc-800 text-zinc-650 dark:text-zinc-300"}`}
+                      >
+                        {p}
+                      </Button>
+                    );
+                  }
+
+                  if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) {
+                      pages.push(<span key="dots-end" className="text-zinc-400 dark:text-zinc-600 px-1 text-xs">...</span>);
+                    }
+                    pages.push(
+                      <Button
+                        key={totalPages}
+                        variant={activePage === totalPages ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(totalPages)}
+                        className={`h-8 w-8 text-xs font-bold ${activePage === totalPages ? "bg-[#84A59D] hover:bg-[#6F9189] text-white border-[#84A59D]" : "dark:border-zinc-800 text-zinc-650 dark:text-zinc-300"}`}
+                      >
+                        {totalPages}
+                      </Button>
+                    );
+                  }
+
+                  return pages;
+                })()}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={activePage === totalPages}
+                  className="h-8 px-2.5 text-xs font-semibold gap-1 dark:border-zinc-800"
+                >
+                  Próxima <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </>
       )}
 
