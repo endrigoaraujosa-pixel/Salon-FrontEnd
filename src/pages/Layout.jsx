@@ -10,6 +10,7 @@ import {
 
 import { Button } from "../components/ui/button";
 import ThemeToggle from "../components/ThemeToggle";
+import { useTheme } from "../ThemeProvider";
 import http from "../api";
 
 const nav = [
@@ -36,8 +37,10 @@ const nav = [
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [nomeFantasia, setNomeFantasia] = React.useState("Salon Studio");
+  const [logomarca, setLogomarca] = React.useState(null);
   const [whatsappAtivo, setWhatsappAtivo] = React.useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
     return localStorage.getItem("sidebar_collapsed") === "true";
@@ -47,10 +50,13 @@ export default function Layout() {
   const loadEmpresa = () => {
     http.get("/configuracoes/empresa")
       .then((res) => {
-        if (res.data && res.data.nome_fantasia) {
-          setNomeFantasia(res.data.nome_fantasia);
-        } else {
-          setNomeFantasia("Salon Studio");
+        if (res.data) {
+          if (res.data.nome_fantasia) {
+            setNomeFantasia(res.data.nome_fantasia);
+          } else {
+            setNomeFantasia("Salon Studio");
+          }
+          setLogomarca(res.data.logomarca || null);
         }
       })
       .catch((err) => {
@@ -128,17 +134,28 @@ export default function Layout() {
       </NavLink>
     ));
   };
-
+  const activeLogo = logomarca;
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-background text-foreground">
       {/* Mobile Top Sticky Navbar */}
       <header className="mobile-only-header flex items-center justify-between h-16 px-4 bg-card border-b border-border z-30 shrink-0 sticky top-0">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg brand-gradient flex items-center justify-center">
-            <Scissors className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-display text-base font-semibold tracking-tight">{nomeFantasia}</span>
+        <div className="flex items-center gap-3">
+          {activeLogo ? (
+            <div className="h-[52px] w-auto max-w-[180px] overflow-hidden flex items-center justify-center shrink-0">
+              <img 
+                src={activeLogo} 
+                alt="Logo" 
+                className="h-full w-auto object-contain" 
+                style={theme === "dark" ? { filter: "drop-shadow(0px 0px 4px rgba(255, 255, 255, 0.85))" } : undefined}
+              />
+            </div>
+          ) : (
+            <div className="w-9 h-9 rounded-lg brand-gradient flex items-center justify-center shrink-0">
+              <Scissors className="w-4.5 h-4.5 text-white" />
+            </div>
+          )}
+          <span className="font-display text-base font-semibold tracking-tight truncate">{nomeFantasia}</span>
         </div>
         <Button variant="ghost" size="icon" onClick={() => setMenuOpen(true)} className="h-10 w-10">
           <Menu className="w-6 h-6" />
@@ -153,12 +170,23 @@ export default function Layout() {
           
           {/* Drawer Content */}
           <aside className="relative w-64 bg-card border-r border-border flex flex-col h-full z-50 animate-in slide-in-from-left duration-200" data-testid="sidebar-mobile">
-            <div className="h-16 px-6 flex items-center justify-between border-b border-border shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg brand-gradient flex items-center justify-center">
-                  <Scissors className="w-4 h-4 text-white" />
-                </div>
-                <span className="font-display text-lg font-semibold tracking-tight">{nomeFantasia}</span>
+            <div className="h-20 px-6 flex items-center justify-between border-b border-border shrink-0">
+              <div className="flex items-center gap-3">
+                {activeLogo ? (
+                  <div className="h-14 w-auto max-w-[180px] overflow-hidden flex items-center justify-center shrink-0">
+                    <img 
+                      src={activeLogo} 
+                      alt="Logo" 
+                      className="h-full w-auto object-contain" 
+                      style={theme === "dark" ? { filter: "drop-shadow(0px 0px 4px rgba(255, 255, 255, 0.85))" } : undefined}
+                    />
+                  </div>
+                ) : (
+                  <div className="w-9 h-9 rounded-lg brand-gradient flex items-center justify-center shrink-0">
+                    <Scissors className="w-4.5 h-4.5 text-white" />
+                  </div>
+                )}
+                <span className="font-display text-lg font-semibold tracking-tight truncate">{nomeFantasia}</span>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setMenuOpen(false)} className="h-8 w-8">
                 <X className="w-4 h-4" />
@@ -201,11 +229,22 @@ export default function Layout() {
         }`} 
         data-testid="sidebar"
       >
-        <div className="h-16 px-6 flex items-center gap-2 border-b border-border shrink-0">
-          <div className="w-8 h-8 rounded-lg brand-gradient flex items-center justify-center">
-            <Scissors className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-display text-lg font-semibold tracking-tight">{nomeFantasia}</span>
+        <div className="h-20 px-6 flex items-center gap-3 border-b border-border shrink-0">
+          {activeLogo ? (
+            <div className="h-14 w-auto max-w-[180px] overflow-hidden flex items-center justify-center shrink-0">
+              <img 
+                src={activeLogo} 
+                alt="Logo" 
+                className="h-full w-auto object-contain animate-in fade-in zoom-in-95 duration-300" 
+                style={theme === "dark" ? { filter: "drop-shadow(0px 0px 4px rgba(255, 255, 255, 0.85))" } : undefined}
+              />
+            </div>
+          ) : (
+            <div className="w-9 h-9 rounded-lg brand-gradient flex items-center justify-center shrink-0">
+              <Scissors className="w-4.5 h-4.5 text-white" />
+            </div>
+          )}
+          <span className="font-display text-lg font-semibold tracking-tight truncate">{nomeFantasia}</span>
         </div>
         
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -228,11 +267,22 @@ export default function Layout() {
               <Menu className="w-5 h-5" />
             </Button>
             {sidebarCollapsed && (
-              <div className="flex items-center gap-2 animate-in fade-in duration-200">
-                <div className="w-8 h-8 rounded-lg brand-gradient flex items-center justify-center">
-                  <Scissors className="w-4 h-4 text-white" />
-                </div>
-                <span className="font-display text-base font-semibold tracking-tight">{nomeFantasia}</span>
+              <div className="flex items-center gap-3 animate-in fade-in duration-200">
+                {activeLogo ? (
+                  <div className="h-[52px] w-auto max-w-[180px] overflow-hidden flex items-center justify-center shrink-0">
+                    <img 
+                      src={activeLogo} 
+                      alt="Logo" 
+                      className="h-full w-auto object-contain" 
+                      style={theme === "dark" ? { filter: "drop-shadow(0px 0px 4px rgba(255, 255, 255, 0.85))" } : undefined}
+                    />
+                  </div>
+                ) : (
+                  <div className="w-9 h-9 rounded-lg brand-gradient flex items-center justify-center shrink-0">
+                    <Scissors className="w-4.5 h-4.5 text-white" />
+                  </div>
+                )}
+                <span className="font-display text-base font-semibold tracking-tight truncate">{nomeFantasia}</span>
               </div>
             )}
           </div>
