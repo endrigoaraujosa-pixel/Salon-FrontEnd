@@ -16,6 +16,7 @@ export default function ConfiguracoesGerais() {
   const [bloquearValorMenor, setBloquearValorMenor] = useState(false);
   const [permitirEstoqueNegativo, setPermitirEstoqueNegativo] = useState(false);
   const [permitirClienteDuplicado, setPermitirClienteDuplicado] = useState(false);
+  const [trabalharCreditoCliente, setTrabalharCreditoCliente] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -25,6 +26,7 @@ export default function ConfiguracoesGerais() {
         setBloquearValorMenor(!!response.data.bloquear_valor_agendamento_menor);
         setPermitirEstoqueNegativo(!!response.data.permitir_estoque_negativo);
         setPermitirClienteDuplicado(!!response.data.permitir_cliente_duplicado);
+        setTrabalharCreditoCliente(!!response.data.trabalhar_credito_cliente);
       }
     } catch (e) {
       toast.error("Erro ao carregar configurações do sistema");
@@ -43,7 +45,8 @@ export default function ConfiguracoesGerais() {
       await http.post("/configuracoes/sistema", {
         bloquear_valor_agendamento_menor: bloquearValorMenor,
         permitir_estoque_negativo: permitirEstoqueNegativo,
-        permitir_cliente_duplicado: permitirClienteDuplicado
+        permitir_cliente_duplicado: permitirClienteDuplicado,
+        trabalhar_credito_cliente: trabalharCreditoCliente
       });
       toast.success("Configurações salvas com sucesso!");
     } catch (e) {
@@ -170,6 +173,35 @@ export default function ConfiguracoesGerais() {
                 id="permitir-cliente-duplicado"
                 checked={permitirClienteDuplicado}
                 onCheckedChange={setPermitirClienteDuplicado}
+              />
+            </div>
+          </div>
+        </Card>
+
+        {/* Crédito de Clientes Card */}
+        <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
+          <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-5">
+            <Sliders className="w-5 h-5 text-[#84A59D]" />
+            <span>Crédito de Clientes</span>
+          </h3>
+
+          <div className="flex items-start justify-between gap-4 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850">
+            <div className="space-y-1 flex-1">
+              <Label 
+                htmlFor="trabalhar-credito" 
+                className="text-sm font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer"
+              >
+                Trabalhar com Crédito de Clientes
+              </Label>
+              <p className="text-xs text-zinc-550 dark:text-zinc-400 leading-relaxed max-w-xl">
+                Quando configurado como "Sim" (Ativado), habilita a rotina de créditos de clientes no sistema, permitindo que os clientes mantenham um saldo que pode ser carregado manualmente ou gerado de excesso de pagamentos e ser usado posteriormente. Quando desativado, nenhuma opção ou informação de crédito será exibida no sistema.
+              </p>
+            </div>
+            <div className="pt-1">
+              <Switch 
+                id="trabalhar-credito"
+                checked={trabalharCreditoCliente}
+                onCheckedChange={setTrabalharCreditoCliente}
               />
             </div>
           </div>

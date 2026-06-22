@@ -6,7 +6,8 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
-import { ArrowLeft, Plus, Trash2, CheckCircle2, Edit2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, CheckCircle2, Edit2, AlertCircle, AlertTriangle, TrendingUp } from "lucide-react";
+import { Switch } from "../components/ui/switch";
 import StatusBadge from "../components/StatusBadge";
 import PasswordConfirmDialog from "../components/PasswordConfirmDialog";
 import { useAuth } from "../auth";
@@ -38,21 +39,40 @@ export default function VendaPagamento() {
   const [pendingAction, setPendingAction] = useState(null);
   const [autoPayConfirmOpen, setAutoPayConfirmOpen] = useState(false);
   const [finalizarConfirmOpen, setFinalizarConfirmOpen] = useState(false);
+  const [trocoConfirmOpen, setTrocoConfirmOpen] = useState(false);
+  const [trocoConfirmData, setTrocoConfirmData] = useState(null);
 
   // Novos estados para Descontos
   const [descontos, setDescontos] = useState([]);
+  const [trabalharCredito, setTrabalharCredito] = useState(false);
+  const [clienteSaldo, setClienteSaldo] = useState(0);
+  const [gerarCreditoExcedente, setGerarCreditoExcedente] = useState(false);
   const [descontoId, setDescontoId] = useState("");
   const [autorizarDialogOpen, setAutorizarDialogOpen] = useState(false);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [loadingDesconto, setLoadingDesconto] = useState(false);
 
-  const load = () => http.get(`/vendas-diretas/${id}`).then((r) => setV(r.data));
+  const load = () => {
+    http.get(`/vendas-diretas/${id}`).then((r) => {
+      setV(r.data);
+      if (r.data.cliente_id) {
+        http.get(`/clientes/${r.data.cliente_id}`)
+          .then(cRes => setClienteSaldo(Number(cRes.data.saldo_credito || 0)))
+          .catch(() => {});
+      }
+    });
+  };
   useEffect(() => { 
     load(); 
     http.get("/descontos")
       .then(r => setDescontos(r.data.filter(d => d.ativo)))
       .catch(() => {});
+    http.get("/configuracoes/sistema").then((r) => {
+      if (r.data) {
+        setTrabalharCredito(!!r.data.trabalhar_credito_cliente);
+      }
+    }).catch(() => { });
   }, [id]);
 
   useEffect(() => {
@@ -192,7 +212,8 @@ export default function VendaPagamento() {
   };
   
   const totalInformado = novos.filter((p) => Number(p.valor) > 0).reduce((sum, p) => sum + Number(p.valor), 0);
-  const trocoTotal = totalInformado > saldo && novos.some(p => p.forma_pagamento === "dinheiro") ? totalInformado - saldo : 0;
+  const excessoTotal = totalInformado > saldo ? Number((totalInformado - saldo).toFixed(2)) : 0;
+  const trocoTotal = !gerarCreditoExcedente && totalInformado > saldo && novos.some(p => p.forma_pagamento === "dinheiro") ? totalInformado - saldo : 0;
 
   const addLine = () => setNovos([...novos, { valor: "", forma_pagamento: "dinheiro", observacao: "" }]);
   const removeLine = (i) => setNovos(novos.filter((_, x) => x !== i));
@@ -201,22 +222,26 @@ export default function VendaPagamento() {
     if (k === "valor") {
       const valNum = parseFloat(val) || 0;
       if (valNum > saldo && novos[i].forma_pagamento !== "dinheiro") {
-        toast.error("Troco permitido apenas para pagamentos em dinheiro.");
-        return;
+        if (!trabalharCredito || !v?.cliente_id) {
+          toast.error("Troco permitido apenas para pagamentos em dinheiro.");
+          return;
+        }
       }
     }
 
     if (k === "forma_pagamento" && val !== "dinheiro") {
       const valNum = parseFloat(novos[i].valor) || 0;
       if (valNum > saldo) {
-        toast.error("Troco permitido apenas para pagamentos em dinheiro.");
-        setNovos(novos.map((p, x) => x === i ? { 
-          ...p, 
-          forma_pagamento: val,
-          valor: "",
-          observacao: ""
-        } : p));
-        return;
+        if (!trabalharCredito || !v?.cliente_id) {
+          toast.error("Troco permitido apenas para pagamentos em dinheiro.");
+          setNovos(novos.map((p, x) => x === i ? { 
+            ...p, 
+            forma_pagamento: val,
+            valor: "",
+            observacao: ""
+          } : p));
+          return;
+        }
       }
     }
 
@@ -242,16 +267,32 @@ export default function VendaPagamento() {
     }
   };
 
-  const executePayment = async (forceSaldo = false, forceFinalizarConfirm = false, customValidos = null) => {
+  const executePayment = async (forceSaldo = false, forceFinalizarConfirm = false, customValidos = null, forceTrocoConfirm = false) => {
     if (!temPermissaoPagamento) {
       toast.error("Você não tem permissão para realizar pagamentos.");
       return;
     }
     for (const p of novos) {
       const valNum = Number(p.valor) || 0;
+      if (p.forma_pagamento === "credito_cliente") {
+        if (!trabalharCredito) {
+          toast.error("A funcionalidade de Crédito de Clientes está desabilitada.");
+          return;
+        }
+        if (!v?.cliente_id) {
+          toast.error("Para utilizar crédito é necessário identificar o cliente na venda.");
+          return;
+        }
+        if (valNum > clienteSaldo) {
+          toast.error(`Saldo de crédito insuficiente para o cliente (Saldo atual: ${fmtBRL(clienteSaldo)}).`);
+          return;
+        }
+      }
       if (valNum > saldo && p.forma_pagamento !== "dinheiro") {
-        toast.error("Troco permitido apenas para pagamentos em dinheiro.");
-        return;
+        if (!trabalharCredito || !v?.cliente_id || !gerarCreditoExcedente) {
+          toast.error("Troco permitido apenas para pagamentos em dinheiro.");
+          return;
+        }
       }
     }
 
@@ -282,21 +323,26 @@ export default function VendaPagamento() {
     const finalizar = totalInformado >= (saldo - 0.01);
     
     if (finalizar && !forceFinalizarConfirm) {
-      setFinalizarConfirmOpen(true);
-      return;
+      const excessoTotal = totalInformado > saldo ? Number((totalInformado - saldo).toFixed(2)) : 0;
+      if (excessoTotal <= 0) {
+        setFinalizarConfirmOpen(true);
+        return;
+      }
     }
 
     const excessoTotal = totalInformado > saldo ? Number((totalInformado - saldo).toFixed(2)) : 0;
     const temTroco = excessoTotal > 0 && novos.some(p => p.forma_pagamento === "dinheiro");
     
-    if (temTroco && (excessoTotal > 200 || excessoTotal > saldo)) {
-      const confirmacao = window.confirm(
-        `ATENÇÃO: O troco calculado de ${fmtBRL(excessoTotal)} é muito alto.\n\n` +
-        `Valor recebido (bruto): ${fmtBRL(totalInformado)}\n` +
-        `Saldo devido: ${fmtBRL(saldo)}\n\n` +
-        `Deseja prosseguir com o registro do pagamento e entrega do troco?`
-      );
-      if (!confirmacao) return;
+    if (gerarCreditoExcedente && excessoTotal > 0 && !forceTrocoConfirm) {
+      setTrocoConfirmData({ excessoTotal, totalInformado, customValidos: validos, isCredit: true });
+      setTrocoConfirmOpen(true);
+      return;
+    }
+
+    if (!gerarCreditoExcedente && temTroco && !forceTrocoConfirm) {
+      setTrocoConfirmData({ excessoTotal, totalInformado, customValidos: validos, isCredit: false });
+      setTrocoConfirmOpen(true);
+      return;
     }
 
     const payload = { 
@@ -305,13 +351,16 @@ export default function VendaPagamento() {
         forma_pagamento: p.forma_pagamento,
         observacao: p.observacao || ""
       })), 
-      finalizar 
+      finalizar,
+      gerar_credito_excedente: gerarCreditoExcedente
     };
     
     try {
       await http.post(`/vendas-diretas/${id}/pagamentos`, payload);
       
-      if (temTroco) {
+      if (gerarCreditoExcedente) {
+        toast.success(finalizar ? `Venda finalizada! Crédito de ${fmtBRL(excessoTotal)} gerado para o cliente.` : `Pagamento registrado! Crédito de ${fmtBRL(excessoTotal)} gerado.`);
+      } else if (temTroco) {
         toast.success(`Pagamento registrado com sucesso! Devolva o troco de ${fmtBRL(excessoTotal)}`);
       } else {
         toast.success(finalizar ? "Venda finalizada com sucesso!" : `Pagamento registrado! Restante pendente: ${fmtBRL(saldo - totalInformado)}`);
@@ -691,7 +740,9 @@ export default function VendaPagamento() {
                     <Select value={p.forma_pagamento} onValueChange={(val) => updateLine(i, "forma_pagamento", val)} disabled={!temPermissaoPagamento}>
                       <SelectTrigger data-testid={`vpay-forma-${i}`} className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1.5 h-9 text-xs" disabled={!temPermissaoPagamento}><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {FORMAS.map((f) => <SelectItem key={f.v} value={f.v} className="text-xs">{f.l}</SelectItem>)}
+                        {(trabalharCredito && v?.cliente_id 
+                          ? [...FORMAS, { v: "credito_cliente", l: `Crédito do Cliente (Saldo: ${fmtBRL(clienteSaldo)})` }]
+                          : FORMAS).map((f) => <SelectItem key={f.v} value={f.v} className="text-xs">{f.l}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -725,6 +776,23 @@ export default function VendaPagamento() {
 
         {/* Coluna Direita (Sticky Sidebar): Resumo Financeiro Dinâmico, Consolidado e Pagamentos Anteriores */}
         <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-8">
+          {/* Saldo de Crédito do Cliente */}
+          {trabalharCredito && v?.cliente_id && (
+            <div className="bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/20 dark:to-zinc-900 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">💳 Crédito Disponível</span>
+                  <span className="text-[11px] text-emerald-600/70 dark:text-emerald-500/70 mt-0.5 block font-medium">Saldo de crédito do cliente</span>
+                </div>
+                <div className="text-right">
+                  <span className={`text-xl font-black font-mono tracking-tight ${clienteSaldo > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400 dark:text-zinc-500"}`}>
+                    {fmtBRL(clienteSaldo)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Card Resumo Financeiro */}
           <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-5 shadow-sm border-t-4 border-t-[#84A59D]">
             <h3 className="font-display text-sm font-bold text-zinc-850 dark:text-zinc-100 mb-4 flex items-center gap-1.5">
@@ -793,6 +861,39 @@ export default function VendaPagamento() {
                   </div>
                   <div className="text-right">
                     <span className="text-2xl font-black text-emerald-600 dark:text-emerald-455 font-mono tracking-tight">{fmtBRL(trocoTotal)}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Opção de gerar crédito se houver excedente */}
+              {excessoTotal > 0 && trabalharCredito && v?.cliente_id && (
+                <div className="bg-emerald-50/30 dark:bg-emerald-950/10 border border-emerald-200/50 dark:border-emerald-900/40 p-4 rounded-xl space-y-3 shadow-xs">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <Label htmlFor="gerar-credito-switch" className="text-sm font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer">
+                        Gerar crédito para o cliente
+                      </Label>
+                      <p className="text-[11px] text-zinc-555 dark:text-zinc-400 leading-normal">
+                        Deseja converter o valor excedente de {fmtBRL(excessoTotal)} em saldo de crédito para o cliente?
+                      </p>
+                    </div>
+                    <Switch
+                      id="gerar-credito-switch"
+                      checked={gerarCreditoExcedente}
+                      onCheckedChange={(checked) => {
+                        setGerarCreditoExcedente(checked);
+                      }}
+                      className="bg-zinc-200 dark:bg-zinc-800"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {excessoTotal > 0 && !gerarCreditoExcedente && novos.some(p => p.forma_pagamento !== "dinheiro") && (
+                <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/60 p-4 rounded-xl flex items-start gap-2.5 shadow-xs">
+                  <AlertCircle className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                  <div className="text-[11px] text-rose-800 dark:text-rose-350 leading-normal">
+                    <strong>Atenção:</strong> Pagamentos em PIX/Cartão não permitem troco físico. Ative a conversão de crédito ou informe o valor exato.
                   </div>
                 </div>
               )}
@@ -897,7 +998,11 @@ export default function VendaPagamento() {
                 <Label>Forma de pagamento</Label>
                 <Select value={editingPayment.forma_pagamento} onValueChange={(v) => setEditingPayment({ ...editingPayment, forma_pagamento: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{FORMAS.map((f) => <SelectItem key={f.v} value={f.v}>{f.l}</SelectItem>)}</SelectContent>
+                  <SelectContent>
+                    {(trabalharCredito && v?.cliente_id 
+                      ? [...FORMAS, { v: "credito_cliente", l: `Crédito do Cliente (Saldo: ${fmtBRL(clienteSaldo)})` }]
+                      : FORMAS).map((f) => <SelectItem key={f.v} value={f.v}>{f.l}</SelectItem>)}
+                  </SelectContent>
                 </Select>
               </div>
               <div>
@@ -1013,6 +1118,58 @@ export default function VendaPagamento() {
               await executePayment(false, true);
             }} className="bg-[#84A59D] hover:bg-[#6F9189] text-white">
               Confirmar e Concluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de confirmação de troco ou crédito */}
+      <Dialog open={trocoConfirmOpen} onOpenChange={setTrocoConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            {trocoConfirmData?.isCredit ? (
+              <DialogTitle className="font-display text-lg font-bold flex items-center gap-2 text-emerald-600 dark:text-emerald-500">
+                <TrendingUp className="w-6 h-6 text-emerald-500" />
+                Confirmar Geração de Crédito
+              </DialogTitle>
+            ) : (
+              <DialogTitle className="font-display text-lg font-bold flex items-center gap-2 text-amber-600 dark:text-amber-500">
+                <AlertTriangle className="w-6 h-6 text-amber-500" />
+                Finalização de Pagamento
+              </DialogTitle>
+            )}
+          </DialogHeader>
+          <div className="py-4 text-sm text-zinc-650 dark:text-zinc-300 space-y-3">
+            {trocoConfirmData?.isCredit ? (
+              <p className="font-medium text-zinc-900 dark:text-zinc-50">
+                Será gerado um crédito de <span className="text-emerald-600 dark:text-emerald-500 font-bold">{fmtBRL(trocoConfirmData?.excessoTotal)}</span> para o cliente, que ficará disponível para utilização em futuras compras ou serviços.
+              </p>
+            ) : (
+              <p className="font-medium text-zinc-900 dark:text-zinc-50">
+                {trocoConfirmData?.excessoTotal > 200 || trocoConfirmData?.excessoTotal > saldo ? (
+                  <>O troco calculado de <span className="text-amber-600 dark:text-amber-500 font-bold">{fmtBRL(trocoConfirmData?.excessoTotal)}</span> é muito alto.</>
+                ) : (
+                  <>O troco calculado para devolução é de <span className="text-amber-600 dark:text-amber-500 font-bold">{fmtBRL(trocoConfirmData?.excessoTotal)}</span>.</>
+                )}
+              </p>
+            )}
+            <div className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-lg text-xs space-y-1 border border-zinc-150 dark:border-zinc-800">
+              <div>Valor recebido (bruto): <b>{fmtBRL(trocoConfirmData?.totalInformado)}</b></div>
+              <div>Saldo devido: <b>{fmtBRL(saldo)}</b></div>
+            </div>
+            {trocoConfirmData?.isCredit ? (
+              <p>Deseja prosseguir com o registro do pagamento e geração do crédito?</p>
+            ) : (
+              <p>Deseja prosseguir com o registro do pagamento e entrega do troco?</p>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setTrocoConfirmOpen(false)}>Cancelar</Button>
+            <Button onClick={async () => {
+              setTrocoConfirmOpen(false);
+              await executePayment(false, true, trocoConfirmData?.customValidos, true);
+            }} className="bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold">
+              {trocoConfirmData?.isCredit ? "Confirmar e Gerar Crédito" : "Confirmar e Entregar Troco"}
             </Button>
           </DialogFooter>
         </DialogContent>
