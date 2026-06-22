@@ -66,46 +66,6 @@ const PermissionRoute = ({ children, permKey }) => {
   return children;
 };
 
-const generateAppleTouchIcon = (logoUrl) => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = 180;
-      canvas.height = 180;
-      const ctx = canvas.getContext("2d");
-
-      // Draw solid white background to prevent black transparency on iOS
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fillRect(0, 0, 180, 180);
-
-      // Safe zone size: 144x144 (15% padding on each side)
-      const maxDim = 144;
-      let w = img.width;
-      let h = img.height;
-      const ratio = w / h;
-
-      if (w > h) {
-        w = maxDim;
-        h = maxDim / ratio;
-      } else {
-        h = maxDim;
-        w = maxDim * ratio;
-      }
-
-      const x = (180 - w) / 2;
-      const y = (180 - h) / 2;
-
-      ctx.drawImage(img, x, y, w, h);
-      resolve(canvas.toDataURL("image/png"));
-    };
-    img.onerror = () => {
-      resolve(logoUrl);
-    };
-    img.src = logoUrl;
-  });
-};
 
 function App() {
   React.useEffect(() => {
@@ -128,21 +88,7 @@ function App() {
             }
           }
 
-          // Update apple-touch-icon
-          let appleIcon = document.getElementById("apple-touch-icon");
-          if (!appleIcon) {
-            appleIcon = document.querySelector("link[rel='apple-touch-icon']");
-          }
-          if (!appleIcon) {
-            appleIcon = document.createElement("link");
-            appleIcon.id = "apple-touch-icon";
-            appleIcon.rel = "apple-touch-icon";
-            document.head.appendChild(appleIcon);
-          }
-          if (appleIcon) {
-            const processedIcon = await generateAppleTouchIcon(logoUrl);
-            appleIcon.href = processedIcon;
-          }
+
         }
       } catch (err) {
         console.error("Erro ao carregar ícones da empresa:", err);
