@@ -6,7 +6,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
-import { ArrowLeft, Plus, Trash2, CheckCircle2, Edit2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, CheckCircle2, Edit2, AlertCircle, AlertTriangle, TrendingUp } from "lucide-react";
 import { Switch } from "../components/ui/switch";
 import StatusBadge from "../components/StatusBadge";
 import PasswordConfirmDialog from "../components/PasswordConfirmDialog";
@@ -39,6 +39,8 @@ export default function VendaPagamento() {
   const [pendingAction, setPendingAction] = useState(null);
   const [autoPayConfirmOpen, setAutoPayConfirmOpen] = useState(false);
   const [finalizarConfirmOpen, setFinalizarConfirmOpen] = useState(false);
+  const [trocoConfirmOpen, setTrocoConfirmOpen] = useState(false);
+  const [trocoConfirmData, setTrocoConfirmData] = useState(null);
 
   // Novos estados para Descontos
   const [descontos, setDescontos] = useState([]);
@@ -265,7 +267,7 @@ export default function VendaPagamento() {
     }
   };
 
-  const executePayment = async (forceSaldo = false, forceFinalizarConfirm = false, customValidos = null) => {
+  const executePayment = async (forceSaldo = false, forceFinalizarConfirm = false, customValidos = null, forceTrocoConfirm = false) => {
     if (!temPermissaoPagamento) {
       toast.error("Você não tem permissão para realizar pagamentos.");
       return;
@@ -328,14 +330,16 @@ export default function VendaPagamento() {
     const excessoTotal = totalInformado > saldo ? Number((totalInformado - saldo).toFixed(2)) : 0;
     const temTroco = excessoTotal > 0 && novos.some(p => p.forma_pagamento === "dinheiro");
     
-    if (temTroco && (excessoTotal > 200 || excessoTotal > saldo)) {
-      const confirmacao = window.confirm(
-        `ATENÇÃO: O troco calculado de ${fmtBRL(excessoTotal)} é muito alto.\n\n` +
-        `Valor recebido (bruto): ${fmtBRL(totalInformado)}\n` +
-        `Saldo devido: ${fmtBRL(saldo)}\n\n` +
-        `Deseja prosseguir com o registro do pagamento e entrega do troco?`
-      );
-      if (!confirmacao) return;
+    if (gerarCreditoExcedente && excessoTotal > 0 && !forceTrocoConfirm) {
+      setTrocoConfirmData({ excessoTotal, totalInformado, customValidos: validos, isCredit: true });
+      setTrocoConfirmOpen(true);
+      return;
+    }
+
+    if (!gerarCreditoExcedente && temTroco && (excessoTotal > 200 || excessoTotal > saldo) && !forceTrocoConfirm) {
+      setTrocoConfirmData({ excessoTotal, totalInformado, customValidos: validos, isCredit: false });
+      setTrocoConfirmOpen(true);
+      return;
     }
 
     const payload = { 
@@ -351,7 +355,9 @@ export default function VendaPagamento() {
     try {
       await http.post(`/vendas-diretas/${id}/pagamentos`, payload);
       
-      if (temTroco) {
+      if (gerarCreditoExcedente) {
+        toast.success(finalizar ? `Venda finalizada! Crédito de ${fmtBRL(excessoTotal)} gerado para o cliente.` : `Pagamento registrado! Crédito de ${fmtBRL(excessoTotal)} gerado.`);
+      } else if (temTroco) {
         toast.success(`Pagamento registrado com sucesso! Devolva o troco de ${fmtBRL(excessoTotal)}`);
       } else {
         toast.success(finalizar ? "Venda finalizada com sucesso!" : `Pagamento registrado! Restante pendente: ${fmtBRL(saldo - totalInformado)}`);
@@ -1109,6 +1115,54 @@ export default function VendaPagamento() {
               await executePayment(false, true);
             }} className="bg-[#84A59D] hover:bg-[#6F9189] text-white">
               Confirmar e Concluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de confirmação de troco ou crédito */}
+      <Dialog open={trocoConfirmOpen} onOpenChange={setTrocoConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            {trocoConfirmData?.isCredit ? (
+              <DialogTitle className="font-display text-lg font-bold flex items-center gap-2 text-emerald-600 dark:text-emerald-500">
+                <TrendingUp className="w-6 h-6 text-emerald-500" />
+                Confirmar Geração de Crédito
+              </DialogTitle>
+            ) : (
+              <DialogTitle className="font-display text-lg font-bold flex items-center gap-2 text-amber-600 dark:text-amber-500">
+                <AlertTriangle className="w-6 h-6 text-amber-500" />
+                Atenção: Troco Elevado
+              </DialogTitle>
+            )}
+          </DialogHeader>
+          <div className="py-4 text-sm text-zinc-650 dark:text-zinc-300 space-y-3">
+            {trocoConfirmData?.isCredit ? (
+              <p className="font-medium text-zinc-900 dark:text-zinc-50">
+                Será gerado um crédito de <span className="text-emerald-600 dark:text-emerald-500 font-bold">{fmtBRL(trocoConfirmData?.excessoTotal)}</span> para o cliente, que ficará disponível para utilização em futuras compras ou serviços.
+              </p>
+            ) : (
+              <p className="font-medium text-zinc-900 dark:text-zinc-50">
+                O troco calculado de <span className="text-amber-600 dark:text-amber-500 font-bold">{fmtBRL(trocoConfirmData?.excessoTotal)}</span> é muito alto.
+              </p>
+            )}
+            <div className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-lg text-xs space-y-1 border border-zinc-150 dark:border-zinc-800">
+              <div>Valor recebido (bruto): <b>{fmtBRL(trocoConfirmData?.totalInformado)}</b></div>
+              <div>Saldo devido: <b>{fmtBRL(saldo)}</b></div>
+            </div>
+            {trocoConfirmData?.isCredit ? (
+              <p>Deseja prosseguir com o registro do pagamento e geração do crédito?</p>
+            ) : (
+              <p>Deseja prosseguir com o registro do pagamento e entrega do troco?</p>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setTrocoConfirmOpen(false)}>Cancelar</Button>
+            <Button onClick={async () => {
+              setTrocoConfirmOpen(false);
+              await executePayment(false, true, trocoConfirmData?.customValidos, true);
+            }} className="bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold">
+              {trocoConfirmData?.isCredit ? "Confirmar e Gerar Crédito" : "Confirmar e Entregar Troco"}
             </Button>
           </DialogFooter>
         </DialogContent>
