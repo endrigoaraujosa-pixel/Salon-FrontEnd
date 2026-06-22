@@ -14,19 +14,25 @@ export default function Login() {
   const [user, setUser] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [nomeFantasia, setNomeFantasia] = useState("");
+  const [logomarca, setLogomarca] = useState(null);
 
   useEffect(() => {
-    const fetchNomeFantasia = async () => {
+    const fetchEmpresaInfo = async () => {
       try {
         const response = await http.get("/configuracoes/empresa/public");
-        if (response.data && response.data.nome_fantasia) {
-          setNomeFantasia(response.data.nome_fantasia);
+        if (response.data) {
+          if (response.data.nome_fantasia) {
+            setNomeFantasia(response.data.nome_fantasia);
+          }
+          if (response.data.logomarca) {
+            setLogomarca(response.data.logomarca);
+          }
         }
       } catch (err) {
-        console.error("Erro ao carregar nome fantasia da empresa:", err);
+        console.error("Erro ao carregar informações da empresa:", err);
       }
     };
-    fetchNomeFantasia();
+    fetchEmpresaInfo();
   }, []);
 
   const submit = async (e) => {
@@ -53,8 +59,19 @@ export default function Login() {
         />
         <div className="absolute inset-0 bg-black/35" />
         <div className="relative h-full flex flex-col justify-between p-12 text-white">
-          <div className="flex items-start gap-2">
-            <Scissors className="w-6 h-6 mt-0.5" />
+          <div className="flex items-center gap-3">
+            {logomarca ? (
+              <div className="h-10 w-auto max-w-[120px] overflow-hidden flex items-center justify-center shrink-0">
+                <img 
+                  src={logomarca} 
+                  alt="Logo" 
+                  className="h-full w-auto object-contain" 
+                  style={{ filter: "brightness(0) invert(1)" }}
+                />
+              </div>
+            ) : (
+              <Scissors className="w-6 h-6 mt-0.5" />
+            )}
             <div className="flex flex-col">
               <span className="text-xl font-display font-semibold leading-tight">Salon Studio</span>
               {nomeFantasia && (
@@ -77,10 +94,19 @@ export default function Login() {
 
       <div className="flex items-center justify-center p-8">
         <form onSubmit={submit} className="w-full max-w-sm space-y-6" data-testid="login-form">
+          {logomarca && (
+            <div className="flex justify-center mb-4 animate-in fade-in slide-in-from-top-4 duration-500">
+              <img 
+                src={logomarca} 
+                alt="Logo" 
+                className="max-h-28 w-auto object-contain"
+              />
+            </div>
+          )}
           <div>
             {nomeFantasia && (
               <div className="flex items-center gap-1.5 mb-2.5 text-[#84A59D]" data-testid="login-company-right">
-                <Scissors className="w-4 h-4" />
+                {!logomarca && <Scissors className="w-4 h-4" />}
                 <span className="text-xs uppercase font-bold tracking-wider font-display">{nomeFantasia}</span>
               </div>
             )}
