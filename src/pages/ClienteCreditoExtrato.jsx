@@ -7,9 +7,14 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card } from "../components/ui/card";
-import { ArrowLeft, Search, Calendar, RefreshCw, TrendingUp, TrendingDown, DollarSign, Ban, HelpCircle, User } from "lucide-react";
+import { ArrowLeft, Search, Calendar, RefreshCw, TrendingUp, TrendingDown, DollarSign, Ban, HelpCircle, User, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+} from "../components/ui/pagination";
 
 export default function ClienteCreditoExtrato() {
   const [searchParams] = useSearchParams();
@@ -24,6 +29,11 @@ export default function ClienteCreditoExtrato() {
   // Custom Confirmation Dialog for Estorno
   const [confirmEstornoOpen, setConfirmEstornoOpen] = useState(false);
   const [selectedMovForEstorno, setSelectedMovForEstorno] = useState(null);
+  
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
   
   // Filters
   const [selectedClienteId, setSelectedClienteId] = useState(searchParams.get("clienteId") || "");
@@ -49,10 +59,13 @@ export default function ClienteCreditoExtrato() {
     }
   };
 
-  const loadExtrato = async () => {
+  const loadExtrato = async (pageNum = 1) => {
     setLoading(true);
     try {
-      const params = {};
+      const params = {
+        page: pageNum,
+        limit: 50
+      };
       if (startDate) params.data_inicio = startDate;
       if (endDate) params.data_fim = endDate;
       
@@ -61,24 +74,13 @@ export default function ClienteCreditoExtrato() {
         : `/clientes/credito/extrato`; // fallback endpoint for global extrato
         
       const res = await http.get(endpoint, { params });
-      const data = res.data || [];
+      const { data = [], page: resPage = 1, pages = 1, total = 0, totalCreditos = 0, totalDebitos = 0 } = res.data || {};
+      
       setMovements(data);
+      setPage(resPage);
+      setTotalPages(pages);
+      setTotalRecords(total);
       
-      // Calculate statistics based on fetched movements
-      let creditos = 0;
-      let debitos = 0;
-      
-      data.forEach(m => {
-        if (!m.estornado) {
-          const val = Number(m.valor || 0);
-          if (m.tipo_operacao === "C") {
-            creditos += val;
-          } else if (m.tipo_operacao === "D") {
-            debitos += val;
-          }
-        }
-      });
-
       // Find current balance if client is selected
       let balance = 0;
       if (selectedClienteId) {
@@ -86,13 +88,13 @@ export default function ClienteCreditoExtrato() {
         balance = Number(clientRes.data?.saldo_credito || 0);
       } else {
         // Sum of un-reversed movements as helper
-        balance = creditos - debitos;
+        balance = totalCreditos - totalDebitos;
       }
 
       setStats({
         saldoAtual: balance,
-        totalCreditos: creditos,
-        totalDebitos: debitos
+        totalCreditos: totalCreditos,
+        totalDebitos: totalDebitos
       });
 
     } catch (e) {
@@ -102,12 +104,16 @@ export default function ClienteCreditoExtrato() {
     }
   };
 
+  const handlePageChange = (newPage) => {
+    loadExtrato(newPage);
+  };
+
   useEffect(() => {
     loadClients();
   }, []);
 
   useEffect(() => {
-    loadExtrato();
+    loadExtrato(1);
   }, [selectedClienteId, startDate, endDate]);
 
   const handleEstornoClick = (mov) => {
@@ -123,7 +129,7 @@ export default function ClienteCreditoExtrato() {
     try {
       await http.post(`/clientes/${mov.cliente_id}/credito/estornar/${mov.id}`);
       toast.success("Movimentação estornada com sucesso!");
-      loadExtrato();
+      loadExtrato(page);
     } catch (e) {
       toast.error(e.response?.data?.detail || "Erro ao estornar movimentação");
     } finally {
@@ -366,6 +372,70 @@ export default function ClienteCreditoExtrato() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+        {/* Pagination Controls */}
+        {!loading && totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/20">
+            <div className="text-xs text-zinc-500 dark:text-zinc-400">
+              Mostrando <strong>{(page - 1) * 50 + 1}</strong> a <strong>{Math.min(page * 50, totalRecords)}</strong> de <strong>{totalRecords}</strong> registros
+            </div>
+            <Pagination className="mx-0 w-auto">
+              <PaginationContent>
+                <PaginationItem>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={page === 1}
+                    onClick={() => handlePageChange(page - 1)}
+                    className="flex items-center gap-1 text-xs"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span>Anterior</span>
+                  </Button>
+                </PaginationItem>
+
+                {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((p) => {
+                  if (p === 1 || p === totalPages || (p >= page - 2 && p <= page + 2)) {
+                    return (
+                      <PaginationItem key={p}>
+                        <Button
+                          type="button"
+                          variant={p === page ? "outline" : "ghost"}
+                          size="sm"
+                          onClick={() => handlePageChange(p)}
+                          className={`h-8 w-8 text-xs p-0 ${p === page ? 'font-bold border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800' : ''}`}
+                        >
+                          {p}
+                        </Button>
+                      </PaginationItem>
+                    );
+                  } else if (p === page - 3 || p === page + 3) {
+                    return (
+                      <PaginationItem key={p}>
+                        <span className="px-2 text-zinc-400 text-xs">...</span>
+                      </PaginationItem>
+                    );
+                  }
+                  return null;
+                })}
+
+                <PaginationItem>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={page === totalPages}
+                    onClick={() => handlePageChange(page + 1)}
+                    className="flex items-center gap-1 text-xs"
+                  >
+                    <span>Próximo</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           </div>
         )}
       </Card>
