@@ -323,8 +323,11 @@ export default function VendaPagamento() {
     const finalizar = totalInformado >= (saldo - 0.01);
     
     if (finalizar && !forceFinalizarConfirm) {
-      setFinalizarConfirmOpen(true);
-      return;
+      const excessoTotal = totalInformado > saldo ? Number((totalInformado - saldo).toFixed(2)) : 0;
+      if (excessoTotal <= 0) {
+        setFinalizarConfirmOpen(true);
+        return;
+      }
     }
 
     const excessoTotal = totalInformado > saldo ? Number((totalInformado - saldo).toFixed(2)) : 0;
@@ -336,7 +339,7 @@ export default function VendaPagamento() {
       return;
     }
 
-    if (!gerarCreditoExcedente && temTroco && (excessoTotal > 200 || excessoTotal > saldo) && !forceTrocoConfirm) {
+    if (!gerarCreditoExcedente && temTroco && !forceTrocoConfirm) {
       setTrocoConfirmData({ excessoTotal, totalInformado, customValidos: validos, isCredit: false });
       setTrocoConfirmOpen(true);
       return;
@@ -1132,7 +1135,7 @@ export default function VendaPagamento() {
             ) : (
               <DialogTitle className="font-display text-lg font-bold flex items-center gap-2 text-amber-600 dark:text-amber-500">
                 <AlertTriangle className="w-6 h-6 text-amber-500" />
-                Atenção: Troco Elevado
+                Finalização de Pagamento
               </DialogTitle>
             )}
           </DialogHeader>
@@ -1143,7 +1146,11 @@ export default function VendaPagamento() {
               </p>
             ) : (
               <p className="font-medium text-zinc-900 dark:text-zinc-50">
-                O troco calculado de <span className="text-amber-600 dark:text-amber-500 font-bold">{fmtBRL(trocoConfirmData?.excessoTotal)}</span> é muito alto.
+                {trocoConfirmData?.excessoTotal > 200 || trocoConfirmData?.excessoTotal > saldo ? (
+                  <>O troco calculado de <span className="text-amber-600 dark:text-amber-500 font-bold">{fmtBRL(trocoConfirmData?.excessoTotal)}</span> é muito alto.</>
+                ) : (
+                  <>O troco calculado para devolução é de <span className="text-amber-600 dark:text-amber-500 font-bold">{fmtBRL(trocoConfirmData?.excessoTotal)}</span>.</>
+                )}
               </p>
             )}
             <div className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-lg text-xs space-y-1 border border-zinc-150 dark:border-zinc-800">
