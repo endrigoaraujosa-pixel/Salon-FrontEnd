@@ -61,7 +61,7 @@ const getStartOfWeekStr = () => {
 const FORMA_LABELS = {
   dinheiro: "Dinheiro", pix: "PIX",
   cartao_credito: "Cartão Crédito", cartao_debito: "Cartão Débito",
-  vale: "Vale-alimentação", geral: "Total geral"
+  vale: "Vale-alimentação", credito_cliente: "Crédito Cliente", geral: "Total geral"
 };
 
 const PresetButtons = ({ onPick }) => {
@@ -2563,8 +2563,8 @@ export default function Relatorios() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {["dinheiro", "pix", "cartao_credito", "cartao_debito", "vale"].map((k) => (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                {["dinheiro", "pix", "cartao_credito", "cartao_debito", "vale", "credito_cliente"].map((k) => (
                   <div 
                     key={k} 
                     onClick={() => { setDetailsSearchQuery(""); setDetailsForma(k); }}
