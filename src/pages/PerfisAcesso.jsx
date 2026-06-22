@@ -45,7 +45,12 @@ const defaultPermissions = {
     "estoque.movimentar": false,
     "estoque.ajustar": false,
     "estoque.inventariar": false,
-    "estoque.zerar": false
+    "estoque.zerar": false,
+    "credito.extrato": false,
+    "credito.adicionar": false,
+    "credito.remover": false,
+    "credito.estornar": false,
+    "credito.recalcular": false
   }
 };
 
@@ -582,6 +587,106 @@ export default function PerfisAcesso() {
                         form.permissoes.acoes["estoque.zerar"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
                       }`}>
                         {form.permissoes.acoes["estoque.zerar"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </div>
+                    </div>
+
+                    {/* Visualizar Extrato de Crédito */}
+                    <div 
+                      onClick={() => handleToggleAcao("credito.extrato")}
+                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
+                        form.permissoes.acoes["credito.extrato"] 
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
+                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
+                      }`}
+                    >
+                      <div>
+                        <span className="text-xs font-bold block">Visualizar Extrato de Crédito</span>
+                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Visualizar extrato e histórico de movimentações de crédito</span>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
+                        form.permissoes.acoes["credito.extrato"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
+                      }`}>
+                        {form.permissoes.acoes["credito.extrato"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </div>
+                    </div>
+
+                    {/* Adicionar Crédito */}
+                    <div 
+                      onClick={() => handleToggleAcao("credito.adicionar")}
+                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
+                        form.permissoes.acoes["credito.adicionar"] 
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
+                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
+                      }`}
+                    >
+                      <div>
+                        <span className="text-xs font-bold block">Adicionar Crédito</span>
+                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Autoriza adicionar créditos manualmente para clientes</span>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
+                        form.permissoes.acoes["credito.adicionar"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
+                      }`}>
+                        {form.permissoes.acoes["credito.adicionar"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </div>
+                    </div>
+
+                    {/* Remover Crédito */}
+                    <div 
+                      onClick={() => handleToggleAcao("credito.remover")}
+                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
+                        form.permissoes.acoes["credito.remover"] 
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
+                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
+                      }`}
+                    >
+                      <div>
+                        <span className="text-xs font-bold block">Remover Crédito</span>
+                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Autoriza remover/debitar créditos manualmente dos clientes</span>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
+                        form.permissoes.acoes["credito.remover"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
+                      }`}>
+                        {form.permissoes.acoes["credito.remover"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </div>
+                    </div>
+
+                    {/* Estornar Crédito */}
+                    <div 
+                      onClick={() => handleToggleAcao("credito.estornar")}
+                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
+                        form.permissoes.acoes["credito.estornar"] 
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
+                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
+                      }`}
+                    >
+                      <div>
+                        <span className="text-xs font-bold block">Estornar Crédito</span>
+                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Autoriza estornar movimentações de crédito</span>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
+                        form.permissoes.acoes["credito.estornar"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
+                      }`}>
+                        {form.permissoes.acoes["credito.estornar"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      </div>
+                    </div>
+
+                    {/* Recalcular Saldo de Crédito */}
+                    <div 
+                      onClick={() => handleToggleAcao("credito.recalcular")}
+                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
+                        form.permissoes.acoes["credito.recalcular"] 
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
+                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
+                      }`}
+                    >
+                      <div>
+                        <span className="text-xs font-bold block">Recalcular Saldo de Crédito</span>
+                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Autoriza o recálculo administrativo do saldo de crédito</span>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
+                        form.permissoes.acoes["credito.recalcular"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
+                      }`}>
+                        {form.permissoes.acoes["credito.recalcular"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                       </div>
                     </div>
                   </div>

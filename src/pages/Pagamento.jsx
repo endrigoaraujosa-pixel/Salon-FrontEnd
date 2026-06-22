@@ -7,6 +7,7 @@ import { Label } from "../components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
 import { ArrowLeft, Plus, Trash2, CheckCircle2, Edit2, AlertCircle, ShoppingCart } from "lucide-react";
+import { Switch } from "../components/ui/switch";
 import StatusBadge from "../components/StatusBadge";
 import PasswordConfirmDialog from "../components/PasswordConfirmDialog";
 import { useAuth } from "../auth";
@@ -31,6 +32,9 @@ export default function Pagamento() {
   const [ag, setAg] = useState(null);
   const [novos, setNovos] = useState([{ valor: "", forma_pagamento: "dinheiro", observacao: "" }]);
   const [pendingSales, setPendingSales] = useState([]);
+  const [trabalharCredito, setTrabalharCredito] = useState(false);
+  const [clienteSaldo, setClienteSaldo] = useState(0);
+  const [gerarCreditoExcedente, setGerarCreditoExcedente] = useState(false);
   
   // Estados para edição de pagamento
   const [editingPayment, setEditingPayment] = useState(null);
@@ -66,20 +70,27 @@ export default function Pagamento() {
       if (r.data?.cliente_id) {
         http.get("/vendas-diretas", { params: { cliente_id: r.data.cliente_id, status: "pendente" } })
           .then((res) => {
-            // Marca selecionado por padrão para listar tudo claro
             setPendingSales(res.data.map(s => ({ ...s, selected: true })));
-          })
+          }).catch(() => { });
+        
+        http.get(`/clientes/${r.data.cliente_id}`)
+          .then(cRes => setClienteSaldo(Number(cRes.data.saldo_credito || 0)))
           .catch(() => {});
       }
     });
   };
 
-  useEffect(() => { 
-    load(); 
-    http.get("/colaboradores").then((r) => setColaboradores(r.data)).catch(() => {});
+  useEffect(() => {
+    load();
+    http.get("/colaboradores").then(r => setColaboradores(r.data)).catch(() => {});
     http.get("/descontos")
       .then(r => setDescontos(r.data.filter(d => d.ativo)))
       .catch(() => {});
+    http.get("/configuracoes/sistema").then((r) => {
+      if (r.data) {
+        setTrabalharCredito(!!r.data.trabalhar_credito_cliente);
+      }
+    }).catch(() => { });
   }, [id]);
 
   useEffect(() => {
@@ -98,7 +109,8 @@ export default function Pagamento() {
   const totalSalesSelected = pendingSales.filter(s => s.selected).reduce((sum, s) => sum + (s.valor_total - s.valor_pago), 0);
   const saldo = saldoAgendamento + totalSalesSelected;
   const totalInformado = novos.filter((p) => Number(p.valor) > 0).reduce((sum, p) => sum + Number(p.valor), 0);
-  const trocoTotal = totalInformado > saldo && novos.some(p => p.forma_pagamento === "dinheiro") ? totalInformado - saldo : 0;
+  const excessoTotal = totalInformado > saldo ? Number((totalInformado - saldo).toFixed(2)) : 0;
+  const trocoTotal = !gerarCreditoExcedente && totalInformado > saldo && novos.some(p => p.forma_pagamento === "dinheiro") ? totalInformado - saldo : 0;
 
   let descontoMeta = ag?.desconto_aplicado;
   if (typeof descontoMeta === 'string') {
@@ -227,22 +239,26 @@ export default function Pagamento() {
     if (k === "valor") {
       const valNum = parseFloat(v) || 0;
       if (valNum > saldo && novos[i].forma_pagamento !== "dinheiro") {
-        toast.error("Troco permitido apenas para pagamentos em dinheiro.");
-        return;
+        if (!trabalharCredito || !ag?.cliente_id) {
+          toast.error("Troco permitido apenas para pagamentos em dinheiro.");
+          return;
+        }
       }
     }
 
     if (k === "forma_pagamento" && v !== "dinheiro") {
       const valNum = parseFloat(novos[i].valor) || 0;
       if (valNum > saldo) {
-        toast.error("Troco permitido apenas para pagamentos em dinheiro.");
-        setNovos(novos.map((p, x) => x === i ? { 
-          ...p, 
-          forma_pagamento: v,
-          valor: "",
-          observacao: ""
-        } : p));
-        return;
+        if (!trabalharCredito || !ag?.cliente_id) {
+          toast.error("Troco permitido apenas para pagamentos em dinheiro.");
+          setNovos(novos.map((p, x) => x === i ? { 
+            ...p, 
+            forma_pagamento: v,
+            valor: "",
+            observacao: ""
+          } : p));
+          return;
+        }
       }
     }
 
@@ -360,17 +376,17 @@ export default function Pagamento() {
       };
     }
 
-    // 3. Attach the excess to the last distributed cash payment so backend calculates troco
+    // 3. Attach the excess to the last distributed payment
     if (excessoTotal > 0) {
-      let found = false;
       const itemKeys = [...pendingSales.filter(s => s.selected).map(s => s.id), 'agendamento'];
       for (const key of itemKeys) {
         const itemPay = itemPayments[key];
-        if (itemPay && itemPay.pagamentos) {
-          const dinheiroPag = itemPay.pagamentos.find(p => p.forma_pagamento === 'dinheiro');
-          if (dinheiroPag) {
-            dinheiroPag.valor = Number((dinheiroPag.valor + excessoTotal).toFixed(2));
-            found = true;
+        if (itemPay && itemPay.pagamentos && itemPay.pagamentos.length > 0) {
+          const targetPag = gerarCreditoExcedente 
+            ? itemPay.pagamentos[itemPay.pagamentos.length - 1] 
+            : itemPay.pagamentos.find(p => p.forma_pagamento === 'dinheiro');
+          if (targetPag) {
+            targetPag.valor = Number((targetPag.valor + excessoTotal).toFixed(2));
             break;
           }
         }
@@ -383,7 +399,8 @@ export default function Pagamento() {
       if (agPayInfo && agPayInfo.pagamentos.length > 0) {
         await http.post(`/agendamentos/${id}/pagamentos`, {
           pagamentos: agPayInfo.pagamentos,
-          finalizar: agPayInfo.finalizar
+          finalizar: agPayInfo.finalizar,
+          gerar_credito_excedente: gerarCreditoExcedente
         });
       }
 
@@ -392,7 +409,8 @@ export default function Pagamento() {
         if (salePayInfo && salePayInfo.pagamentos.length > 0) {
           await http.post(`/vendas-diretas/${sale.id}/pagamentos`, {
             pagamentos: salePayInfo.pagamentos,
-            finalizar: salePayInfo.finalizar
+            finalizar: salePayInfo.finalizar,
+            gerar_credito_excedente: gerarCreditoExcedente
           });
         }
       }
@@ -421,9 +439,25 @@ export default function Pagamento() {
     }
     for (const p of novos) {
       const valNum = Number(p.valor) || 0;
+      if (p.forma_pagamento === "credito_cliente") {
+        if (!trabalharCredito) {
+          toast.error("A funcionalidade de Crédito de Clientes está desabilitada.");
+          return;
+        }
+        if (!ag?.cliente_id) {
+          toast.error("Para utilizar crédito é necessário identificar o cliente no agendamento.");
+          return;
+        }
+        if (valNum > clienteSaldo) {
+          toast.error(`Saldo de crédito insuficiente para o cliente (Saldo atual: ${fmtBRL(clienteSaldo)}).`);
+          return;
+        }
+      }
       if (valNum > saldo && p.forma_pagamento !== "dinheiro") {
-        toast.error("Troco permitido apenas para pagamentos em dinheiro.");
-        return;
+        if (!trabalharCredito || !ag?.cliente_id || !gerarCreditoExcedente) {
+          toast.error("Troco permitido apenas para pagamentos em dinheiro.");
+          return;
+        }
       }
     }
 
@@ -944,7 +978,11 @@ export default function Pagamento() {
                     <Label className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-400">Forma *</Label>
                     <Select value={p.forma_pagamento} onValueChange={(v) => updateLine(i, "forma_pagamento", v)} disabled={!temPermissaoPagamento}>
                       <SelectTrigger data-testid={`pay-forma-${i}`} className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1 h-9 text-xs" disabled={!temPermissaoPagamento}><SelectValue /></SelectTrigger>
-                      <SelectContent>{FORMAS.map((f) => <SelectItem key={f.v} value={f.v} className="text-xs">{f.l}</SelectItem>)}</SelectContent>
+                      <SelectContent>
+                        {(trabalharCredito && ag?.cliente_id 
+                          ? [...FORMAS, { v: "credito_cliente", l: `Crédito do Cliente (Saldo: ${fmtBRL(clienteSaldo)})` }]
+                          : FORMAS).map((f) => <SelectItem key={f.v} value={f.v} className="text-xs">{f.l}</SelectItem>)}
+                      </SelectContent>
                     </Select>
                   </div>
                   <div className="col-span-4">
@@ -977,6 +1015,23 @@ export default function Pagamento() {
 
         {/* Coluna Direita (Sticky Sidebar): Resumo Financeiro Dinâmico, Consolidado e Pagamentos Anteriores */}
         <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-8">
+          {/* Saldo de Crédito do Cliente */}
+          {trabalharCredito && ag?.cliente_id && (
+            <div className="bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/20 dark:to-zinc-900 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">💳 Crédito Disponível</span>
+                  <span className="text-[11px] text-emerald-600/70 dark:text-emerald-500/70 mt-0.5 block font-medium">Saldo de crédito do cliente</span>
+                </div>
+                <div className="text-right">
+                  <span className={`text-xl font-black font-mono tracking-tight ${clienteSaldo > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400 dark:text-zinc-500"}`}>
+                    {fmtBRL(clienteSaldo)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Card Resumo Financeiro */}
           <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-5 shadow-sm border-t-4 border-t-[#84A59D]">
             <h3 className="font-display text-sm font-bold text-zinc-850 dark:text-zinc-100 mb-4 flex items-center gap-1.5">
@@ -1038,6 +1093,39 @@ export default function Pagamento() {
                   </div>
                   <div className="text-right">
                     <span className="text-2xl font-black text-emerald-600 dark:text-emerald-455 font-mono tracking-tight">{fmtBRL(trocoTotal)}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Opção de gerar crédito se houver excedente */}
+              {excessoTotal > 0 && trabalharCredito && ag?.cliente_id && (
+                <div className="bg-emerald-50/30 dark:bg-emerald-950/10 border border-emerald-200/50 dark:border-emerald-900/40 p-4 rounded-xl space-y-3 shadow-xs">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <Label htmlFor="gerar-credito-switch" className="text-sm font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer">
+                        Gerar crédito para o cliente
+                      </Label>
+                      <p className="text-[11px] text-zinc-555 dark:text-zinc-400 leading-normal">
+                        Deseja converter o valor excedente de {fmtBRL(excessoTotal)} em saldo de crédito para o cliente?
+                      </p>
+                    </div>
+                    <Switch
+                      id="gerar-credito-switch"
+                      checked={gerarCreditoExcedente}
+                      onCheckedChange={(checked) => {
+                        setGerarCreditoExcedente(checked);
+                      }}
+                      className="bg-zinc-200 dark:bg-zinc-800"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {excessoTotal > 0 && !gerarCreditoExcedente && novos.some(p => p.forma_pagamento !== "dinheiro") && (
+                <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/60 p-4 rounded-xl flex items-start gap-2.5 shadow-xs">
+                  <AlertCircle className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                  <div className="text-[11px] text-rose-800 dark:text-rose-355 leading-normal">
+                    <strong>Atenção:</strong> Pagamentos em PIX/Cartão não permitem troco físico. Ative a conversão de crédito ou informe o valor exato.
                   </div>
                 </div>
               )}
@@ -1142,7 +1230,11 @@ export default function Pagamento() {
                 <Label>Forma de pagamento</Label>
                 <Select value={editingPayment.forma_pagamento} onValueChange={(v) => setEditingPayment({ ...editingPayment, forma_pagamento: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{FORMAS.map((f) => <SelectItem key={f.v} value={f.v}>{f.l}</SelectItem>)}</SelectContent>
+                  <SelectContent>
+                    {(trabalharCredito && ag?.cliente_id 
+                      ? [...FORMAS, { v: "credito_cliente", l: `Crédito do Cliente (Saldo: ${fmtBRL(clienteSaldo)})` }]
+                      : FORMAS).map((f) => <SelectItem key={f.v} value={f.v}>{f.l}</SelectItem>)}
+                  </SelectContent>
                 </Select>
               </div>
               <div>

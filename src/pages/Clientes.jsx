@@ -9,7 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Users, Plus, Edit2, Trash2, Search, History, Printer, TrendingUp, Calendar, List, Loader2, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../auth";
 import AuditModal from "../components/AuditModal";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "../components/ui/tooltip";
 
 const blank = { nome: "", telefone: "", email: "", data_nascimento: "", endereco: "", observacoes: "", foto: null };
 
@@ -44,9 +46,54 @@ export default function Clientes() {
   const [whatsappStatus, setWhatsappStatus] = useState(null); // null, 'checking', 'exists', 'not_exists', 'error'
   const nomeInputRef = useRef(null);
   const nav = useNavigate();
+  const { user } = useAuth();
 
   // Controle de Paginação
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Crédito de Clientes States
+  const [trabalharCredito, setTrabalharCredito] = useState(false);
+  const [manualCreditOpen, setManualCreditOpen] = useState(false);
+  const [selectedClienteForCredit, setSelectedClienteForCredit] = useState(null);
+  const [creditOpType, setCreditOpType] = useState("adicionar"); // "adicionar" or "remover"
+  const [creditValue, setCreditValue] = useState("");
+  const [creditReason, setCreditReason] = useState("");
+  const [creditSubmitting, setCreditSubmitting] = useState(false);
+
+  const podeVisualizarExtrato = user?.role === "admin" || !!user?.perfil?.permissoes?.acoes?.["credito.extrato"];
+  const podeAdicionarCredito = user?.role === "admin" || !!user?.perfil?.permissoes?.acoes?.["credito.adicionar"];
+  const podeRemoverCredito = user?.role === "admin" || !!user?.perfil?.permissoes?.acoes?.["credito.remover"];
+
+  const handleCreditoManual = (cliente, op) => {
+    setSelectedClienteForCredit(cliente);
+    setCreditOpType(op);
+    setCreditValue("");
+    setCreditReason("");
+    setManualCreditOpen(true);
+  };
+
+  const submitManualCredit = async () => {
+    if (!creditValue || Number(creditValue) <= 0) {
+      toast.error("Por favor, informe um valor maior que zero.");
+      return;
+    }
+    setCreditSubmitting(true);
+    try {
+      const endpoint = `/clientes/${selectedClienteForCredit.id}/credito/${creditOpType}`;
+      await http.post(endpoint, {
+        valor: Number(creditValue),
+        observacao: creditReason,
+        motivo: creditReason
+      });
+      toast.success("Movimentação de crédito realizada com sucesso!");
+      setManualCreditOpen(false);
+      load();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Erro ao realizar movimentação de crédito");
+    } finally {
+      setCreditSubmitting(false);
+    }
+  };
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
@@ -105,6 +152,7 @@ export default function Clientes() {
     http.get("/configuracoes/sistema").then((r) => {
       if (r.data) {
         setPermitirClienteDuplicado(!!r.data.permitir_cliente_duplicado);
+        setTrabalharCredito(!!r.data.trabalhar_credito_cliente);
       }
     }).catch(() => { });
   };
@@ -513,7 +561,8 @@ export default function Clientes() {
   const paginatedItems = filtered.slice((activePage - 1) * itemsPerPage, activePage * itemsPerPage);
 
   return (
-    <div className="p-6 lg:p-8 fade-in">
+    <TooltipProvider>
+      <div className="p-6 lg:p-8 fade-in">
       <PageHeader
         overline="Cadastro"
         title={
@@ -677,13 +726,14 @@ export default function Clientes() {
       ) : (
         <>
           {/* Visualização em Tabela para Desktop */}
-          <div className="hidden sm:block bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-xs">
+          <div className="hidden sm:block bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-x-auto shadow-xs">
             <table className="w-full text-sm">
               <thead className="bg-zinc-50 dark:bg-zinc-900 text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">Nome</th>
                   <th className="px-4 py-3 text-left font-semibold">Telefone</th>
                   <th className="px-4 py-3 text-left font-semibold">Email</th>
+                  {trabalharCredito && <th className="px-4 py-3 text-left font-semibold">Saldo de Crédito</th>}
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
@@ -704,11 +754,125 @@ export default function Clientes() {
                     </td>
                     <td className="px-4 py-3 font-mono">{c.telefone || "-"}</td>
                     <td className="px-4 py-3">{c.email || "-"}</td>
+                    {trabalharCredito && (
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-emerald-600 dark:text-emerald-450">
+                          R$ {Number(c.saldo_credito || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </div>
+                        {c.data_ultima_movimentacao_credito && (
+                          <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-normal mt-0.5">
+                            Última mov.: {new Date(c.data_ultima_movimentacao_credito).toLocaleDateString("pt-BR")}
+                          </div>
+                        )}
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => nav(`/clientes/${c.id}/historico`)} title="Histórico" className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><History className="w-4 h-4" /></Button>
-                        <Button size="sm" variant="ghost" onClick={async() =>  await edit(c)} data-testid={`edit-cliente-${c.id}`} title="Editar" className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><Edit2 className="w-4 h-4" /></Button>
-                        <Button size="sm" variant="ghost" onClick={() => del(c.id)} data-testid={`delete-cliente-${c.id}`} title="Excluir" className="text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"><Trash2 className="w-4 h-4" /></Button>
+                      <div className="flex items-center justify-end gap-3.5">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => nav(`/clientes/${c.id}/historico`)}
+                              className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 p-2 h-8 w-8"
+                            >
+                              <History className="w-4 h-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Histórico de Atendimentos</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        
+                        {trabalharCredito && (
+                          <>
+                            {podeVisualizarExtrato && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => nav(`/clientes/credito/extrato?clienteId=${c.id}`)}
+                                    className="text-[#84A59D] hover:text-[#6F9189] dark:text-[#84A59D] p-2 h-8 w-8"
+                                  >
+                                    <TrendingUp className="w-4 h-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Extrato de Crédito</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            {podeAdicionarCredito && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleCreditoManual(c, 'adicionar')}
+                                    className="text-emerald-500 hover:text-emerald-600 p-2 h-8 w-8"
+                                  >
+                                    <Plus className="w-4 h-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Adicionar Crédito</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            {podeRemoverCredito && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleCreditoManual(c, 'remover')}
+                                    className="text-rose-500 hover:text-rose-600 p-2 h-8 w-8"
+                                  >
+                                    <Plus className="w-4 h-4 rotate-45" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Remover/Débito de Crédito</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </>
+                        )}
+                        
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={async () => await edit(c)}
+                              data-testid={`edit-cliente-${c.id}`}
+                              className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 p-2 h-8 w-8"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Editar Cliente</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => del(c.id)}
+                              data-testid={`delete-cliente-${c.id}`}
+                              className="text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 p-2 h-8 w-8"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Excluir Cliente</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                     </td>
                   </tr>
@@ -748,9 +912,62 @@ export default function Clientes() {
                     <span className="font-semibold text-zinc-400 dark:text-zinc-500 w-16 uppercase tracking-wider text-[9px]">Email:</span>
                     <span className="truncate text-zinc-800 dark:text-zinc-200">{c.email || "Não informado"}</span>
                   </div>
+                  {trabalharCredito && (
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-zinc-400 dark:text-zinc-500 w-16 uppercase tracking-wider text-[9px]">Saldo:</span>
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-450">
+                          R$ {Number(c.saldo_credito || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      {c.data_ultima_movimentacao_credito && (
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-zinc-400 dark:text-zinc-500 w-16 uppercase tracking-wider text-[9px]">Últ. Mov.:</span>
+                          <span className="text-zinc-700 dark:text-zinc-300 font-normal">
+                            {new Date(c.data_ultima_movimentacao_credito).toLocaleDateString("pt-BR")}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                <div className="flex items-center gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800 mt-1">
+                {trabalharCredito && (podeVisualizarExtrato || podeAdicionarCredito || podeRemoverCredito) && (
+                  <div className="flex items-center gap-3 pt-2 border-t border-zinc-100 dark:border-zinc-800 mt-1">
+                    {podeVisualizarExtrato && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => nav(`/clientes/credito/extrato?clienteId=${c.id}`)}
+                        className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+                      >
+                        <TrendingUp className="w-3.5 h-3.5" /> Extrato
+                      </Button>
+                    )}
+                    {podeAdicionarCredito && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleCreditoManual(c, 'adicionar')}
+                        className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-emerald-600 dark:text-emerald-450"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Crédito
+                      </Button>
+                    )}
+                    {podeRemoverCredito && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleCreditoManual(c, 'remover')}
+                        className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-rose-600 dark:text-rose-450"
+                      >
+                        <Plus className="w-3.5 h-3.5 rotate-45" /> Débito
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3 pt-2 border-t border-zinc-100 dark:border-zinc-800 mt-1">
                   <Button
                     size="sm"
                     variant="outline"
@@ -773,9 +990,9 @@ export default function Clientes() {
                     variant="outline"
                     onClick={() => del(c.id)}
                     data-testid={`delete-cliente-card-${c.id}`}
-                    className="h-9 px-3 border-zinc-200 dark:border-zinc-700 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center justify-center"
+                    className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" /> Excluir
                   </Button>
                 </div>
               </div>
@@ -1032,6 +1249,75 @@ export default function Clientes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+
+      {/* Modal de Crédito Manual */}
+      <Dialog open={manualCreditOpen} onOpenChange={setManualCreditOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              {creditOpType === "adicionar" ? "Adicionar Crédito Manual" : "Remover Crédito Manual"}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedClienteForCredit && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-1">
+                <span className="text-xs text-zinc-450 dark:text-zinc-500 font-bold block uppercase tracking-wide">Cliente</span>
+                <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{selectedClienteForCredit.nome}</span>
+              </div>
+              
+              <div className="bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-900/60 rounded-xl p-3.5 flex flex-col gap-1.5">
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-450 shrink-0 mt-0.5" />
+                  <div className="text-xs text-emerald-850 dark:text-emerald-350 leading-normal">
+                    <strong>Saldo atual:</strong> R$ {Number(selectedClienteForCredit.saldo_credito || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                {selectedClienteForCredit.data_ultima_movimentacao_credito && (
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400 pl-6.5">
+                    <strong>Última movimentação:</strong> {new Date(selectedClienteForCredit.data_ultima_movimentacao_credito).toLocaleDateString("pt-BR")} às {new Date(selectedClienteForCredit.data_ultima_movimentacao_credito).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="credit-value" className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide">Valor (R$)</Label>
+                <Input
+                  id="credit-value"
+                  type="number"
+                  placeholder="0,00"
+                  step="0.01"
+                  min="0.01"
+                  value={creditValue}
+                  onChange={(e) => setCreditValue(e.target.value)}
+                  className="h-11 font-bold text-[15px]"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="credit-reason" className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wide">Motivo / Observação</Label>
+                <Textarea
+                  id="credit-reason"
+                  placeholder="Descreva o motivo desta movimentação..."
+                  value={creditReason}
+                  onChange={(e) => setCreditReason(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setManualCreditOpen(false)}>Cancelar</Button>
+            <Button 
+              onClick={submitManualCredit} 
+              disabled={creditSubmitting}
+              className={`${creditOpType === "adicionar" ? "bg-emerald-600 hover:bg-emerald-700 text-white font-semibold" : "bg-rose-600 hover:bg-rose-700 text-white font-semibold"}`}
+            >
+              {creditSubmitting ? "Gravando..." : "Confirmar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      </div>
+    </TooltipProvider>
   );
 }

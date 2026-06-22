@@ -37,6 +37,7 @@ import CadastroTipoPagamento from "./pages/CadastroTipoPagamento";
 import CadastroDescontos from "./pages/CadastroDescontos";
 import Cadastros from "./pages/Cadastros";
 import ConfiguracoesMotivosEstoque from "./pages/ConfiguracoesMotivosEstoque";
+import ClienteCreditoExtrato from "./pages/ClienteCreditoExtrato";
 
 
 
@@ -79,6 +80,7 @@ function App() {
               <Route path="/agenda" element={<Agenda />} />
               <Route path="/clientes" element={<Clientes />} />
               <Route path="/clientes/:id/historico" element={<ClienteHistorico />} />
+              <Route path="/clientes/credito/extrato" element={<ClienteCreditoExtrato />} />
               <Route path="/colaboradores" element={<AdminRoute><Colaboradores /></AdminRoute>} />
               <Route path="/servicos" element={<Servicos />} />
               <Route path="/produtos" element={<Produtos />} />
