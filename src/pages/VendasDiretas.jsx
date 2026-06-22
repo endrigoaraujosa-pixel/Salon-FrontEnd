@@ -8,10 +8,15 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from ".
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import VendaReceiptModal from "../components/VendaReceiptModal";
 import AuditModal from "../components/AuditModal";
-import { ShoppingBag, ShoppingCart, Plus, Minus, Trash2, CreditCard, Calendar, Lock, Search, History } from "lucide-react";
+import { ShoppingBag, ShoppingCart, Plus, Minus, Trash2, CreditCard, Calendar, Lock, Search, History, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate, useLocation } from "react-router-dom";
 import SearchableSelect from "../components/SearchableSelect";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+} from "../components/ui/pagination";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtDT = (s) => new Date(s).toLocaleString("pt-BR");
@@ -70,12 +75,56 @@ export default function VendasDiretas() {
   const nav = useNavigate();
   const location = useLocation();
 
-  const load = () => {
-    http.get("/vendas-diretas").then((r) => setList(r.data));
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+
+  const load = (pageNum = page) => {
+    http.get("/vendas-diretas", {
+      params: {
+        page: pageNum,
+        limit: 50,
+        data_inicio: startDate,
+        data_fim: endDate,
+        cliente_id: filterClienteId,
+        colaborador_id: filterColaboradorId,
+        produto_id: filterProdutoId,
+        search: searchQuery
+      }
+    }).then((r) => {
+      setList(r.data.data || []);
+      setPage(r.data.page || 1);
+      setTotalPages(r.data.pages || 1);
+      setTotalRecords(r.data.total || 0);
+    });
   };
 
+  const prevFilters = useRef({ startDate, endDate, filterProdutoId, filterColaboradorId, filterClienteId, searchQuery });
+
   useEffect(() => {
-    load();
+    const filtersChanged =
+      prevFilters.current.startDate !== startDate ||
+      prevFilters.current.endDate !== endDate ||
+      prevFilters.current.filterProdutoId !== filterProdutoId ||
+      prevFilters.current.filterColaboradorId !== filterColaboradorId ||
+      prevFilters.current.filterClienteId !== filterClienteId ||
+      prevFilters.current.searchQuery !== searchQuery;
+
+    prevFilters.current = { startDate, endDate, filterProdutoId, filterColaboradorId, filterClienteId, searchQuery };
+
+    if (filtersChanged) {
+      if (page !== 1) {
+        setPage(1);
+      } else {
+        load(1);
+      }
+    } else {
+      load(page);
+    }
+  }, [page, startDate, endDate, filterProdutoId, filterColaboradorId, filterClienteId, searchQuery]);
+
+  useEffect(() => {
     // Removido o filtro p.ativo (não existe na tabela)
     http.get("/produtos").then((r) => setProdutos(r.data));
     http.get("/colaboradores").then((r) => setColaboradores(r.data));
@@ -406,51 +455,7 @@ export default function VendasDiretas() {
     }
   };
 
-  const filteredList = list.filter((v) => {
-    // 0. Search Query Filter (name, number, client, collaborator)
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const numStr = v.numero_venda ? String(v.numero_venda).padStart(6, '0') : '';
-      const formattedNum = v.numero_venda ? `${numStr} | V`.toLowerCase() : '';
-      const matches =
-        (v.produto_nome && v.produto_nome.toLowerCase().includes(query)) ||
-        (v.cliente_nome && v.cliente_nome.toLowerCase().includes(query)) ||
-        (v.colaborador_nome && v.colaborador_nome.toLowerCase().includes(query)) ||
-        numStr.includes(query) ||
-        formattedNum.includes(query);
-      if (!matches) return false;
-    }
-    // 1. Date Filter
-    if (!v.data_venda) return false;
-    const d = new Date(v.data_venda);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const saleDateStr = `${year}-${month}-${day}`;
-    const matchesDate = saleDateStr >= startDate && saleDateStr <= endDate;
-    if (!matchesDate) return false;
-
-    // 2. Product Filter
-    if (filterProdutoId !== "all" && v.produto_id !== filterProdutoId) {
-      return false;
-    }
-
-    // 3. Collaborator Filter
-    if (filterColaboradorId !== "all" && v.colaborador_id !== filterColaboradorId) {
-      return false;
-    }
-
-    // 4. Client Filter
-    if (filterClienteId !== "all") {
-      if (filterClienteId === "none") {
-        if (v.cliente_id) return false;
-      } else if (v.cliente_id !== filterClienteId) {
-        return false;
-      }
-    }
-
-    return true;
-  });
+  const filteredList = list;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 fade-in w-full overflow-x-hidden">
@@ -987,6 +992,71 @@ export default function VendasDiretas() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-4 border border-zinc-200 rounded-xl bg-white dark:bg-zinc-900 shadow-sm mt-4">
+              <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                Mostrando <strong>{(page - 1) * 50 + 1}</strong> a <strong>{Math.min(page * 50, totalRecords)}</strong> de <strong>{totalRecords}</strong> registros
+              </div>
+              <Pagination className="mx-0 w-auto">
+                <PaginationContent>
+                  <PaginationItem>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={page === 1}
+                      onClick={() => setPage(page - 1)}
+                      className="flex items-center gap-1 text-xs"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span>Anterior</span>
+                    </Button>
+                  </PaginationItem>
+
+                  {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((p) => {
+                    if (p === 1 || p === totalPages || (p >= page - 2 && p <= page + 2)) {
+                      return (
+                        <PaginationItem key={p}>
+                          <Button
+                            type="button"
+                            variant={p === page ? "outline" : "ghost"}
+                            size="sm"
+                            onClick={() => setPage(p)}
+                            className={`h-8 w-8 text-xs p-0 ${p === page ? 'font-bold border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800' : ''}`}
+                          >
+                            {p}
+                          </Button>
+                        </PaginationItem>
+                      );
+                    } else if (p === page - 3 || p === page + 3) {
+                      return (
+                        <PaginationItem key={p}>
+                          <span className="px-2 text-zinc-400 text-xs">...</span>
+                        </PaginationItem>
+                      );
+                    }
+                    return null;
+                  })}
+
+                  <PaginationItem>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={page === totalPages}
+                      onClick={() => setPage(page + 1)}
+                      className="flex items-center gap-1 text-xs"
+                    >
+                      <span>Próximo</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </div>
       )}
 
