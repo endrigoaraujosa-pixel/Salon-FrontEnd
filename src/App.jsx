@@ -38,8 +38,7 @@ import CadastroDescontos from "./pages/CadastroDescontos";
 import Cadastros from "./pages/Cadastros";
 import ConfiguracoesMotivosEstoque from "./pages/ConfiguracoesMotivosEstoque";
 import ClienteCreditoExtrato from "./pages/ClienteCreditoExtrato";
-
-
+import http from "./api";
 
 const Protected = ({ children }) => {
   const { user, loading } = useAuth();
@@ -68,8 +67,39 @@ const PermissionRoute = ({ children, permKey }) => {
 };
 
 function App() {
+  React.useEffect(() => {
+    const updateFavicon = async () => {
+      try {
+        const response = await http.get("/configuracoes/empresa/public");
+        if (response.data && response.data.logomarca) {
+          const logoUrl = response.data.logomarca;
+          let favicon = document.getElementById("favicon");
+          if (!favicon) {
+            favicon = document.querySelector("link[rel*='icon']");
+          }
+          if (favicon) {
+            favicon.href = logoUrl;
+            if (logoUrl.startsWith("data:image/")) {
+              const mime = logoUrl.substring(logoUrl.indexOf(":") + 1, logoUrl.indexOf(";"));
+              favicon.type = mime;
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao carregar favicon da empresa:", err);
+      }
+    };
+    
+    updateFavicon();
+    window.addEventListener("empresa_updated", updateFavicon);
+    return () => {
+      window.removeEventListener("empresa_updated", updateFavicon);
+    };
+  }, []);
+
   return (
     <ThemeProvider>
+
       <AuthProvider>
         <BrowserRouter>
           <Toaster position="top-right" richColors />
