@@ -17,6 +17,7 @@ export default function ConfiguracoesGerais() {
   const [permitirEstoqueNegativo, setPermitirEstoqueNegativo] = useState(false);
   const [permitirClienteDuplicado, setPermitirClienteDuplicado] = useState(false);
   const [trabalharCreditoCliente, setTrabalharCreditoCliente] = useState(false);
+  const [descontarTaxaCartaoComissao, setDescontarTaxaCartaoComissao] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -27,6 +28,7 @@ export default function ConfiguracoesGerais() {
         setPermitirEstoqueNegativo(!!response.data.permitir_estoque_negativo);
         setPermitirClienteDuplicado(!!response.data.permitir_cliente_duplicado);
         setTrabalharCreditoCliente(!!response.data.trabalhar_credito_cliente);
+        setDescontarTaxaCartaoComissao(!!response.data.descontar_taxa_cartao_comissao);
       }
     } catch (e) {
       toast.error("Erro ao carregar configurações do sistema");
@@ -46,7 +48,8 @@ export default function ConfiguracoesGerais() {
         bloquear_valor_agendamento_menor: bloquearValorMenor,
         permitir_estoque_negativo: permitirEstoqueNegativo,
         permitir_cliente_duplicado: permitirClienteDuplicado,
-        trabalhar_credito_cliente: trabalharCreditoCliente
+        trabalhar_credito_cliente: trabalharCreditoCliente,
+        descontar_taxa_cartao_comissao: descontarTaxaCartaoComissao
       });
       toast.success("Configurações salvas com sucesso!");
     } catch (e) {
@@ -202,6 +205,35 @@ export default function ConfiguracoesGerais() {
                 id="trabalhar-credito"
                 checked={trabalharCreditoCliente}
                 onCheckedChange={setTrabalharCreditoCliente}
+              />
+            </div>
+          </div>
+        </Card>
+
+        {/* Dedução de Taxas nas Comissões Card */}
+        <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
+          <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-5">
+            <Sliders className="w-5 h-5 text-[#84A59D]" />
+            <span>Comissões e Taxas de Cartão</span>
+          </h3>
+
+          <div className="flex items-start justify-between gap-4 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850">
+            <div className="space-y-1 flex-1">
+              <Label 
+                htmlFor="descontar-taxa-cartao" 
+                className="text-sm font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer"
+              >
+                Descontar taxa administrativa do cartão da comissão dos profissionais
+              </Label>
+              <p className="text-xs text-zinc-550 dark:text-zinc-400 leading-relaxed max-w-xl">
+                Quando ativado, a taxa administrativa cobrada pelas adquirentes de cartão de crédito/débito será rateada proporcionalmente e deduzida da base de cálculo de comissão do profissional que executou os serviços pagos via cartão.
+              </p>
+            </div>
+            <div className="pt-1">
+              <Switch 
+                id="descontar-taxa-cartao"
+                checked={descontarTaxaCartaoComissao}
+                onCheckedChange={setDescontarTaxaCartaoComissao}
               />
             </div>
           </div>

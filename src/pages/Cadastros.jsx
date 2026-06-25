@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "../components/Page";
 import { Card } from "../components/ui/card";
-import { CreditCard, Users, Tag, ChevronRight, Layers } from "lucide-react";
+import { CreditCard, Users, Tag, ChevronRight, Layers, Landmark } from "lucide-react";
 
 export default function Cadastros() {
   const navigate = useNavigate();
@@ -25,6 +25,15 @@ export default function Cadastros() {
       active: true,
       color: "text-indigo-500",
       bgColor: "bg-indigo-50 dark:bg-indigo-950/20"
+    },
+    {
+      title: "Adquirentes",
+      description: "Cadastre e configure as adquirentes (maquinetas) de cartão utilizadas pelo estabelecimento.",
+      icon: Landmark,
+      route: "/cadastros/adquirentes",
+      active: true,
+      color: "text-violet-500",
+      bgColor: "bg-violet-50 dark:bg-violet-950/20"
     },
     {
       title: "Descontos",
