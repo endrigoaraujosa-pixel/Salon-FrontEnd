@@ -497,6 +497,8 @@ export default function Comissoes() {
         </div>
         `;
       } else {
+        const showCardFee = !!fetchedData.descontar_taxa_cartao_comissao;
+
         if (!relatorioExibirDetalhamento) {
           htmlContent += `
           <div class="report-title-section">Resumo Consolidado de Comissões</div>
@@ -504,12 +506,13 @@ export default function Comissoes() {
             <thead>
               <tr>
                 <th>Profissional</th>
-                <th class="center" style="width: 100px;">Atendimentos</th>
-                <th class="numeric" style="width: 130px;">Serviços Executados</th>
-                <th class="numeric" style="width: 120px;">Dedução Insumos</th>
-                <th class="numeric" style="width: 120px;">Vendas de Produtos</th>
-                <th class="numeric" style="width: 130px;">Comissão Líquida</th>
-                <th class="center" style="width: 110px;">Situação</th>
+                <th class="center" style="width: 90px;">Atendimentos</th>
+                <th class="numeric" style="width: 120px;">Serviços Executados</th>
+                <th class="numeric" style="width: 110px;">Dedução Insumos</th>
+                ${showCardFee ? `<th class="numeric" style="width: 110px;">Taxa Cartão</th>` : ""}
+                <th class="numeric" style="width: 110px;">Vendas de Produtos</th>
+                <th class="numeric" style="width: 120px;">Comissão Líquida</th>
+                <th class="center" style="width: 100px;">Situação</th>
               </tr>
             </thead>
             <tbody>
@@ -517,6 +520,7 @@ export default function Comissoes() {
 
           filteredComissoes.forEach(c => {
             const colabCustoInsumos = c.detalhes?.reduce((sum, d) => sum + (d.custo_produtos || 0), 0) || 0;
+            const colabTaxaCartao = c.detalhes?.reduce((sum, d) => sum + (d.taxa_cartao_descontada || 0), 0) || 0;
             const statusLabel = c.pago 
               ? `<span class="status-badge status-pago">Pago</span>` 
               : `<span class="status-badge status-pendente">Pendente</span>`;
@@ -527,6 +531,7 @@ export default function Comissoes() {
                 <td class="center font-mono font-semibold">${c.atendimentos}</td>
                 <td class="numeric font-mono">${fmtBRL(c.total_principal + c.total_auxiliar)}</td>
                 <td class="numeric font-mono text-danger">-${fmtBRL(colabCustoInsumos)}</td>
+                ${showCardFee ? `<td class="numeric font-mono text-danger">-${fmtBRL(colabTaxaCartao)}</td>` : ""}
                 <td class="numeric font-mono">${fmtBRL(c.total_produtos || 0)}</td>
                 <td class="numeric font-mono font-bold" style="color: #3A4F4A;">${fmtBRL(c.valor_comissao)}</td>
                 <td class="center">${statusLabel}</td>
@@ -536,6 +541,7 @@ export default function Comissoes() {
 
           const totalServicos = filteredComissoes.reduce((acc, c) => acc + c.total_principal + c.total_auxiliar, 0);
           const totalVendas = filteredComissoes.reduce((acc, c) => acc + (c.total_produtos || 0), 0);
+          const totalTaxasGeral = filteredComissoes.reduce((acc, c) => acc + (c.detalhes?.reduce((sum, d) => sum + (d.taxa_cartao_descontada || 0), 0) || 0), 0);
 
           htmlContent += `
               <tr class="total-row">
@@ -543,6 +549,7 @@ export default function Comissoes() {
                 <td class="center font-mono">${totalAtendimentos}</td>
                 <td class="numeric font-mono">${fmtBRL(totalFaturamento)}</td>
                 <td class="numeric font-mono text-danger">-${fmtBRL(totalInsumos)}</td>
+                ${showCardFee ? `<td class="numeric font-mono text-danger">-${fmtBRL(totalTaxasGeral)}</td>` : ""}
                 <td class="numeric font-mono">${fmtBRL(totalVendas)}</td>
                 <td class="numeric font-mono font-bold">${fmtBRL(totalComissoes)}</td>
                 <td class="center">—</td>
@@ -557,6 +564,7 @@ export default function Comissoes() {
 
           filteredComissoes.forEach(c => {
             const colabCustoInsumos = c.detalhes?.reduce((sum, d) => sum + (d.custo_produtos || 0), 0) || 0;
+            const colabTaxaCartao = c.detalhes?.reduce((sum, d) => sum + (d.taxa_cartao_descontada || 0), 0) || 0;
             const soloRate = c.comissao_sozinho != null ? c.comissao_sozinho : c.comissao_principal;
             
             htmlContent += `
@@ -580,6 +588,7 @@ export default function Comissoes() {
                     <th>Descrição Serviço / Produto</th>
                     <th class="numeric" style="width: 80px;">Valor Item</th>
                     <th class="numeric" style="width: 80px;">Insumo</th>
+                    ${showCardFee ? `<th class="numeric" style="width: 80px;">Taxa Cartão</th>` : ""}
                     <th class="numeric" style="width: 80px;">Base Comis.</th>
                     <th class="numeric" style="width: 50px;">%</th>
                     <th class="numeric" style="width: 80px;">Comissão</th>
@@ -593,7 +602,7 @@ export default function Comissoes() {
             if (detalhes.length === 0) {
               htmlContent += `
                 <tr>
-                  <td colspan="11" style="text-align: center; color: #9ca3af; padding: 15px; font-style: italic;">
+                  <td colspan="${showCardFee ? "12" : "11"}" style="text-align: center; color: #9ca3af; padding: 15px; font-style: italic;">
                     Nenhuma movimentação individual registrada no período.
                   </td>
                 </tr>
@@ -625,10 +634,11 @@ export default function Comissoes() {
                     <td style="color: #4b5563;">${item.papel}</td>
                     <td style="font-weight: 600; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                       ${item.descricao}
-                      ${item.insumos_pendentes ? `<span style="color: #ef4444; font-size: 7px; font-weight: 700; margin-left: 3px;">⚠️ INSUMOS PENDENTES</span>` : ''}
+                      ${item.insumos_pendentes ? `<span style="color: #ef4444; font-size: 7px; font-weight: 700; margin-left: 3px;">⚠️ INSUMOS PENDENTES</span>` : ""}
                     </td>
                     <td class="numeric font-mono">${fmtBRL(item.valor_movimentacao)}</td>
-                    <td class="numeric font-mono text-danger">${item.tipo === 'servico' ? `-${fmtBRL(item.custo_produtos || 0)}` : '—'}</td>
+                    <td class="numeric font-mono text-danger">${item.tipo === 'servico' ? `-${fmtBRL(item.custo_produtos || 0)}` : "—"}</td>
+                    ${showCardFee ? `<td class="numeric font-mono text-danger">${item.tipo === 'servico' && item.descontou_taxa_cartao ? `-${fmtBRL(item.taxa_cartao_descontada || 0)}` : "—"}</td>` : ""}
                     <td class="numeric font-mono">${fmtBRL(baseCom)}</td>
                     <td class="numeric font-mono font-semibold">${item.percentual_aplicado}%</td>
                     <td class="numeric font-mono font-bold" style="color: #047857;">${fmtBRL(item.valor_comissao)}</td>
@@ -643,10 +653,11 @@ export default function Comissoes() {
                     <td colspan="5">RESUMO: ${c.colaborador_nome}</td>
                     <td class="numeric font-mono">${fmtBRL(c.total_principal + c.total_auxiliar)}</td>
                     <td class="numeric font-mono text-danger">-${fmtBRL(colabCustoInsumos)}</td>
+                    ${showCardFee ? `<td class="numeric font-mono text-danger">-${fmtBRL(colabTaxaCartao)}</td>` : ""}
                     <td class="numeric font-mono">${fmtBRL((c.total_principal + c.total_auxiliar) - colabCustoInsumos)}</td>
                     <td class="numeric font-mono">—</td>
                     <td class="numeric font-mono font-bold" style="color: #3a4f4a;">${fmtBRL(c.valor_comissao)}</td>
-                    <td class="center font-semibold">${c.pago ? 'PAGO' : 'PENDENTE'}</td>
+                    <td class="center font-semibold">${c.pago ? "PAGO" : "PENDENTE"}</td>
                   </tr>
                 </tbody>
               </table>
@@ -970,6 +981,9 @@ export default function Comissoes() {
                       </div>
                     </th>
                     <th className="px-6 py-4 text-right font-bold">Consumo / Vendas</th>
+                    {data?.descontar_taxa_cartao_comissao && (
+                      <th className="px-6 py-4 text-right font-bold">Taxa Cartão</th>
+                    )}
                     <th className="px-6 py-4 text-right font-bold">Comissão Líquida</th>
                     <th className="px-6 py-4 text-center font-bold">{user?.role === "admin" ? "Situação / Ação" : "Situação"}</th>
                   </tr>
@@ -977,12 +991,13 @@ export default function Comissoes() {
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                   {data.comissoes.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="px-6 py-16 text-center text-zinc-400 dark:text-zinc-500">
+                      <td colSpan={data?.descontar_taxa_cartao_comissao ? "7" : "6"} className="px-6 py-16 text-center text-zinc-400 dark:text-zinc-500">
                         Nenhuma comissão correspondente aos filtros selecionados.
                       </td>
                     </tr>
                   ) : data.comissoes.map((c, index) => {
                     const colabCustoInsumos = c.detalhes?.reduce((sum, d) => sum + (d.custo_produtos || 0), 0) || 0;
+                    const colabTaxaCartao = c.detalhes?.reduce((sum, d) => sum + (d.taxa_cartao_descontada || 0), 0) || 0;
                     return (
                       <tr 
                         key={`${c.colaborador_id}-${c.pago ? 'pago' : 'pendente'}-${index}`} 
@@ -1016,7 +1031,7 @@ export default function Comissoes() {
                                 className="text-[#3A4F4A] hover:text-[#84A59D] dark:text-[#84A59D] dark:hover:text-[#6F9189] hover:underline font-semibold flex items-center gap-1 text-left text-sm animate-pulse-subtle"
                               >
                                 {c.colaborador_nome}
-                                <Eye className="w-3.5 h-3.5 text-zinc-450 dark:text-zinc-500" />
+                                <Eye className="w-3.5 h-3.5 text-zinc-455 dark:text-zinc-500" />
                               </button>
                               {c.detalhes?.some(d => d.insumos_pendentes) && !c.pago && (
                                 <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-150 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900/60 text-[9px] font-bold uppercase tracking-wider" title="Existem serviços com insumos pendentes de lançamento">
@@ -1055,9 +1070,18 @@ export default function Comissoes() {
                           </div>
                         </td>
 
+                        {/* Taxa Cartão */}
+                        {data?.descontar_taxa_cartao_comissao && (
+                          <td className="px-6 py-4 text-right whitespace-nowrap">
+                            <div className="font-semibold text-rose-500 dark:text-rose-400">
+                              -{fmtBRL(colabTaxaCartao)}
+                            </div>
+                          </td>
+                        )}
+
                         {/* 5. Comissão Líquida */}
                         <td className="px-6 py-4 text-right whitespace-nowrap">
-                          <div className="font-display font-black text-[#3A4F4A] dark:text-emerald-450 text-base">
+                          <div className="font-display font-black text-[#3A4F4A] dark:text-emerald-455 text-base">
                             {fmtBRL(c.valor_comissao)}
                           </div>
                         </td>
@@ -1104,6 +1128,7 @@ export default function Comissoes() {
               ) : (
                 data.comissoes.map((c, index) => {
                   const colabCustoInsumos = c.detalhes?.reduce((sum, d) => sum + (d.custo_produtos || 0), 0) || 0;
+                  const colabTaxaCartao = c.detalhes?.reduce((sum, d) => sum + (d.taxa_cartao_descontada || 0), 0) || 0;
                   return (
                     <div 
                       key={`${c.colaborador_id}-${c.pago ? 'pago' : 'pendente'}-${index}`} 
@@ -1186,6 +1211,12 @@ export default function Comissoes() {
                             {fmtBRL(c.total_produtos || 0)} <span className="text-[9px] text-zinc-450 dark:text-zinc-500">(+{fmtBRL(c.comissao_produtos || 0)})</span>
                           </span>
                         </div>
+                        {data?.descontar_taxa_cartao_comissao && (
+                          <div className="bg-zinc-50/50 dark:bg-zinc-950/20 p-2.5 rounded-xl border border-zinc-100 dark:border-zinc-850 col-span-2">
+                            <span className="text-[9px] text-zinc-400 dark:text-zinc-550 uppercase font-bold block mb-0.5">Taxa Cartão</span>
+                            <span className="font-semibold text-rose-500">-{fmtBRL(colabTaxaCartao)}</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Footer do Card: Ação e Comissão Líquida */}
@@ -1270,7 +1301,7 @@ export default function Comissoes() {
           {selectedColab && (
             <div className="space-y-6 py-4 min-w-0 w-full">
               {/* Resumo Rápido da Janela */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-850 p-5 rounded-2xl shadow-inner">
+              <div className={`grid grid-cols-2 sm:grid-cols-3 ${data?.descontar_taxa_cartao_comissao ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-850 p-5 rounded-2xl shadow-inner`}>
                 <div className="space-y-1">
                   <span className="text-[9px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Serv. Principal</span>
                   <div className="font-semibold text-base text-zinc-700 dark:text-zinc-200">{fmtBRL(selectedColab.total_principal)}</div>
@@ -1283,6 +1314,12 @@ export default function Comissoes() {
                   <span className="text-[9px] uppercase font-bold text-rose-455 tracking-wider">Custo Insumos</span>
                   <div className="font-semibold text-base">{fmtBRL(selectedColab.detalhes?.reduce((sum, d) => sum + (d.custo_produtos || 0), 0))}</div>
                 </div>
+                {data?.descontar_taxa_cartao_comissao && (
+                  <div className="space-y-1 text-rose-500 dark:text-rose-400">
+                    <span className="text-[9px] uppercase font-bold text-rose-455 tracking-wider">Taxa Cartão</span>
+                    <div className="font-semibold text-base">-{fmtBRL(selectedColab.detalhes?.reduce((sum, d) => sum + (d.taxa_cartao_descontada || 0), 0))}</div>
+                  </div>
+                )}
                 <div className="space-y-1">
                   <span className="text-[9px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Venda Produtos</span>
                   <div className="font-semibold text-base text-zinc-700 dark:text-zinc-200">
@@ -1311,6 +1348,9 @@ export default function Comissoes() {
                         <th className="px-4 py-3 text-left font-bold">Descrição</th>
                         <th className="px-4 py-3 text-right font-bold">Valor Item</th>
                         <th className="px-4 py-3 text-right font-bold">Custo Insumo</th>
+                        {data?.descontar_taxa_cartao_comissao && (
+                          <th className="px-4 py-3 text-right font-bold">Taxa Cartão</th>
+                        )}
                         <th className="px-4 py-3 text-right font-bold">Base Comis.</th>
                         <th className="px-4 py-3 text-right font-bold">Percentual</th>
                         <th className="px-4 py-3 text-right font-bold">Comissão</th>
@@ -1369,6 +1409,11 @@ export default function Comissoes() {
                             <td className="px-4 py-3 text-right text-rose-500 dark:text-rose-400 font-semibold">
                               {item.tipo === 'servico' ? fmtBRL(item.custo_produtos || 0) : "—"}
                             </td>
+                            {data?.descontar_taxa_cartao_comissao && (
+                              <td className="px-4 py-3 text-right text-rose-500 dark:text-rose-400 font-semibold">
+                                {item.tipo === 'servico' && item.descontou_taxa_cartao ? `-${fmtBRL(item.taxa_cartao_descontada || 0)}` : '—'}
+                              </td>
+                            )}
                             <td className="px-4 py-3 text-right text-zinc-800 dark:text-zinc-150 font-bold">
                               {item.tipo === 'servico' ? fmtBRL(item.base_comissao != null ? item.base_comissao : item.valor_movimentacao) : fmtBRL(item.valor_movimentacao)}
                             </td>

@@ -9,9 +9,10 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from ".
 import SearchableSelect from "../components/SearchableSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "../components/ui/tooltip";
-import { FileText, Banknote, Package, TrendingUp, TrendingDown, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle, Filter, ArrowLeft, AlertTriangle, AlertCircle, Coins, Flame, Zap, Calendar, Sliders, ClipboardList, Eye } from "lucide-react";
+import { FileText, Banknote, Package, TrendingUp, TrendingDown, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle, Filter, ArrowLeft, AlertTriangle, AlertCircle, Coins, Flame, Zap, Calendar, Sliders, ClipboardList, Eye, CreditCard } from "lucide-react";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const fmtDT = (s) => s ? new Date(s).toLocaleString("pt-BR") : "—";
 
 const formatReportQuantidade = (qtd, item) => {
   const qty = Number(Number(qtd || 0).toFixed(3));
@@ -93,6 +94,15 @@ const REPORTS_LIST = [
     title: "Caixa",
     description: "Detalhamento de fluxo de caixa por profissional, com visualização por forma de pagamento recebida no período.",
     icon: Banknote,
+    category: "Financeiro",
+    badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/40",
+    iconColor: "text-emerald-500"
+  },
+  {
+    id: "cartoes",
+    title: "Cartões",
+    description: "Relatório analítico de vendas e pagamentos por cartão, com conciliação de adquirentes e detalhamento de taxas.",
+    icon: CreditCard,
     category: "Financeiro",
     badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/40",
     iconColor: "text-emerald-500"
@@ -260,6 +270,26 @@ export default function Relatorios() {
   const [caixa, setCaixa] = useState(null);
   const [produtos, setProdutos] = useState(null);
   const [servicos, setServicos] = useState(null);
+  const [cartoes, setCartoes] = useState(null);
+  
+  const [adquirentesList, setAdquirentesList] = useState([]);
+  const [formasCartaoList, setFormasCartaoList] = useState([]);
+  
+  const getFormaLabel = (forma) => {
+    if (FORMA_LABELS[forma]) return FORMA_LABELS[forma];
+    const found = formasCartaoList.find(f => f.forma_pagamento === forma);
+    return found ? found.descricao : forma;
+  };
+
+  const getFilterPaymentOptions = () => {
+    const baseOptions = Object.entries(FORMA_LABELS).filter(([k]) => k !== 'geral').map(([k, l]) => ({ v: k, l }));
+    const customOptions = formasCartaoList.filter(f => f.adquirente_id !== null).map(f => ({ v: f.forma_pagamento, l: f.descricao }));
+    return [...baseOptions, ...customOptions];
+  };
+
+  const [filterCartaoAdquirente, setFilterCartaoAdquirente] = useState("todos");
+  const [filterCartaoTipo, setFilterCartaoTipo] = useState("todos");
+  const [filterCartaoForma, setFilterCartaoForma] = useState("todos");
   
   // New navigation and generation states
   const [selectedReport, setSelectedReport] = useState(null);
@@ -388,6 +418,8 @@ export default function Relatorios() {
       setFilterEstoqueCategorias(cats.map(c => c.id));
     }).catch(() => {});
     http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data)).catch(() => {});
+    http.get("/adquirentes").then((r) => setAdquirentesList(r.data || [])).catch(() => {});
+    http.get("/configuracoes/taxas-cartao").then((r) => setFormasCartaoList(r.data || [])).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -438,6 +470,21 @@ export default function Relatorios() {
         .catch((err) => {
           console.error("Caixa error:", err);
           setCaixa({ pagamentos: [], total: 0 });
+        });
+    }
+    if (tab === "cartoes") {
+      const cartoesParams = {
+        data_inicio: from,
+        data_fim: to,
+        adquirente_id: filterCartaoAdquirente,
+        cartao_tipo: filterCartaoTipo,
+        forma_pagamento: filterCartaoForma
+      };
+      promise = http.get("/relatorios/cartoes", { params: cartoesParams })
+        .then((r) => setCartoes(r.data))
+        .catch((err) => {
+          console.error("Cartoes error:", err);
+          setCartoes({ transacoes: [], totais: { bruto: 0, taxa: 0, liquido: 0 }, por_adquirente: [] });
         });
     }
     if (tab === "produtos") {
@@ -1679,6 +1726,55 @@ export default function Relatorios() {
               </div>
             )}
 
+            {tab === "cartoes" && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 max-w-2xl">
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Adquirente</Label>
+                  <Select value={filterCartaoAdquirente} onValueChange={setFilterCartaoAdquirente}>
+                    <SelectTrigger className="bg-white dark:bg-zinc-900 h-9 text-xs border border-zinc-200 dark:border-zinc-800">
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-150">
+                      <SelectItem value="todos">Todas as Adquirentes</SelectItem>
+                      <SelectItem value="sem_adquirente">Sem Adquirente (Legado)</SelectItem>
+                      {adquirentesList.map(adq => (
+                        <SelectItem key={adq.id} value={adq.id}>{adq.descricao}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Tipo de Cartão</Label>
+                  <Select value={filterCartaoTipo} onValueChange={setFilterCartaoTipo}>
+                    <SelectTrigger className="bg-white dark:bg-zinc-900 h-9 text-xs border border-zinc-200 dark:border-zinc-800">
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-150">
+                      <SelectItem value="todos">Todos os Tipos</SelectItem>
+                      <SelectItem value="credito">Crédito</SelectItem>
+                      <SelectItem value="debito">Débito</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Forma de Pagamento</Label>
+                  <Select value={filterCartaoForma} onValueChange={setFilterCartaoForma}>
+                    <SelectTrigger className="bg-white dark:bg-zinc-900 h-9 text-xs border border-zinc-200 dark:border-zinc-800">
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-150">
+                      <SelectItem value="todos">Todas as Formas</SelectItem>
+                      <SelectItem value="cartao_credito">Cartão Crédito (Padrão)</SelectItem>
+                      <SelectItem value="cartao_debito">Cartão Débito (Padrão)</SelectItem>
+                      {formasCartaoList.filter(f => f.adquirente_id !== null).map(f => (
+                        <SelectItem key={f.forma_pagamento} value={f.forma_pagamento}>{f.descricao}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
             {tab === "dre" && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 max-w-xl">
                 <div>
@@ -1773,8 +1869,8 @@ export default function Relatorios() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="todos">Todas as formas</SelectItem>
-                      {Object.entries(FORMA_LABELS).filter(([k]) => k !== 'geral').map(([k, l]) => (
-                        <SelectItem key={k} value={k}>{l}</SelectItem>
+                      {getFilterPaymentOptions().map((opt) => (
+                        <SelectItem key={opt.v} value={opt.v}>{opt.l}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1849,8 +1945,8 @@ export default function Relatorios() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="todos">Todas as formas</SelectItem>
-                      {Object.entries(FORMA_LABELS).filter(([k]) => k !== 'geral').map(([k, l]) => (
-                        <SelectItem key={k} value={k}>{l}</SelectItem>
+                      {getFilterPaymentOptions().map((opt) => (
+                        <SelectItem key={opt.v} value={opt.v}>{opt.l}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -2608,7 +2704,15 @@ export default function Relatorios() {
                     <div className="flex items-center justify-between sm:justify-start gap-4 text-xs font-semibold bg-[#EAF0EE] dark:bg-[#1E2E2A] text-[#3A4F4A] dark:text-[#EAF0EE] px-3.5 py-2 rounded-lg w-full sm:w-auto">
                       {(() => {
                         const filtered = (caixa?.pagamentos || [])
-                          .filter(p => p.forma_pagamento === detailsForma)
+                          .filter(p => {
+                            if (detailsForma === 'cartao_credito') {
+                              return p.forma_pagamento === 'cartao_credito' || p.cartao_tipo === 'credito';
+                            }
+                            if (detailsForma === 'cartao_debito') {
+                              return p.forma_pagamento === 'cartao_debito' || p.cartao_tipo === 'debito';
+                            }
+                            return p.forma_pagamento === detailsForma;
+                          })
                           .filter(p => {
                             if (!detailsSearchQuery) return true;
                             const q = detailsSearchQuery.toLowerCase();
@@ -2639,7 +2743,15 @@ export default function Relatorios() {
                   <div className="flex-1 overflow-auto my-4 min-h-[300px] border border-zinc-200 dark:border-zinc-800 rounded-lg custom-scrollbar">
                     {(() => {
                       const filtered = (caixa?.pagamentos || [])
-                        .filter(p => p.forma_pagamento === detailsForma)
+                        .filter(p => {
+                          if (detailsForma === 'cartao_credito') {
+                            return p.forma_pagamento === 'cartao_credito' || p.cartao_tipo === 'credito';
+                          }
+                          if (detailsForma === 'cartao_debito') {
+                            return p.forma_pagamento === 'cartao_debito' || p.cartao_tipo === 'debito';
+                          }
+                          return p.forma_pagamento === detailsForma;
+                        })
                         .filter(p => {
                           if (!detailsSearchQuery) return true;
                           const q = detailsSearchQuery.toLowerCase();
@@ -2715,7 +2827,7 @@ export default function Relatorios() {
                                 </td>
                                 <td className="px-4 py-3 text-center whitespace-nowrap">
                                   <span className="px-2 py-0.5 bg-zinc-100 border border-zinc-200 text-zinc-600 rounded text-[9px] uppercase font-bold dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300">
-                                    {FORMA_LABELS[p.forma_pagamento] || p.forma_pagamento}
+                                    {getFormaLabel(p.forma_pagamento)}
                                   </span>
                                 </td>
                                 <td className="px-4 py-3 text-right font-mono text-zinc-700 dark:text-zinc-350 whitespace-nowrap">
@@ -2756,6 +2868,165 @@ export default function Relatorios() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="cartoes">
+          {!cartoes ? (
+            <div className="text-zinc-400 p-8 text-center font-medium">Carregando...</div>
+          ) : (
+            <div className="space-y-6">
+              {/* Cards de Resumo */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs uppercase font-bold text-zinc-400 dark:text-zinc-500 block">Faturamento Bruto</span>
+                      <span className="text-2xl font-black font-display text-zinc-800 dark:text-zinc-100 mt-1 block">
+                        {fmtBRL(cartoes.totais?.bruto || 0)}
+                      </span>
+                    </div>
+                    <div className="p-3 bg-zinc-50 dark:bg-zinc-850 rounded-xl text-zinc-500 dark:text-zinc-400">
+                      <Banknote className="w-5 h-5" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm border-l-4 border-l-rose-500">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs uppercase font-bold text-rose-500 block">Taxas Cobradas</span>
+                      <span className="text-2xl font-black font-display text-rose-600 dark:text-rose-400 mt-1 block">
+                        - {fmtBRL(cartoes.totais?.taxa || 0)}
+                      </span>
+                    </div>
+                    <div className="p-3 bg-rose-50 dark:bg-rose-950/20 rounded-xl text-rose-500">
+                      <TrendingDown className="w-5 h-5" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm border-l-4 border-l-[#84A59D]">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs uppercase font-bold text-[#84A59D] block">Faturamento Líquido</span>
+                      <span className="text-2xl font-black font-display text-[#3A4F4A] dark:text-[#EAF0EE] mt-1 block">
+                        {fmtBRL(cartoes.totais?.liquido || 0)}
+                      </span>
+                    </div>
+                    <div className="p-3 bg-[#EAF0EE] dark:bg-[#1E2D2A] rounded-xl text-[#84A59D]">
+                      <TrendingUp className="w-5 h-5" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabela de Custos Comparativos por Adquirente */}
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
+                <h4 className="font-display text-sm font-bold text-zinc-800 dark:text-zinc-100 mb-4 flex items-center gap-1.5">
+                  📊 Comparativo de Custos por Adquirente (Maquineta)
+                </h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="border-b border-zinc-100 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider">
+                        <th className="pb-3 font-semibold">Adquirente</th>
+                        <th className="pb-3 text-right font-semibold">Faturamento Bruto</th>
+                        <th className="pb-3 text-right font-semibold">Taxas Pagas</th>
+                        <th className="pb-3 text-right font-semibold">Recebimento Líquido</th>
+                        <th className="pb-3 text-right font-semibold">Custo Médio %</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-50 dark:divide-zinc-850">
+                      {(cartoes.por_adquirente || []).map((adq, idx) => {
+                        const custoMedio = adq.bruto > 0 ? ((adq.taxas / adq.bruto) * 100).toFixed(2) : "0.00";
+                        return (
+                          <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20 transition-colors">
+                            <td className="py-3.5 font-medium text-zinc-800 dark:text-zinc-200">{adq.adquirente}</td>
+                            <td className="py-3.5 text-right font-mono text-zinc-700 dark:text-zinc-300">{fmtBRL(adq.bruto)}</td>
+                            <td className="py-3.5 text-right font-mono text-rose-500 font-medium">-{fmtBRL(adq.taxas)}</td>
+                            <td className="py-3.5 text-right font-mono text-emerald-600 dark:text-emerald-400 font-semibold">{fmtBRL(adq.liquido)}</td>
+                            <td className="py-3.5 text-right font-mono font-medium text-zinc-500">{custoMedio}%</td>
+                          </tr>
+                        );
+                      })}
+                      {(cartoes.por_adquirente || []).length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-zinc-400">Nenhum dado consolidado no período.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Tabela de Transações Detalhadas */}
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
+                <h4 className="font-display text-sm font-bold text-zinc-800 dark:text-zinc-100 mb-4 flex items-center gap-1.5">
+                  💳 Extrato Analítico de Transações
+                </h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="border-b border-zinc-100 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider">
+                        <th className="pb-3 font-semibold">Data / Hora</th>
+                        <th className="pb-3 font-semibold">Forma de Pagamento</th>
+                        <th className="pb-3 font-semibold">Tipo</th>
+                        <th className="pb-3 font-semibold">Adquirente</th>
+                        <th className="pb-3 font-semibold">Bandeira</th>
+                        <th className="pb-3 text-center font-semibold">Parcelas</th>
+                        <th className="pb-3 text-right font-semibold">Taxa %</th>
+                        <th className="pb-3 text-right font-semibold">Valor Bruto</th>
+                        <th className="pb-3 text-right font-semibold">Taxa Cobrada</th>
+                        <th className="pb-3 text-right font-semibold">Valor Líquido</th>
+                        <th className="pb-3 text-right font-semibold">Previsão Recebimento</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-50 dark:divide-zinc-850">
+                      {(cartoes.transacoes || []).map((t, idx) => {
+                        const dataPrev = t.data_recebimento_prevista ? new Date(t.data_recebimento_prevista).toLocaleDateString("pt-BR") : "-";
+                        return (
+                          <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20 transition-colors">
+                            <td className="py-3.5 text-zinc-500 dark:text-zinc-400 font-mono whitespace-nowrap">{fmtDT(t.data_venda)}</td>
+                            <td className="py-3.5 font-medium text-zinc-800 dark:text-zinc-200">{t.forma_pagamento_label}</td>
+                            <td className="py-3.5">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                t.tipo_cartao === 'credito' 
+                                  ? 'bg-indigo-55 bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/20 dark:text-indigo-400' 
+                                  : 'bg-teal-55 bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-950/20 dark:text-teal-400'
+                              }`}>
+                                {t.tipo_cartao === 'credito' ? 'Crédito' : 'Débito'}
+                              </span>
+                            </td>
+                            <td className="py-3.5 text-zinc-600 dark:text-zinc-300 font-medium">{t.adquirente_nome}</td>
+                            <td className="py-3.5">
+                              {t.bandeira ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200">
+                                  {t.bandeira}
+                                </span>
+                              ) : (
+                                <span className="text-zinc-400">—</span>
+                              )}
+                            </td>
+                            <td className="py-3.5 text-center font-mono text-zinc-650 dark:text-zinc-400">{t.parcelas ? `${t.parcelas}x` : "-"}</td>
+                            <td className="py-3.5 text-right font-mono text-zinc-500">{t.taxa_percentual !== null ? `${t.taxa_percentual}%` : "-"}</td>
+                            <td className="py-3.5 text-right font-mono font-semibold text-zinc-700 dark:text-zinc-300">{fmtBRL(t.valor_bruto)}</td>
+                            <td className="py-3.5 text-right font-mono text-rose-500 font-medium">-{fmtBRL(t.taxa_valor)}</td>
+                            <td className="py-3.5 text-right font-mono text-emerald-600 dark:text-emerald-400 font-bold">{fmtBRL(t.valor_liquido)}</td>
+                            <td className="py-3.5 text-right font-mono text-zinc-500">{dataPrev}</td>
+                          </tr>
+                        );
+                      })}
+                      {(cartoes.transacoes || []).length === 0 && (
+                        <tr>
+                          <td colSpan={11} className="py-8 text-center text-zinc-400">Nenhuma transação encontrada no período.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
         </TabsContent>
@@ -3028,7 +3299,7 @@ export default function Relatorios() {
                                       {v.formas_pagamento.length > 0 ? (
                                         v.formas_pagamento.map(f => (
                                           <span key={f} className="px-1.5 py-0.5 bg-zinc-100 border border-zinc-200 text-zinc-600 rounded text-[9px] uppercase font-bold">
-                                            {FORMA_LABELS[f] || f}
+                                            {getFormaLabel(f)}
                                           </span>
                                         ))
                                       ) : (
@@ -3372,7 +3643,7 @@ export default function Relatorios() {
                                       {s.formas_pagamento.length > 0 ? (
                                         s.formas_pagamento.map(f => (
                                           <span key={f} className="px-1.5 py-0.5 bg-zinc-100 border border-zinc-200 text-zinc-600 rounded text-[9px] uppercase font-bold">
-                                            {FORMA_LABELS[f] || f}
+                                            {getFormaLabel(f)}
                                           </span>
                                         ))
                                       ) : (

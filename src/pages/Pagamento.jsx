@@ -30,7 +30,55 @@ export default function Pagamento() {
   const { user } = useAuth();
   const temPermissaoPagamento = user?.role === "admin" || !!user?.perfil?.permissoes?.acoes?.realizar_pagamento;
   const [ag, setAg] = useState(null);
-  const [novos, setNovos] = useState([{ valor: "", forma_pagamento: "dinheiro", observacao: "" }]);
+  const [novos, setNovos] = useState([{ valor: "", forma_pagamento: "dinheiro", observacao: "", parcelas: 1 }]);
+  const [taxasCartao, setTaxasCartao] = useState([]);
+
+  const isCredito = (forma) => {
+    if (forma === "cartao_credito") return true;
+    const taxa = taxasCartao.find(t => t.forma_pagamento === forma);
+    return taxa && taxa.tipo_cartao === "credito";
+  };
+
+  const hasBrandRates = (forma) => {
+    return false;
+  };
+
+  const getFormasDisponiveis = () => {
+    const baseFormas = FORMAS.filter(f => f.v !== "cartao_credito" && f.v !== "cartao_debito");
+    const activeRates = taxasCartao.filter(t => t.ativo && t.deletado !== "S");
+    
+    const hasCustomRates = activeRates.some(t => 
+      t.adquirente_id !== null && 
+      t.adquirente_id !== undefined && 
+      String(t.adquirente_id).trim() !== "" && 
+      String(t.adquirente_id).trim() !== "null"
+    );
+
+    if (hasCustomRates) {
+      const customOptions = activeRates
+        .filter(t => 
+          t.adquirente_id !== null && 
+          t.adquirente_id !== undefined && 
+          String(t.adquirente_id).trim() !== "" && 
+          String(t.adquirente_id).trim() !== "null"
+        )
+        .map(t => {
+          let label = t.descricao;
+          if (!label) {
+            const typeName = t.tipo_cartao === 'credito' ? 'Crédito' : 'Débito';
+            const brandName = t.bandeira ? t.bandeira.trim() : '';
+            label = `${typeName} ${brandName}`.trim();
+          }
+          return {
+            v: t.forma_pagamento,
+            l: label,
+            tipo_cartao: t.tipo_cartao
+          };
+        });
+      return [...baseFormas, ...customOptions];
+    }
+    return FORMAS;
+  };
   const [pendingSales, setPendingSales] = useState([]);
   const [trabalharCredito, setTrabalharCredito] = useState(false);
   const [clienteSaldo, setClienteSaldo] = useState(0);
@@ -93,6 +141,9 @@ export default function Pagamento() {
         setTrabalharCredito(!!r.data.trabalhar_credito_cliente);
       }
     }).catch(() => { });
+    http.get("/configuracoes/taxas-cartao").then((r) => {
+      setTaxasCartao(r.data || []);
+    }).catch(() => {});
   }, [id]);
 
   useEffect(() => {
@@ -234,7 +285,7 @@ export default function Pagamento() {
     await applyDiscountOnBackend(null);
   };
 
-  const addLine = () => setNovos([...novos, { valor: "", forma_pagamento: "dinheiro", observacao: "" }]);
+  const addLine = () => setNovos([...novos, { valor: "", forma_pagamento: "dinheiro", observacao: "", parcelas: 1 }]);
   const removeLine = (i) => setNovos(novos.filter((_, x) => x !== i));
   
   const updateLine = (i, k, v) => {
@@ -257,7 +308,8 @@ export default function Pagamento() {
             ...p, 
             forma_pagamento: v,
             valor: "",
-            observacao: ""
+            observacao: "",
+            parcelas: 1
           } : p));
           return;
         }
@@ -280,6 +332,9 @@ export default function Pagamento() {
     setNovos(novos.map((p, x) => x === i ? { 
       ...p, 
       [k]: v,
+      ...(k === "forma_pagamento" ? {
+        parcelas: isCredito(v) ? (p.parcelas || 1) : 1
+      } : {}),
       observacao: k === "valor" && p.forma_pagamento === "dinheiro" && observacaoTroco ? observacaoTroco : p.observacao
     } : p));
     
@@ -373,7 +428,8 @@ export default function Pagamento() {
         itemPags.push({
           valor: Number(payAmount.toFixed(2)),
           forma_pagamento: p.forma_pagamento,
-          observacao: p.observacao || ""
+          observacao: p.observacao || "",
+          parcelas: p.parcelas || 1
         });
       }
 
@@ -433,7 +489,7 @@ export default function Pagamento() {
       if (finalizar) {
         nav("/agenda");
       } else {
-        setNovos([{ valor: "", forma_pagamento: "dinheiro", observacao: "" }]);
+        setNovos([{ valor: "", forma_pagamento: "dinheiro", observacao: "", parcelas: 1 }]);
         load();
       }
     } catch (e) {
@@ -472,6 +528,8 @@ export default function Pagamento() {
 
     const isZeroSaldo = saldo <= 0.01;
     let validos = novos.filter((p) => isZeroSaldo ? Number(p.valor) >= 0 : Number(p.valor) > 0);
+    
+    // A bandeira do cartão não é mais exigida no frontend
     
     if (validos.length === 0) {
       if (novos.length === 1) {
@@ -570,6 +628,7 @@ export default function Pagamento() {
           valor: Number(editingPayment.valor),
           forma_pagamento: editingPayment.forma_pagamento,
           observacao: editingPayment.observacao || "",
+          parcelas: editingPayment.parcelas || 1,
           password
         }
       );
@@ -618,7 +677,8 @@ export default function Pagamento() {
         {
           valor: Number(editingPayment.valor),
           forma_pagamento: editingPayment.forma_pagamento,
-          observacao: editingPayment.observacao || ""
+          observacao: editingPayment.observacao || "",
+          parcelas: editingPayment.parcelas || 1
         }
       );
       toast.success("Pagamento atualizado com sucesso");
@@ -663,6 +723,7 @@ export default function Pagamento() {
       toast.error("Valor deve ser maior que zero");
       return;
     }
+    // Validação de bandeira removida
     if (ag.status !== 'concluido') {
       executeEdit();
     } else {
@@ -961,58 +1022,108 @@ export default function Pagamento() {
           <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl p-4 sm:p-6">
             <h3 className="font-display text-base sm:text-lg font-medium text-zinc-800 dark:text-zinc-100 mb-4">Registrar Pagamento</h3>
             <div className="space-y-4">
-              {novos.map((p, i) => (
-                <div key={i} className="border border-zinc-150 sm:border-0 rounded-xl p-4 sm:p-0 bg-zinc-50/50 sm:bg-transparent dark:bg-zinc-955/20 space-y-3 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end relative">
-                  {novos.length > 1 && (
-                    <div className="sm:hidden absolute top-2 right-2">
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20" onClick={() => removeLine(i)} disabled={!temPermissaoPagamento}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )}
-                  <div className="col-span-3">
-                    <Label className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-400">Valor *</Label>
-                    <Input 
-                      data-testid={`pay-valor-${i}`} 
-                      type="number" 
-                      step="0.01" 
-                      value={p.valor} 
-                      onChange={(e) => updateLine(i, "valor", e.target.value)}
-                      placeholder="0.00"
-                      className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1 h-9 text-sm focus:ring-[#84A59D]"
-                      disabled={!temPermissaoPagamento}
-                    />
-                  </div>
-                  <div className="col-span-4">
-                    <Label className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-400">Forma *</Label>
-                    <Select value={p.forma_pagamento} onValueChange={(v) => updateLine(i, "forma_pagamento", v)} disabled={!temPermissaoPagamento}>
-                      <SelectTrigger data-testid={`pay-forma-${i}`} className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1 h-9 text-xs" disabled={!temPermissaoPagamento}><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {(trabalharCredito && ag?.cliente_id 
-                          ? [...FORMAS, { v: "credito_cliente", l: `Crédito do Cliente (Saldo: ${fmtBRL(clienteSaldo)})` }]
-                          : FORMAS).map((f) => <SelectItem key={f.v} value={f.v} className="text-xs">{f.l}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="col-span-4">
-                    <Label className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-400">Observação</Label>
-                    <Input 
-                      value={p.observacao} 
-                      onChange={(e) => updateLine(i, "observacao", e.target.value)}
-                      placeholder="Observações adicionais"
-                      className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1 h-9 text-xs focus:ring-[#84A59D]"
-                      disabled={!temPermissaoPagamento}
-                    />
-                  </div>
-                  <div className="hidden sm:block col-span-1 text-center">
+              {novos.map((p, i) => {
+                const formaEhCredito = isCredito(p.forma_pagamento);
+                const hasBrands = hasBrandRates(p.forma_pagamento);
+                
+                let valorSpan = "col-span-3";
+                let formaSpan = "col-span-4";
+                let bandeiraSpan = "";
+                let parcelasSpan = "";
+                let obsSpan = "col-span-4";
+
+                if (hasBrands && formaEhCredito) {
+                  valorSpan = "col-span-2";
+                  formaSpan = "col-span-3";
+                  bandeiraSpan = "col-span-2";
+                  parcelasSpan = "col-span-1";
+                  obsSpan = "col-span-3";
+                } else if (hasBrands && !formaEhCredito) {
+                  valorSpan = "col-span-2";
+                  formaSpan = "col-span-3";
+                  bandeiraSpan = "col-span-2";
+                  obsSpan = "col-span-4";
+                } else if (!hasBrands && formaEhCredito) {
+                  valorSpan = "col-span-2";
+                  formaSpan = "col-span-3";
+                  parcelasSpan = "col-span-2";
+                  obsSpan = "col-span-4";
+                }
+
+                return (
+                  <div key={i} className="border border-zinc-150 sm:border-0 rounded-xl p-4 sm:p-0 bg-zinc-50/50 sm:bg-transparent dark:bg-zinc-955/20 space-y-3 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-end relative">
                     {novos.length > 1 && (
-                      <Button size="icon" variant="ghost" onClick={() => removeLine(i)} disabled={!temPermissaoPagamento}>
-                        <Trash2 className="w-4 h-4 text-rose-500" />
-                      </Button>
+                      <div className="sm:hidden absolute top-2 right-2">
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20" onClick={() => removeLine(i)} disabled={!temPermissaoPagamento}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     )}
+                    <div className={valorSpan}>
+                      <Label className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-400">Valor *</Label>
+                      <Input 
+                        data-testid={`pay-valor-${i}`} 
+                        type="number" 
+                        step="0.01" 
+                        value={p.valor} 
+                        onChange={(e) => updateLine(i, "valor", e.target.value)}
+                        placeholder="0.00"
+                        className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1 h-9 text-sm focus:ring-[#84A59D]"
+                        disabled={!temPermissaoPagamento}
+                      />
+                    </div>
+                    <div className={formaSpan}>
+                      <Label className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-400">Forma *</Label>
+                      <Select value={p.forma_pagamento} onValueChange={(v) => {
+                        updateLine(i, "forma_pagamento", v);
+                      }} disabled={!temPermissaoPagamento}>
+                        <SelectTrigger data-testid={`pay-forma-${i}`} className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1 h-9 text-xs" disabled={!temPermissaoPagamento}><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {(trabalharCredito && ag?.cliente_id 
+                            ? [...getFormasDisponiveis(), { v: "credito_cliente", l: `Crédito do Cliente (Saldo: ${fmtBRL(clienteSaldo)})` }]
+                            : getFormasDisponiveis()).map((f) => <SelectItem key={f.v} value={f.v} className="text-xs">{f.l}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+
+
+                    {formaEhCredito && (
+                      <div className={parcelasSpan}>
+                        <Label className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-400">Parcelas</Label>
+                        <Select value={String(p.parcelas || 1)} onValueChange={(v) => updateLine(i, "parcelas", parseInt(v) || 1)} disabled={!temPermissaoPagamento}>
+                          <SelectTrigger className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1 h-9 text-xs" disabled={!temPermissaoPagamento}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                              <SelectItem key={num} value={String(num)} className="text-xs">{num}x</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    <div className={obsSpan}>
+                      <Label className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-400">Observação</Label>
+                      <Input 
+                        value={p.observacao} 
+                        onChange={(e) => updateLine(i, "observacao", e.target.value)}
+                        placeholder="Observações adicionais"
+                        className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1 h-9 text-xs focus:ring-[#84A59D]"
+                        disabled={!temPermissaoPagamento}
+                      />
+                    </div>
+                    <div className="hidden sm:block col-span-1 text-center">
+                      {novos.length > 1 && (
+                        <Button size="icon" variant="ghost" onClick={() => removeLine(i)} disabled={!temPermissaoPagamento}>
+                          <Trash2 className="w-4 h-4 text-rose-500" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6">
@@ -1189,8 +1300,13 @@ export default function Pagamento() {
                 {ag.pagamentos.map((p) => (
                   <div key={p.id} className="p-3 bg-zinc-50 dark:bg-zinc-950/40 rounded-xl border border-zinc-150 dark:border-zinc-850 flex flex-col gap-1.5 text-xs">
                     <div className="flex justify-between items-center w-full">
-                      <span className="font-semibold text-zinc-700 dark:text-zinc-350 capitalize">
+                      <span className="font-semibold text-zinc-700 dark:text-zinc-350 capitalize flex items-center gap-1.5">
                         {FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}
+                        {p.cartao_bandeira && (
+                          <span className="text-[10px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-1.5 py-0.5 rounded-full font-bold uppercase">
+                            {p.cartao_bandeira}
+                          </span>
+                        )}
                       </span>
                       <span className="font-mono font-bold text-zinc-800 dark:text-zinc-250">{fmtBRL(p.valor)}</span>
                     </div>
@@ -1237,15 +1353,35 @@ export default function Pagamento() {
               </div>
               <div>
                 <Label>Forma de pagamento</Label>
-                <Select value={editingPayment.forma_pagamento} onValueChange={(v) => setEditingPayment({ ...editingPayment, forma_pagamento: v })}>
+                <Select value={editingPayment.forma_pagamento} onValueChange={(v) => {
+                  const newEditPay = { ...editingPayment, forma_pagamento: v };
+                  if (!isCredito(v)) {
+                    newEditPay.parcelas = 1;
+                  }
+                  setEditingPayment(newEditPay);
+                }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {(trabalharCredito && ag?.cliente_id 
-                      ? [...FORMAS, { v: "credito_cliente", l: `Crédito do Cliente (Saldo: ${fmtBRL(clienteSaldo)})` }]
-                      : FORMAS).map((f) => <SelectItem key={f.v} value={f.v}>{f.l}</SelectItem>)}
+                      ? [...getFormasDisponiveis(), { v: "credito_cliente", l: `Crédito do Cliente (Saldo: ${fmtBRL(clienteSaldo)})` }]
+                      : getFormasDisponiveis()).map((f) => <SelectItem key={f.v} value={f.v}>{f.l}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
+              {isCredito(editingPayment.forma_pagamento) && (
+                <div>
+                  <Label>Parcelas</Label>
+                  <Select value={String(editingPayment.parcelas || 1)} onValueChange={(v) => setEditingPayment({ ...editingPayment, parcelas: parseInt(v) || 1 })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                        <SelectItem key={num} value={String(num)}>{num}x</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div>
                 <Label>Observação</Label>
                 <Input
