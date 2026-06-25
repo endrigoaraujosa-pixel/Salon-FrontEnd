@@ -21,7 +21,7 @@ const formatReportQuantidade = (qtd, item) => {
   if (qtyPerUnit > 0) {
     const eq = Number((qty / qtyPerUnit).toFixed(3));
     const formattedEq = eq.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 });
-    return `${formattedQty} ${item.unidade_medida_insumo || "un"} (${formattedEq} ${item.unidade_medida || "un"})`;
+    return `${formattedEq} ${item?.unidade_medida || "un"} (${formattedQty} ${item?.unidade_medida_insumo || "un"})`;
   }
   return `${formattedQty} ${item?.unidade_medida || "un"}`;
 };
