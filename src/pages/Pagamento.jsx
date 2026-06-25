@@ -43,6 +43,19 @@ export default function Pagamento() {
     return false;
   };
 
+  const hasAdquirenteRates = () => {
+    return taxasCartao.some(t =>
+      t.ativo &&
+      t.deletado !== "S" &&
+      t.adquirente_id !== null &&
+      t.adquirente_id !== undefined &&
+      String(t.adquirente_id).trim() !== "" &&
+      String(t.adquirente_id).trim() !== "null"
+    );
+  };
+
+  const getParcelasDisponiveis = () => hasAdquirenteRates() ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] : [1];
+
   const getFormasDisponiveis = () => {
     const baseFormas = FORMAS.filter(f => f.v !== "cartao_credito" && f.v !== "cartao_debito");
     const activeRates = taxasCartao.filter(t => t.ativo && t.deletado !== "S");
@@ -78,6 +91,10 @@ export default function Pagamento() {
       return [...baseFormas, ...customOptions];
     }
     return FORMAS;
+  };
+
+  const getFormaPagamentoLabel = (forma) => {
+    return getFormasDisponiveis().find(f => f.v === forma)?.l || FORMAS.find(f => f.v === forma)?.l || forma || "";
   };
   const [pendingSales, setPendingSales] = useState([]);
   const [trabalharCredito, setTrabalharCredito] = useState(false);
@@ -333,7 +350,7 @@ export default function Pagamento() {
       ...p, 
       [k]: v,
       ...(k === "forma_pagamento" ? {
-        parcelas: isCredito(v) ? (p.parcelas || 1) : 1
+        parcelas: isCredito(v) && hasAdquirenteRates() ? (p.parcelas || 1) : 1
       } : {}),
       observacao: k === "valor" && p.forma_pagamento === "dinheiro" && observacaoTroco ? observacaoTroco : p.observacao
     } : p));
@@ -570,7 +587,7 @@ export default function Pagamento() {
       }
     }
 
-    await executePayment(ag, false, validos);
+    await executePayment(ag, forceSaldo, validos);
   };
 
   const confirmAndFinish = async () => {
@@ -1091,12 +1108,12 @@ export default function Pagamento() {
                     {formaEhCredito && (
                       <div className={parcelasSpan}>
                         <Label className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-400">Parcelas</Label>
-                        <Select value={String(p.parcelas || 1)} onValueChange={(v) => updateLine(i, "parcelas", parseInt(v) || 1)} disabled={!temPermissaoPagamento}>
-                          <SelectTrigger className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1 h-9 text-xs" disabled={!temPermissaoPagamento}>
+                        <Select value={String(hasAdquirenteRates() ? (p.parcelas || 1) : 1)} onValueChange={(v) => updateLine(i, "parcelas", parseInt(v) || 1)} disabled={!temPermissaoPagamento || !hasAdquirenteRates()}>
+                          <SelectTrigger className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1 h-9 text-xs" disabled={!temPermissaoPagamento || !hasAdquirenteRates()}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                            {getParcelasDisponiveis().map((num) => (
                               <SelectItem key={num} value={String(num)} className="text-xs">{num}x</SelectItem>
                             ))}
                           </SelectContent>
@@ -1357,6 +1374,8 @@ export default function Pagamento() {
                   const newEditPay = { ...editingPayment, forma_pagamento: v };
                   if (!isCredito(v)) {
                     newEditPay.parcelas = 1;
+                  } else if (!hasAdquirenteRates()) {
+                    newEditPay.parcelas = 1;
                   }
                   setEditingPayment(newEditPay);
                 }}>
@@ -1371,10 +1390,10 @@ export default function Pagamento() {
               {isCredito(editingPayment.forma_pagamento) && (
                 <div>
                   <Label>Parcelas</Label>
-                  <Select value={String(editingPayment.parcelas || 1)} onValueChange={(v) => setEditingPayment({ ...editingPayment, parcelas: parseInt(v) || 1 })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select value={String(hasAdquirenteRates() ? (editingPayment.parcelas || 1) : 1)} onValueChange={(v) => setEditingPayment({ ...editingPayment, parcelas: parseInt(v) || 1 })} disabled={!hasAdquirenteRates()}>
+                    <SelectTrigger disabled={!hasAdquirenteRates()}><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                      {getParcelasDisponiveis().map((num) => (
                         <SelectItem key={num} value={String(num)}>{num}x</SelectItem>
                       ))}
                     </SelectContent>
@@ -1490,14 +1509,14 @@ export default function Pagamento() {
             <DialogTitle>Confirmar Pagamento Integral</DialogTitle>
           </DialogHeader>
           <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
-            Deseja finalizar o pagamento total de <b>{fmtBRL(saldo)}</b> em <b>{(FORMAS.find(f => f.v === novos[0]?.forma_pagamento)?.l || novos[0]?.forma_pagamento || "").toUpperCase()}</b>?
+            Confirma o recebimento do valor total de <b>{fmtBRL(saldo)}</b> em <b>{getFormaPagamentoLabel(novos[0]?.forma_pagamento).toUpperCase()}</b>?
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setAutoPayConfirmOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setAutoPayConfirmOpen(false)}>Não</Button>
             <Button onClick={async () => {
               setAutoPayConfirmOpen(false);
               await submit(true);
-            }} className="bg-[#84A59D] hover:bg-[#6F9189] text-white">Confirmar Pagamento</Button>
+            }} className="bg-[#84A59D] hover:bg-[#6F9189] text-white">Sim</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
