@@ -8,7 +8,7 @@ import { Switch } from "../components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
-import { Package, Plus, Edit2, Trash2, AlertTriangle, Percent, History, Printer, Folder, ChevronDown, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { Package, Plus, Edit2, Trash2, AlertTriangle, Percent, History, Printer, Folder, ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 import { Checkbox } from "../components/ui/checkbox";
 import { toast } from "sonner";
 import AuditModal from "../components/AuditModal";
@@ -28,8 +28,6 @@ export default function Produtos() {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [auditOpen, setAuditOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-
   const [collapsedCategories, setCollapsedCategories] = useState({});
   const [reportOpen, setReportOpen] = useState(false);
   const [selectedReportCategories, setSelectedReportCategories] = useState([]);
@@ -500,18 +498,9 @@ export default function Produtos() {
     return matchesSearch && matchesCategory;
   });
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, selectedCategoryFilter]);
-
-  const itemsPerPage = 50;
-  const totalPages = Math.ceil(filteredList.length / itemsPerPage);
-  const activePage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));
-  const paginatedItems = filteredList.slice((activePage - 1) * itemsPerPage, activePage * itemsPerPage);
-
   const groupedProducts = [];
   categorias.forEach(c => {
-    const products = paginatedItems.filter(p => p.categoria_id === c.id);
+    const products = filteredList.filter(p => p.categoria_id === c.id);
     if (products.length > 0) {
       groupedProducts.push({
         id: c.id,
@@ -521,7 +510,7 @@ export default function Produtos() {
     }
   });
 
-  const uncategorized = paginatedItems.filter(p => !p.categoria_id || !categorias.some(c => c.id === p.categoria_id));
+  const uncategorized = filteredList.filter(p => !p.categoria_id || !categorias.some(c => c.id === p.categoria_id));
   if (uncategorized.length > 0) {
     groupedProducts.push({
       id: "none",
@@ -1095,97 +1084,6 @@ export default function Produtos() {
             );
           })}
         </div>
-        {totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-xs select-none max-w-7xl">
-            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-              Exibindo <span className="font-semibold text-zinc-800 dark:text-zinc-200">{Math.min(filteredList.length, (activePage - 1) * itemsPerPage + 1)}</span> a{" "}
-              <span className="font-semibold text-zinc-800 dark:text-zinc-200">{Math.min(filteredList.length, activePage * itemsPerPage)}</span> de{" "}
-              <span className="font-semibold text-zinc-800 dark:text-zinc-200">{filteredList.length}</span> registros
-            </span>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={activePage === 1}
-                className="h-8 px-2.5 text-xs font-semibold gap-1 dark:border-zinc-800"
-              >
-                <ChevronLeft className="w-4 h-4" /> Anterior
-              </Button>
-
-              {(() => {
-                const pages = [];
-                const maxVisiblePages = 5;
-                let startPage = Math.max(1, activePage - Math.floor(maxVisiblePages / 2));
-                let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-                if (endPage - startPage + 1 < maxVisiblePages) {
-                  startPage = Math.max(1, endPage - maxVisiblePages + 1);
-                }
-
-                if (startPage > 1) {
-                  pages.push(
-                    <Button
-                      key={1}
-                      variant={activePage === 1 ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentPage(1)}
-                      className={`h-8 w-8 text-xs font-bold ${activePage === 1 ? "bg-[#84A59D] hover:bg-[#6F9189] text-white border-[#84A59D]" : "dark:border-zinc-800 text-zinc-650 dark:text-zinc-300"}`}
-                    >
-                      1
-                    </Button>
-                  );
-                  if (startPage > 2) {
-                    pages.push(<span key="dots-start" className="text-zinc-400 dark:text-zinc-600 px-1 text-xs">...</span>);
-                  }
-                }
-
-                for (let p = startPage; p <= endPage; p++) {
-                  pages.push(
-                    <Button
-                      key={p}
-                      variant={activePage === p ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentPage(p)}
-                      className={`h-8 w-8 text-xs font-bold ${activePage === p ? "bg-[#84A59D] hover:bg-[#6F9189] text-white border-[#84A59D]" : "dark:border-zinc-800 text-zinc-650 dark:text-zinc-300"}`}
-                    >
-                      {p}
-                    </Button>
-                  );
-                }
-
-                if (endPage < totalPages) {
-                  if (endPage < totalPages - 1) {
-                    pages.push(<span key="dots-end" className="text-zinc-400 dark:text-zinc-600 px-1 text-xs">...</span>);
-                  }
-                  pages.push(
-                    <Button
-                      key={totalPages}
-                      variant={activePage === totalPages ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentPage(totalPages)}
-                      className={`h-8 w-8 text-xs font-bold ${activePage === totalPages ? "bg-[#84A59D] hover:bg-[#6F9189] text-white border-[#84A59D]" : "dark:border-zinc-800 text-zinc-650 dark:text-zinc-300"}`}
-                    >
-                      {totalPages}
-                    </Button>
-                  );
-                }
-
-                return pages;
-              })()}
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={activePage === totalPages}
-                className="h-8 px-2.5 text-xs font-semibold gap-1 dark:border-zinc-800"
-              >
-                Próxima <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        )}
         </>
       )}
 
