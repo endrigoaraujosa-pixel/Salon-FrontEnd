@@ -9,10 +9,12 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from ".
 import SearchableSelect from "../components/SearchableSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "../components/ui/tooltip";
-import { FileText, Banknote, Package, TrendingUp, TrendingDown, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle, Filter, ArrowLeft, AlertTriangle, AlertCircle, Coins, Flame, Zap, Calendar, Sliders, ClipboardList, Eye, CreditCard } from "lucide-react";
+import { FileText, Banknote, Package, TrendingUp, TrendingDown, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle, Filter, ArrowLeft, AlertTriangle, AlertCircle, Coins, Flame, Zap, Calendar, Sliders, ClipboardList, Eye, CreditCard, ChevronLeft, ChevronRight } from "lucide-react";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtDT = (s) => s ? new Date(s).toLocaleString("pt-BR") : "—";
+
+const REPORT_PAGE_SIZE = 50;
 
 const formatReportQuantidade = (qtd, item) => {
   const qty = Number(Number(qtd || 0).toFixed(3));
@@ -310,6 +312,7 @@ export default function Relatorios() {
   const [sortServicoDirection, setSortServicoDirection] = useState("desc");
   const [sortProdutoField, setSortProdutoField] = useState("faturamento");
   const [sortProdutoDirection, setSortProdutoDirection] = useState("desc");
+  const [rentabilidadeProdutosPage, setRentabilidadeProdutosPage] = useState(1);
   const [sortVendaField, setSortVendaField] = useState("data");
   const [sortVendaDirection, setSortVendaDirection] = useState("desc");
 
@@ -393,6 +396,7 @@ export default function Relatorios() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState("data_venda");
   const [sortDirection, setSortDirection] = useState("desc");
+  const [produtosPage, setProdutosPage] = useState(1);
 
   // Busca e Ordenação de Serviços
   const [searchQueryServico, setSearchQueryServico] = useState("");
@@ -406,6 +410,7 @@ export default function Relatorios() {
   const [searchEstoqueQuery, setSearchEstoqueQuery] = useState("");
   const [sortEstoqueField, setSortEstoqueField] = useState("");
   const [sortEstoqueDirection, setSortEstoqueDirection] = useState("asc");
+  const [estoquePage, setEstoquePage] = useState(1);
 
   useEffect(() => {
     http.get("/colaboradores").then((r) => setColaboradores(r.data)).catch(() => {});
@@ -430,9 +435,13 @@ export default function Relatorios() {
     }
   }, [tab, hasInitializedCaixa]);
 
-  const reload = () => {
+  const reload = (options = {}) => {
     setLoadingReport(true);
     const params = { data_inicio: from, data_fim: to };
+    const nextProdutosPage = options.produtosPage || produtosPage;
+    const nextProdutoSearch = options.produtoSearch ?? searchQuery;
+    const nextProdutoSortField = options.produtoSortField || sortField;
+    const nextProdutoSortDirection = options.produtoSortDirection || sortDirection;
     let promise = Promise.resolve();
 
     if (tab === "dre") {
@@ -495,7 +504,12 @@ export default function Relatorios() {
         categoria: filterCategoria,
         forma_pagamento: filterFormaPagamento,
         cliente_id: filterCliente,
-        status: filterStatus
+        status: filterStatus,
+        page: nextProdutosPage,
+        limit: REPORT_PAGE_SIZE,
+        search: nextProdutoSearch,
+        sort_field: nextProdutoSortField,
+        sort_direction: nextProdutoSortDirection
       };
       promise = http.get("/relatorios/produtos", { params: prodParams })
         .then((r) => setProdutos(r.data))
@@ -673,6 +687,13 @@ export default function Relatorios() {
       return sortProdutoDirection === 'asc' ? valA - valB : valB - valA;
     });
 
+  const rentabilidadeProdutosTotalPages = Math.ceil(sortedAndFilteredProdutos.length / REPORT_PAGE_SIZE);
+  const rentabilidadeProdutosActivePage = Math.min(Math.max(1, rentabilidadeProdutosPage), Math.max(1, rentabilidadeProdutosTotalPages));
+  const paginatedRentabilidadeProdutos = sortedAndFilteredProdutos.slice(
+    (rentabilidadeProdutosActivePage - 1) * REPORT_PAGE_SIZE,
+    rentabilidadeProdutosActivePage * REPORT_PAGE_SIZE
+  );
+
   const sortedAndFilteredVendas = (resultadoOperacional?.vendas || [])
     .filter(v => 
       v.cliente.toLowerCase().includes(searchOperVenda.toLowerCase()) ||
@@ -697,10 +718,16 @@ export default function Relatorios() {
     setSearchEstoqueQuery("");
     setSortEstoqueField("");
     setSortEstoqueDirection("asc");
+    setEstoquePage(1);
   };
 
   const handleGenerate = () => {
+    const nextProdutosPage = tab === "produtos" ? 1 : produtosPage;
+    if (tab === "produtos") {
+      setProdutosPage(1);
+    }
     setIsGenerated(true);
+    setEstoquePage(1);
     setGeneratedFilters({
       from, to, colaboradorId,
       filterColaborador, filterProduto, filterCategoria, filterFormaPagamento, filterCliente, filterStatus,
@@ -709,7 +736,12 @@ export default function Relatorios() {
       filterOperacionalColab, filterOperacionalCatServico, filterOperacionalCatProduto, filterUnidade,
       filterEstoqueCategorias, filterEstoqueProduto
     });
-    reload();
+    reload({ produtosPage: nextProdutosPage });
+  };
+
+  const handleProdutosPageChange = (page) => {
+    setProdutosPage(page);
+    reload({ produtosPage: page });
   };
 
   const hasChanges = generatedFilters && (
@@ -743,6 +775,15 @@ export default function Relatorios() {
       generatedFilters.filterEstoqueProduto !== filterEstoqueProduto
     ))
   );
+
+  useEffect(() => {
+    if (!isGenerated || tab !== "produtos" || hasChanges) return;
+    const timer = setTimeout(() => {
+      setProdutosPage(1);
+      reload({ produtosPage: 1, produtoSearch: searchQuery });
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const renderEstoqueReport = (tabName) => {
     if (!isGenerated) {
@@ -1384,6 +1425,10 @@ export default function Relatorios() {
       return sortEstoqueDirection === "asc" ? valA - valB : valB - valA;
     });
 
+    const totalPages = Math.ceil(sortedList.length / REPORT_PAGE_SIZE);
+    const activePage = Math.min(Math.max(1, estoquePage), Math.max(1, totalPages));
+    const paginatedList = sortedList.slice((activePage - 1) * REPORT_PAGE_SIZE, activePage * REPORT_PAGE_SIZE);
+
     const handleSort = (field) => {
       if (sortEstoqueField === field) {
         setSortEstoqueDirection(sortEstoqueDirection === "asc" ? "desc" : "asc");
@@ -1391,6 +1436,7 @@ export default function Relatorios() {
         setSortEstoqueField(field);
         setSortEstoqueDirection("asc");
       }
+      setEstoquePage(1);
     };
 
     return (
@@ -1445,7 +1491,10 @@ export default function Relatorios() {
               type="text"
               placeholder="Pesquisar neste relatório..."
               value={searchEstoqueQuery}
-              onChange={(e) => setSearchEstoqueQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchEstoqueQuery(e.target.value);
+                setEstoquePage(1);
+              }}
               className="pl-9 text-xs h-9 bg-zinc-50 dark:bg-zinc-950"
             />
           </div>
@@ -1518,7 +1567,7 @@ export default function Relatorios() {
                     </td>
                   </tr>
                 ) : (
-                  sortedList.map((item, idx) => {
+                  paginatedList.map((item, idx) => {
                     const isConsumo = tabName === "estoque_consumo_insumos";
                     return (
                       <tr 
@@ -1542,6 +1591,97 @@ export default function Relatorios() {
             </table>
           </div>
         </div>
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm select-none no-print">
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+              Exibindo <span className="font-semibold text-zinc-800 dark:text-zinc-200">{Math.min(sortedList.length, (activePage - 1) * REPORT_PAGE_SIZE + 1)}</span> a{" "}
+              <span className="font-semibold text-zinc-800 dark:text-zinc-200">{Math.min(sortedList.length, activePage * REPORT_PAGE_SIZE)}</span> de{" "}
+              <span className="font-semibold text-zinc-800 dark:text-zinc-200">{sortedList.length}</span> registros
+            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEstoquePage(prev => Math.max(1, prev - 1))}
+                disabled={activePage === 1}
+                className="h-8 px-2.5 text-xs font-semibold gap-1 dark:border-zinc-800"
+              >
+                <ChevronLeft className="w-4 h-4" /> Anterior
+              </Button>
+
+              {(() => {
+                const pages = [];
+                const maxVisiblePages = 5;
+                let startPage = Math.max(1, activePage - Math.floor(maxVisiblePages / 2));
+                let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+                if (endPage - startPage + 1 < maxVisiblePages) {
+                  startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                }
+
+                if (startPage > 1) {
+                  pages.push(
+                    <Button
+                      key={1}
+                      variant={activePage === 1 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setEstoquePage(1)}
+                      className={`h-8 w-8 text-xs font-bold ${activePage === 1 ? "bg-[#84A59D] hover:bg-[#6F9189] text-white border-[#84A59D]" : "dark:border-zinc-800 text-zinc-650 dark:text-zinc-300"}`}
+                    >
+                      1
+                    </Button>
+                  );
+                  if (startPage > 2) {
+                    pages.push(<span key="dots-start" className="text-zinc-400 dark:text-zinc-600 px-1 text-xs">...</span>);
+                  }
+                }
+
+                for (let p = startPage; p <= endPage; p++) {
+                  pages.push(
+                    <Button
+                      key={p}
+                      variant={activePage === p ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setEstoquePage(p)}
+                      className={`h-8 w-8 text-xs font-bold ${activePage === p ? "bg-[#84A59D] hover:bg-[#6F9189] text-white border-[#84A59D]" : "dark:border-zinc-800 text-zinc-650 dark:text-zinc-300"}`}
+                    >
+                      {p}
+                    </Button>
+                  );
+                }
+
+                if (endPage < totalPages) {
+                  if (endPage < totalPages - 1) {
+                    pages.push(<span key="dots-end" className="text-zinc-400 dark:text-zinc-600 px-1 text-xs">...</span>);
+                  }
+                  pages.push(
+                    <Button
+                      key={totalPages}
+                      variant={activePage === totalPages ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setEstoquePage(totalPages)}
+                      className={`h-8 w-8 text-xs font-bold ${activePage === totalPages ? "bg-[#84A59D] hover:bg-[#6F9189] text-white border-[#84A59D]" : "dark:border-zinc-800 text-zinc-650 dark:text-zinc-300"}`}
+                    >
+                      {totalPages}
+                    </Button>
+                  );
+                }
+
+                return pages;
+              })()}
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEstoquePage(prev => Math.min(totalPages, prev + 1))}
+                disabled={activePage === totalPages}
+                className="h-8 px-2.5 text-xs font-semibold gap-1 dark:border-zinc-800"
+              >
+                Próxima <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
       </TooltipProvider>
     );
@@ -3067,30 +3207,33 @@ export default function Relatorios() {
                 });
 
               // 2. Calcular totais dinâmicos baseados na lista filtrada
-              const totalFaturamento = filteredVendas.filter(v => v.status === "pago").reduce((acc, v) => acc + v.valor_total, 0);
-              const totalQuantidade = filteredVendas.filter(v => v.status === "pago").reduce((acc, v) => acc + v.quantidade, 0);
-              const totalCusto = filteredVendas.filter(v => v.status === "pago").reduce((acc, v) => acc + v.custo_total, 0);
-              const totalLucro = totalFaturamento - totalCusto;
+              const totalFaturamento = produtos.totais?.total_faturamento || 0;
+              const totalQuantidade = produtos.totais?.total_quantidade || 0;
+              const totalCusto = produtos.totais?.total_custo || 0;
+              const totalLucro = produtos.totais?.total_lucro || 0;
+              const pagination = produtos.pagination || { page: produtosPage, limit: REPORT_PAGE_SIZE, total: filteredVendas.length, pages: 1 };
+              const activePage = pagination.page || produtosPage;
+              const totalPages = pagination.pages || 1;
+              const totalRecords = pagination.total || filteredVendas.length;
 
               // 3. Agrupamentos para o painel lateral de desempenho (breakdowns)
-              const porColab = {};
-              const porProd = {};
-              filteredVendas.forEach(v => {
-                if (v.status !== "pago") return;
-                const cName = v.colaborador_nome || 'Nenhum';
-                porColab[cName] = (porColab[cName] || 0) + v.valor_total;
-                
-                const pName = v.produto_nome;
-                porProd[pName] = (porProd[pName] || 0) + v.valor_total;
-              });
+              const porColab = produtos.totais?.por_colaborador || {};
+              const porProd = produtos.totais?.por_produto || {};
 
               const handleSort = (field) => {
+                const nextDirection = sortField === field && sortDirection === "asc" ? "desc" : "asc";
                 if (sortField === field) {
-                  setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+                  setSortDirection(nextDirection);
                 } else {
                   setSortField(field);
                   setSortDirection("desc");
                 }
+                setProdutosPage(1);
+                reload({
+                  produtosPage: 1,
+                  produtoSortField: field,
+                  produtoSortDirection: sortField === field ? nextDirection : "desc"
+                });
               };
 
               const handlePrint = () => {
@@ -4016,7 +4159,10 @@ export default function Relatorios() {
                   <Input 
                     placeholder="Pesquisar produto..." 
                     value={searchOperProduto}
-                    onChange={(e) => setSearchOperProduto(e.target.value)}
+                    onChange={(e) => {
+                      setSearchOperProduto(e.target.value);
+                      setRentabilidadeProdutosPage(1);
+                    }}
                     className="pl-9 h-9 text-xs"
                   />
                 </div>
@@ -4116,7 +4262,7 @@ export default function Relatorios() {
                         <tr>
                           <td colSpan={8} className="text-center py-8 text-zinc-400">Nenhum produto encontrado.</td>
                         </tr>
-                      ) : sortedAndFilteredProdutos.map((p, idx) => (
+                      ) : paginatedRentabilidadeProdutos.map((p, idx) => (
                         <tr key={idx} className="hover:bg-zinc-100 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors" onClick={() => handleShowRentabilidadeDetail(p, 'produto')}>
                           <td className="px-4 py-3 font-semibold text-zinc-700 dark:text-zinc-300">{p.produto_nome}</td>
                           <td className="px-4 py-3 text-center font-mono">{(p.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}</td>
@@ -4142,6 +4288,38 @@ export default function Relatorios() {
                   </table>
                 </div>
               </div>
+              {rentabilidadeProdutosTotalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm select-none no-print">
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+                    Exibindo <span className="font-semibold text-zinc-800 dark:text-zinc-200">{Math.min(sortedAndFilteredProdutos.length, (rentabilidadeProdutosActivePage - 1) * REPORT_PAGE_SIZE + 1)}</span> a{" "}
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200">{Math.min(sortedAndFilteredProdutos.length, rentabilidadeProdutosActivePage * REPORT_PAGE_SIZE)}</span> de{" "}
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200">{sortedAndFilteredProdutos.length}</span> registros
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setRentabilidadeProdutosPage(prev => Math.max(1, prev - 1))}
+                      disabled={rentabilidadeProdutosActivePage === 1}
+                      className="h-8 px-2.5 text-xs font-semibold gap-1 dark:border-zinc-800"
+                    >
+                      <ChevronLeft className="w-4 h-4" /> Anterior
+                    </Button>
+                    <span className="px-3 text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+                      Página {rentabilidadeProdutosActivePage} de {rentabilidadeProdutosTotalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setRentabilidadeProdutosPage(prev => Math.min(rentabilidadeProdutosTotalPages, prev + 1))}
+                      disabled={rentabilidadeProdutosActivePage === rentabilidadeProdutosTotalPages}
+                      className="h-8 px-2.5 text-xs font-semibold gap-1 dark:border-zinc-800"
+                    >
+                      Próxima <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </TabsContent>
