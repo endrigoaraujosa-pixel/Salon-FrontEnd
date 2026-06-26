@@ -30,7 +30,7 @@ const fmtBRLProp = (n) => {
     maximumFractionDigits: hasMoreDecimals ? 4 : 2
   });
 };
-export const fmtHour = (s) => new Date(s.replace('Z', '')).toLocaleTimeString("pt-BR", { timeZone: "America/Recife", hour: "2-digit", minute: "2-digit" });
+export const fmtHour = (s) => new Date(s).toLocaleTimeString("pt-BR", { timeZone: "America/Recife", hour: "2-digit", minute: "2-digit" });
 
 const toDateInput = (d) => {
   const year = d.getFullYear();
@@ -39,17 +39,39 @@ const toDateInput = (d) => {
   return `${year}-${month}-${day}`;
 };
 
+const toDateInputInTimezone = (dtStr) => {
+  if (!dtStr) return "";
+  const d = new Date(dtStr);
+  if (isNaN(d.getTime())) return "";
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Recife",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  });
+  const parts = formatter.formatToParts(d);
+  const getValue = (type) => parts.find(p => p.type === type).value;
+  return `${getValue("year")}-${getValue("month")}-${getValue("day")}`;
+};
+
 const toDatetimeLocalInput = (dtStr) => {
   if (!dtStr) return "";
-  const raw = typeof dtStr === 'string' ? dtStr : dtStr.toISOString();
-  const d = new Date(raw.replace('Z', ''));
+  const d = new Date(dtStr);
   if (isNaN(d.getTime())) return "";
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hours = String(d.getHours()).padStart(2, "0");
-  const minutes = String(d.getMinutes()).padStart(2, "0");
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Recife",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  });
+  const parts = formatter.formatToParts(d);
+  const getValue = (type) => parts.find(p => p.type === type).value;
+  let hour = getValue("hour");
+  if (hour === "24") hour = "00";
+  return `${getValue("year")}-${getValue("month")}-${getValue("day")}T${hour}:${getValue("minute")}`;
 };
 
 const AgendaCardSkeleton = () => (
@@ -194,7 +216,7 @@ export default function Agenda() {
 
       const groups = {};
       dataList.forEach(a => {
-        const dateKey = a.data_hora.substring(0, 10);
+        const dateKey = toDateInputInTimezone(a.data_hora);
         if (!groups[dateKey]) {
           groups[dateKey] = [];
         }
@@ -622,7 +644,7 @@ export default function Agenda() {
   const groupedReportResults = useMemo(() => {
     const groups = {};
     repResults.forEach(a => {
-      const dateKey = a.data_hora.substring(0, 10);
+      const dateKey = toDateInputInTimezone(a.data_hora);
       if (!groups[dateKey]) {
         groups[dateKey] = [];
       }
@@ -1502,7 +1524,7 @@ export default function Agenda() {
   const openNew = () => {
     setForm({
       cliente_id: "",
-      data_hora: new Date().toISOString().substring(0, 10) + 'T' + new Date().toLocaleTimeString().substring(0, 5),
+      data_hora: toDateInput(new Date()) + 'T' + new Date().toLocaleTimeString().substring(0, 5),
       itens_selecionados: [],
       observacoes: "",
       status: "agendado",
@@ -1685,9 +1707,9 @@ export default function Agenda() {
                           {String(a.numero).padStart(6, "0")} | S
                         </span>
                       )}
-                      {a.data_hora && a.data_hora.substring(0, 10) !== data && (
+                      {a.data_hora && toDateInputInTimezone(a.data_hora) !== data && (
                         <span className="text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200/40 dark:border-blue-900/30 px-1.5 py-0.5 rounded">
-                          Agendado para: {new Date(a.data_hora.replace('Z', '')).toLocaleDateString('pt-BR')}
+                          Agendado para: {new Date(a.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Recife' })}
                         </span>
                       )}
                     </div>

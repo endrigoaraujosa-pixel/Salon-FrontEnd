@@ -3,6 +3,21 @@ import http from "../api";
 import { CalendarDays, Clock, Loader2 } from "lucide-react";
 import { fmtHour } from "@/pages/Agenda";
 
+const toDateInputInTimezone = (dtStr) => {
+  if (!dtStr) return "";
+  const d = new Date(dtStr);
+  if (isNaN(d.getTime())) return "";
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Recife",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  });
+  const parts = formatter.formatToParts(d);
+  const getValue = (type) => parts.find(p => p.type === type).value;
+  return `${getValue("year")}-${getValue("month")}-${getValue("day")}`;
+};
+
 // Status -> cor (vertical stripe + bg suave)
 const STATUS_COLORS = {
   agendado: { stripe: "#0EA5E9", bg: "#E0F2FE", text: "#0369A1" },
@@ -168,8 +183,19 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
   }, [filteredAgendamentos]);
 
   const calcBlock = (a) => {
-    const d = new Date(a.data_hora.replace("Z", ""));
-    const startH = d.getHours() + d.getMinutes() / 60;
+    const d = new Date(a.data_hora);
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Recife",
+      hour: "numeric",
+      minute: "numeric",
+      hour12: false
+    });
+    const parts = formatter.formatToParts(d);
+    let hour = Number(parts.find(p => p.type === "hour").value);
+    if (hour === 24) hour = 0;
+    const minute = Number(parts.find(p => p.type === "minute").value);
+    
+    const startH = hour + minute / 60;
     const dur = (a.duracao_minutos || 60) / 60;
     const left = (startH - HOUR_START) * HOUR_WIDTH;
     const width = Math.max(dur * HOUR_WIDTH, 90);
@@ -273,8 +299,8 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
                       const { left, width } = calcBlock(a);
                       const colors = STATUS_COLORS[a.status] || STATUS_COLORS.agendado;
                       const time = fmtHour(a.data_hora);
-                      const isDifferentDate = a.data_hora && a.data_hora.substring(0, 10) !== data;
-                      const dateStr = isDifferentDate ? ` (${new Date(a.data_hora.replace('Z', '')).toLocaleDateString('pt-BR')})` : '';
+                      const isDifferentDate = a.data_hora && toDateInputInTimezone(a.data_hora) !== data;
+                      const dateStr = isDifferentDate ? ` (${new Date(a.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Recife' })})` : '';
                       return (
                         <div
                           key={a.id}
@@ -287,7 +313,7 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
                           <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden" style={{ color: colors.text }}>
                             <div className="text-[11px] font-bold leading-tight truncate">{time} · {a.cliente_nome}</div>
                             {isDifferentDate && (
-                              <div className="text-[9px] opacity-90 font-bold truncate mt-0.5">{new Date(a.data_hora.replace('Z', '')).toLocaleDateString('pt-BR')}</div>
+                              <div className="text-[9px] opacity-90 font-bold truncate mt-0.5">{new Date(a.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Recife' })}</div>
                             )}
                             <div className="text-[10px] opacity-80 leading-tight truncate mt-0.5 font-medium">{a.itens?.map((i) => i.nome).join(", ")}</div>
                           </div>
@@ -313,8 +339,8 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
                       const { left, width } = calcBlock(a);
                       const colors = STATUS_COLORS[a.status] || STATUS_COLORS.agendado;
                       const time = fmtHour(a.data_hora);
-                      const isDifferentDate = a.data_hora && a.data_hora.substring(0, 10) !== data;
-                      const dateStr = isDifferentDate ? ` (${new Date(a.data_hora.replace('Z', '')).toLocaleDateString('pt-BR')})` : '';
+                      const isDifferentDate = a.data_hora && toDateInputInTimezone(a.data_hora) !== data;
+                      const dateStr = isDifferentDate ? ` (${new Date(a.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Recife' })})` : '';
                       return (
                         <div
                           key={a.id}
@@ -326,7 +352,7 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
                           <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden" style={{ color: colors.text }}>
                             <div className="text-[11px] font-bold leading-tight truncate">{time} · {a.cliente_nome}</div>
                             {isDifferentDate && (
-                              <div className="text-[9px] opacity-90 font-bold truncate mt-0.5">{new Date(a.data_hora.replace('Z', '')).toLocaleDateString('pt-BR')}</div>
+                              <div className="text-[9px] opacity-90 font-bold truncate mt-0.5">{new Date(a.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Recife' })}</div>
                             )}
                             <div className="text-[10px] opacity-80 leading-tight truncate mt-0.5 font-medium">Sem Profissional</div>
                           </div>
