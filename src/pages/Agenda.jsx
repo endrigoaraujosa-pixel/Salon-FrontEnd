@@ -1110,8 +1110,17 @@ export default function Agenda() {
       const map = {};
       const dados = r.data || [];
       dados.forEach((a) => {
-        const day = a.data_hora.slice(8, 10);
-        map[day] = (map[day] || 0) + 1;
+        const day = new Date(a.data_hora).toLocaleDateString("pt-BR", { timeZone: "America/Recife", day: "2-digit" });
+        if (!map[day]) {
+          map[day] = {
+            count: 0,
+            hasPending: false
+          };
+        }
+        map[day].count += 1;
+        if (a.status !== "concluido") {
+          map[day].hasPending = true;
+        }
       });
       setMonthEvents(map);
     });
@@ -1763,7 +1772,8 @@ export default function Agenda() {
               return days.map((day, idx) => {
                 if (!day) return <div key={`empty-${idx}`}></div>;
                 const isToday = day === today.getDate() && monthCursor.m === today.getMonth() + 1 && monthCursor.y === today.getFullYear();
-                const hasEvents = monthEvents[String(day).padStart(2, "0")] > 0;
+                const dayData = monthEvents[String(day).padStart(2, "0")];
+                const hasEvents = dayData && dayData.count > 0;
                 return (
                   <button
                     key={day}
@@ -1775,9 +1785,9 @@ export default function Agenda() {
                   >
                     <div className="month-day-number">{day}</div>
                     {hasEvents && (
-                      <div className="event-badge">
+                      <div className={`event-badge ${dayData.hasPending ? "status-pending" : "status-completed"}`}>
                         <CalendarDays className="w-3 h-3" />
-                        {monthEvents[String(day).padStart(2, "0")]}
+                        {dayData.count}
                       </div>
                     )}
                   </button>
