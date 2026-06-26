@@ -1140,7 +1140,7 @@ export default function Agenda() {
           };
         }
         map[day].count += 1;
-        if (a.status !== "concluido") {
+        if (a.status !== "concluido" && a.status !== "cancelado") {
           map[day].hasPending = true;
         }
       });
