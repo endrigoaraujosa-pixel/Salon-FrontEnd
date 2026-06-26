@@ -39,7 +39,6 @@ import CadastroAdquirentes from "./pages/CadastroAdquirentes";
 import Cadastros from "./pages/Cadastros";
 import ConfiguracoesMotivosEstoque from "./pages/ConfiguracoesMotivosEstoque";
 import ClienteCreditoExtrato from "./pages/ClienteCreditoExtrato";
-import http from "./api";
 
 const Protected = ({ children }) => {
   const { user, loading } = useAuth();
@@ -69,40 +68,6 @@ const PermissionRoute = ({ children, permKey }) => {
 
 
 function App() {
-  React.useEffect(() => {
-    const updateBrandIcons = async () => {
-      try {
-        const response = await http.get("/configuracoes/empresa/public");
-        if (response.data && response.data.logomarca) {
-          const logoUrl = response.data.logomarca;
-          
-          // Update favicon
-          let favicon = document.getElementById("favicon");
-          if (!favicon) {
-            favicon = document.querySelector("link[rel*='icon']");
-          }
-          if (favicon) {
-            favicon.href = logoUrl;
-            if (logoUrl.startsWith("data:image/")) {
-              const mime = logoUrl.substring(logoUrl.indexOf(":") + 1, logoUrl.indexOf(";"));
-              favicon.type = mime;
-            }
-          }
-
-
-        }
-      } catch (err) {
-        console.error("Erro ao carregar ícones da empresa:", err);
-      }
-    };
-    
-    updateBrandIcons();
-    window.addEventListener("empresa_updated", updateBrandIcons);
-    return () => {
-      window.removeEventListener("empresa_updated", updateBrandIcons);
-    };
-  }, []);
-
   return (
     <ThemeProvider>
 
