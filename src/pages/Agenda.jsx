@@ -2223,7 +2223,11 @@ export default function Agenda() {
                 {/* Serviços e Profissionais */}
                 <div className="space-y-3">
                   <h4 className="text-xs sm:text-sm uppercase tracking-wider text-zinc-400 font-bold flex items-center gap-2">
-                    <Scissors className="w-4.5 h-4.5 text-[#84A59D]" /> Serviços Agendados
+                    <Scissors className="w-4.5 h-4.5 text-[#84A59D]" /> 
+                    Serviços Agendados
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-[#EAF0EE] text-[#3A4F4A] dark:bg-zinc-800 dark:text-zinc-300 rounded-full select-none">
+                      {resumoAgendamento.itens?.length || 0}
+                    </span>
                   </h4>
                   <div className="space-y-4 max-h-[440px] overflow-y-auto pr-1">
                     {resumoAgendamento.itens?.map((item, idx) => {
