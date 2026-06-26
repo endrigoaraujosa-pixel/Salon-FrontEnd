@@ -8,6 +8,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Card } from "../components/ui/card";
 import { ArrowLeft, Search, Calendar, RefreshCw, TrendingUp, TrendingDown, DollarSign, Ban, HelpCircle, User, ChevronLeft, ChevronRight } from "lucide-react";
+import SearchableSelect from "../components/SearchableSelect";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
 import {
@@ -173,18 +174,20 @@ export default function ClienteCreditoExtrato() {
           
           <div className="space-y-1.5">
             <Label className="text-xs font-bold uppercase tracking-wider text-zinc-500">Filtrar por Cliente</Label>
-            <select
+            <SearchableSelect
+              placeholder="-- Todos os Clientes --"
+              searchPlaceholder="Pesquisar cliente..."
+              options={[
+                { value: "", label: "-- Todos os Clientes --" },
+                ...clients.map(c => ({
+                  value: c.id,
+                  label: `${c.nome}${c.telefone ? ` (${c.telefone})` : ""}`
+                }))
+              ]}
               value={selectedClienteId}
-              onChange={(e) => setSelectedClienteId(e.target.value)}
-              className="w-full h-11 px-3 text-sm bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#84A59D]"
-            >
-              <option value="">-- Todos os Clientes --</option>
-              {clients.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.nome} {c.telefone ? `(${c.telefone})` : ""}
-                </option>
-              ))}
-            </select>
+              onValueChange={setSelectedClienteId}
+              className="w-full h-11 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-800 dark:text-zinc-200"
+            />
           </div>
 
           <div className="space-y-1.5">

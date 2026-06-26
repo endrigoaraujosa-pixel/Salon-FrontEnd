@@ -227,6 +227,14 @@
   color: white;
 }
 
+.event-badge.status-pending {
+  background-color: #0EA5E9; /* Blue (Sky 500 / Timeline Stripe) */
+}
+
+.event-badge.status-completed {
+  background-color: #10B981; /* Green (Emerald 500 / Timeline Stripe) */
+}
+
 /* Modal/Dialog */
 .dialog-overlay {
   position: fixed;

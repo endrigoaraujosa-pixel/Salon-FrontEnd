@@ -30,7 +30,7 @@ const fmtBRLProp = (n) => {
     maximumFractionDigits: hasMoreDecimals ? 4 : 2
   });
 };
-export const fmtHour = (s) => new Date(s.replace('Z', '')).toLocaleTimeString("pt-BR", { timeZone: "America/Recife", hour: "2-digit", minute: "2-digit" });
+export const fmtHour = (s) => new Date(s).toLocaleTimeString("pt-BR", { timeZone: "America/Recife", hour: "2-digit", minute: "2-digit" });
 
 const toDateInput = (d) => {
   const year = d.getFullYear();
@@ -39,17 +39,39 @@ const toDateInput = (d) => {
   return `${year}-${month}-${day}`;
 };
 
+const toDateInputInTimezone = (dtStr) => {
+  if (!dtStr) return "";
+  const d = new Date(dtStr);
+  if (isNaN(d.getTime())) return "";
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Recife",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  });
+  const parts = formatter.formatToParts(d);
+  const getValue = (type) => parts.find(p => p.type === type).value;
+  return `${getValue("year")}-${getValue("month")}-${getValue("day")}`;
+};
+
 const toDatetimeLocalInput = (dtStr) => {
   if (!dtStr) return "";
-  const raw = typeof dtStr === 'string' ? dtStr : dtStr.toISOString();
-  const d = new Date(raw.replace('Z', ''));
+  const d = new Date(dtStr);
   if (isNaN(d.getTime())) return "";
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hours = String(d.getHours()).padStart(2, "0");
-  const minutes = String(d.getMinutes()).padStart(2, "0");
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Recife",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  });
+  const parts = formatter.formatToParts(d);
+  const getValue = (type) => parts.find(p => p.type === type).value;
+  let hour = getValue("hour");
+  if (hour === "24") hour = "00";
+  return `${getValue("year")}-${getValue("month")}-${getValue("day")}T${hour}:${getValue("minute")}`;
 };
 
 const AgendaCardSkeleton = () => (
@@ -194,7 +216,7 @@ export default function Agenda() {
 
       const groups = {};
       dataList.forEach(a => {
-        const dateKey = a.data_hora.substring(0, 10);
+        const dateKey = toDateInputInTimezone(a.data_hora);
         if (!groups[dateKey]) {
           groups[dateKey] = [];
         }
@@ -622,7 +644,7 @@ export default function Agenda() {
   const groupedReportResults = useMemo(() => {
     const groups = {};
     repResults.forEach(a => {
-      const dateKey = a.data_hora.substring(0, 10);
+      const dateKey = toDateInputInTimezone(a.data_hora);
       if (!groups[dateKey]) {
         groups[dateKey] = [];
       }
@@ -1110,8 +1132,17 @@ export default function Agenda() {
       const map = {};
       const dados = r.data || [];
       dados.forEach((a) => {
-        const day = a.data_hora.slice(8, 10);
-        map[day] = (map[day] || 0) + 1;
+        const day = new Date(a.data_hora).toLocaleDateString("pt-BR", { timeZone: "America/Recife", day: "2-digit" });
+        if (!map[day]) {
+          map[day] = {
+            count: 0,
+            hasPending: false
+          };
+        }
+        map[day].count += 1;
+        if (a.status !== "concluido") {
+          map[day].hasPending = true;
+        }
       });
       setMonthEvents(map);
     });
@@ -1493,7 +1524,7 @@ export default function Agenda() {
   const openNew = () => {
     setForm({
       cliente_id: "",
-      data_hora: new Date().toISOString().substring(0, 10) + 'T' + new Date().toLocaleTimeString().substring(0, 5),
+      data_hora: toDateInput(new Date()) + 'T' + new Date().toLocaleTimeString().substring(0, 5),
       itens_selecionados: [],
       observacoes: "",
       status: "agendado",
@@ -1676,9 +1707,9 @@ export default function Agenda() {
                           {String(a.numero).padStart(6, "0")} | S
                         </span>
                       )}
-                      {a.data_hora && a.data_hora.substring(0, 10) !== data && (
+                      {a.data_hora && toDateInputInTimezone(a.data_hora) !== data && (
                         <span className="text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200/40 dark:border-blue-900/30 px-1.5 py-0.5 rounded">
-                          Agendado para: {new Date(a.data_hora.replace('Z', '')).toLocaleDateString('pt-BR')}
+                          Agendado para: {new Date(a.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Recife' })}
                         </span>
                       )}
                     </div>
@@ -1763,7 +1794,8 @@ export default function Agenda() {
               return days.map((day, idx) => {
                 if (!day) return <div key={`empty-${idx}`}></div>;
                 const isToday = day === today.getDate() && monthCursor.m === today.getMonth() + 1 && monthCursor.y === today.getFullYear();
-                const hasEvents = monthEvents[String(day).padStart(2, "0")] > 0;
+                const dayData = monthEvents[String(day).padStart(2, "0")];
+                const hasEvents = dayData && dayData.count > 0;
                 return (
                   <button
                     key={day}
@@ -1775,9 +1807,9 @@ export default function Agenda() {
                   >
                     <div className="month-day-number">{day}</div>
                     {hasEvents && (
-                      <div className="event-badge">
+                      <div className={`event-badge ${dayData.hasPending ? "status-pending" : "status-completed"}`}>
                         <CalendarDays className="w-3 h-3" />
-                        {monthEvents[String(day).padStart(2, "0")]}
+                        {dayData.count}
                       </div>
                     )}
                   </button>
@@ -2223,7 +2255,11 @@ export default function Agenda() {
                 {/* Serviços e Profissionais */}
                 <div className="space-y-3">
                   <h4 className="text-xs sm:text-sm uppercase tracking-wider text-zinc-400 font-bold flex items-center gap-2">
-                    <Scissors className="w-4.5 h-4.5 text-[#84A59D]" /> Serviços Agendados
+                    <Scissors className="w-4.5 h-4.5 text-[#84A59D]" /> 
+                    Serviços Agendados
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-[#EAF0EE] text-[#3A4F4A] dark:bg-zinc-800 dark:text-zinc-300 rounded-full select-none">
+                      {resumoAgendamento.itens?.length || 0}
+                    </span>
                   </h4>
                   <div className="space-y-4 max-h-[440px] overflow-y-auto pr-1">
                     {resumoAgendamento.itens?.map((item, idx) => {
