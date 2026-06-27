@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { PageHeader } from "../components/Page";
 import http from "../api";
 import { useAuth } from "../auth";
+import { formatAgendaDateTime } from "../lib/date";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -138,13 +139,7 @@ export default function AgendaWhatsAppHistorico() {
   };
 
   const formatDateTime = (dateStr) => {
-    if (!dateStr) return "-";
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    
-    const datePart = d.toLocaleDateString("pt-BR", { timeZone: "America/Recife" });
-    const timePart = d.toLocaleTimeString("pt-BR", { timeZone: "America/Recife", hour: "2-digit", minute: "2-digit" });
-    return `${datePart} ${timePart}`;
+    return formatAgendaDateTime(dateStr);
   };
 
   const getStatusBadge = (statusVal) => {
