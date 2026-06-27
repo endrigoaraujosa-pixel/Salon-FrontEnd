@@ -476,7 +476,7 @@ export default function Pagamento() {
     try {
       // 4. Save payments in the backend
       const agPayInfo = itemPayments['agendamento'];
-      if (agPayInfo && agPayInfo.pagamentos.length > 0) {
+      if (agPayInfo && (agPayInfo.pagamentos.length > 0 || Number(customAg.valor_total) === 0)) {
         await http.post(`/agendamentos/${id}/pagamentos`, {
           pagamentos: agPayInfo.pagamentos,
           finalizar: agPayInfo.finalizar,
