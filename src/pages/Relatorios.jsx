@@ -3682,9 +3682,9 @@ export default function Relatorios() {
                     </div>
 
                     <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm hover:shadow transition-shadow">
-                      <div className="text-xs uppercase tracking-wider text-zinc-400 font-semibold">Quantidade Realizada</div>
+                      <div className="text-xs uppercase tracking-wider text-zinc-400 font-semibold">Serviços Executados</div>
                       <div className="font-display text-2xl lg:text-3xl font-bold mt-1.5 text-zinc-700">{totalQuantidade} <span className="text-xs font-normal text-zinc-400">serviços</span></div>
-                      <div className="text-[10px] text-zinc-400 mt-1">Total de procedimentos executados</div>
+                      <div className="text-[10px] text-zinc-400 mt-1">Total de serviços/procedimentos realizados no período</div>
                     </div>
 
                     <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm hover:shadow transition-shadow">
@@ -4048,7 +4048,7 @@ export default function Relatorios() {
                 {/* Card Qtd */}
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm flex flex-col justify-between">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Qtd</span>
+                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Qtd Serviços</span>
                     <div className="p-1 rounded bg-sky-50 dark:bg-sky-950/30">
                       <ClipboardList className="w-4 h-4 text-sky-500" />
                     </div>
@@ -4204,7 +4204,7 @@ export default function Relatorios() {
                     onClick={() => handleExport(
                       'xlsx', 
                       'Rentabilidade_Servicos', 
-                      ['Serviço', 'Quantidade', 'Faturamento', 'Comissão', 'Taxas', 'Insumos', 'Resultado', 'Margem (%)'], 
+                      ['Serviço', 'Qtd Serviços', 'Faturamento', 'Comissão', 'Taxas', 'Insumos', 'Resultado', 'Margem (%)'], 
                       ['servico_nome', 'quantidade', 'faturamento', 'comissao', 'taxas', 'insumos', 'resultado_operacional', 'margem'], 
                       sortedAndFilteredServicos
                     )} 
@@ -4218,7 +4218,7 @@ export default function Relatorios() {
                     onClick={() => handleExport(
                       'csv', 
                       'Rentabilidade_Servicos', 
-                      ['Serviço', 'Quantidade', 'Faturamento', 'Comissão', 'Taxas', 'Insumos', 'Resultado', 'Margem (%)'], 
+                      ['Serviço', 'Qtd Serviços', 'Faturamento', 'Comissão', 'Taxas', 'Insumos', 'Resultado', 'Margem (%)'], 
                       ['servico_nome', 'quantidade', 'faturamento', 'comissao', 'taxas', 'insumos', 'resultado_operacional', 'margem'], 
                       sortedAndFilteredServicos
                     )} 
