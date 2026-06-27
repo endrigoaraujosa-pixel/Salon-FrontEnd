@@ -155,7 +155,12 @@ export default function Layout() {
               <Scissors className="w-4.5 h-4.5 text-white" />
             </div>
           )}
-          <span className="font-display text-base font-semibold tracking-tight truncate">{nomeFantasia}</span>
+          <span 
+            className="font-display text-base font-semibold tracking-tight truncate flex-1 min-w-0" 
+            title={nomeFantasia}
+          >
+            {nomeFantasia}
+          </span>
         </div>
         <Button variant="ghost" size="icon" onClick={() => setMenuOpen(true)} className="h-10 w-10">
           <Menu className="w-6 h-6" />
@@ -186,7 +191,12 @@ export default function Layout() {
                     <Scissors className="w-4.5 h-4.5 text-white" />
                   </div>
                 )}
-                <span className="font-display text-lg font-semibold tracking-tight truncate">{nomeFantasia}</span>
+                <span 
+                  className="font-display text-lg font-semibold tracking-tight leading-tight line-clamp-2 break-words flex-1 min-w-0" 
+                  title={nomeFantasia}
+                >
+                  {nomeFantasia}
+                </span>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setMenuOpen(false)} className="h-8 w-8">
                 <X className="w-4 h-4" />
@@ -244,7 +254,12 @@ export default function Layout() {
               <Scissors className="w-4.5 h-4.5 text-white" />
             </div>
           )}
-          <span className="font-display text-lg font-semibold tracking-tight truncate">{nomeFantasia}</span>
+          <span 
+            className="font-display text-lg font-semibold tracking-tight leading-tight line-clamp-2 break-words flex-1 min-w-0" 
+            title={nomeFantasia}
+          >
+            {nomeFantasia}
+          </span>
         </div>
         
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -282,7 +297,12 @@ export default function Layout() {
                     <Scissors className="w-4.5 h-4.5 text-white" />
                   </div>
                 )}
-                <span className="font-display text-base font-semibold tracking-tight truncate">{nomeFantasia}</span>
+                <span 
+                  className="font-display text-base font-semibold tracking-tight truncate flex-1 min-w-0" 
+                  title={nomeFantasia}
+                >
+                  {nomeFantasia}
+                </span>
               </div>
             )}
           </div>
