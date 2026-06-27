@@ -4244,7 +4244,7 @@ export default function Relatorios() {
                           }} />
                         </th>
                         <th className="px-4 py-3 text-center">
-                          <SortHeader label="Qtd" field="quantidade" currentField={sortServicoField} direction={sortServicoDirection} onSort={(f) => {
+                          <SortHeader label="Qtd Serviços" field="quantidade" currentField={sortServicoField} direction={sortServicoDirection} onSort={(f) => {
                             if (sortServicoField === f) setSortServicoDirection(d => d === 'asc' ? 'desc' : 'asc');
                             else { setSortServicoField(f); setSortServicoDirection('desc'); }
                           }} />
