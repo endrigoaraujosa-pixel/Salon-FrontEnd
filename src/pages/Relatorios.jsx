@@ -722,6 +722,25 @@ export default function Relatorios() {
 
   const totalMargemVendas = totalsVendas.faturamento > 0 ? (totalsVendas.resultado / totalsVendas.faturamento) * 100 : 0;
 
+  const isTaxaHabilitada = !!resultadoOperacional?.descontar_taxa_cartao_comissao;
+
+  const totalsServicos = sortedAndFilteredServicos.reduce((acc, s) => {
+    acc.quantidade += s.quantidade || 0;
+    acc.faturamento += s.faturamento || 0;
+    acc.insumos += s.insumos || 0;
+    acc.comissao += s.comissao || 0;
+    if (isTaxaHabilitada) {
+      acc.taxas += s.taxas || 0;
+      acc.resultado += s.resultado_operacional || 0;
+    } else {
+      acc.taxas += 0;
+      acc.resultado += (s.resultado_operacional || 0) + (s.taxas || 0);
+    }
+    return acc;
+  }, { quantidade: 0, faturamento: 0, insumos: 0, comissao: 0, taxas: 0, resultado: 0 });
+
+  const totalMargemServicos = totalsServicos.faturamento > 0 ? (totalsServicos.resultado / totalsServicos.faturamento) * 100 : 0;
+
 
   const handleSelectReport = (reportId) => {
     setSelectedReport(reportId);
@@ -4024,6 +4043,148 @@ export default function Relatorios() {
             <div className="text-zinc-400 p-8 text-center bg-white border border-zinc-200 rounded-xl">Carregando dados...</div>
           ) : (
             <div className="space-y-6 print-full-width">
+              {/* Cards de Totalizadores */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                {/* Card Qtd */}
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Qtd</span>
+                    <div className="p-1 rounded bg-sky-50 dark:bg-sky-950/30">
+                      <ClipboardList className="w-4 h-4 text-sky-500" />
+                    </div>
+                  </div>
+                  <div className="font-display text-base font-bold mt-2 text-zinc-800 dark:text-zinc-100 font-mono">
+                    {(totalsServicos.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}
+                  </div>
+                </div>
+
+                {/* Card Faturamento */}
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Faturamento</span>
+                    <div className="p-1 rounded bg-indigo-50 dark:bg-indigo-950/30">
+                      <Scissors className="w-4 h-4 text-indigo-500" />
+                    </div>
+                  </div>
+                  <div className="font-display text-base font-bold mt-2 text-zinc-800 dark:text-zinc-100 font-mono">
+                    {fmtBRL(totalsServicos.faturamento)}
+                  </div>
+                </div>
+
+                {/* Card Insumos */}
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Insumos</span>
+                    <div className="p-1 rounded bg-rose-50 dark:bg-rose-950/30">
+                      <TrendingDown className="w-4 h-4 text-rose-500" />
+                    </div>
+                  </div>
+                  <div className="font-display text-base font-bold mt-2 text-rose-500 font-mono">
+                    {fmtBRL(totalsServicos.insumos)}
+                  </div>
+                </div>
+
+                {/* Card Comissão */}
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Comissão</span>
+                    <div className="p-1 rounded bg-amber-50 dark:bg-amber-950/30">
+                      <User className="w-4 h-4 text-amber-500" />
+                    </div>
+                  </div>
+                  <div className="font-display text-base font-bold mt-2 text-amber-600 dark:text-amber-500 font-mono">
+                    {fmtBRL(totalsServicos.comissao)}
+                  </div>
+                </div>
+
+                {/* Card Taxas */}
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Taxas</span>
+                    <div className="p-1 rounded bg-orange-50 dark:bg-orange-950/30">
+                      <CreditCard className="w-4 h-4 text-orange-500" />
+                    </div>
+                  </div>
+                  <div className="font-display text-base font-bold mt-2 text-orange-600 dark:text-orange-500 font-mono">
+                    {fmtBRL(totalsServicos.taxas)}
+                  </div>
+                </div>
+
+                {/* Card Resultado */}
+                <div className={`border rounded-xl p-4 shadow-sm flex flex-col justify-between transition-all ${
+                  totalsServicos.resultado >= 0 
+                    ? "bg-emerald-50/20 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-800/40" 
+                    : "bg-rose-50/20 dark:bg-rose-950/10 border-rose-200 dark:border-rose-800/40"
+                }`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                      totalsServicos.resultado >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                    }`}>
+                      Resultado
+                    </span>
+                    <div className={`p-1 rounded ${
+                      totalsServicos.resultado >= 0 ? "bg-emerald-50 dark:bg-emerald-950/30" : "bg-rose-50 dark:bg-rose-950/30"
+                    }`}>
+                      {totalsServicos.resultado >= 0 ? (
+                        <TrendingUp className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <TrendingDown className="w-4 h-4 text-rose-500" />
+                      )}
+                    </div>
+                  </div>
+                  <div className={`font-display text-base font-bold mt-2 font-mono ${
+                    totalsServicos.resultado >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                  }`}>
+                    {fmtBRL(totalsServicos.resultado)}
+                  </div>
+                </div>
+
+                {/* Card Margem */}
+                <div className={`border rounded-xl p-4 shadow-sm flex flex-col justify-between transition-all ${
+                  totalMargemServicos >= 50 
+                    ? "bg-emerald-50/20 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-800/40" 
+                    : totalMargemServicos >= 20 
+                    ? "bg-amber-50/20 dark:bg-amber-950/10 border-amber-200 dark:border-amber-800/40" 
+                    : "bg-rose-50/20 dark:bg-rose-950/10 border-rose-200 dark:border-rose-800/40"
+                }`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                      totalMargemServicos >= 50 
+                        ? "text-emerald-600 dark:text-emerald-400" 
+                        : totalMargemServicos >= 20 
+                        ? "text-amber-600 dark:text-amber-400" 
+                        : "text-rose-600 dark:text-rose-400"
+                    }`}>
+                      Margem
+                    </span>
+                    <div className={`p-1 rounded ${
+                      totalMargemServicos >= 50 
+                        ? "bg-emerald-50 dark:bg-emerald-950/30" 
+                        : totalMargemServicos >= 20 
+                        ? "bg-amber-50 dark:bg-amber-950/30" 
+                        : "bg-rose-50 dark:bg-rose-950/30"
+                    }`}>
+                      <Percent className={`w-4 h-4 ${
+                        totalMargemServicos >= 50 
+                          ? "text-emerald-500" 
+                          : totalMargemServicos >= 20 
+                          ? "text-amber-500" 
+                          : "text-rose-500"
+                      }`} />
+                    </div>
+                  </div>
+                  <div className={`font-display text-base font-bold mt-2 font-mono ${
+                    totalMargemServicos >= 50 
+                      ? "text-emerald-600 dark:text-emerald-400" 
+                      : totalMargemServicos >= 20 
+                      ? "text-amber-600 dark:text-amber-400" 
+                      : "text-rose-600 dark:text-rose-400"
+                  }`}>
+                    {(totalMargemServicos || 0).toFixed(1)}%
+                  </div>
+                </div>
+              </div>
+
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 pb-3 no-print">
                 <div className="relative flex-1 max-w-xs">
