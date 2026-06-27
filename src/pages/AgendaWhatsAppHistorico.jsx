@@ -139,20 +139,12 @@ export default function AgendaWhatsAppHistorico() {
 
   const formatDateTime = (dateStr) => {
     if (!dateStr) return "-";
-    const match = typeof dateStr === 'string' && dateStr.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
-    if (match) {
-      const [, year, month, day, hours, minutes] = match;
-      return `${day}/${month}/${year} ${hours}:${minutes}`;
-    }
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
     
-    // Convert to timezone-neutral display matching Agenda.jsx logic
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    const hours = d.toLocaleTimeString("pt-BR", { timeZone: "America/Recife", hour: "2-digit", minute: "2-digit" });
-    return `${day}/${month}/${year} ${hours}`;
+    const datePart = d.toLocaleDateString("pt-BR", { timeZone: "America/Recife" });
+    const timePart = d.toLocaleTimeString("pt-BR", { timeZone: "America/Recife", hour: "2-digit", minute: "2-digit" });
+    return `${datePart} ${timePart}`;
   };
 
   const getStatusBadge = (statusVal) => {
