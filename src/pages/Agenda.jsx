@@ -1990,7 +1990,7 @@ export default function Agenda() {
                         >
                           <Edit2 className="w-4 h-4" />
                         </Button>
-                        {(me?.colaborador_id === i.colaborador_id || isAdmin) && (
+                        {me && (
                           <Button 
                             size="sm" 
                             variant="ghost" 
@@ -2942,7 +2942,7 @@ export default function Agenda() {
                 <Edit2 className="w-3.5 h-3.5" /> Editar
               </Button>
             )}
-            {selectedIndisp && (me?.colaborador_id === selectedIndisp.colaborador_id || isAdmin) && (
+            {selectedIndisp && me && (
               <Button 
                 className="bg-rose-500 hover:bg-rose-600 text-white w-full sm:w-auto flex items-center justify-center gap-1"
                 onClick={() => handleDeleteIndisponibilidade(selectedIndisp.id)}
