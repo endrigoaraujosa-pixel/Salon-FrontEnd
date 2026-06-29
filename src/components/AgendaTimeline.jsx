@@ -32,9 +32,10 @@ const HOUR_END = 24;
 const ROW_HEIGHT = 64; // Increased for a more spacious premium feel
 const HOUR_WIDTH = 120; // Slightly wider hour blocks for better readability
 
-export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, selectedColaborador, searchNumero, servicos, onCardClick, loading: parentLoading = false }) {
+export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, selectedColaborador, searchNumero, servicos, onCardClick, onUnavailabilityClick, loading: parentLoading = false }) {
   const [colaboradores, setColaboradores] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
+  const [indisponibilidades, setIndisponibilidades] = useState([]);
   const [now, setNow] = useState(new Date());
   const [localLoading, setLocalLoading] = useState(true);
   const scrollContainerRef = useRef(null);
@@ -107,12 +108,22 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
     const params = {};
     if (searchNumero && searchNumero.trim() !== "") {
       params.numero = searchNumero.trim();
+      setIndisponibilidades([]);
+      http.get("/agendamentos", { params })
+        .then((r) => setAgendamentos(r.data || []))
+        .finally(() => setLocalLoading(false));
     } else {
       params.data = data;
+      Promise.all([
+        http.get("/agendamentos", { params }),
+        http.get("/colaboradores/indisponibilidade", { params: { data } })
+      ])
+        .then(([agRes, indispRes]) => {
+          setAgendamentos(agRes.data || []);
+          setIndisponibilidades(indispRes.data || []);
+        })
+        .finally(() => setLocalLoading(false));
     }
-    http.get("/agendamentos", { params })
-      .then((r) => setAgendamentos(r.data || []))
-      .finally(() => setLocalLoading(false));
   }, [data, searchNumero]);
 
   // Track time in real-time
@@ -320,6 +331,36 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
                         </div>
                       );
                     })}
+                    {/* Blocos de indisponibilidade */}
+                    {indisponibilidades
+                      .filter((i) => i.colaborador_id === c.id)
+                      .map((i) => {
+                        const dayStart = new Date(`${data}T00:00:00`);
+                        const dayEnd = new Date(`${data}T23:59:59`);
+                        const startClamped = new Date(Math.max(new Date(i.data_hora_inicio).getTime(), dayStart.getTime()));
+                        const endClamped = new Date(Math.min(new Date(i.data_hora_fim).getTime(), dayEnd.getTime()));
+                        const duracao = Math.round((endClamped.getTime() - startClamped.getTime()) / 60000);
+
+                        const { left, width } = calcBlock({
+                          data_hora: startClamped,
+                          duracao_minutos: duracao
+                        });
+                        const time = `${fmtHour(i.data_hora_inicio)} - ${fmtHour(i.data_hora_fim)}`;
+                        return (
+                          <div
+                            key={i.id}
+                            className="absolute top-1.5 bottom-1.5 rounded-lg overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer select-none"
+                            style={{ left: `${left}px`, width: `${width}px`, background: "#FEE2E2", borderLeft: "4px solid #EF4444" }}
+                            title={`${time} · Indisponibilidade · ${i.motivo || "Sem motivo específico"}`}
+                            onClick={() => onUnavailabilityClick?.(i)}
+                          >
+                            <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden text-red-900">
+                              <div className="text-[11px] font-bold leading-tight truncate">Indisponível</div>
+                              <div className="text-[10px] opacity-80 leading-tight truncate mt-0.5 font-medium">{i.motivo || "Sem motivo específico"}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
               ))}

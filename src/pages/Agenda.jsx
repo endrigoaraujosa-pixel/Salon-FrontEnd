@@ -16,6 +16,7 @@ import { useAuth } from "../auth";
 import SearchableSelect from "../components/SearchableSelect";
 import AuditModal from "../components/AuditModal";
 import PasswordConfirmDialog from "../components/PasswordConfirmDialog";
+import { formatAgendaDateTime as libFormatAgendaDateTime } from "../lib/date";
 import "./Agenda.css";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -127,6 +128,20 @@ export default function Agenda() {
   const [agendamentos, setAgendamentos] = useState([]);
   const [searchNumero, setSearchNumero] = useState("");
   const [monthEvents, setMonthEvents] = useState({});
+  const [indisponibilidades, setIndisponibilidades] = useState([]);
+  const [openIndisponibilidade, setOpenIndisponibilidade] = useState(false);
+  const [formIndisponibilidade, setFormIndisponibilidade] = useState({
+    id: null,
+    colaborador_id: "",
+    data_hora_inicio: "",
+    data_hora_fim: "",
+    motivo: ""
+  });
+  const [loadingIndisponibilidade, setLoadingIndisponibilidade] = useState(false);
+  const [openIndispDetails, setOpenIndispDetails] = useState(false);
+  const [selectedIndisp, setSelectedIndisp] = useState(null);
+  const [deleteConfirmOpenIndisp, setDeleteConfirmOpenIndisp] = useState(false);
+  const [pendingDeleteIndispId, setPendingDeleteIndispId] = useState(null);
   const [loading, setLoading] = useState(true);
   const isMounted = useRef(false);
   const [clientes, setClientes] = useState([]);
@@ -730,6 +745,41 @@ export default function Agenda() {
     });
   }, [agendamentos, selectedStatus, selectedInsumos, selectedColaborador, searchNumero, servicos]);
 
+  const filteredIndisponibilidades = useMemo(() => {
+    return indisponibilidades.filter(indisp => {
+      if (selectedColaborador !== "all") {
+        if (indisp.colaborador_id !== selectedColaborador) {
+          return false;
+        }
+      }
+      if (searchNumero && searchNumero.trim()) {
+        return false;
+      }
+      if (selectedStatus !== "all") {
+        return false;
+      }
+      if (selectedInsumos !== "all") {
+        return false;
+      }
+      return true;
+    });
+  }, [indisponibilidades, selectedColaborador, searchNumero, selectedStatus, selectedInsumos]);
+
+  const unifiedAgendaItems = useMemo(() => {
+    const items = [
+      ...filteredAgendamentos.map(a => ({ type: "agendamento", date: new Date(a.data_hora), data: a })),
+      ...filteredIndisponibilidades.map(i => ({ type: "indisponibilidade", date: new Date(i.data_hora_inicio), data: i }))
+    ];
+    items.sort((x, y) => {
+      const diff = x.date.getTime() - y.date.getTime();
+      if (diff !== 0) return diff;
+      if (x.type === "indisponibilidade" && y.type !== "indisponibilidade") return -1;
+      if (x.type !== "indisponibilidade" && y.type === "indisponibilidade") return 1;
+      return 0;
+    });
+    return items;
+  }, [filteredAgendamentos, filteredIndisponibilidades]);
+
   const openUtilizedProducts = (agendamento, itemIndex) => {
     const item = agendamento.itens[itemIndex];
     const s = servicos.find(x => x.id === item.servico_id);
@@ -1120,10 +1170,14 @@ export default function Agenda() {
     const params = {};
     if (num && num.trim() !== "") {
       params.numero = num.trim();
+      setIndisponibilidades([]);
+      return http.get("/agendamentos", { params }).then((r) => setAgendamentos(r.data || []));
     } else {
       params.data = d;
+      const fetchAgend = http.get("/agendamentos", { params }).then((r) => setAgendamentos(r.data || []));
+      const fetchIndisp = http.get("/colaboradores/indisponibilidade", { params: { data: d } }).then((r) => setIndisponibilidades(r.data || []));
+      return Promise.all([fetchAgend, fetchIndisp]);
     }
-    return http.get("/agendamentos", { params }).then((r) => setAgendamentos(r.data || []));
   };
 
   const loadMonth = (y, m) => {
@@ -1221,13 +1275,133 @@ export default function Agenda() {
       loadMonth(monthCursor.y, monthCursor.m);
     } catch (e) {
       const errorMsg = e.response?.data?.detail || "Erro ao salvar agendamento";
-      if (errorMsg.includes("Conflito de horário")) {
+      if (errorMsg.includes("Conflito de horário") || errorMsg.includes("Conflito de indisponibilidade")) {
         setConflictMessage(errorMsg);
         setConflictConfirmOpen(true);
       } else {
         toast.error(errorMsg);
       }
     }
+  };
+
+  const openRegisterIndisponibilidade = () => {
+    const userColabId = me?.colaborador_id || "";
+    const initialColabId = colaboradores.some(c => c.id === userColabId && c.ativo) ? userColabId : "";
+    
+    setFormIndisponibilidade({
+      id: null,
+      colaborador_id: initialColabId,
+      data_hora_inicio: `${data}T09:00`,
+      data_hora_fim: `${data}T10:00`,
+      motivo: ""
+    });
+    setOpenIndisponibilidade(true);
+  };
+
+  const handleOpenEditIndisponibilidade = (indisp) => {
+    setOpenIndispDetails(false);
+    setFormIndisponibilidade({
+      id: indisp.id,
+      colaborador_id: indisp.colaborador_id,
+      data_hora_inicio: toDatetimeLocalInput(indisp.data_hora_inicio),
+      data_hora_fim: toDatetimeLocalInput(indisp.data_hora_fim),
+      motivo: indisp.motivo || ""
+    });
+    setOpenIndisponibilidade(true);
+  };
+
+  const handleOpenDetailsIndisponibilidade = (indisp) => {
+    setSelectedIndisp(indisp);
+    setOpenIndispDetails(true);
+  };
+
+  const handleSaveIndisponibilidade = async () => {
+    const { id, colaborador_id, data_hora_inicio, data_hora_fim, motivo } = formIndisponibilidade;
+    
+    if (!colaborador_id) {
+      toast.error("Selecione um colaborador");
+      return;
+    }
+    if (!data_hora_inicio) {
+      toast.error("Selecione a data/hora de início");
+      return;
+    }
+    if (!data_hora_fim) {
+      toast.error("Selecione a data/hora de fim");
+      return;
+    }
+    
+    const start = new Date(data_hora_inicio);
+    const end = new Date(data_hora_fim);
+    if (start.getTime() >= end.getTime()) {
+      toast.error("A data/hora de início deve ser anterior à de fim");
+      return;
+    }
+    
+    if (motivo && motivo.length > 200) {
+      toast.error("O motivo deve ter no máximo 200 caracteres");
+      return;
+    }
+
+    setLoadingIndisponibilidade(true);
+    try {
+      if (id) {
+        await http.put(`/colaboradores/indisponibilidade/${id}`, formIndisponibilidade);
+        toast.success("Indisponibilidade atualizada com sucesso");
+      } else {
+        await http.post("/colaboradores/indisponibilidade", formIndisponibilidade);
+        toast.success("Indisponibilidade registrada com sucesso");
+      }
+      setOpenIndisponibilidade(false);
+      loadDay(data);
+    } catch (error) {
+      const errorMsg = error.response?.data?.detail || "Erro ao salvar indisponibilidade";
+      toast.error(errorMsg);
+    } finally {
+      setLoadingIndisponibilidade(false);
+    }
+  };
+
+  const handleDeleteIndisponibilidade = (id) => {
+    setPendingDeleteIndispId(id);
+    setDeleteConfirmOpenIndisp(true);
+  };
+
+  const confirmDeleteIndisponibilidade = async () => {
+    if (!pendingDeleteIndispId) return;
+    try {
+      await http.delete(`/colaboradores/indisponibilidade/${pendingDeleteIndispId}`);
+      toast.success("Indisponibilidade excluída com sucesso");
+      setDeleteConfirmOpenIndisp(false);
+      setPendingDeleteIndispId(null);
+      setOpenIndispDetails(false);
+      loadDay(data);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Erro ao excluir indisponibilidade");
+    }
+  };
+
+  const handleStartDateChange = (val) => {
+    setFormIndisponibilidade(prev => {
+      const updated = { ...prev, data_hora_inicio: val };
+      if (val && !prev.id) {
+        try {
+          const startDate = new Date(val);
+          if (!isNaN(startDate.getTime())) {
+            const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+            const yyyy = endDate.getFullYear();
+            const mm = String(endDate.getMonth() + 1).padStart(2, "0");
+            const dd = String(endDate.getDate()).padStart(2, "0");
+            const hh = String(endDate.getHours()).padStart(2, "0");
+            const min = String(endDate.getMinutes()).padStart(2, "0");
+            updated.data_hora_fim = `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+          }
+        } catch (e) {
+          console.error("Error calculating end date", e);
+        }
+      }
+      return updated;
+    });
   };
 
   const save = async () => {
@@ -1591,6 +1765,16 @@ export default function Agenda() {
             <FileText className="w-3.5 h-3.5" />
             <span>Relatório</span>
           </Button>
+          {me && (
+            <Button
+              variant="outline"
+              onClick={openRegisterIndisponibilidade}
+              className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 border border-zinc-200 dark:border-zinc-800 h-9"
+            >
+              <AlertCircle className="w-3.5 h-3.5" />
+              <span>Registrar Indisponibilidade</span>
+            </Button>
+          )}
         </div>
         <button className="btn-primary w-full sm:w-auto justify-center" onClick={openNew}><Plus className="w-4 h-4 mr-2" /> Novo Agendamento</button>
       </div>
@@ -1675,6 +1859,7 @@ export default function Agenda() {
             servicos={servicos}
             colaboradores={colaboradores}
             onCardClick={openResumoModal}
+            onUnavailabilityClick={handleOpenDetailsIndisponibilidade}
             loading={true}
           />
         ) : (
@@ -1689,87 +1874,143 @@ export default function Agenda() {
         )
       ) : view === "dia" ? (
         <>
-          {filteredAgendamentos.length === 0 ? (
-            <EmptyState title="Sem agendamentos" description="Nenhum agendamento correspondente aos filtros aplicados" />
+          {unifiedAgendaItems.length === 0 ? (
+            <EmptyState title="Sem registros" description="Nenhum agendamento ou indisponibilidade correspondente aos filtros aplicados" />
           ) : (
             <div className="space-y-2">
-              {filteredAgendamentos.map((a) => (
-                <div key={a.id} className="agenda-card fade-in cursor-pointer hover:shadow-md transition-all duration-200" onClick={() => openResumoModal(a)}>
-                  <div className="agenda-time">
-                    <div className="agenda-time-hour">{fmtHour(a.data_hora).split(":")[0]}</div>
-                    <div className="agenda-time-duration">{fmtHour(a.data_hora)}</div>
-                  </div>
-                  <div className="agenda-content">
-                    <div className="agenda-client-name flex items-center gap-2 flex-wrap">
-                      <span>{a.cliente_nome}</span>
-                      {a.numero && (
-                        <span className="text-[10px] font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] px-1.5 py-0.5 rounded">
-                          {String(a.numero).padStart(6, "0")} | S
-                        </span>
-                      )}
-                      {a.data_hora && toDateInputInTimezone(a.data_hora) !== data && (
-                        <span className="text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200/40 dark:border-blue-900/30 px-1.5 py-0.5 rounded">
-                          Agendado para: {new Date(a.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Recife' })}
-                        </span>
-                      )}
-                    </div>
-                    <div className="agenda-services">{a.itens?.map((i) => servicos.find(s => s.id === i.servico_id)?.nome).join(", ")}</div>
-                    <div className="agenda-professionals flex items-center gap-2 flex-wrap">
-                      <span>{a.itens?.map((i) => colaboradores.find(c => c.id === i.colaborador_id)?.nome).filter(Boolean).join(", ")}</span>
-                      {(() => {
-                        const insStatus = getInsumosStatus(a);
-                        if (insStatus === "pending") {
-                          return (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/40 dark:border-amber-900/30">
-                              <Package className="w-3 h-3 text-amber-500" /> Insumos Pendentes
+              {unifiedAgendaItems.map((item) => {
+                if (item.type === "agendamento") {
+                  const a = item.data;
+                  return (
+                    <div key={a.id} className="agenda-card fade-in cursor-pointer hover:shadow-md transition-all duration-200" onClick={() => openResumoModal(a)}>
+                      <div className="agenda-time">
+                        <div className="agenda-time-hour">{fmtHour(a.data_hora).split(":")[0]}</div>
+                        <div className="agenda-time-duration">{fmtHour(a.data_hora)}</div>
+                      </div>
+                      <div className="agenda-content">
+                        <div className="agenda-client-name flex items-center gap-2 flex-wrap">
+                          <span>{a.cliente_nome}</span>
+                          {a.numero && (
+                            <span className="text-[10px] font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] px-1.5 py-0.5 rounded">
+                              {String(a.numero).padStart(6, "0")} | S
                             </span>
-                          );
-                        }
-                        if (insStatus === "launched") {
-                          return (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/40 dark:border-emerald-900/30">
-                              <Package className="w-3 h-3 text-emerald-500" /> Insumos Lançados
+                          )}
+                          {a.data_hora && toDateInputInTimezone(a.data_hora) !== data && (
+                            <span className="text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200/40 dark:border-blue-900/30 px-1.5 py-0.5 rounded">
+                              Agendado para: {new Date(a.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Recife' })}
                             </span>
-                          );
-                        }
-                        return null;
-                      })()}
+                          )}
+                        </div>
+                        <div className="agenda-services">{a.itens?.map((i) => servicos.find(s => s.id === i.servico_id)?.nome).join(", ")}</div>
+                        <div className="agenda-professionals flex items-center gap-2 flex-wrap">
+                          <span>{a.itens?.map((i) => colaboradores.find(c => c.id === i.colaborador_id)?.nome).filter(Boolean).join(", ")}</span>
+                          {(() => {
+                            const insStatus = getInsumosStatus(a);
+                            if (insStatus === "pending") {
+                              return (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/40 dark:border-amber-900/30">
+                                  <Package className="w-3 h-3 text-amber-500" /> Insumos Pendentes
+                                </span>
+                              );
+                            }
+                            if (insStatus === "launched") {
+                              return (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/40 dark:border-emerald-900/30">
+                                  <Package className="w-3 h-3 text-emerald-500" /> Insumos Lançados
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      </div>
+                      <div className="agenda-price">
+                        <div className="agenda-price-value">{fmtBRL(a.valor_total)}</div>
+                        <div className="mt-1"><StatusBadge status={a.status} /></div>
+                      </div>
+                      <div className="agenda-actions" onClick={(e) => e.stopPropagation()}>
+                        <Select value={a.status || "agendado"} onValueChange={(v) => changeStatus(a.id, v, a)}>
+                          <SelectTrigger className="w-36 h-8 text-xs" data-testid={`status-select-${a.id}`}><SelectValue /></SelectTrigger>
+                          <SelectContent>{Object.entries(STATUS_LABELS).filter(([k]) => k && k.trim()).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                        </Select>
+                        <Button size="sm" variant="ghost" onClick={() => nav(`/agendamentos/${a.id}/pagamento`)} title="Pagamento"><CreditCard className="w-4 h-4" /></Button>
+                        {me && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            title={a.status === "concluido" ? "Não é permitido realizar vendas diretas para agendamento pago" : "Nova venda direta para este cliente"}
+                            disabled={a.status === "concluido"}
+                            onClick={() => nav(`/vendas-diretas?cliente_id=${a.cliente_id}&from=agenda`)}
+                            className={`text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30 ${
+                              a.status === "concluido" ? "opacity-50 cursor-not-allowed text-zinc-400 hover:text-zinc-400 hover:bg-transparent" : ""
+                            }`}
+                          >
+                            <ShoppingCart className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={() => openEdit(a)}><Edit2 className="w-4 h-4" /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => del(a.id)}><Trash2 className="w-4 h-4 text-rose-500" /></Button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="agenda-price">
-                    <div className="agenda-price-value">{fmtBRL(a.valor_total)}</div>
-                    <div className="mt-1"><StatusBadge status={a.status} /></div>
-                  </div>
-                  <div className="agenda-actions" onClick={(e) => e.stopPropagation()}>
-                    <Select value={a.status || "agendado"} onValueChange={(v) => changeStatus(a.id, v, a)}>
-                      <SelectTrigger className="w-36 h-8 text-xs" data-testid={`status-select-${a.id}`}><SelectValue /></SelectTrigger>
-                      <SelectContent>{Object.entries(STATUS_LABELS).filter(([k]) => k && k.trim()).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
-                    </Select>
-                    <Button size="sm" variant="ghost" onClick={() => nav(`/agendamentos/${a.id}/pagamento`)} title="Pagamento"><CreditCard className="w-4 h-4" /></Button>
-                    {me && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        title={a.status === "concluido" ? "Não é permitido realizar vendas diretas para agendamento pago" : "Nova venda direta para este cliente"}
-                        disabled={a.status === "concluido"}
-                        onClick={() => nav(`/vendas-diretas?cliente_id=${a.cliente_id}&from=agenda`)}
-                        className={`text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30 ${
-                          a.status === "concluido" ? "opacity-50 cursor-not-allowed text-zinc-400 hover:text-zinc-400 hover:bg-transparent" : ""
-                        }`}
-                      >
-                        <ShoppingCart className="w-4 h-4" />
-                      </Button>
-                    )}
-                    <Button size="sm" variant="ghost" onClick={() => openEdit(a)}><Edit2 className="w-4 h-4" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => del(a.id)}><Trash2 className="w-4 h-4 text-rose-500" /></Button>
-                  </div>
-                </div>
-              ))}
+                  );
+                } else {
+                  const i = item.data;
+                  const isOwn = me?.role === "admin" || (me?.colaborador_id === i.colaborador_id);
+                  return (
+                    <div 
+                      key={i.id} 
+                      className="agenda-card agenda-card-unavailability fade-in border-l-4 border-l-red-500 cursor-pointer hover:shadow-md transition-all duration-200" 
+                      onClick={() => handleOpenDetailsIndisponibilidade(i)}
+                    >
+                      <div className="agenda-time">
+                        <div className="agenda-time-hour text-red-650">{fmtHour(i.data_hora_inicio).split(":")[0]}</div>
+                        <div className="agenda-time-duration text-red-500">{fmtHour(i.data_hora_inicio)} - {fmtHour(i.data_hora_fim)}</div>
+                      </div>
+                      <div className="agenda-content flex-1">
+                        <div className="agenda-client-name text-red-750 font-bold flex items-center gap-2 flex-wrap">
+                          <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                          <span>INDISPONIBILIDADE: {colaboradores.find(c => c.id === i.colaborador_id)?.nome || "Colaborador"}</span>
+                        </div>
+                        <div className="agenda-services text-red-700 mt-1 font-medium">
+                          {i.motivo ? i.motivo : <span className="italic text-zinc-400 dark:text-zinc-650">Sem motivo específico</span>}
+                        </div>
+                      </div>
+                      <div className="agenda-price">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-400 border border-red-200/40 dark:border-red-900/30">
+                          Indisponível
+                        </span>
+                      </div>
+                      <div className="agenda-actions" onClick={(e) => e.stopPropagation()}>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => handleOpenEditIndisponibilidade(i)} 
+                          title="Editar Indisponibilidade"
+                          className="text-zinc-600 hover:text-zinc-700 dark:text-zinc-400"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        {(me?.colaborador_id === i.colaborador_id || isAdmin) && (
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => handleDeleteIndisponibilidade(i.id)} 
+                            title="Excluir Indisponibilidade"
+                            className="text-red-500 hover:text-red-700 dark:text-red-400"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+              })}
             </div>
           )}
         </>
       ) : view === "timeline" ? (
-        <AgendaTimeline data={data} selectedStatus={selectedStatus} selectedInsumos={selectedInsumos} selectedColaborador={selectedColaborador} searchNumero={searchNumero} servicos={servicos} colaboradores={colaboradores} onCardClick={openResumoModal} loading={false} />
+        <AgendaTimeline data={data} selectedStatus={selectedStatus} selectedInsumos={selectedInsumos} selectedColaborador={selectedColaborador} searchNumero={searchNumero} servicos={servicos} colaboradores={colaboradores} onCardClick={openResumoModal} onUnavailabilityClick={handleOpenDetailsIndisponibilidade} loading={false} />
       ) : (
         <>
           <div className="flex items-center gap-2 mb-4">
@@ -2521,16 +2762,221 @@ export default function Agenda() {
       <Dialog open={conflictConfirmOpen} onOpenChange={setConflictConfirmOpen}>
         <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
           <DialogHeader>
-            <DialogTitle>Conflito de Horário</DialogTitle>
+            <DialogTitle>
+              {conflictMessage.includes("indisponibilidade") ? "Conflito de Indisponibilidade" : "Conflito de Horário"}
+            </DialogTitle>
           </DialogHeader>
           <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
             {conflictMessage}.
             <br /><br />
-            <b>Deseja incluí-lo mesmo assim?</b>
+            <b>
+              {conflictMessage.includes("indisponibilidade") 
+                ? "Deseja continuar com o agendamento mesmo assim?" 
+                : "Deseja incluí-lo mesmo assim?"}
+            </b>
           </div>
           <DialogFooter className="gap-2 flex flex-col sm:flex-row">
             <Button variant="outline" className="w-full sm:w-auto" onClick={() => setConflictConfirmOpen(false)}>Não</Button>
             <Button className="bg-[#84A59D] hover:bg-[#6F9189] w-full sm:w-auto" onClick={async () => { setConflictConfirmOpen(false); await doSave(true); }}>Sim</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para Cadastrar/Editar Indisponibilidade */}
+      <Dialog open={openIndisponibilidade} onOpenChange={setOpenIndisponibilidade}>
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
+          <DialogHeader>
+            <DialogTitle className="font-display font-bold text-zinc-800 dark:text-zinc-150">
+              {formIndisponibilidade.id ? "Editar Indisponibilidade" : "Registrar Indisponibilidade"}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-zinc-500">
+              Defina o período e o motivo da indisponibilidade do colaborador.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-1">
+              <Label htmlFor="indisp-colab" className="text-zinc-650 dark:text-zinc-400 text-xs font-semibold">Colaborador</Label>
+              <Select 
+                value={formIndisponibilidade.colaborador_id} 
+                onValueChange={(val) => setFormIndisponibilidade(prev => ({ ...prev, colaborador_id: val }))}
+                disabled={!isAdmin || !!formIndisponibilidade.id}
+              >
+                <SelectTrigger id="indisp-colab" className="w-full h-10 text-xs">
+                  <SelectValue placeholder="Selecione um colaborador" />
+                </SelectTrigger>
+                <SelectContent>
+                  {colaboradores.filter(c => c.ativo).map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="indisp-inicio" className="text-zinc-650 dark:text-zinc-400 text-xs font-semibold">Início</Label>
+                <Input 
+                  id="indisp-inicio"
+                  type="datetime-local" 
+                  value={formIndisponibilidade.data_hora_inicio} 
+                  onChange={(e) => handleStartDateChange(e.target.value)}
+                  className="w-full h-10 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="indisp-fim" className="text-zinc-650 dark:text-zinc-400 text-xs font-semibold">Fim</Label>
+                <Input 
+                  id="indisp-fim"
+                  type="datetime-local" 
+                  value={formIndisponibilidade.data_hora_fim} 
+                  onChange={(e) => setFormIndisponibilidade(prev => ({ ...prev, data_hora_fim: e.target.value }))}
+                  className="w-full h-10 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="indisp-motivo" className="text-zinc-650 dark:text-zinc-400 text-xs font-semibold">Motivo (Opcional)</Label>
+              <Textarea 
+                id="indisp-motivo"
+                placeholder="Ex: Consulta médica, treinamento..." 
+                value={formIndisponibilidade.motivo} 
+                onChange={(e) => setFormIndisponibilidade(prev => ({ ...prev, motivo: e.target.value }))}
+                maxLength={200}
+                className="w-full min-h-[80px] text-xs"
+              />
+              <span className="text-[10px] text-zinc-450 block text-right">
+                {formIndisponibilidade.motivo?.length || 0}/200 caracteres
+              </span>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 flex flex-col sm:flex-row">
+            <Button 
+              variant="outline" 
+              className="w-full sm:w-auto" 
+              onClick={() => setOpenIndisponibilidade(false)}
+              disabled={loadingIndisponibilidade}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              className="bg-[#84A59D] hover:bg-[#6F9189] text-white w-full sm:w-auto" 
+              onClick={handleSaveIndisponibilidade}
+              disabled={loadingIndisponibilidade}
+            >
+              {loadingIndisponibilidade ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Detalhes da Indisponibilidade */}
+      <Dialog open={openIndispDetails} onOpenChange={setOpenIndispDetails}>
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
+          <DialogHeader>
+            <DialogTitle className="font-display font-bold text-zinc-800 dark:text-zinc-150 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-500" />
+              <span>Período de Indisponibilidade</span>
+            </DialogTitle>
+          </DialogHeader>
+          {selectedIndisp && (
+            <div className="space-y-4 py-4 text-sm text-zinc-650 dark:text-zinc-400">
+              <div>
+                <span className="font-bold block text-xs uppercase text-zinc-400">Colaborador</span>
+                <span className="text-zinc-800 dark:text-zinc-200 font-semibold">
+                  {colaboradores.find(c => c.id === selectedIndisp.colaborador_id)?.nome || "Colaborador"}
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="font-bold block text-xs uppercase text-zinc-400">Início</span>
+                  <span className="text-zinc-850 dark:text-zinc-200">
+                    {libFormatAgendaDateTime(selectedIndisp.data_hora_inicio)}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-bold block text-xs uppercase text-zinc-400">Fim</span>
+                  <span className="text-zinc-850 dark:text-zinc-200">
+                    {libFormatAgendaDateTime(selectedIndisp.data_hora_fim)}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <span className="font-bold block text-xs uppercase text-zinc-400">Motivo</span>
+                <span className="text-zinc-850 dark:text-zinc-200">
+                  {selectedIndisp.motivo || <span className="italic text-zinc-400">Sem motivo específico</span>}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-3 border-t border-zinc-150 dark:border-zinc-800 text-[11px] text-zinc-500 dark:text-zinc-500">
+                <div>
+                  <span className="font-bold block text-[10px] uppercase text-zinc-400">Registrado por</span>
+                  <span className="text-zinc-700 dark:text-zinc-300 font-semibold">
+                    {selectedIndisp.criado_por_nome || "Não informado"}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-bold block text-[10px] uppercase text-zinc-400">Data do Registro</span>
+                  <span className="text-zinc-700 dark:text-zinc-300 font-semibold">
+                    {selectedIndisp.criado_em ? libFormatAgendaDateTime(selectedIndisp.criado_em) : "Não informada"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 flex flex-col sm:flex-row">
+            <Button 
+              variant="outline" 
+              className="w-full sm:w-auto" 
+              onClick={() => setOpenIndispDetails(false)}
+            >
+              Fechar
+            </Button>
+            {selectedIndisp && me && (
+              <Button 
+                className="bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-200 w-full sm:w-auto flex items-center justify-center gap-1"
+                onClick={() => handleOpenEditIndisponibilidade(selectedIndisp)}
+              >
+                <Edit2 className="w-3.5 h-3.5" /> Editar
+              </Button>
+            )}
+            {selectedIndisp && (me?.colaborador_id === selectedIndisp.colaborador_id || isAdmin) && (
+              <Button 
+                className="bg-rose-500 hover:bg-rose-600 text-white w-full sm:w-auto flex items-center justify-center gap-1"
+                onClick={() => handleDeleteIndisponibilidade(selectedIndisp.id)}
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Excluir
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Confirmação para Excluir Indisponibilidade */}
+      <Dialog open={deleteConfirmOpenIndisp} onOpenChange={setDeleteConfirmOpenIndisp}>
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+            <DialogDescription className="text-xs text-zinc-500">
+              Tem certeza que deseja excluir este período de indisponibilidade? O registro poderá ser restaurado através do botão "Excluídos".
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 flex flex-col sm:flex-row mt-4">
+            <Button 
+              variant="outline" 
+              className="w-full sm:w-auto" 
+              onClick={() => { setDeleteConfirmOpenIndisp(false); setPendingDeleteIndispId(null); }}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              className="bg-rose-500 hover:bg-rose-600 text-white w-full sm:w-auto" 
+              onClick={confirmDeleteIndisponibilidade}
+            >
+              Confirmar Exclusão
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

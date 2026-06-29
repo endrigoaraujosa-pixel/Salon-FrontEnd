@@ -653,3 +653,54 @@
     width: 100% !important;
   }
 }
+
+/* Card de Indisponibilidade de Colaborador na Agenda */
+.agenda-card-unavailability {
+  border-left: 4px solid #ef4444 !important;
+  background-color: #fef2f2 !important;
+  border-color: #fca5a5 !important;
+}
+
+.agenda-card-unavailability:hover {
+  box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.1), 0 2px 4px -1px rgba(239, 68, 68, 0.06) !important;
+}
+
+.agenda-card-unavailability .agenda-time-hour {
+  color: #b91c1c !important;
+}
+
+.agenda-card-unavailability .agenda-time-duration {
+  color: #ef4444 !important;
+}
+
+.agenda-card-unavailability .agenda-client-name {
+  color: #991b1b !important;
+  font-weight: 700 !important;
+}
+
+.agenda-card-unavailability .agenda-services {
+  color: #7f1d1d !important;
+  font-style: italic !important;
+}
+
+.dark .agenda-card-unavailability {
+  background-color: #450a0a !important;
+  border-color: #7f1d1d !important;
+}
+
+.dark .agenda-card-unavailability .agenda-time-hour {
+  color: #fca5a5 !important;
+}
+
+.dark .agenda-card-unavailability .agenda-time-duration {
+  color: #f87171 !important;
+}
+
+.dark .agenda-card-unavailability .agenda-client-name {
+  color: #fee2e2 !important;
+}
+
+.dark .agenda-card-unavailability .agenda-services {
+  color: #fca5a5 !important;
+}
+
