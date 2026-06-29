@@ -118,6 +118,58 @@ const CalendarSkeleton = () => (
   </div>
 );
 
+const renderConflictMessage = (msg) => {
+  if (!msg) return null;
+  if (!msg.includes("Conflito de indisponibilidade")) {
+    return <span>{msg}</span>;
+  }
+  
+  const prefix = "Conflito de indisponibilidade: ";
+  const content = msg.startsWith(prefix) ? msg.slice(prefix.length) : msg;
+  const items = content.split("; ");
+  
+  return (
+    <div>
+      <span className="font-bold text-red-600 dark:text-red-400">Conflito de indisponibilidade:</span>
+      <ul className="mt-2 space-y-1.5 pl-1">
+        {items.map((item, idx) => {
+          const colabPrefix = "O colaborador ";
+          const possuiIndex = item.indexOf(" possui ");
+          const motivoPrefix = " Motivo: ";
+          const motivoIndex = item.indexOf(motivoPrefix);
+          
+          if (possuiIndex !== -1 && item.startsWith(colabPrefix)) {
+            const colabNome = item.slice(colabPrefix.length, possuiIndex);
+            let resto = "";
+            let motivo = "";
+            
+            if (motivoIndex !== -1) {
+              resto = item.slice(possuiIndex, motivoIndex);
+              motivo = item.slice(motivoIndex + motivoPrefix.length);
+            } else {
+              resto = item.slice(possuiIndex);
+            }
+            
+            return (
+              <li key={idx} className="text-zinc-600 dark:text-zinc-400 text-xs sm:text-sm leading-relaxed">
+                • O colaborador <strong className="text-zinc-900 dark:text-zinc-100 font-bold">{colabNome}</strong>
+                {resto}
+                {motivo && (
+                  <>
+                    {" "}Motivo: <strong className="text-zinc-900 dark:text-zinc-100 font-bold">{motivo}</strong>
+                  </>
+                )}
+              </li>
+            );
+          }
+          
+          return <li key={idx} className="text-zinc-600 dark:text-zinc-400 text-xs sm:text-sm leading-relaxed">• {item}</li>;
+        })}
+      </ul>
+    </div>
+  );
+};
+
 export default function Agenda() {
   const { user: me } = useAuth();
   const isAdmin = me?.role === "admin";
@@ -2767,7 +2819,7 @@ export default function Agenda() {
             </DialogTitle>
           </DialogHeader>
           <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
-            {conflictMessage}.
+            {renderConflictMessage(conflictMessage)}
             <br /><br />
             <b>
               {conflictMessage.includes("indisponibilidade") 
