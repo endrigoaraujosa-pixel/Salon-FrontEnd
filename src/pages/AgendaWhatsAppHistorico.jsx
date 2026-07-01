@@ -341,7 +341,7 @@ export default function AgendaWhatsAppHistorico() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
                   <tr className="bg-zinc-50 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 text-xs font-bold uppercase tracking-wider">
@@ -420,6 +420,83 @@ export default function AgendaWhatsAppHistorico() {
               </table>
             </div>
 
+            {/* Mobile view: list of cards */}
+            <div className="md:hidden divide-y divide-zinc-200 dark:divide-zinc-800">
+              {history.map((log) => (
+                <div key={log.id} className="p-4 space-y-3 hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20">
+                  <div className="flex justify-between items-center">
+                    <span className="font-mono text-xs font-bold text-zinc-500 dark:text-zinc-400">
+                      {log.agendamento_numero ? `#${String(log.agendamento_numero).padStart(6, '0')}` : '—'}
+                    </span>
+                    {getStatusBadge(log.status)}
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">
+                      {log.cliente_nome}
+                    </div>
+                    {log.cliente_telefone && (
+                      <div className="text-xs text-zinc-500 dark:text-zinc-400 font-normal">
+                        {log.cliente_telefone}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
+                    <div>
+                      <span className="text-zinc-400 dark:text-zinc-500 block">Tipo</span>
+                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                        {getCleanReminderType(log.tipo_lembrete)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-zinc-400 dark:text-zinc-500 block">Agendamento</span>
+                      <span className="text-zinc-600 dark:text-zinc-350">
+                        {formatDateTime(log.agendamento_data_hora)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-zinc-400 dark:text-zinc-500 block">Programado</span>
+                      <span className="text-zinc-600 dark:text-zinc-350">
+                        {formatDateTime(log.data_programada)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-zinc-400 dark:text-zinc-500 block">Enviado</span>
+                      <span className="text-zinc-600 dark:text-zinc-350">
+                        {formatDateTime(log.data_envio) || "—"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedLog(log)}
+                      className="h-8 px-2.5 text-xs text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 flex items-center gap-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Detalhes</span>
+                    </Button>
+
+                    {log.status === "Falhou" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={resendingId === log.id}
+                        onClick={() => handleResend(log.id)}
+                        className="h-8 px-2.5 text-xs text-amber-600 hover:text-amber-750 hover:bg-amber-50 dark:text-amber-500 dark:hover:text-amber-400 dark:hover:bg-amber-950/20 flex items-center gap-1"
+                      >
+                        <RotateCcw className={`w-3.5 h-3.5 ${resendingId === log.id ? 'animate-spin' : ''}`} />
+                        <span>Reenviar</span>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {/* Pagination Controls */}
             {totalPages > 1 && (
               <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/20">
@@ -444,7 +521,7 @@ export default function AgendaWhatsAppHistorico() {
                     {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((p) => {
                       if (p === 1 || p === totalPages || (p >= page - 2 && p <= page + 2)) {
                         return (
-                          <PaginationItem key={p}>
+                          <PaginationItem key={p} className="hidden sm:block">
                             <Button
                               variant={p === page ? "outline" : "ghost"}
                               size="sm"
@@ -457,7 +534,7 @@ export default function AgendaWhatsAppHistorico() {
                         );
                       } else if (p === page - 3 || p === page + 3) {
                         return (
-                          <PaginationItem key={p}>
+                          <PaginationItem key={p} className="hidden sm:block">
                             <span className="px-2 text-zinc-400 text-xs">...</span>
                           </PaginationItem>
                         );
@@ -512,7 +589,7 @@ export default function AgendaWhatsAppHistorico() {
             <div className="p-6 overflow-y-auto space-y-5 flex-1">
               
               {/* Message metadata */}
-              <div className="grid grid-cols-2 gap-4 text-xs bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
                 <div>
                   <span className="text-zinc-500 block">Nº do Serviço:</span>
                   <span className="font-bold font-mono text-zinc-800 dark:text-zinc-200">

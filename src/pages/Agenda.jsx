@@ -2836,7 +2836,7 @@ export default function Agenda() {
               </Select>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label htmlFor="indisp-inicio" className="text-zinc-650 dark:text-zinc-400 text-xs font-semibold">Início</Label>
                 <Input 
