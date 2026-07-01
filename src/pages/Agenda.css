@@ -656,51 +656,51 @@
 
 /* Card de Indisponibilidade de Colaborador na Agenda */
 .agenda-card-unavailability {
-  border-left: 4px solid #ef4444 !important;
-  background-color: #fef2f2 !important;
-  border-color: #fca5a5 !important;
+  border-left: 4px solid #0284c7 !important;
+  background-color: #f0f9ff !important;
+  border-color: #bae6fd !important;
 }
 
 .agenda-card-unavailability:hover {
-  box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.1), 0 2px 4px -1px rgba(239, 68, 68, 0.06) !important;
+  box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.1), 0 2px 4px -1px rgba(14, 165, 233, 0.06) !important;
 }
 
 .agenda-card-unavailability .agenda-time-hour {
-  color: #b91c1c !important;
+  color: #0369a1 !important;
 }
 
 .agenda-card-unavailability .agenda-time-duration {
-  color: #ef4444 !important;
+  color: #0284c7 !important;
 }
 
 .agenda-card-unavailability .agenda-client-name {
-  color: #991b1b !important;
+  color: #0c4a6e !important;
   font-weight: 700 !important;
 }
 
 .agenda-card-unavailability .agenda-services {
-  color: #7f1d1d !important;
+  color: #0369a1 !important;
   font-style: italic !important;
 }
 
 .dark .agenda-card-unavailability {
-  background-color: #450a0a !important;
-  border-color: #7f1d1d !important;
+  background-color: #082f49 !important;
+  border-color: #0c4a6e !important;
 }
 
 .dark .agenda-card-unavailability .agenda-time-hour {
-  color: #fca5a5 !important;
+  color: #7dd3fc !important;
 }
 
 .dark .agenda-card-unavailability .agenda-time-duration {
-  color: #f87171 !important;
+  color: #38bdf8 !important;
 }
 
 .dark .agenda-card-unavailability .agenda-client-name {
-  color: #fee2e2 !important;
+  color: #e0f2fe !important;
 }
 
 .dark .agenda-card-unavailability .agenda-services {
-  color: #fca5a5 !important;
+  color: #bae6fd !important;
 }
 

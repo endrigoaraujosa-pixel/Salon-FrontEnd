@@ -8,7 +8,7 @@ import { Textarea } from "../components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import StatusBadge, { STATUS_LABELS } from "../components/StatusBadge";
-import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle, ShoppingCart, Loader2, Printer, AlertTriangle, AlertCircle } from "lucide-react";
+import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle, ShoppingCart, Loader2, Printer, AlertTriangle, AlertCircle, CalendarOff } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import AgendaTimeline from "../components/AgendaTimeline";
@@ -227,9 +227,7 @@ export default function Agenda() {
   const [clientWhatsappStatus, setClientWhatsappStatus] = useState(null); // null, 'checking', 'exists', 'not_exists', 'error'
   const [duplicateConfirm, setDuplicateConfirm] = useState({ open: false, message: "", resolve: null });
   const clientNomeInputRef = useRef(null);
-  const [openEditSenha, setOpenEditSenha] = useState(false);
-  const [pendingEditAgendamento, setPendingEditAgendamento] = useState(null);
-  const [authCredentials, setAuthCredentials] = useState(null);
+
   const [conflictConfirmOpen, setConflictConfirmOpen] = useState(false);
   const [conflictMessage, setConflictMessage] = useState("");
 
@@ -1290,39 +1288,24 @@ export default function Agenda() {
     }
   }, [openSenha]);
 
-  const handleConfirmEditConcluido = async (email, password) => {
-    try {
-      await http.get(`/agendamentos/${pendingEditAgendamento.id}`, { headers: { 'x-auth-email': email, 'x-auth-password': password } });
-      setAuthCredentials({ email, password });
-      setForm({
-        id: pendingEditAgendamento.id,
-        cliente_id: pendingEditAgendamento.cliente_id,
-        data_hora: toDatetimeLocalInput(pendingEditAgendamento.data_hora),
-        itens_selecionados: pendingEditAgendamento.itens || [],
-        observacoes: pendingEditAgendamento.observacoes || ""
-      });
-      setOpen(true);
-      setOpenEditSenha(false);
-      setPendingEditAgendamento(null);
-    } catch (e) {
-      throw new Error(e.response?.data?.detail || "Erro de autorização. Verifique usuário, senha e permissões.");
-    }
-  };
+
 
   const doSave = async (ignorarConflito = false) => {
     try {
       const payload = ignorarConflito ? { ...form, ignorar_conflito: true } : form;
       if (form.id) {
-        const bodyPayload = authCredentials ? { ...payload, auth_email: authCredentials.email, auth_password: authCredentials.password } : payload;
-        await http.put(`/agendamentos/${form.id}`, bodyPayload);
-        toast.success("Agendamento atualizado");
+        const res = await http.put(`/agendamentos/${form.id}`, payload);
+        if (res.data?.warning) {
+          toast.warning(res.data.warning, { duration: 8000 });
+        } else {
+          toast.success("Agendamento atualizado");
+        }
       } else {
         await http.post("/agendamentos", payload);
         toast.success("Agendamento criado");
       }
       setOpen(false);
       setForm(null);
-      setAuthCredentials(null);
       loadDay(data);
       loadMonth(monthCursor.y, monthCursor.m);
     } catch (e) {
@@ -1762,12 +1745,6 @@ export default function Agenda() {
   };
 
   const openEdit = (a) => {
-    if (a.status === "concluido") {
-      setPendingEditAgendamento(a);
-      setOpenEditSenha(true);
-      return;
-    }
-    setAuthCredentials(null);
     setForm({
       id: a.id,
       cliente_id: a.cliente_id,
@@ -2000,7 +1977,9 @@ export default function Agenda() {
                             <ShoppingCart className="w-4 h-4" />
                           </Button>
                         )}
-                        <Button size="sm" variant="ghost" onClick={() => openEdit(a)}><Edit2 className="w-4 h-4" /></Button>
+                        {a.status !== "concluido" && (
+                          <Button size="sm" variant="ghost" onClick={() => openEdit(a)}><Edit2 className="w-4 h-4" /></Button>
+                        )}
                         <Button size="sm" variant="ghost" onClick={() => del(a.id)}><Trash2 className="w-4 h-4 text-rose-500" /></Button>
                       </div>
                     </div>
@@ -2011,24 +1990,24 @@ export default function Agenda() {
                   return (
                     <div 
                       key={i.id} 
-                      className="agenda-card agenda-card-unavailability fade-in border-l-4 border-l-red-500 cursor-pointer hover:shadow-md transition-all duration-200" 
+                      className="agenda-card agenda-card-unavailability fade-in border-l-4 border-l-sky-500 cursor-pointer hover:shadow-md transition-all duration-200" 
                       onClick={() => handleOpenDetailsIndisponibilidade(i)}
                     >
                       <div className="agenda-time">
-                        <div className="agenda-time-hour text-red-650">{fmtHour(i.data_hora_inicio).split(":")[0]}</div>
-                        <div className="agenda-time-duration text-red-500">{fmtHour(i.data_hora_inicio)} - {fmtHour(i.data_hora_fim)}</div>
+                        <div className="agenda-time-hour text-sky-700 dark:text-sky-300">{fmtHour(i.data_hora_inicio).split(":")[0]}</div>
+                        <div className="agenda-time-duration text-sky-600 dark:text-sky-400">{fmtHour(i.data_hora_inicio)} - {fmtHour(i.data_hora_fim)}</div>
                       </div>
                       <div className="agenda-content flex-1">
-                        <div className="agenda-client-name text-red-750 font-bold flex items-center gap-2 flex-wrap">
-                          <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                        <div className="agenda-client-name text-sky-950 dark:text-sky-100 font-bold flex items-center gap-2 flex-wrap">
+                          <CalendarOff className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
                           <span>INDISPONIBILIDADE: {colaboradores.find(c => c.id === i.colaborador_id)?.nome || "Colaborador"}</span>
                         </div>
-                        <div className="agenda-services text-red-700 mt-1 font-medium">
+                        <div className="agenda-services text-sky-700 dark:text-sky-300 mt-1 font-medium">
                           {i.motivo ? i.motivo : <span className="italic text-zinc-400 dark:text-zinc-650">Sem motivo específico</span>}
                         </div>
                       </div>
                       <div className="agenda-price">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-400 border border-red-200/40 dark:border-red-900/30">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-100 dark:bg-sky-950/40 text-sky-800 dark:text-sky-400 border border-sky-200/40 dark:border-sky-900/30">
                           Indisponível
                         </span>
                       </div>
@@ -2671,7 +2650,7 @@ export default function Agenda() {
             >
               Fechar
             </Button>
-            {resumoAgendamento && (
+            {resumoAgendamento && resumoAgendamento.status !== "concluido" && (
               <Button 
                 variant="outline" 
                 onClick={() => { setOpenResumo(false); openEdit(resumoAgendamento); }} 
@@ -2803,14 +2782,7 @@ export default function Agenda() {
         tituloModulo="Agenda"
         onRestoreSuccess={() => loadDay(data)}
       />
-      <PasswordConfirmDialog
-        open={openEditSenha}
-        onOpenChange={setOpenEditSenha}
-        onConfirm={handleConfirmEditConcluido}
-        title="Autorização Necessária"
-        description="Este agendamento já foi concluído. Informe usuário e senha de um administrador com permissão específica para editá-lo."
-        requireCredentials={true}
-      />
+
       <Dialog open={conflictConfirmOpen} onOpenChange={setConflictConfirmOpen}>
         <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
           <DialogHeader>
@@ -2927,7 +2899,7 @@ export default function Agenda() {
         <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
           <DialogHeader>
             <DialogTitle className="font-display font-bold text-zinc-800 dark:text-zinc-150 flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-red-500" />
+              <CalendarOff className="w-5 h-5 text-sky-600 dark:text-sky-400" />
               <span>Período de Indisponibilidade</span>
             </DialogTitle>
           </DialogHeader>

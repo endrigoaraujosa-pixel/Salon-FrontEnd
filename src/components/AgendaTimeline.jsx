@@ -350,11 +350,11 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
                           <div
                             key={i.id}
                             className="absolute top-1.5 bottom-1.5 rounded-lg overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer select-none"
-                            style={{ left: `${left}px`, width: `${width}px`, background: "#FEE2E2", borderLeft: "4px solid #EF4444" }}
+                            style={{ left: `${left}px`, width: `${width}px`, background: "#E0F2FE", borderLeft: "4px solid #0EA5E9" }}
                             title={`${time} · Indisponibilidade · ${i.motivo || "Sem motivo específico"}`}
                             onClick={() => onUnavailabilityClick?.(i)}
                           >
-                            <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden text-red-900">
+                            <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden text-sky-900">
                               <div className="text-[11px] font-bold leading-tight truncate">Indisponível</div>
                               <div className="text-[10px] opacity-80 leading-tight truncate mt-0.5 font-medium">{i.motivo || "Sem motivo específico"}</div>
                             </div>
