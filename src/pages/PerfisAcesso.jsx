@@ -251,7 +251,7 @@ const permissionGroups = [
   {
     title: "Usuários e Segurança",
     permissions: [
-      { key: "usuarios.visualizar", label: "Visualizar Usuários", desc: "Visualizar usuários cadastrados." },
+      { key: "usuarios.visualizar", label: "Visualizar Todos os Usuários", desc: "Visualizar o cadastro de todos os usuários. Sem esta permissão, cada pessoa vê apenas o próprio cadastro." },
       { key: "usuarios.criar", label: "Cadastrar Usuários", desc: "Cadastrar novos usuários no sistema." },
       { key: "usuarios.editar", label: "Editar Usuários", desc: "Editar perfis e dados de usuários." },
       { key: "usuarios.excluir", label: "Excluir Usuários", desc: "Remover usuários." },

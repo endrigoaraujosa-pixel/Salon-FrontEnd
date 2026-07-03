@@ -117,6 +117,7 @@ export default function Usuarios() {
   const canEdit = isAdmin || me?.perfil?.permissoes?.["usuarios.editar"] === true;
   const canDelete = isAdmin || me?.perfil?.permissoes?.["usuarios.excluir"] === true;
   const canModifyFields = form.id ? canEdit : canCreate;
+  const canOpenEdit = (u) => canEdit || u.id === me?.id;
 
   return (
     <div className="p-6 lg:p-8 fade-in">
@@ -270,7 +271,9 @@ export default function Usuarios() {
                       <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${u.ativo ? "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-450" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400"}`}>{u.ativo ? "Ativo" : "Inativo"}</span>
                     </td>
                     <td className="px-4 py-3.5 text-right space-x-1">
-                      <Button size="sm" variant="ghost" onClick={() => edit(u)} data-testid={`edit-user-${u.id}`} className="hover:bg-zinc-100 dark:hover:bg-zinc-800"><Edit2 className="w-4 h-4" /></Button>
+                      {canOpenEdit(u) && (
+                        <Button size="sm" variant="ghost" onClick={() => edit(u)} data-testid={`edit-user-${u.id}`} className="hover:bg-zinc-100 dark:hover:bg-zinc-800"><Edit2 className="w-4 h-4" /></Button>
+                      )}
                       {canDelete && (
                         <Button size="sm" variant="ghost" onClick={() => del(u.id, u.email)} data-testid={`delete-user-${u.id}`} className="hover:bg-rose-50 dark:hover:bg-rose-950/30"><Trash2 className="w-4 h-4 text-rose-500" /></Button>
                       )}
@@ -349,16 +352,18 @@ export default function Usuarios() {
 
                 {/* Actions Footer */}
                 <div className="flex items-center justify-end gap-2 pt-1.5">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={() => edit(u)} 
-                    data-testid={`edit-user-mobile-${u.id}`}
-                    className="h-10 px-4 border-zinc-250 dark:border-zinc-800 text-zinc-750 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center justify-center gap-1.5 text-sm font-semibold rounded-xl"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                    <span>Editar</span>
-                  </Button>
+                  {canOpenEdit(u) && (
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => edit(u)} 
+                      data-testid={`edit-user-mobile-${u.id}`}
+                      className="h-10 px-4 border-zinc-250 dark:border-zinc-800 text-zinc-750 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center justify-center gap-1.5 text-sm font-semibold rounded-xl"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                      <span>Editar</span>
+                    </Button>
+                  )}
                   {canDelete && (
                     <Button 
                       size="sm" 

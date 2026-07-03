@@ -30,7 +30,7 @@ const nav = [
   { to: "/relatorios", label: "Relatórios", icon: BarChart3, permKey: "relatorios" },
   { to: "/cadastros", label: "Cadastros", icon: FolderOpen, permKey: "cadastros.visualizar" },
   { to: "/configuracoes", label: "Configurações", icon: UserCog, permKey: "configuracoes" },
-  { to: "/usuarios", label: "Usuários", icon: UsersRound, permKey: "usuarios.visualizar" },
+  { to: "/usuarios", label: "Usuários", icon: UsersRound, alwaysVisible: true },
 ];
 
 
@@ -108,6 +108,8 @@ export default function Layout() {
       if (n.to === "/agenda/whatsapp-historico" && !whatsappAtivo) {
         return false;
       }
+
+      if (n.alwaysVisible) return true;
 
       if (user?.role === "admin") return true;
       const perfil = user?.perfil;

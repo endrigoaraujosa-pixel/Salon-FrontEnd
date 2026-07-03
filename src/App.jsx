@@ -130,7 +130,7 @@ function App() {
               <Route path="/cadastros/descontos" element={<PermissionRoute permission="cadastros.descontos"><CadastroDescontos /></PermissionRoute>} />
               <Route path="/cadastros/motivos-estoque" element={<PermissionRoute permission="cadastros.motivos_estoque"><ConfiguracoesMotivosEstoque /></PermissionRoute>} />
               <Route path="/agenda/whatsapp-historico" element={<PermissionRoute permission="agenda.whatsapp_historico"><AgendaWhatsAppHistorico /></PermissionRoute>} />
-              <Route path="/usuarios" element={<PermissionRoute permission="usuarios.visualizar"><Usuarios /></PermissionRoute>} />
+              <Route path="/usuarios" element={<Usuarios />} />
             </Route>
           </Routes>
         </BrowserRouter>
