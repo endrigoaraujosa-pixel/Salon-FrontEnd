@@ -113,12 +113,16 @@ export default function Usuarios() {
   };
 
   const isAdmin = me?.role === "admin";
+  const canCreate = isAdmin || me?.perfil?.permissoes?.["usuarios.criar"] === true;
+  const canEdit = isAdmin || me?.perfil?.permissoes?.["usuarios.editar"] === true;
+  const canDelete = isAdmin || me?.perfil?.permissoes?.["usuarios.excluir"] === true;
+  const canModifyFields = form.id ? canEdit : canCreate;
 
   return (
     <div className="p-6 lg:p-8 fade-in">
       <PageHeader overline="Acessos" title="Usuários" action={
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setForm(blank); setConfirmarSenha(""); } }}>
-          {isAdmin && (
+          {canCreate && (
             <DialogTrigger asChild>
               <Button data-testid="add-user-btn" className="bg-[#84A59D] hover:bg-[#6F9189]"><Plus className="w-4 h-4 mr-1" /> Novo usuário</Button>
             </DialogTrigger>
@@ -126,8 +130,8 @@ export default function Usuarios() {
           <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
             <DialogHeader><DialogTitle>{form.id ? "Editar" : "Novo"} usuário</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <div><Label>Nome *</Label><Input data-testid="user-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} disabled={!isAdmin} /></div>
-              <div><Label>Email *</Label><Input data-testid="user-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} autoComplete="off" disabled={!isAdmin} /></div>
+              <div><Label>Nome *</Label><Input data-testid="user-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} disabled={!canModifyFields} /></div>
+              <div><Label>Email *</Label><Input data-testid="user-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} autoComplete="off" disabled={!canModifyFields} /></div>
               <div>
                 <Label>{form.id ? "Nova senha (deixe vazio para manter)" : "Senha *"}</Label>
                 <Input 
@@ -154,9 +158,9 @@ export default function Usuarios() {
                 <Label>Perfil *</Label>
                 <Select value={form.perfil_acesso_id || "func-profile-uuid-000000000000000000"} onValueChange={(v) => {
                   const p = perfis.find(x => x.id === v);
-                  const chosenRole = (p?.nome === "Administrador" || p?.permissoes?.acoes?.is_admin) ? "admin" : "funcionario";
+                  const chosenRole = (p?.id === "admin-profile-uuid-00000000000000000" || p?.nome === "Administrador") ? "admin" : "funcionario";
                   setForm({ ...form, perfil_acesso_id: v, role: chosenRole });
-                }} disabled={!isAdmin}>
+                }} disabled={!canModifyFields}>
                   <SelectTrigger data-testid="user-role"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {perfis.map(p => (
@@ -167,7 +171,7 @@ export default function Usuarios() {
               </div>
               <div>
                 <Label>Colaborador Vinculado</Label>
-                <Select value={form.colaborador_id || "nenhum"} onValueChange={(v) => setForm({ ...form, colaborador_id: v === "nenhum" ? null : v })} disabled={!isAdmin}>
+                <Select value={form.colaborador_id || "nenhum"} onValueChange={(v) => setForm({ ...form, colaborador_id: v === "nenhum" ? null : v })} disabled={!canModifyFields}>
                   <SelectTrigger data-testid="user-colab"><SelectValue placeholder="Selecione o colaborador" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="nenhum">Nenhum</SelectItem>
@@ -178,21 +182,21 @@ export default function Usuarios() {
                 </Select>
               </div>
               <div className="flex items-center gap-2">
-                <Switch checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: v })} disabled={!isAdmin} />
+                <Switch checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: v })} disabled={!canModifyFields} />
                 <Label>Ativo</Label>
               </div>
               <div className="flex flex-col gap-2 bg-[#F8FBFB] dark:bg-[#1a2322] p-3 rounded-lg border border-[#E8EFEF] dark:border-[#2e3e3b] mt-2">
                 <div className="text-[11px] font-semibold text-[#3A4F4A] uppercase tracking-wider mb-1">Permissões Especiais</div>
                 <div className="flex items-center gap-2">
-                  <Switch checked={form.pode_alterar_concluido} onCheckedChange={(v) => setForm({ ...form, pode_alterar_concluido: v })} disabled={!isAdmin} />
+                  <Switch checked={form.pode_alterar_concluido} onCheckedChange={(v) => setForm({ ...form, pode_alterar_concluido: v })} disabled={!canModifyFields} />
                   <Label className="text-xs">Pode alterar/pagar agendamentos concluídos</Label>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <Switch checked={form.pode_excluir_agendamento} onCheckedChange={(v) => setForm({ ...form, pode_excluir_agendamento: v })} disabled={!isAdmin} />
+                  <Switch checked={form.pode_excluir_agendamento} onCheckedChange={(v) => setForm({ ...form, pode_excluir_agendamento: v })} disabled={!canModifyFields} />
                   <Label className="text-xs">Pode excluir agendamentos</Label>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <Switch checked={form.pode_excluir_pagamento} onCheckedChange={(v) => setForm({ ...form, pode_excluir_pagamento: v })} disabled={!isAdmin} />
+                  <Switch checked={form.pode_excluir_pagamento} onCheckedChange={(v) => setForm({ ...form, pode_excluir_pagamento: v })} disabled={!canModifyFields} />
                   <Label className="text-xs">Permitir exclusão de pagamentos e cancelamento de vendas</Label>
                 </div>
               </div>
@@ -267,7 +271,7 @@ export default function Usuarios() {
                     </td>
                     <td className="px-4 py-3.5 text-right space-x-1">
                       <Button size="sm" variant="ghost" onClick={() => edit(u)} data-testid={`edit-user-${u.id}`} className="hover:bg-zinc-100 dark:hover:bg-zinc-800"><Edit2 className="w-4 h-4" /></Button>
-                      {isAdmin && (
+                      {canDelete && (
                         <Button size="sm" variant="ghost" onClick={() => del(u.id, u.email)} data-testid={`delete-user-${u.id}`} className="hover:bg-rose-50 dark:hover:bg-rose-950/30"><Trash2 className="w-4 h-4 text-rose-500" /></Button>
                       )}
                     </td>
@@ -355,7 +359,7 @@ export default function Usuarios() {
                     <Edit2 className="w-4 h-4" />
                     <span>Editar</span>
                   </Button>
-                  {isAdmin && (
+                  {canDelete && (
                     <Button 
                       size="sm" 
                       variant="outline" 

@@ -13,12 +13,19 @@ import { Checkbox } from "../components/ui/checkbox";
 import { toast } from "sonner";
 import AuditModal from "../components/AuditModal";
 import SearchableSelect from "../components/SearchableSelect";
+import { useAuth } from "../auth";
 
 const blank = { nome: "", categoria: "", categoria_id: "", unidade_medida: "un", quantidade_estoque: 0, estoque_minimo: 5, custo_unitario: 0, preco_venda: 0, fornecedor: "", ativo: true, comissao: 0, quantidade_por_unidade: 0, unidade_medida_insumo: "un", uso_exclusivo_servicos: false, ocultar_insumos: false };
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const normalizeText = (str) => !str ? "" : str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 export default function Produtos() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const canCreate = isAdmin || user?.perfil?.permissoes?.["produtos.criar"] === true;
+  const canEdit = isAdmin || user?.perfil?.permissoes?.["produtos.editar"] === true;
+  const canDelete = isAdmin || user?.perfil?.permissoes?.["produtos.excluir"] === true;
+
   const [list, setList] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [open, setOpen] = useState(false);
@@ -540,9 +547,11 @@ export default function Produtos() {
             >
               <Printer className="w-4 h-4" /> Emitir PDF
             </Button>
-            <Button onClick={() => { setForm(blank); setOpen(true); }} className="flex-1 sm:flex-initial bg-[#84A59D] hover:bg-[#6F9189] text-white flex items-center justify-center gap-1.5 h-10 font-bold shadow-sm">
-              <Plus className="w-4 h-4" /> Novo produto
-            </Button>
+            {canCreate && (
+              <Button onClick={() => { setForm(blank); setOpen(true); }} className="flex-1 sm:flex-initial bg-[#84A59D] hover:bg-[#6F9189] text-white flex items-center justify-center gap-1.5 h-10 font-bold shadow-sm">
+                <Plus className="w-4 h-4" /> Novo produto
+              </Button>
+            )}
           </div>
         } 
       />
@@ -975,8 +984,12 @@ export default function Produtos() {
                                 <td className="px-4 py-3 text-right">
                                   <div className="flex justify-end gap-1">
                                     <Button size="sm" variant="ghost" onClick={() => openKardex(p)} className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-150" title="Kardex / Histórico"><History className="w-4 h-4" /></Button>
-                                    <Button size="sm" variant="ghost" onClick={() => edit(p)} className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><Edit2 className="w-4 h-4" /></Button>
-                                    <Button size="sm" variant="ghost" onClick={() => del(p.id)} className="text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"><Trash2 className="w-4 h-4" /></Button>
+                                    {canEdit && (
+                                      <Button size="sm" variant="ghost" onClick={() => edit(p)} className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><Edit2 className="w-4 h-4" /></Button>
+                                    )}
+                                    {canDelete && (
+                                      <Button size="sm" variant="ghost" onClick={() => del(p.id)} className="text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"><Trash2 className="w-4 h-4" /></Button>
+                                    )}
                                   </div>
                                 </td>
                               </tr>
@@ -1052,27 +1065,31 @@ export default function Produtos() {
                                 size="sm" 
                                 variant="outline" 
                                 onClick={() => openKardex(p)}
-                                className="h-9 px-3 border-zinc-200 dark:border-zinc-700 text-zinc-650 dark:text-zinc-350 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 flex items-center justify-center"
+                                className="h-9 px-3 border-zinc-200 dark:border-zinc-700 text-zinc-650 dark:text-zinc-355 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 flex items-center justify-center"
                                 title="Kardex / Histórico"
                               >
                                 <History className="w-4 h-4" />
                               </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={() => edit(p)}
-                                className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" /> Editar
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={() => del(p.id)}
-                                className="h-9 px-3 border-zinc-200 dark:border-zinc-700 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center justify-center"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              {canEdit && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => edit(p)}
+                                  className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" /> Editar
+                                </Button>
+                              )}
+                              {canDelete && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => del(p.id)}
+                                  className="h-9 px-3 border-zinc-200 dark:border-zinc-700 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center justify-center"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
                             </div>
                           </div>
                         );

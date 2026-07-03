@@ -184,8 +184,10 @@ export default function Estoque() {
     return matchesSearch;
   });
 
-  const canMovimentar = user?.role === 'admin' || user?.perfil?.permissoes?.acoes?.['estoque.movimentar'];
-  const canInventariar = user?.role === 'admin' || user?.perfil?.permissoes?.acoes?.['estoque.inventariar'];
+  const canMovimentar = user?.role === 'admin' || user?.perfil?.permissoes?.['estoque.movimentar'] === true || user?.perfil?.permissoes?.acoes?.['estoque.movimentar'];
+  const canInventariar = user?.role === 'admin' || user?.perfil?.permissoes?.['estoque.inventariar'] === true || user?.perfil?.permissoes?.acoes?.['estoque.inventariar'];
+  const canEntrada = user?.role === 'admin' || user?.perfil?.permissoes?.['estoque.entrada'] === true || user?.perfil?.permissoes?.acoes?.['estoque.entrada'];
+  const canAjustar = user?.role === 'admin' || user?.perfil?.permissoes?.['estoque.ajustar'] === true;
   const selectedProduct = produtos.find(p => p.id === formMov.produto_id);
 
   return (
@@ -209,8 +211,8 @@ export default function Estoque() {
       />
 
       {/* Indicadores KPI */}
-      <div className={`grid grid-cols-1 ${user?.role === "admin" ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-1"} gap-6 mb-8 mt-4`}>
-        {user?.role === "admin" && (
+      <div className={`grid grid-cols-1 ${canAjustar ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-1"} gap-6 mb-8 mt-4`}>
+        {canAjustar && (
           <>
             <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs flex items-center justify-between hover:shadow-md transition-shadow">
               <div>
@@ -489,8 +491,18 @@ export default function Estoque() {
 
                 {/* Registrar Entrada */}
                 <div 
-                  onClick={() => navigate("/estoque/entrada")}
-                  className="group border border-zinc-200 dark:border-zinc-800 hover:border-[#3A4F4A]/40 rounded-xl p-4 flex items-center justify-between cursor-pointer hover:bg-zinc-50/30 dark:hover:bg-zinc-950/20 transition-all duration-200"
+                  onClick={() => {
+                    if (canEntrada) {
+                      navigate("/estoque/entrada");
+                    } else {
+                      toast.error("Acesso negado: Permissão insuficiente para registrar entradas de produtos.");
+                    }
+                  }}
+                  className={`group border rounded-xl p-4 flex items-center justify-between transition-all duration-200 ${
+                    canEntrada
+                      ? "border-zinc-200 dark:border-zinc-800 hover:border-[#3A4F4A]/40 hover:bg-zinc-50/30 dark:hover:bg-zinc-950/20 cursor-pointer"
+                      : "border-zinc-150 dark:border-zinc-900 opacity-60 bg-zinc-50/10 cursor-not-allowed"
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-zinc-100 dark:bg-zinc-800 text-[#3A4F4A] dark:text-[#84A59D] rounded-xl group-hover:scale-105 transition-transform">
@@ -518,7 +530,7 @@ export default function Estoque() {
                       <p className="text-[10px] text-zinc-400 dark:text-zinc-400 font-semibold mt-0.5 uppercase tracking-wider">Compras & Fornecedores</p>
                     </div>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-zinc-400 group-hover:text-[#3A4F4A] transition-colors" />
+                  <ArrowRight className={`w-4 h-4 transition-colors ${canEntrada ? "text-zinc-400 group-hover:text-[#3A4F4A]" : "text-zinc-300 dark:text-zinc-700"}`} />
                 </div>
 
                 {/* Inventário Assistido */}

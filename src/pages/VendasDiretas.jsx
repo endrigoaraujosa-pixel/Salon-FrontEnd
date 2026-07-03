@@ -11,6 +11,7 @@ import AuditModal from "../components/AuditModal";
 import { ShoppingBag, ShoppingCart, Plus, Minus, Trash2, CreditCard, Calendar, Lock, Search, History, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../auth";
 import SearchableSelect from "../components/SearchableSelect";
 import {
   Pagination,
@@ -27,6 +28,10 @@ const STATUS_COLORS = {
 };
 
 export default function VendasDiretas() {
+  const { user } = useAuth();
+  const canCriarVenda = user?.role === 'admin' || user?.perfil?.permissoes?.['vendas.criar'] === true || user?.perfil?.permissoes?.acoes?.['vendas.criar'];
+  const canLancarPagamento = user?.role === 'admin' || user?.perfil?.permissoes?.['vendas.pagamento'] === true || user?.perfil?.permissoes?.acoes?.['vendas.pagamento'];
+
   const getTodayStr = () => {
     const d = new Date();
     const year = d.getFullYear();
@@ -143,13 +148,18 @@ export default function VendasDiretas() {
     const clienteIdFromUrl = params.get("cliente_id");
     const fromAgendaParam = params.get("from") === "agenda";
     if (clienteIdFromUrl) {
+      if (!canCriarVenda) {
+        toast.error("Acesso negado: Você não tem permissão para realizar vendas.");
+        nav("/vendas-diretas", { replace: true });
+        return;
+      }
       setForm(f => ({ ...f, cliente_id: clienteIdFromUrl }));
       setFromAgenda(fromAgendaParam);
       setOpen(true);
       // Remove the query param from the URL without re-navigation
       nav("/vendas-diretas", { replace: true });
     }
-  }, [location.search]);
+  }, [location.search, canCriarVenda]);
 
   useEffect(() => {
     if (!open) {
@@ -205,11 +215,17 @@ export default function VendasDiretas() {
       const { data } = await http.post("/vendas-diretas", payload);
       console.log("Resposta:", data);
 
-      toast.success("Venda criada! Registre o pagamento.");
-      const wasFromAgenda = fromAgenda;
-      setOpen(false);
-      load();
-      nav(`/vendas-diretas/${data.id}/pagamento`, { state: { fromAgenda: wasFromAgenda } });
+      if (canLancarPagamento) {
+        toast.success("Venda criada! Registre o pagamento.");
+        const wasFromAgenda = fromAgenda;
+        setOpen(false);
+        load();
+        nav(`/vendas-diretas/${data.id}/pagamento`, { state: { fromAgenda: wasFromAgenda } });
+      } else {
+        toast.success("Venda criada com sucesso.");
+        setOpen(false);
+        load();
+      }
     } catch (e) {
       console.error("Erro:", e);
       if (e.response?.data?.code === 'ESTOQUE_INSUFICIENTE') {
@@ -460,12 +476,28 @@ export default function VendasDiretas() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 fade-in w-full overflow-x-hidden">
       <PageHeader overline="Balcão" title="Vendas Diretas" action={
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="add-venda-btn" className="bg-[#84A59D] hover:bg-[#6F9189] w-full sm:w-auto">
+        <Dialog open={open} onOpenChange={(val) => {
+          if (val && !canCriarVenda) {
+            toast.error("Acesso negado: Permissão insuficiente para realizar vendas.");
+            return;
+          }
+          setOpen(val);
+        }}>
+          {canCriarVenda ? (
+            <DialogTrigger asChild>
+              <Button data-testid="add-venda-btn" className="bg-[#84A59D] hover:bg-[#6F9189] w-full sm:w-auto">
+                <Plus className="w-4 h-4 mr-1" /> Nova venda
+              </Button>
+            </DialogTrigger>
+          ) : (
+            <Button 
+              disabled 
+              data-testid="add-venda-btn" 
+              className="bg-[#84A59D] hover:bg-[#6F9189] w-full sm:w-auto opacity-50 cursor-not-allowed"
+            >
               <Plus className="w-4 h-4 mr-1" /> Nova venda
             </Button>
-          </DialogTrigger>
+          )}
           <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-5xl w-full p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl border-0" style={{ maxHeight: '85vh' }}>
             {/* fixed header */}
             <div className="px-6 sm:px-8 pt-6 pb-5 border-b border-zinc-100 dark:border-zinc-800 shrink-0 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-md">
@@ -908,7 +940,20 @@ export default function VendasDiretas() {
                     >
                       <ShoppingCart className="w-5 h-5 mr-2 text-zinc-500" /> Carrinho
                     </Button>
-                    <Button size="default" variant="outline" className="h-11 px-4 rounded-xl shadow-sm font-semibold border-zinc-200 text-[#3A4F4A] hover:bg-[#EAF0EE]" onClick={(e) => { e.stopPropagation(); nav(`/vendas-diretas/${v.id}/pagamento`); }} data-testid={`pay-venda-mob-${v.id}`}>
+                    <Button
+                      size="default"
+                      variant="outline"
+                      className="h-11 px-4 rounded-xl shadow-sm font-semibold border-zinc-200 text-[#3A4F4A] hover:bg-[#EAF0EE]"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!canLancarPagamento) {
+                          toast.error("Você não tem permissão para lançar pagamentos.");
+                          return;
+                        }
+                        nav(`/vendas-diretas/${v.id}/pagamento`);
+                      }}
+                      data-testid={`pay-venda-mob-${v.id}`}
+                    >
                       <CreditCard className="w-5 h-5 mr-2" /> Pagar
                     </Button>
                     <Button size="default" variant="ghost" className="h-11 w-11 rounded-xl shadow-sm border border-zinc-100 text-rose-500 hover:bg-rose-50 hover:border-rose-200 ml-4" onClick={(e) => { e.stopPropagation(); del(v.id); }}>
@@ -971,7 +1016,14 @@ export default function VendasDiretas() {
                         size="default"
                         variant="ghost"
                         className="h-10 w-10 rounded-lg hover:bg-zinc-100 border border-transparent hover:border-zinc-200"
-                        onClick={(e) => { e.stopPropagation(); nav(`/vendas-diretas/${v.id}/pagamento`); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!canLancarPagamento) {
+                            toast.error("Você não tem permissão para lançar pagamentos.");
+                            return;
+                          }
+                          nav(`/vendas-diretas/${v.id}/pagamento`);
+                        }}
                         title="Pagar Venda"
                         data-testid={`pay-venda-${v.id}`}
                       >
@@ -1330,7 +1382,14 @@ export default function VendasDiretas() {
               <Button type="button" variant="outline" className="h-12 px-6 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-bold text-zinc-700 dark:text-zinc-300" onClick={() => setCarrinhoOpen(false)}>Fechar</Button>
               {carrinhoData && !carrinhoData.bloqueado && (
                 <Button
-                  onClick={() => { setCarrinhoOpen(false); nav(`/vendas-diretas/${carrinhoVendaId}/pagamento`) }}
+                  onClick={() => {
+                    if (!canLancarPagamento) {
+                      toast.error("Você não tem permissão para lançar pagamentos.");
+                      return;
+                    }
+                    setCarrinhoOpen(false);
+                    nav(`/vendas-diretas/${carrinhoVendaId}/pagamento`);
+                  }}
                   className="h-12 px-8 bg-[#84A59D] hover:bg-[#6F9189] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white shadow-lg font-bold text-base transition-transform hover:scale-[1.02]"
                 >
                   <CreditCard className="w-5 h-5 mr-2" /> Ir para Pagamento

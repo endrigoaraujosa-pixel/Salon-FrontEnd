@@ -14,23 +14,23 @@ import { useTheme } from "../ThemeProvider";
 import http from "../api";
 
 const nav = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true, permKey: "dashboard" },
-  { to: "/agenda", label: "Agenda", icon: Calendar, permKey: "agenda" },
-  { to: "/agenda/whatsapp-historico", label: "Histórico WhatsApp", icon: MessageSquare, permKey: "agenda" },
-  { to: "/vendas-diretas", label: "Vendas", icon: ShoppingBag, permKey: "vendas" },
-  { to: "/clientes", label: "Clientes", icon: Users, permKey: "clientes" },
-  { to: "/colaboradores", label: "Colaboradores", icon: UserCog, permKey: "colaboradores" },
-  { to: "/categorias", label: "Categorias", icon: Tags, permKey: "produtos" },
-  { to: "/servicos", label: "Serviços", icon: Scissors, permKey: "servicos" },
-  { to: "/produtos", label: "Produtos", icon: Package, permKey: "produtos" },
-  { to: "/comissoes", label: "Comissões", icon: Wallet, permKey: "comissoes" },
-  { to: "/estoque", label: "Estoque", icon: ClipboardList, permKey: "estoque" },
-  { to: "/outras-receitas", label: "Outras Receitas", icon: TrendingUp, permKey: "receitas" },
-  { to: "/despesas", label: "Despesas", icon: DollarSign, permKey: "despesas" },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true, permKey: "dashboard.visualizar" },
+  { to: "/agenda", label: "Agenda", icon: Calendar, permKey: "agenda.visualizar" },
+  { to: "/agenda/whatsapp-historico", label: "Histórico WhatsApp", icon: MessageSquare, permKey: "agenda.whatsapp_historico" },
+  { to: "/vendas-diretas", label: "Vendas", icon: ShoppingBag, permKey: "vendas.visualizar" },
+  { to: "/clientes", label: "Clientes", icon: Users, permKey: "clientes.visualizar" },
+  { to: "/colaboradores", label: "Colaboradores", icon: UserCog, permKey: "colaboradores.visualizar" },
+  { to: "/categorias", label: "Categorias", icon: Tags, permKey: "cadastros.categorias" },
+  { to: "/servicos", label: "Serviços", icon: Scissors, permKey: "servicos.visualizar" },
+  { to: "/produtos", label: "Produtos", icon: Package, permKey: "produtos.visualizar" },
+  { to: "/comissoes", label: "Comissões", icon: Wallet, permKey: "comissoes.visualizar" },
+  { to: "/estoque", label: "Estoque", icon: ClipboardList, permKey: "estoque.visualizar" },
+  { to: "/outras-receitas", label: "Outras Receitas", icon: TrendingUp, permKey: "receitas.visualizar" },
+  { to: "/despesas", label: "Despesas", icon: DollarSign, permKey: "despesas.visualizar" },
   { to: "/relatorios", label: "Relatórios", icon: BarChart3, permKey: "relatorios" },
-  { to: "/cadastros", label: "Cadastros", icon: FolderOpen, permKey: "cadastros" },
+  { to: "/cadastros", label: "Cadastros", icon: FolderOpen, permKey: "cadastros.visualizar" },
   { to: "/configuracoes", label: "Configurações", icon: UserCog, permKey: "configuracoes" },
-  { to: "/usuarios", label: "Usuários", icon: UsersRound, permKey: "usuarios" },
+  { to: "/usuarios", label: "Usuários", icon: UsersRound, permKey: "usuarios.visualizar" },
 ];
 
 
@@ -111,8 +111,23 @@ export default function Layout() {
 
       if (user?.role === "admin") return true;
       const perfil = user?.perfil;
-      if (!perfil || !perfil.permissoes || !perfil.permissoes.menus) return false;
-      return !!perfil.permissoes.menus[n.permKey];
+      if (!perfil || !perfil.permissoes) return false;
+      
+      const key = n.permKey;
+      
+      // Chave exata
+      if (perfil.permissoes[key] === true) return true;
+      
+      // Permissão de grupo (ex: relatorios)
+      const hasGroup = Object.keys(perfil.permissoes).some(
+        k => k.startsWith(`${key}.`) && perfil.permissoes[k] === true
+      );
+      if (hasGroup) return true;
+
+      // Retrocompatibilidade
+      if (perfil.permissoes.menus && perfil.permissoes.menus[key] === true) return true;
+
+      return false;
     }).map((n) => (
       <NavLink
         key={n.to}

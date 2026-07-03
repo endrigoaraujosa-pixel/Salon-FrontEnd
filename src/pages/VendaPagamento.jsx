@@ -28,7 +28,7 @@ export default function VendaPagamento() {
   const { id } = useParams();
   const nav = useNavigate();
   const { user } = useAuth();
-  const temPermissaoPagamento = user?.role === "admin" || !!user?.perfil?.permissoes?.acoes?.realizar_pagamento;
+  const temPermissaoPagamento = user?.role === "admin" || user?.perfil?.permissoes?.["vendas.pagamento"] === true;
   const [v, setV] = useState(null);
   const [novos, setNovos] = useState([{ valor: "", forma_pagamento: "dinheiro", observacao: "", parcelas: 1 }]);
   const [taxasCartao, setTaxasCartao] = useState([]);

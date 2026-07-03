@@ -35,6 +35,9 @@ const fmtDateTime = (s) => s ? new Date(s).toLocaleString("pt-BR") : "—";
 export default function Comissoes() {
   const { user } = useAuth();
   const isFunc = user?.role === "funcionario";
+  const canPagarComissao = user?.role === "admin" || user?.perfil?.permissoes?.["comissoes.pagar"] === true || user?.perfil?.permissoes?.acoes?.["comissoes.pagar"];
+  const canEstornarComissao = user?.role === "admin" || user?.perfil?.permissoes?.["comissoes.estornar"] === true || user?.perfil?.permissoes?.acoes?.["comissoes.estornar"];
+  const canActionHeader = canPagarComissao || canEstornarComissao;
   const today = new Date();
   
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -985,7 +988,7 @@ export default function Comissoes() {
                       <th className="px-6 py-4 text-right font-bold">Taxa Cartão</th>
                     )}
                     <th className="px-6 py-4 text-right font-bold">Comissão Líquida</th>
-                    <th className="px-6 py-4 text-center font-bold">{user?.role === "admin" ? "Situação / Ação" : "Situação"}</th>
+                    <th className="px-6 py-4 text-center font-bold">{canActionHeader ? "Situação / Ação" : "Situação"}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -1098,7 +1101,7 @@ export default function Comissoes() {
                                 <Clock className="w-3 h-3" /> Pendente
                               </span>
                             )}
-                            {user?.role === "admin" && c.valor_comissao > 0 && (
+                            {((c.pago ? canEstornarComissao : canPagarComissao) && c.valor_comissao > 0) && (
                               <button 
                                 onClick={() => togglePago(c)} 
                                 className={`text-[10px] font-bold hover:underline transition-colors uppercase tracking-wider ${
@@ -1227,7 +1230,7 @@ export default function Comissoes() {
                               Pago em: {fmtDate(c.data_pagamento)}
                             </span>
                           )}
-                          {user?.role === "admin" && c.valor_comissao > 0 && (
+                          {((c.pago ? canEstornarComissao : canPagarComissao) && c.valor_comissao > 0) && (
                             <button 
                               onClick={() => togglePago(c)} 
                               className={`text-[10px] font-bold hover:underline transition-colors uppercase tracking-wider block ${

@@ -173,6 +173,15 @@ const renderConflictMessage = (msg) => {
 export default function Agenda() {
   const { user: me } = useAuth();
   const isAdmin = me?.role === "admin";
+  const canCreate = isAdmin || me?.perfil?.permissoes?.["agenda.criar"] === true;
+  const canEdit = isAdmin || me?.perfil?.permissoes?.["agenda.editar"] === true;
+  const canChangeStatus = isAdmin || me?.perfil?.permissoes?.["agenda.status"] === true;
+  const canConclude = isAdmin || me?.perfil?.permissoes?.["agenda.concluir"] === true;
+  const canModifyStatus = canChangeStatus || canConclude;
+  const canRegisterPayment = isAdmin || me?.perfil?.permissoes?.["agenda.pagamento"] === true;
+  const canDelete = isAdmin || me?.perfil?.permissoes?.["agenda.excluir"] === true || (!me?.perfil_acesso_id && me?.pode_excluir_agendamento);
+  const canManageIndisponibilidade = isAdmin || me?.perfil?.permissoes?.["colaboradores.indisponibilidade"] === true;
+  const canCriarVenda = isAdmin || me?.perfil?.permissoes?.["vendas.criar"] === true || me?.perfil?.permissoes?.acoes?.["vendas.criar"];
   const today = useMemo(() => new Date(), []);
   const [data, setData] = useState(toDateInput(today));
   const [view, setView] = useState("dia");
@@ -1351,6 +1360,10 @@ export default function Agenda() {
   };
 
   const handleSaveIndisponibilidade = async () => {
+    if (!canManageIndisponibilidade) {
+      toast.error("Você não tem permissão para gerenciar indisponibilidades.");
+      return;
+    }
     const { id, colaborador_id, data_hora_inicio, data_hora_fim, motivo } = formIndisponibilidade;
     
     if (!colaborador_id) {
@@ -1398,6 +1411,10 @@ export default function Agenda() {
   };
 
   const handleDeleteIndisponibilidade = (id) => {
+    if (!canManageIndisponibilidade) {
+      toast.error("Você não tem permissão para excluir indisponibilidades.");
+      return;
+    }
     setPendingDeleteIndispId(id);
     setDeleteConfirmOpenIndisp(true);
   };
@@ -1485,7 +1502,7 @@ export default function Agenda() {
   };
 
   const del = (id) => {
-    if (!me?.pode_excluir_agendamento) {
+    if (!canDelete) {
       toast.error("Você não tem permissão para excluir agendamentos.");
       return;
     }
@@ -1508,6 +1525,19 @@ export default function Agenda() {
   };
 
   const changeStatus = async (id, status, agendamento) => {
+    const isConcluindo = status === "concluido";
+    if (isConcluindo) {
+      if (!canConclude) {
+        toast.error("Você não tem permissão para concluir agendamentos.");
+        return;
+      }
+    } else {
+      if (!canChangeStatus) {
+        toast.error("Você não tem permissão para alterar o status de agendamentos.");
+        return;
+      }
+    }
+
     if (agendamento?.status === "concluido" && status !== "concluido") {
       setSenhaData({ agendamento_id: id, novo_status: status, email: "", senha: "" });
       setOpenSenha(true);
@@ -1794,7 +1824,7 @@ export default function Agenda() {
             <FileText className="w-3.5 h-3.5" />
             <span>Relatório</span>
           </Button>
-          {me && (
+          {canManageIndisponibilidade && (
             <Button
               variant="outline"
               onClick={openRegisterIndisponibilidade}
@@ -1805,7 +1835,9 @@ export default function Agenda() {
             </Button>
           )}
         </div>
-        <button className="btn-primary w-full sm:w-auto justify-center" onClick={openNew}><Plus className="w-4 h-4 mr-2" /> Novo Agendamento</button>
+        {canCreate && (
+          <button className="btn-primary w-full sm:w-auto justify-center" onClick={openNew}><Plus className="w-4 h-4 mr-2" /> Novo Agendamento</button>
+        )}
       </div>
 
       {view !== "calendario" && (
@@ -1958,29 +1990,39 @@ export default function Agenda() {
                         <div className="mt-1"><StatusBadge status={a.status} /></div>
                       </div>
                       <div className="agenda-actions" onClick={(e) => e.stopPropagation()}>
-                        <Select value={a.status || "agendado"} onValueChange={(v) => changeStatus(a.id, v, a)}>
+                        <Select value={a.status || "agendado"} onValueChange={(v) => changeStatus(a.id, v, a)} disabled={!canModifyStatus}>
                           <SelectTrigger className="w-36 h-8 text-xs" data-testid={`status-select-${a.id}`}><SelectValue /></SelectTrigger>
                           <SelectContent>{Object.entries(STATUS_LABELS).filter(([k]) => k && k.trim()).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
                         </Select>
-                        <Button size="sm" variant="ghost" onClick={() => nav(`/agendamentos/${a.id}/pagamento`)} title="Pagamento"><CreditCard className="w-4 h-4" /></Button>
+                        {canRegisterPayment && (
+                          <Button size="sm" variant="ghost" onClick={() => nav(`/agendamentos/${a.id}/pagamento`)} title="Pagamento"><CreditCard className="w-4 h-4" /></Button>
+                        )}
                         {me && (
                           <Button
                             size="sm"
                             variant="ghost"
-                            title={a.status === "concluido" ? "Não é permitido realizar vendas diretas para agendamento pago" : "Nova venda direta para este cliente"}
-                            disabled={a.status === "concluido"}
+                            title={
+                              !canCriarVenda
+                                ? "Acesso negado: Você não tem permissão para realizar vendas"
+                                : a.status === "concluido"
+                                  ? "Não é permitido realizar vendas diretas para agendamento pago"
+                                  : "Nova venda direta para este cliente"
+                            }
+                            disabled={a.status === "concluido" || !canCriarVenda}
                             onClick={() => nav(`/vendas-diretas?cliente_id=${a.cliente_id}&from=agenda`)}
                             className={`text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30 ${
-                              a.status === "concluido" ? "opacity-50 cursor-not-allowed text-zinc-400 hover:text-zinc-400 hover:bg-transparent" : ""
+                              a.status === "concluido" || !canCriarVenda ? "opacity-50 cursor-not-allowed text-zinc-400 hover:text-zinc-400 hover:bg-transparent" : ""
                             }`}
                           >
                             <ShoppingCart className="w-4 h-4" />
                           </Button>
                         )}
-                        {a.status !== "concluido" && (
+                        {canEdit && a.status !== "concluido" && (
                           <Button size="sm" variant="ghost" onClick={() => openEdit(a)}><Edit2 className="w-4 h-4" /></Button>
                         )}
-                        <Button size="sm" variant="ghost" onClick={() => del(a.id)}><Trash2 className="w-4 h-4 text-rose-500" /></Button>
+                        {canDelete && (
+                          <Button size="sm" variant="ghost" onClick={() => del(a.id)}><Trash2 className="w-4 h-4 text-rose-500" /></Button>
+                        )}
                       </div>
                     </div>
                   );
@@ -2598,15 +2640,17 @@ export default function Agenda() {
                               <span className="text-xs sm:text-sm font-semibold text-zinc-500 flex items-center gap-2">
                                 <Package className="w-4.5 h-4.5 text-[#84A59D]" /> Consumo de Produtos
                               </span>
-                              <Button 
-                                onClick={() => {
-                                  openUtilizedProducts(resumoAgendamento, idx);
-                                }}
-                                variant="ghost" 
-                                className="h-8 px-3 text-xs text-[#3A4F4A] dark:text-zinc-300 hover:bg-[#EAF0EE] dark:hover:bg-zinc-850 flex items-center gap-1.5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 w-full sm:w-auto justify-center font-semibold"
-                              >
-                                <PlusCircle className="w-4 h-4" /> Informar Consumo
-                              </Button>
+                              {canEdit && (
+                                <Button 
+                                  onClick={() => {
+                                    openUtilizedProducts(resumoAgendamento, idx);
+                                  }}
+                                  variant="ghost" 
+                                  className="h-8 px-3 text-xs text-[#3A4F4A] dark:text-zinc-300 hover:bg-[#EAF0EE] dark:hover:bg-zinc-850 flex items-center gap-1.5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 w-full sm:w-auto justify-center font-semibold"
+                                >
+                                  <PlusCircle className="w-4 h-4" /> Informar Consumo
+                                </Button>
+                              )}
                             </div>
                             {item.produtos_utilizados && item.produtos_utilizados.length > 0 ? (
                               <div className="mt-2.5 space-y-1.5">
@@ -2650,7 +2694,7 @@ export default function Agenda() {
             >
               Fechar
             </Button>
-            {resumoAgendamento && resumoAgendamento.status !== "concluido" && (
+            {canEdit && resumoAgendamento && resumoAgendamento.status !== "concluido" && (
               <Button 
                 variant="outline" 
                 onClick={() => { setOpenResumo(false); openEdit(resumoAgendamento); }} 
@@ -2659,7 +2703,7 @@ export default function Agenda() {
                 <Edit2 className="w-4 h-4" /> Editar Atendimento
               </Button>
             )}
-            {resumoAgendamento && resumoAgendamento.status !== "concluido" && (
+            {canRegisterPayment && resumoAgendamento && resumoAgendamento.status !== "concluido" && (
               <Button 
                 onClick={() => { setOpenResumo(false); nav(`/agendamentos/${resumoAgendamento.id}/pagamento`); }} 
                 className="flex-1 sm:flex-initial h-11 px-6 bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm"
@@ -2823,7 +2867,7 @@ export default function Agenda() {
               <Select 
                 value={formIndisponibilidade.colaborador_id} 
                 onValueChange={(val) => setFormIndisponibilidade(prev => ({ ...prev, colaborador_id: val }))}
-                disabled={!isAdmin || !!formIndisponibilidade.id}
+                disabled={(!isAdmin && !canManageIndisponibilidade) || !!formIndisponibilidade.id}
               >
                 <SelectTrigger id="indisp-colab" className="w-full h-10 text-xs">
                   <SelectValue placeholder="Selecione um colaborador" />

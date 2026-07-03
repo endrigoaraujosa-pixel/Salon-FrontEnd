@@ -28,7 +28,7 @@ const getTodayDateString = () => {
 export default function AgendaWhatsAppHistorico() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const hasConfigPerm = isAdmin || !!(user?.perfil?.permissoes?.menus?.configuracoes);
+  const hasConfigPerm = isAdmin || user?.perfil?.permissoes?.["configuracoes.whatsapp"] === true || !!(user?.perfil?.permissoes?.menus?.configuracoes);
 
   const todayStr = getTodayDateString();
   const [history, setHistory] = useState([]);

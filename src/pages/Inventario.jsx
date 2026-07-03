@@ -31,7 +31,7 @@ const fmtDT = (s) => s ? new Date(s).toLocaleString("pt-BR") : "-";
 
 export default function Inventario() {
   const { user } = useAuth();
-  const canInventariar = user?.role === 'admin' || user?.perfil?.permissoes?.acoes?.['estoque.inventariar'];
+  const canInventariar = user?.role === 'admin' || user?.perfil?.permissoes?.['estoque.inventariar'] === true || user?.perfil?.permissoes?.acoes?.['estoque.inventariar'];
   const [activeTab, setActiveTab] = useState("assistido");
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [zerarConfirmOpen, setZerarConfirmOpen] = useState(false);
