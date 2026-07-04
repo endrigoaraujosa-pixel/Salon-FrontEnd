@@ -356,8 +356,16 @@ export default function ClienteCreditoExtrato() {
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#EAF0EE] dark:bg-[#1E2D2A] text-[#3A4F4A] dark:text-[#84A59D] font-mono font-bold text-[11px]">
                             {mov.origem_referencia}
                           </span>
+                        ) : mov.origem && mov.origem.startsWith("agendamento:") ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#EAF0EE] dark:bg-[#1E2D2A] text-[#3A4F4A] dark:text-[#84A59D] font-mono font-bold text-[11px]" title={mov.origem}>
+                            Agendamento (#{mov.origem.replace("agendamento:", "").slice(0, 8)})
+                          </span>
+                        ) : mov.origem && mov.origem.startsWith("venda:") ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#EAF0EE] dark:bg-[#1E2D2A] text-[#3A4F4A] dark:text-[#84A59D] font-mono font-bold text-[11px]" title={mov.origem}>
+                            Venda (#{mov.origem.replace("venda:", "").slice(0, 8)})
+                          </span>
                         ) : (
-                          <span className="truncate">{mov.origem || "Manual"}</span>
+                          <span className="truncate capitalize">{mov.origem || "Manual"}</span>
                         )}
                       </td>
                       <td className="px-4 py-3.5 text-xs">
