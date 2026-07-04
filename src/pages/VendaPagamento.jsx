@@ -914,7 +914,7 @@ export default function VendaPagamento() {
             
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6">
               <Button variant="outline" size="sm" onClick={addLine} className="justify-center h-9 text-xs" disabled={!temPermissaoPagamento}><Plus className="w-3 h-3 mr-1" /> Adicionar forma</Button>
-              <Button data-testid="vpay-finish-btn" onClick={() => executePayment()} className="bg-[#84A59D] hover:bg-[#6F9189] justify-center text-white h-9 text-xs font-semibold" disabled={!temPermissaoPagamento || saldo <= 0.01}><CheckCircle2 className="w-4 h-4 mr-1" /> Registrar e Finalizar</Button>
+              <Button data-testid="vpay-finish-btn" onClick={() => executePayment()} className="bg-[#84A59D] hover:bg-[#6F9189] justify-center text-white h-9 text-xs font-semibold" disabled={!temPermissaoPagamento || ((v.valor_total || 0) > 0.01 && saldo <= 0.01)}><CheckCircle2 className="w-4 h-4 mr-1" /> Registrar e Finalizar</Button>
             </div>
           </div>
         </div>

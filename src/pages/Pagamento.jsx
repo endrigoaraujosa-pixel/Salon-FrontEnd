@@ -196,6 +196,7 @@ export default function Pagamento() {
   const saldoAgendamento = (ag.valor_total || 0) - (ag.total_pago || 0);
   const totalSalesSelected = pendingSales.filter(s => s.selected).reduce((sum, s) => sum + (s.valor_total - s.valor_pago), 0);
   const saldo = saldoAgendamento + totalSalesSelected;
+  const valorTotal = (ag.valor_total || 0) + pendingSales.filter(s => s.selected).reduce((sum, s) => sum + s.valor_total, 0);
   const totalInformado = novos.filter((p) => Number(p.valor) > 0).reduce((sum, p) => sum + Number(p.valor), 0);
   const excessoTotal = totalInformado > saldo ? Number((totalInformado - saldo).toFixed(2)) : 0;
   const trocoTotal = !gerarCreditoExcedente && totalInformado > saldo && novos.some(p => p.forma_pagamento === "dinheiro") ? totalInformado - saldo : 0;
@@ -1163,7 +1164,7 @@ export default function Pagamento() {
             
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6">
               <Button variant="outline" size="sm" onClick={addLine} className="justify-center h-9 text-xs" disabled={!temPermissaoPagamento}><Plus className="w-3 h-3 mr-1" /> Adicionar forma</Button>
-              <Button data-testid="pay-finish-btn" onClick={() => submit()} className="bg-[#84A59D] hover:bg-[#6F9189] justify-center text-white h-9 text-xs font-semibold" disabled={!temPermissaoPagamento || saldo <= 0.01}><CheckCircle2 className="w-4 h-4 mr-1" /> Registrar e Finalizar</Button>
+              <Button data-testid="pay-finish-btn" onClick={() => submit()} className="bg-[#84A59D] hover:bg-[#6F9189] justify-center text-white h-9 text-xs font-semibold" disabled={!temPermissaoPagamento || (valorTotal > 0.01 && saldo <= 0.01)}><CheckCircle2 className="w-4 h-4 mr-1" /> Registrar e Finalizar</Button>
             </div>
           </div>
         </div>

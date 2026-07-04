@@ -26,7 +26,6 @@ const defaultPermissions = {
   "agenda.pagamento": false,
   "agenda.pagamento.excluir": false,
   "agenda.aplicar_desconto": false,
-  "agenda.aplicar_desconto.senha": false,
   "agenda.excluir": false,
   "agenda.whatsapp_historico": false,
   "clientes.visualizar": false,
@@ -61,7 +60,6 @@ const defaultPermissions = {
   "vendas.editar": false,
   "vendas.pagamento": false,
   "vendas.aplicar_desconto": false,
-  "vendas.aplicar_desconto.senha": false,
   "vendas.cancelar": false,
   "despesas.visualizar": false,
   "despesas.criar": false,
@@ -125,7 +123,6 @@ const permissionGroups = [
       { key: "agenda.pagamento", label: "Lançar Pagamentos", desc: "Registrar formas e valores pagos na agenda." },
       { key: "agenda.pagamento.excluir", label: "Excluir Pagamentos", desc: "Remover pagamentos vinculados a agendamentos." },
       { key: "agenda.aplicar_desconto", label: "Aplicar Descontos", desc: "Permitir descontos nos fechamentos da agenda." },
-      { key: "agenda.aplicar_desconto.senha", label: "Aplicar Desconto (Senha)", desc: "Permite autorizar descontos na agenda por senha." },
       { key: "agenda.excluir", label: "Excluir Agendamentos", desc: "Excluir agendamentos fisicamente do sistema." },
       { key: "agenda.whatsapp_historico", label: "Histórico do WhatsApp", desc: "Consultar histórico de lembretes e envios de mensagens." }
     ]
@@ -189,7 +186,6 @@ const permissionGroups = [
       { key: "vendas.editar", label: "Editar Carrinho", desc: "Alterar itens no carrinho de compras." },
       { key: "vendas.pagamento", label: "Lançar Pagamentos", desc: "Registrar pagamentos da venda direta." },
       { key: "vendas.aplicar_desconto", label: "Aplicar Descontos", desc: "Aplicar descontos em vendas diretas." },
-      { key: "vendas.aplicar_desconto.senha", label: "Aplicar Desconto (Senha)", desc: "Permite autorizar descontos nas vendas por senha." },
       { key: "vendas.cancelar", label: "Cancelar Vendas", desc: "Cancelar e estornar vendas fechadas." }
     ]
   },
@@ -415,19 +411,7 @@ export default function PerfisAcesso() {
       const nextValue = !updated.permissoes[key];
       updated.permissoes[key] = nextValue;
 
-      // Lógica de Dependência Automática para Descontos
-      if (key === 'agenda.aplicar_desconto.senha' && nextValue === true) {
-        updated.permissoes['agenda.aplicar_desconto'] = true;
-      }
-      if (key === 'vendas.aplicar_desconto.senha' && nextValue === true) {
-        updated.permissoes['vendas.aplicar_desconto'] = true;
-      }
-      if (key === 'agenda.aplicar_desconto' && nextValue === false) {
-        updated.permissoes['agenda.aplicar_desconto.senha'] = false;
-      }
-      if (key === 'vendas.aplicar_desconto' && nextValue === false) {
-        updated.permissoes['vendas.aplicar_desconto.senha'] = false;
-      }
+
 
       const parts = key.split('.');
       const moduleName = parts[0];
