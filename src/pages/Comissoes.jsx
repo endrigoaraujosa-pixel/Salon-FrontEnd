@@ -35,6 +35,8 @@ const fmtDateTime = (s) => s ? new Date(s).toLocaleString("pt-BR") : "—";
 export default function Comissoes() {
   const { user } = useAuth();
   const isFunc = user?.role === "funcionario";
+  const canVisualizarTodos = user?.role === "admin" || user?.perfil?.permissoes?.["comissoes.visualizar_todos"] === true || user?.perfil?.permissoes?.acoes?.["comissoes.visualizar_todos"];
+  const showAsSelf = isFunc && !canVisualizarTodos;
   const canPagarComissao = user?.role === "admin" || user?.perfil?.permissoes?.["comissoes.pagar"] === true || user?.perfil?.permissoes?.acoes?.["comissoes.pagar"];
   const canEstornarComissao = user?.role === "admin" || user?.perfil?.permissoes?.["comissoes.estornar"] === true || user?.perfil?.permissoes?.acoes?.["comissoes.estornar"];
   const canActionHeader = canPagarComissao || canEstornarComissao;
@@ -97,7 +99,7 @@ export default function Comissoes() {
     http.get("/colaboradores")
       .then((r) => {
         setColaboradores(r.data || []);
-        if (isFunc) {
+        if (showAsSelf) {
           const matched = user?.colaborador_id 
             ? r.data.find(c => String(c.id) === String(user.colaborador_id))
             : r.data.find(c => c.nome.toLowerCase() === user?.name?.toLowerCase());
@@ -108,7 +110,7 @@ export default function Comissoes() {
       })
       .catch(() => {});
     http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data)).catch(() => {});
-  }, [isFunc, user]);
+  }, [showAsSelf, user]);
 
   const generatePDF = async () => {
     try {
@@ -159,16 +161,16 @@ export default function Comissoes() {
       }[relatorioStatus];
 
        const totalComissoes = filteredComissoes.reduce((sum, c) => sum + c.valor_comissao, 0);
-      const totalAtendimentos = relatorioColabId === "todos" && !isFunc && fetchedData.atendimentos_total_count !== undefined
+      const totalAtendimentos = relatorioColabId === "todos" && !showAsSelf && fetchedData.atendimentos_total_count !== undefined
         ? fetchedData.atendimentos_total_count
         : filteredComissoes.reduce((sum, c) => sum + c.atendimentos, 0);
-      const totalInsumos = relatorioColabId === "todos" && !isFunc && fetchedData.custo_insumos_total !== undefined
+      const totalInsumos = relatorioColabId === "todos" && !showAsSelf && fetchedData.custo_insumos_total !== undefined
         ? fetchedData.custo_insumos_total
         : filteredComissoes.reduce((sum, c) => {
             const colabInsumos = c.detalhes?.reduce((s, d) => s + (d.custo_produtos || 0), 0) || 0;
             return sum + colabInsumos;
           }, 0);
-      const totalFaturamento = relatorioColabId === "todos" && !isFunc
+      const totalFaturamento = relatorioColabId === "todos" && !showAsSelf
         ? (fetchedData.faturamento_bruto_total || 0)
         : filteredComissoes.reduce((sum, c) => sum + c.total_principal + c.total_auxiliar + (c.total_produtos || 0), 0);
 
@@ -775,7 +777,7 @@ export default function Comissoes() {
   const totalAtendimentosGeral = data?.atendimentos_total_count !== undefined 
     ? data.atendimentos_total_count 
     : (data?.comissoes?.reduce((sum, c) => sum + c.atendimentos, 0) || 0);
-  const totalInsumosGeral = (isFunc || colaboradorFilter !== "todos")
+  const totalInsumosGeral = (showAsSelf || colaboradorFilter !== "todos")
     ? (data?.comissoes?.reduce((sum, c) => {
         const colabInsumos = c.detalhes?.reduce((s, d) => s + (d.custo_produtos || 0), 0) || 0;
         return sum + colabInsumos;
@@ -787,7 +789,7 @@ export default function Comissoes() {
   // Faturamento Bruto: usa o valor calculado pelo backend (evita dupla-contagem de atendimentos
   // onde o mesmo colaborador é principal E auxiliar). Para filtro por colaborador específico,
   // soma os valores dos itens do colaborador diretamente.
-  const totalFaturamentoServicos = (isFunc || colaboradorFilter !== "todos")
+  const totalFaturamentoServicos = (showAsSelf || colaboradorFilter !== "todos")
     ? (data?.comissoes?.reduce((sum, c) => sum + c.total_principal + c.total_auxiliar + (c.total_produtos || 0), 0) || 0)
     : (data?.faturamento_bruto_total || 0);
   const totalComissoesProdutos = data?.comissoes?.reduce((sum, c) => sum + (c.comissao_produtos || 0), 0) || 0;
@@ -856,7 +858,7 @@ export default function Comissoes() {
           </Select>
         </div>
 
-        {!isFunc && (
+        {!showAsSelf && (
           <div className="space-y-1.5 w-60">
             <Label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Profissional</Label>
             <Select value={colaboradorFilter} onValueChange={setColaboradorFilter}>
@@ -886,7 +888,7 @@ export default function Comissoes() {
             <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center justify-between hover:scale-[1.01] transition-transform">
               <div className="space-y-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{isFunc ? "Meu Faturamento" : "Faturamento Bruto"}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{showAsSelf ? "Meu Faturamento" : (colaboradorFilter !== "todos" ? "Faturamento do Profissional" : "Faturamento Bruto")}</span>
                   <TooltipProvider delayDuration={200}>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -905,7 +907,7 @@ export default function Comissoes() {
                   </TooltipProvider>
                 </div>
                 <div className="font-display text-2xl font-black text-zinc-700 dark:text-zinc-100">{fmtBRL(totalFaturamentoServicos)}</div>
-                <span className="text-[10px] text-zinc-400 block font-medium">{isFunc ? "Executado em meus atendimentos e vendas" : "Executado em atendimentos e vendas"}</span>
+                <span className="text-[10px] text-zinc-400 block font-medium">{showAsSelf ? "Executado em meus atendimentos e vendas" : (colaboradorFilter !== "todos" ? "Executado em atendimentos e vendas do profissional" : "Executado em atendimentos e vendas")}</span>
               </div>
               <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-xl">
                 <TrendingUp className="w-6 h-6 text-zinc-500 dark:text-zinc-400" />
@@ -915,7 +917,7 @@ export default function Comissoes() {
             {/* Card 2: Custo total de insumos */}
             <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center justify-between hover:scale-[1.01] transition-transform">
               <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 block">{isFunc ? "Minha Dedução de Insumos" : "Dedução de Insumos"}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 block">{showAsSelf ? "Minha Dedução de Insumos" : (colaboradorFilter !== "todos" ? "Dedução de Insumos do Profissional" : "Dedução de Insumos")}</span>
                 <div className="font-display text-2xl font-black text-zinc-700 dark:text-zinc-150">{fmtBRL(totalInsumosGeral)}</div>
                 <span className="text-[10px] text-zinc-400 block font-medium">Custo total dos produtos</span>
               </div>
@@ -927,7 +929,7 @@ export default function Comissoes() {
             {/* Card 3: Comissão Líquida Geral */}
             <div className="bg-[#FAFDFD] border border-[#E1EEED] dark:bg-emerald-950/10 dark:border-emerald-900/30 rounded-2xl p-5 shadow-sm flex items-center justify-between hover:scale-[1.01] transition-transform">
               <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#3A4F4A] dark:text-emerald-400 block">{isFunc ? "Minha Comissão Líquida" : "Comissão Líquida"}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#3A4F4A] dark:text-emerald-400 block">{showAsSelf ? "Minha Comissão Líquida" : (colaboradorFilter !== "todos" ? "Comissão Líquida do Profissional" : "Comissão Líquida")}</span>
                 <div className="font-display text-2xl font-black text-[#3A4F4A] dark:text-emerald-300">{fmtBRL(totalComissoesGeral)}</div>
                 <span className="text-[10px] text-[#84A59D] dark:text-emerald-400/80 block font-semibold uppercase tracking-wide">
                   {statusFilter === "pendente" && `A pagar (Servs: ${fmtBRL(totalComissoesGeral - totalComissoesProdutos)} · Prods: ${fmtBRL(totalComissoesProdutos)})`}
@@ -943,7 +945,7 @@ export default function Comissoes() {
             {/* Card 4: Total de Atendimentos */}
             <div className="bg-white border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-2xl p-5 shadow-sm flex items-center justify-between hover:scale-[1.01] transition-transform">
               <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">{isFunc ? "Meus Atendimentos" : "Atendimentos"}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">{showAsSelf ? "Meus Atendimentos" : (colaboradorFilter !== "todos" ? "Atendimentos do Profissional" : "Atendimentos")}</span>
                 <div className="font-display text-2xl font-black text-zinc-700 dark:text-zinc-100">{totalAtendimentosGeral}</div>
                 <span className="text-[10px] text-zinc-400 block font-medium">Serviços executados</span>
               </div>
@@ -1623,7 +1625,7 @@ export default function Comissoes() {
               <Select 
                 value={relatorioColabId} 
                 onValueChange={setRelatorioColabId} 
-                disabled={isFunc}
+                disabled={showAsSelf}
               >
                 <SelectTrigger className="bg-zinc-50/50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-9 text-xs">
                   <SelectValue placeholder="Selecione o colaborador" />
