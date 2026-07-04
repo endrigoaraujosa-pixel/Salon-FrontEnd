@@ -7,79 +7,279 @@ import { Card, CardContent } from "../components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Textarea } from "../components/ui/textarea";
 import { 
   ShieldCheck, ShieldAlert, PlusCircle, Pencil, Trash2, 
-  ArrowLeft, Check, CheckCircle2, XCircle, LayoutDashboard,
-  Calendar, Users, Scissors, UserCheck, Package, 
-  Layers, ShoppingCart, TrendingDown, DollarSign, 
-  Percent, BarChart3, Settings, UserPlus, FolderOpen
+  ArrowLeft, Check, CheckCircle2, Copy
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "../auth";
 
+// Dicionário plano padrão de permissões (todas iniciadas como falso)
 const defaultPermissions = {
-  menus: {
-    dashboard: false,
-    agenda: false,
-    clientes: false,
-    servicos: false,
-    colaboradores: false,
-    produtos: false,
-    estoque: false,
-    vendas: false,
-    despesas: false,
-    receitas: false,
-    comissoes: false,
-    relatorios: false,
-    configuracoes: false,
-    usuarios: false,
-    cadastros: false
-  },
-  acoes: {
-    criar: false,
-    editar: false,
-    excluir: false,
-    realizar_pagamento: false,
-    is_admin: false,
-    "estoque.visualizar": false,
-    "estoque.movimentar": false,
-    "estoque.ajustar": false,
-    "estoque.inventariar": false,
-    "estoque.zerar": false,
-    "credito.extrato": false,
-    "credito.adicionar": false,
-    "credito.remover": false,
-    "credito.estornar": false,
-    "credito.recalcular": false
-  }
+  "dashboard.visualizar": false,
+  "dashboard.faturamento": false,
+  "agenda.visualizar": false,
+  "agenda.criar": false,
+  "agenda.editar": false,
+  "agenda.status": false,
+  "agenda.concluir": false,
+  "agenda.pagamento": false,
+  "agenda.pagamento.excluir": false,
+  "agenda.aplicar_desconto": false,
+  "agenda.aplicar_desconto.senha": false,
+  "agenda.excluir": false,
+  "agenda.whatsapp_historico": false,
+  "clientes.visualizar": false,
+  "clientes.criar": false,
+  "clientes.editar": false,
+  "clientes.excluir": false,
+  "clientes.credito.visualizar": false,
+  "clientes.credito.gerenciar": false,
+
+  "colaboradores.visualizar": false,
+  "colaboradores.dados_sensiveis": false,
+  "colaboradores.criar": false,
+  "colaboradores.editar": false,
+  "colaboradores.excluir": false,
+  "colaboradores.indisponibilidade": false,
+  "servicos.visualizar": false,
+  "servicos.criar": false,
+  "servicos.editar": false,
+  "servicos.excluir": false,
+  "produtos.visualizar": false,
+  "produtos.criar": false,
+  "produtos.editar": false,
+  "produtos.excluir": false,
+  "estoque.visualizar": false,
+  "estoque.entrada": false,
+  "estoque.movimentar": false,
+  "estoque.ajustar": false,
+  "estoque.inventariar": false,
+  "estoque.zerar": false,
+  "vendas.visualizar": false,
+  "vendas.criar": false,
+  "vendas.editar": false,
+  "vendas.pagamento": false,
+  "vendas.aplicar_desconto": false,
+  "vendas.aplicar_desconto.senha": false,
+  "vendas.cancelar": false,
+  "despesas.visualizar": false,
+  "despesas.criar": false,
+  "despesas.editar": false,
+  "despesas.excluir": false,
+  "receitas.visualizar": false,
+  "receitas.criar": false,
+  "receitas.editar": false,
+  "receitas.excluir": false,
+  "comissoes.visualizar": false,
+  "comissoes.visualizar_todos": false,
+  "comissoes.pagar": false,
+  "comissoes.estornar": false,
+  "relatorios.dre": false,
+  "relatorios.caixa": false,
+  "relatorios.cartoes": false,
+  "relatorios.operacional": false,
+  "relatorios.vendas": false,
+  "relatorios.estoque": false,
+  "cadastros.visualizar": false,
+  "cadastros.categorias": false,
+  "cadastros.taxas": false,
+  "cadastros.fornecedores": false,
+  "cadastros.pagamento": false,
+  "cadastros.adquirentes": false,
+  "cadastros.descontos": false,
+  "cadastros.motivos_estoque": false,
+  "configuracoes.empresa": false,
+  "configuracoes.sistema": false,
+  "configuracoes.whatsapp": false,
+  "configuracoes.perfis_acesso": false,
+  "usuarios.visualizar": false,
+  "usuarios.criar": false,
+  "usuarios.editar": false,
+  "usuarios.excluir": false,
+  "perfis.visualizar": false,
+  "perfis.criar": false,
+  "perfis.editar": false,
+  "perfis.excluir": false,
+  "auditoria.visualizar": false,
+  "auditoria.restaurar": false
 };
 
-const menuMetadata = [
-  { key: "dashboard", label: "Dashboard / Painel", icon: LayoutDashboard },
-  { key: "agenda", label: "Agenda / Agendamentos", icon: Calendar },
-  { key: "clientes", label: "Clientes", icon: Users },
-  { key: "servicos", label: "Serviços", icon: Scissors },
-  { key: "colaboradores", label: "Colaboradores", icon: UserCheck },
-  { key: "produtos", label: "Produtos", icon: Package },
-  { key: "estoque", label: "Estoque (Painel & Entrada)", icon: Layers },
-  { key: "vendas", label: "Vendas Diretas / PDV", icon: ShoppingCart },
-  { key: "despesas", label: "Despesas / Contas a Pagar", icon: TrendingDown },
-  { key: "receitas", label: "Outras Receitas", icon: DollarSign },
-  { key: "comissoes", label: "Comissões", icon: Percent },
-  { key: "relatorios", label: "Relatórios & DRE", icon: BarChart3 },
-  { key: "cadastros", label: "Painel de Cadastros", icon: FolderOpen },
-  { key: "configuracoes", label: "Configurações Gerais", icon: Settings },
-  { key: "usuarios", label: "Usuários do Sistema", icon: UserPlus }
+// Grupos estruturados para exibição no formulário
+const permissionGroups = [
+  {
+    title: "Dashboard",
+    permissions: [
+      { key: "dashboard.visualizar", label: "Acessar Painel Principal", desc: "Permite ver os gráficos básicos do painel inicial." },
+      { key: "dashboard.faturamento", label: "Visualizar Receita e Faturamento", desc: "Permite ver dados de faturamento mensal e ticket médio." }
+    ]
+  },
+  {
+    title: "Agenda",
+    permissions: [
+      { key: "agenda.visualizar", label: "Visualizar Agenda", desc: "Visualizar o calendário e listagem de agendamentos." },
+      { key: "agenda.criar", label: "Criar Agendamentos", desc: "Agendar novos horários para os clientes." },
+      { key: "agenda.editar", label: "Editar Agendamentos", desc: "Modificar profissionais, horários ou serviços." },
+      { key: "agenda.status", label: "Alterar Status", desc: "Mudar status do agendamento (Confirmado, Em Andamento)." },
+      { key: "agenda.concluir", label: "Concluir Agendamentos", desc: "Marcar agendamento como concluído." },
+      { key: "agenda.pagamento", label: "Lançar Pagamentos", desc: "Registrar formas e valores pagos na agenda." },
+      { key: "agenda.pagamento.excluir", label: "Excluir Pagamentos", desc: "Remover pagamentos vinculados a agendamentos." },
+      { key: "agenda.aplicar_desconto", label: "Aplicar Descontos", desc: "Permitir descontos nos fechamentos da agenda." },
+      { key: "agenda.aplicar_desconto.senha", label: "Aplicar Desconto (Senha)", desc: "Permite autorizar descontos na agenda por senha." },
+      { key: "agenda.excluir", label: "Excluir Agendamentos", desc: "Excluir agendamentos fisicamente do sistema." },
+      { key: "agenda.whatsapp_historico", label: "Histórico do WhatsApp", desc: "Consultar histórico de lembretes e envios de mensagens." }
+    ]
+  },
+  {
+    title: "Clientes",
+    permissions: [
+      { key: "clientes.visualizar", label: "Visualizar Clientes", desc: "Visualizar listagem, contatos e histórico." },
+      { key: "clientes.criar", label: "Cadastrar Clientes", desc: "Cadastrar novos clientes no sistema." },
+      { key: "clientes.editar", label: "Editar Clientes", desc: "Modificar dados cadastrais do cliente." },
+      { key: "clientes.excluir", label: "Excluir Clientes", desc: "Arquivar/excluir cliente." },
+      { key: "clientes.credito.visualizar", label: "Visualizar Extrato de Crédito", desc: "Consultar saldos e movimentações de saldo do cliente." },
+      { key: "clientes.credito.gerenciar", label: "Gerenciar Crédito (Lançar/Estornar)", desc: "Adicionar/remover créditos manualmente e estornar." }
+    ]
+  },
+  {
+    title: "Colaboradores",
+    permissions: [
+      { key: "colaboradores.visualizar", label: "Visualizar Colaboradores", desc: "Visualizar listagem e cargo dos colaboradores." },
+      { key: "colaboradores.dados_sensiveis", label: "Ver Dados Sensíveis (Comissão/Telefone)", desc: "Visualizar percentual de comissões e telefones privados." },
+      { key: "colaboradores.criar", label: "Cadastrar Colaborador", desc: "Cadastrar novos profissionais." },
+      { key: "colaboradores.editar", label: "Editar Colaborador", desc: "Editar dados do colaborador." },
+      { key: "colaboradores.excluir", label: "Excluir Colaborador", desc: "Excluir cadastro do profissional." },
+      { key: "colaboradores.indisponibilidade", label: "Gerenciar Indisponibilidades", desc: "Configurar folgas e bloqueios na agenda." }
+    ]
+  },
+  {
+    title: "Serviços",
+    permissions: [
+      { key: "servicos.visualizar", label: "Visualizar Serviços", desc: "Consultar catálogo de serviços." },
+      { key: "servicos.criar", label: "Cadastrar Serviços", desc: "Cadastrar novos serviços." },
+      { key: "servicos.editar", label: "Editar Serviços", desc: "Modificar tempos, preços e nomes de serviços." },
+      { key: "servicos.excluir", label: "Excluir Serviços", desc: "Remover serviços." }
+    ]
+  },
+  {
+    title: "Produtos",
+    permissions: [
+      { key: "produtos.visualizar", label: "Visualizar Produtos", desc: "Consultar catálogo de produtos." },
+      { key: "produtos.criar", label: "Cadastrar Produtos", desc: "Cadastrar novos produtos." },
+      { key: "produtos.editar", label: "Editar Produtos", desc: "Modificar preços, marcas ou códigos." },
+      { key: "produtos.excluir", label: "Excluir Produtos", desc: "Remover produtos." }
+    ]
+  },
+  {
+    title: "Estoque",
+    permissions: [
+      { key: "estoque.visualizar", label: "Visualizar Estoque", desc: "Acessar painel e consultar posição do estoque." },
+      { key: "estoque.entrada", label: "Registrar Entradas", desc: "Registrar notas fiscais e compras de produtos." },
+      { key: "estoque.movimentar", label: "Registrar Saídas/Consumo", desc: "Lançar saídas manuais, quebras e insumos." },
+      { key: "estoque.ajustar", label: "Ajustar Estoque", desc: "Fazer ajustes rápidos na contagem do produto." },
+      { key: "estoque.inventariar", label: "Inventariar Estoque", desc: "Concluir contagens físicas de inventário." },
+      { key: "estoque.zerar", label: "Autorizar Zeragem", desc: "Permissão de supervisor para zerar itens em lote." }
+    ]
+  },
+  {
+    title: "Vendas Diretas (PDV)",
+    permissions: [
+      { key: "vendas.visualizar", label: "Visualizar Vendas", desc: "Visualizar histórico de vendas diretas feitas no caixa." },
+      { key: "vendas.criar", label: "Realizar Vendas", desc: "Iniciar e vender produtos/serviços no PDV." },
+      { key: "vendas.editar", label: "Editar Carrinho", desc: "Alterar itens no carrinho de compras." },
+      { key: "vendas.pagamento", label: "Lançar Pagamentos", desc: "Registrar pagamentos da venda direta." },
+      { key: "vendas.aplicar_desconto", label: "Aplicar Descontos", desc: "Aplicar descontos em vendas diretas." },
+      { key: "vendas.aplicar_desconto.senha", label: "Aplicar Desconto (Senha)", desc: "Permite autorizar descontos nas vendas por senha." },
+      { key: "vendas.cancelar", label: "Cancelar Vendas", desc: "Cancelar e estornar vendas fechadas." }
+    ]
+  },
+  {
+    title: "Financeiro (Fluxo de Caixa)",
+    permissions: [
+      { key: "despesas.visualizar", label: "Visualizar Despesas", desc: "Visualizar contas a pagar." },
+      { key: "despesas.criar", label: "Lançar Despesas", desc: "Registrar saídas financeiras." },
+      { key: "despesas.editar", label: "Editar Despesas", desc: "Alterar valores, vencimentos ou notas." },
+      { key: "despesas.excluir", label: "Excluir Despesas", desc: "Excluir despesas." },
+      { key: "receitas.visualizar", label: "Visualizar Outras Receitas", desc: "Visualizar contas a receber." },
+      { key: "receitas.criar", label: "Lançar Outras Receitas", desc: "Registrar receitas avulsas fora de vendas." },
+      { key: "receitas.editar", label: "Editar Receitas", desc: "Alterar outras receitas." },
+      { key: "receitas.excluir", label: "Excluir Receitas", desc: "Excluir outras receitas." }
+    ]
+  },
+  {
+    title: "Comissões",
+    permissions: [
+      { key: "comissoes.visualizar", label: "Visualizar Minhas Comissões", desc: "Consultar próprio relatório de ganhos." },
+      { key: "comissoes.visualizar_todos", label: "Ver Comissões de Todos", desc: "Visualizar relatórios de comissões de toda a equipe." },
+      { key: "comissoes.pagar", label: "Pagar Comissão", desc: "Dar baixa em pagamentos de comissão." },
+      { key: "comissoes.estornar", label: "Estornar Pagamento", desc: "Desfazer baixa de pagamento de comissão." }
+    ]
+  },
+  {
+    title: "Relatórios",
+    permissions: [
+      { key: "relatorios.dre", label: "Visualizar Relatório DRE", desc: "Acessar DRE e balanços de lucratividade." },
+      { key: "relatorios.caixa", label: "Visualizar Relatório de Caixa", desc: "Visualizar fluxos de caixa e saldos." },
+      { key: "relatorios.cartoes", label: "Visualizar Relatório de Cartões", desc: "Visualizar taxas de adquirentes e datas de liquidação." },
+      { key: "relatorios.operacional", label: "Visualizar Resultados Operacionais", desc: "Visualizar ticket médio e desempenho." },
+      { key: "relatorios.vendas", label: "Visualizar Relatório de Vendas", desc: "Consultar vendas de produtos e serviços." },
+      { key: "relatorios.estoque", label: "Visualizar Relatório de Estoque", desc: "Acessar relatórios de insumos, perdas e valorização." }
+    ]
+  },
+  {
+    title: "Cadastros Gerais",
+    permissions: [
+      { key: "cadastros.visualizar", label: "Visualizar Painel de Cadastros", desc: "Acessar a central de cadastros operacionais." },
+      { key: "cadastros.categorias", label: "Gerenciar Categorias", desc: "Cadastrar e editar categorias de produtos/serviços." },
+      { key: "cadastros.taxas", label: "Gerenciar Taxas de Cartão", desc: "Editar taxas cobradas por operadoras de cartão." },
+      { key: "cadastros.fornecedores", label: "Gerenciar Fornecedores", desc: "Cadastrar fornecedores." },
+      { key: "cadastros.pagamento", label: "Gerenciar Tipos de Pagamento", desc: "Configurar formas de pagamento aceitas." },
+      { key: "cadastros.adquirentes", label: "Gerenciar Adquirentes", desc: "Configurar adquirentes/maquininhas." },
+      { key: "cadastros.descontos", label: "Gerenciar Cupons de Desconto", desc: "Gerenciar regras de cupom e descontos sob autorização." },
+      { key: "cadastros.motivos_estoque", label: "Gerenciar Motivos de Movimentação", desc: "Gerenciar motivos de perdas e ajustes." }
+    ]
+  },
+  {
+    title: "Configurações Globais",
+    permissions: [
+      { key: "configuracoes.empresa", label: "Gerenciar Empresa", desc: "Editar dados cadastrais e logomarca da empresa." },
+      { key: "configuracoes.sistema", label: "Gerenciar Sistema", desc: "Configurar regras internas e preferências." },
+      { key: "configuracoes.whatsapp", label: "Gerenciar WhatsApp", desc: "Integrar celular e configurar envios de lembretes." },
+      { key: "configuracoes.perfis_acesso", label: "Gerenciar Perfis de Acesso", desc: "Acessar a tela de perfis de acesso a partir das configurações." }
+    ]
+  },
+  {
+    title: "Usuários e Segurança",
+    permissions: [
+      { key: "usuarios.visualizar", label: "Visualizar Todos os Usuários", desc: "Visualizar o cadastro de todos os usuários. Sem esta permissão, cada pessoa vê apenas o próprio cadastro." },
+      { key: "usuarios.criar", label: "Cadastrar Usuários", desc: "Cadastrar novos usuários no sistema." },
+      { key: "usuarios.editar", label: "Editar Usuários", desc: "Editar perfis e dados de usuários." },
+      { key: "usuarios.excluir", label: "Excluir Usuários", desc: "Remover usuários." },
+      { key: "perfis.visualizar", label: "Visualizar Perfis de Acesso", desc: "Listar perfis de permissão existentes." },
+      { key: "perfis.criar", label: "Cadastrar Perfis", desc: "Criar novas funções/perfis." },
+      { key: "perfis.editar", label: "Editar Perfis", desc: "Alterar permissões e descrições dos perfis." },
+      { key: "perfis.excluir", label: "Excluir Perfis", desc: "Remover perfis de acesso." }
+    ]
+  },
+  {
+    title: "Auditoria",
+    permissions: [
+      { key: "auditoria.visualizar", label: "Visualizar Lixeira", desc: "Consultar histórico de registros excluídos." },
+      { key: "auditoria.restaurar", label: "Restaurar Registros", desc: "Restaurar dados que foram apagados." }
+    ]
+  }
 ];
 
 export default function PerfisAcesso() {
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
   const [perfis, setPerfis] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // Dialog controls
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPerfil, setEditingPerfil] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const [form, setForm] = useState({
     nome: "",
     descricao: "",
@@ -117,12 +317,43 @@ export default function PerfisAcesso() {
 
   const handleOpenEdit = (p) => {
     setEditingPerfil(p);
-    // ensure permissions object has all fields properly populated in case of backward compat
+    
+    // Normalização das permissões (garantir todas as chaves)
     const basePerms = JSON.parse(JSON.stringify(defaultPermissions));
-    const mergedPerms = {
-      menus: { ...basePerms.menus, ...(p.permissoes?.menus || {}) },
-      acoes: { ...basePerms.acoes, ...(p.permissoes?.acoes || {}) }
-    };
+    let rawPerms = p.permissoes || {};
+    
+    // Se for o formato antigo (menus e acoes), faz a conversão em tempo de exibição
+    const mergedPerms = { ...basePerms };
+    if (rawPerms.menus || rawPerms.acoes) {
+      const menus = rawPerms.menus || {};
+      const acoes = rawPerms.acoes || {};
+      
+      Object.keys(mergedPerms).forEach(key => {
+        const parts = key.split('.');
+        const mod = parts[0];
+        
+        if (key.endsWith('.visualizar') || key === 'relatorios' || key === 'configuracoes' || key === 'cadastros') {
+          mergedPerms[key] = !!menus[mod];
+        } else {
+          // Ações gerais
+          const actionWord = parts[1];
+          if (actionWord === 'criar') mergedPerms[key] = !!(menus[mod] && acoes.criar);
+          else if (actionWord === 'editar') mergedPerms[key] = !!(menus[mod] && acoes.editar);
+          else if (actionWord === 'excluir') mergedPerms[key] = !!(menus[mod] && acoes.excluir);
+          else if (actionWord === 'pagamento') mergedPerms[key] = !!(menus[mod] && acoes.realizar_pagamento);
+          else if (rawPerms.acoes && rawPerms.acoes[key] !== undefined) {
+            mergedPerms[key] = !!rawPerms.acoes[key];
+          }
+        }
+      });
+    } else {
+      // Formato plano
+      Object.keys(basePerms).forEach(key => {
+        if (rawPerms[key] !== undefined) {
+          mergedPerms[key] = !!rawPerms[key];
+        }
+      });
+    }
     
     setForm({
       nome: p.nome,
@@ -132,18 +363,106 @@ export default function PerfisAcesso() {
     setDialogOpen(true);
   };
 
-  const handleToggleMenu = (menuKey) => {
-    setForm(prev => {
-      const updated = { ...prev };
-      updated.permissoes.menus[menuKey] = !updated.permissoes.menus[menuKey];
-      return updated;
+  const handleDuplicate = (p) => {
+    setEditingPerfil(null); // Trata como novo perfil
+    
+    // Copiar permissões
+    const basePerms = JSON.parse(JSON.stringify(defaultPermissions));
+    let rawPerms = p.permissoes || {};
+    const mergedPerms = { ...basePerms };
+    
+    if (rawPerms.menus || rawPerms.acoes) {
+      const menus = rawPerms.menus || {};
+      const acoes = rawPerms.acoes || {};
+      
+      Object.keys(mergedPerms).forEach(key => {
+        const parts = key.split('.');
+        const mod = parts[0];
+        
+        if (key.endsWith('.visualizar') || key === 'relatorios' || key === 'configuracoes' || key === 'cadastros') {
+          mergedPerms[key] = !!menus[mod];
+        } else {
+          const actionWord = parts[1];
+          if (actionWord === 'criar') mergedPerms[key] = !!(menus[mod] && acoes.criar);
+          else if (actionWord === 'editar') mergedPerms[key] = !!(menus[mod] && acoes.editar);
+          else if (actionWord === 'excluir') mergedPerms[key] = !!(menus[mod] && acoes.excluir);
+          else if (actionWord === 'pagamento') mergedPerms[key] = !!(menus[mod] && acoes.realizar_pagamento);
+          else if (rawPerms.acoes && rawPerms.acoes[key] !== undefined) {
+            mergedPerms[key] = !!rawPerms.acoes[key];
+          }
+        }
+      });
+    } else {
+      Object.keys(basePerms).forEach(key => {
+        if (rawPerms[key] !== undefined) {
+          mergedPerms[key] = !!rawPerms[key];
+        }
+      });
+    }
+
+    setForm({
+      nome: `Cópia de ${p.nome}`,
+      descricao: p.descricao ? `Cópia de: ${p.descricao}` : "",
+      permissoes: mergedPerms
     });
+    setDialogOpen(true);
+    toast.info("Perfil clonado! Altere o nome e salve para registrar.");
   };
 
-  const handleToggleAcao = (acaoKey) => {
+  const handleTogglePermission = (key) => {
     setForm(prev => {
       const updated = { ...prev };
-      updated.permissoes.acoes[acaoKey] = !updated.permissoes.acoes[acaoKey];
+      const nextValue = !updated.permissoes[key];
+      updated.permissoes[key] = nextValue;
+
+      // Lógica de Dependência Automática para Descontos
+      if (key === 'agenda.aplicar_desconto.senha' && nextValue === true) {
+        updated.permissoes['agenda.aplicar_desconto'] = true;
+      }
+      if (key === 'vendas.aplicar_desconto.senha' && nextValue === true) {
+        updated.permissoes['vendas.aplicar_desconto'] = true;
+      }
+      if (key === 'agenda.aplicar_desconto' && nextValue === false) {
+        updated.permissoes['agenda.aplicar_desconto.senha'] = false;
+      }
+      if (key === 'vendas.aplicar_desconto' && nextValue === false) {
+        updated.permissoes['vendas.aplicar_desconto.senha'] = false;
+      }
+
+      const parts = key.split('.');
+      const moduleName = parts[0];
+
+      // Lógica de Dependência Automática
+      // Uma chave é "pai de módulo" apenas se tiver exatamente 2 segmentos e terminar em .visualizar,
+      // ou for uma das chaves especiais de grupo (relatorios, configuracoes, cadastros).
+      // Chaves com 3+ segmentos (ex: clientes.credito.visualizar) são permissões simples.
+      const isModuleParent = (
+        (parts.length === 2 && key.endsWith('.visualizar')) ||
+        key === 'relatorios' ||
+        key === 'configuracoes' ||
+        key === 'cadastros'
+      );
+
+      if (isModuleParent) {
+        // Se desmarcou a visualização pai, desmarca todas as ações filhas do mesmo módulo
+        if (nextValue === false) {
+          Object.keys(updated.permissoes).forEach(k => {
+            if (k.startsWith(`${moduleName}.`)) {
+              updated.permissoes[k] = false;
+            }
+          });
+        }
+      } else if (!isModuleParent && nextValue === true) {
+        // Se marcou qualquer ação filha (incluindo permissões de 3+ níveis),
+        // ativa obrigatoriamente a visualização do módulo pai de 2 níveis.
+        let parentKey = `${moduleName}.visualizar`;
+        if (moduleName === 'relatorios' || moduleName === 'configuracoes' || moduleName === 'cadastros') {
+          parentKey = moduleName;
+        }
+        if (updated.permissoes[parentKey] !== undefined) {
+          updated.permissoes[parentKey] = true;
+        }
+      }
       return updated;
     });
   };
@@ -154,12 +473,17 @@ export default function PerfisAcesso() {
       return toast.error("O nome do perfil é obrigatório.");
     }
 
+    const payload = {
+      ...form,
+      alterado_por: currentUser ? `${currentUser.name} (${currentUser.email})` : "Administrador"
+    };
+
     try {
       if (editingPerfil) {
-        await http.put(`/perfis-acesso/${editingPerfil.id}`, form);
+        await http.put(`/perfis-acesso/${editingPerfil.id}`, payload);
         toast.success("Perfil de acesso atualizado com sucesso!");
       } else {
-        await http.post("/perfis-acesso", form);
+        await http.post("/perfis-acesso", payload);
         toast.success("Perfil de acesso criado com sucesso!");
       }
       setDialogOpen(false);
@@ -227,8 +551,18 @@ export default function PerfisAcesso() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {perfis.map((p) => {
-              const activeMenusCount = Object.values(p.permissoes?.menus || {}).filter(Boolean).length;
-              const activeAcoesCount = Object.values(p.permissoes?.acoes || {}).filter(Boolean).length;
+              // Contar número total de permissões ativas
+              let activePermsCount = 0;
+              if (p.permissoes) {
+                if (p.permissoes.menus || p.permissoes.acoes) {
+                  // Contar formato antigo
+                  activePermsCount += Object.values(p.permissoes.menus || {}).filter(Boolean).length;
+                  activePermsCount += Object.values(p.permissoes.acoes || {}).filter(Boolean).length;
+                } else {
+                  // Contar formato plano
+                  activePermsCount = Object.values(p.permissoes).filter(Boolean).length;
+                }
+              }
               const isBaseProfile = p.id === 'admin-profile-uuid-00000000000000000' || p.id === 'func-profile-uuid-000000000000000000';
 
               return (
@@ -251,7 +585,7 @@ export default function PerfisAcesso() {
                         </div>
                         {isBaseProfile && (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-                            Padrão do Sistema
+                            Padrão
                           </span>
                         )}
                       </div>
@@ -261,41 +595,47 @@ export default function PerfisAcesso() {
                       </p>
                     </div>
 
-                    <div className="border-t border-zinc-100 dark:border-zinc-850 pt-4">
-                      <h5 className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-wider mb-2">Visão Geral de Acessos</h5>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="bg-zinc-50 dark:bg-zinc-950/40 p-2.5 rounded-xl border border-zinc-150 dark:border-zinc-850/50">
-                          <span className="text-zinc-400 dark:text-zinc-500 block text-[9px] uppercase font-bold">Menus & Telas</span>
-                          <span className="font-bold text-zinc-800 dark:text-zinc-200 mt-1 block">
-                            {activeMenusCount} de {menuMetadata.length}
-                          </span>
-                        </div>
-                        <div className="bg-zinc-50 dark:bg-zinc-950/40 p-2.5 rounded-xl border border-zinc-150 dark:border-zinc-850/50">
-                          <span className="text-zinc-400 dark:text-zinc-500 block text-[9px] uppercase font-bold">Ações & Operações</span>
-                          <span className="font-bold text-zinc-800 dark:text-zinc-200 mt-1 block">
-                            {activeAcoesCount} de 9
-                          </span>
-                        </div>
+                    <div className="border-t border-zinc-100 dark:border-zinc-850 pt-3.5 space-y-2 text-xs">
+                      <div className="flex justify-between items-center text-zinc-550 dark:text-zinc-400">
+                        <span className="font-medium text-zinc-400 dark:text-zinc-500 block text-[10px] uppercase font-bold">Total de Acessos</span>
+                        <span className="font-bold text-zinc-800 dark:text-zinc-200">
+                          {activePermsCount} permissões
+                        </span>
                       </div>
+                      
+                      {p.alterado_por && (
+                        <div className="text-[10px] text-zinc-400 dark:text-zinc-500 pt-1 border-t border-dashed border-zinc-100 dark:border-zinc-800/80">
+                          Última alteração por: <span className="font-semibold">{p.alterado_por}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-850">
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => handleOpenEdit(p)}
-                        className="flex items-center gap-1.5 border-zinc-250 dark:border-zinc-800 h-9 px-3"
+                        onClick={() => handleDuplicate(p)}
+                        className="flex items-center gap-1 border-zinc-200 dark:border-zinc-800 h-8 px-2 text-[11px]"
+                        title="Duplicar este perfil"
                       >
-                        <Pencil className="w-3.5 h-3.5" /> Editar
+                        <Copy className="w-3 h-3" /> Copiar
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleOpenEdit(p)}
+                        className="flex items-center gap-1.5 border-zinc-250 dark:border-zinc-800 h-8 px-2.5 text-[11px]"
+                      >
+                        <Pencil className="w-3 h-3" /> Editar
                       </Button>
                       {!isBaseProfile && (
                         <Button 
                           variant="destructive" 
                           size="sm"
                           onClick={() => handleOpenDelete(p)}
-                          className="flex items-center gap-1.5 h-9 px-3"
+                          className="flex items-center gap-1.5 h-8 px-2.5 text-[11px]"
                         >
-                          <Trash2 className="w-3.5 h-3.5" /> Excluir
+                          <Trash2 className="w-3 h-3" /> Excluir
                         </Button>
                       )}
                     </div>
@@ -308,8 +648,8 @@ export default function PerfisAcesso() {
       </div>
 
       {/* Access Profile Form Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-4xl w-full p-0 overflow-hidden bg-white dark:bg-zinc-900 border-0 rounded-2xl shadow-2xl flex flex-col" style={{ maxHeight: "90vh" }}>
+      <Dialog open={dialogOpen} onOpenChange={(v) => { if (!v) setSearchTerm(""); setDialogOpen(v); }}>
+        <DialogContent className="sm:max-w-4xl w-full p-0 overflow-hidden bg-white dark:bg-zinc-900 border-0 rounded-2xl shadow-2xl flex flex-col" style={{ maxHeight: "92vh" }}>
           <DialogHeader className="p-6 border-b border-zinc-150 dark:border-zinc-850 bg-zinc-50/50 dark:bg-zinc-900/10">
             <DialogTitle className="flex items-center gap-2.5 text-lg font-bold text-zinc-950 dark:text-zinc-50">
               <ShieldCheck className="w-5.5 h-5.5 text-[#84A59D]" />
@@ -343,363 +683,134 @@ export default function PerfisAcesso() {
               </div>
             </div>
 
-            {/* Checklist of Permissions Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4 border-t border-zinc-100 dark:border-zinc-850">
-              
-              {/* Column 1 & 2: Menus do Sistema */}
-              <div className="lg:col-span-2 space-y-3">
-                <h4 className="font-bold text-xs text-zinc-450 dark:text-zinc-500 uppercase tracking-wider border-b pb-1.5">
-                  1. Acesso aos Menus do Sistema
+            {/* Checklist of Permissions Grouped */}
+            <div className="space-y-6 pt-4 border-t border-zinc-100 dark:border-zinc-850">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-2">
+                <h4 className="font-bold text-xs text-zinc-450 dark:text-zinc-500 uppercase tracking-wider">
+                  Definição de Acessos e Permissões Granulares
                 </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {menuMetadata.map((menu) => {
-                    const Icon = menu.icon;
-                    const hasAccess = form.permissoes.menus[menu.key];
+                <div className="w-full sm:w-72">
+                  <Input 
+                    type="text" 
+                    placeholder="Pesquisar permissão (ex: clientes, relatórios)..." 
+                    value={searchTerm} 
+                    onChange={(e) => setSearchTerm(e.target.value)} 
+                    className="h-8 text-xs rounded-lg border-zinc-250 dark:border-zinc-800"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-6">
+                {(() => {
+                  const filteredGroups = permissionGroups.map(group => {
+                    if (!searchTerm.trim()) return group;
+                    const normalizedSearch = searchTerm.toLowerCase();
+                    const matchedPermissions = group.permissions.filter(perm => 
+                      perm.label.toLowerCase().includes(normalizedSearch) ||
+                      perm.key.toLowerCase().includes(normalizedSearch) ||
+                      (perm.desc && perm.desc.toLowerCase().includes(normalizedSearch))
+                    );
+                    if (group.title.toLowerCase().includes(normalizedSearch)) {
+                      return group;
+                    }
+                    if (matchedPermissions.length > 0) {
+                      return {
+                        ...group,
+                        permissions: matchedPermissions
+                      };
+                    }
+                    return null;
+                  }).filter(Boolean);
 
+                  if (filteredGroups.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-sm text-zinc-450 dark:text-zinc-500 font-semibold bg-zinc-50/50 dark:bg-zinc-950/20 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
+                        Nenhuma permissão encontrada para "{searchTerm}"
+                      </div>
+                    );
+                  }
+
+                  return filteredGroups.map((group) => {
+                    // Contar quantos itens ativos no grupo
+                    const groupPermsKeys = group.permissions.map(p => p.key);
+                    const activeInGroupCount = groupPermsKeys.filter(k => form.permissoes[k] === true).length;
+                    
                     return (
                       <div 
-                        key={menu.key}
-                        onClick={() => handleToggleMenu(menu.key)}
-                        className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
-                          hasAccess 
-                            ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
-                            : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
-                        }`}
+                        key={group.title}
+                        className="bg-zinc-50/40 dark:bg-zinc-950/20 border border-zinc-200/80 dark:border-zinc-850 rounded-2xl p-4.5 space-y-3"
                       >
-                        <div className="flex items-center gap-2.5">
-                          <div className={`p-1.5 rounded ${hasAccess ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-450 dark:text-zinc-500"}`}>
-                            <Icon className="w-4 h-4" />
-                          </div>
-                          <span className="text-xs font-semibold">{menu.label}</span>
+                        <div className="flex items-center justify-between border-b border-zinc-200/60 dark:border-zinc-850 pb-2">
+                          <h5 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">{group.title}</h5>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-zinc-150 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">
+                            {activeInGroupCount} de {group.permissions.length} ativos
+                          </span>
                         </div>
-                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
-                          hasAccess ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
-                        }`}>
-                          {hasAccess && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {group.permissions.map((perm) => {
+                            const hasAccess = form.permissoes[perm.key] === true;
+                            
+                            // Determinar se o checkbox deve ser desabilitado por dependência
+                            // Se uma ação filha estiver ativa, e esta chave for a visualização, bloqueia
+                            let isDependencyLocked = false;
+                            const permParts = perm.key.split('.');
+                            // Apenas chaves pai de módulo real (2 segmentos + .visualizar, ou grupos especiais) podem ser travadas
+                            const isRealModuleParent = (
+                              (permParts.length === 2 && perm.key.endsWith('.visualizar')) ||
+                              perm.key === 'relatorios' ||
+                              perm.key === 'configuracoes' ||
+                              perm.key === 'cadastros'
+                            );
+                            if (isRealModuleParent) {
+                              const mod = permParts[0];
+                              const otherActiveKeys = Object.keys(form.permissoes).filter(
+                                k => k.startsWith(`${mod}.`) && k !== perm.key && form.permissoes[k] === true
+                              );
+                              isDependencyLocked = otherActiveKeys.length > 0;
+                            }
+
+                            return (
+                              <div 
+                                key={perm.key}
+                                onClick={() => {
+                                  if (!isDependencyLocked) {
+                                    handleTogglePermission(perm.key);
+                                  } else {
+                                    toast.info("Esta permissão de visualização não pode ser desativada pois há ações filhas ativas.");
+                                  }
+                                }}
+                                className={`flex items-start justify-between p-3 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
+                                  hasAccess 
+                                    ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/80 text-emerald-950 dark:text-emerald-400 font-medium" 
+                                    : "bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-850/80 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-350"
+                                } ${isDependencyLocked ? "opacity-90 cursor-not-allowed" : ""}`}
+                              >
+                                <div className="space-y-0.5 pr-2.5">
+                                  <span className="text-xs font-bold flex items-center gap-1.5">
+                                    {perm.label}
+                                    {isDependencyLocked && (
+                                      <span className="text-[9px] bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 px-1 py-0.2 rounded font-semibold uppercase">Requerido</span>
+                                    )}
+                                  </span>
+                                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 block leading-tight font-normal">{perm.desc}</span>
+                                </div>
+                                <div className={`w-5.5 h-5.5 rounded-lg border flex items-center justify-center transition-colors shrink-0 mt-0.5 ${
+                                  hasAccess 
+                                    ? "bg-emerald-500 border-emerald-600 text-white" 
+                                    : "border-zinc-300 dark:border-zinc-700 bg-transparent"
+                                }`}>
+                                  {hasAccess && <Check className="w-3.5 h-3.5 stroke-[3.5]" />}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     );
-                  })}
-                </div>
+                  });
+                })()}
               </div>
-
-              {/* Column 3: Ações Permitidas */}
-              <div className="lg:col-span-1 space-y-4">
-                <div>
-                  <h4 className="font-bold text-xs text-zinc-450 dark:text-zinc-500 uppercase tracking-wider border-b pb-1.5 mb-3">
-                    2. Ações & Alterações
-                  </h4>
-                  <div className="space-y-3">
-                    {/* Acesso de Administrador */}
-                    <div 
-                      onClick={() => handleToggleAcao("is_admin")}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
-                        form.permissoes.acoes.is_admin 
-                          ? "bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-500 font-bold" 
-                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      <div>
-                        <span className="text-xs font-bold block">Acesso de Administrador</span>
-                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Concede privilégios totais de administração</span>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
-                        form.permissoes.acoes.is_admin ? "bg-amber-500 border-amber-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
-                      }`}>
-                        {form.permissoes.acoes.is_admin && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-
-                    {/* Criar */}
-                    <div 
-                      onClick={() => handleToggleAcao("criar")}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
-                        form.permissoes.acoes.criar 
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
-                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      <div>
-                        <span className="text-xs font-bold block">Inclusão (Criar)</span>
-                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Cadastrar novos registros no sistema</span>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
-                        form.permissoes.acoes.criar ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
-                      }`}>
-                        {form.permissoes.acoes.criar && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-
-                    {/* Editar */}
-                    <div 
-                      onClick={() => handleToggleAcao("editar")}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
-                        form.permissoes.acoes.editar 
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
-                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      <div>
-                        <span className="text-xs font-bold block">Edição (Editar)</span>
-                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Modificar dados de itens existentes</span>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
-                        form.permissoes.acoes.editar ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
-                      }`}>
-                        {form.permissoes.acoes.editar && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-
-                    {/* Excluir */}
-                    <div 
-                      onClick={() => handleToggleAcao("excluir")}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
-                        form.permissoes.acoes.excluir 
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
-                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      <div>
-                        <span className="text-xs font-bold block">Exclusão (Excluir)</span>
-                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Apagar ou arquivar dados permanentemente</span>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
-                        form.permissoes.acoes.excluir ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
-                      }`}>
-                        {form.permissoes.acoes.excluir && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-
-                    {/* Realizar Pagamentos */}
-                    <div 
-                      onClick={() => handleToggleAcao("realizar_pagamento")}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
-                        form.permissoes.acoes.realizar_pagamento 
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
-                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      <div>
-                        <span className="text-xs font-bold block">Realizar Pagamentos</span>
-                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Permitir recebimento de serviços e produtos</span>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
-                        form.permissoes.acoes.realizar_pagamento ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
-                      }`}>
-                        {form.permissoes.acoes.realizar_pagamento && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-
-                    {/* Visualizar Estoque */}
-                    <div 
-                      onClick={() => handleToggleAcao("estoque.visualizar")}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
-                        form.permissoes.acoes["estoque.visualizar"] 
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
-                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      <div>
-                        <span className="text-xs font-bold block">Visualizar Estoque</span>
-                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Visualizar painéis, quantidades e relatórios de estoque</span>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
-                        form.permissoes.acoes["estoque.visualizar"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
-                      }`}>
-                        {form.permissoes.acoes["estoque.visualizar"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-
-                    {/* Lançar Movimentação */}
-                    <div 
-                      onClick={() => handleToggleAcao("estoque.movimentar")}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
-                        form.permissoes.acoes["estoque.movimentar"] 
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
-                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      <div>
-                        <span className="text-xs font-bold block">Movimentar Estoque</span>
-                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Lançar saídas manuais, perdas e consumo interno</span>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
-                        form.permissoes.acoes["estoque.movimentar"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
-                      }`}>
-                        {form.permissoes.acoes["estoque.movimentar"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-
-                    {/* Ajustar Estoque */}
-                    <div 
-                      onClick={() => handleToggleAcao("estoque.ajustar")}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
-                        form.permissoes.acoes["estoque.ajustar"] 
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
-                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      <div>
-                        <span className="text-xs font-bold block">Ajustar Estoque</span>
-                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Realizar ajustes manuais unitários de estoque físico</span>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
-                        form.permissoes.acoes["estoque.ajustar"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
-                      }`}>
-                        {form.permissoes.acoes["estoque.ajustar"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-
-                    {/* Realizar Inventário */}
-                    <div 
-                      onClick={() => handleToggleAcao("estoque.inventariar")}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
-                        form.permissoes.acoes["estoque.inventariar"] 
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
-                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      <div>
-                        <span className="text-xs font-bold block">Inventariar (Lote)</span>
-                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Concluir contagens físicas em lote (Inventário Assistido)</span>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
-                        form.permissoes.acoes["estoque.inventariar"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
-                      }`}>
-                        {form.permissoes.acoes["estoque.inventariar"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-
-                    {/* Permitir Zerar Estoque */}
-                    <div 
-                      onClick={() => handleToggleAcao("estoque.zerar")}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
-                        form.permissoes.acoes["estoque.zerar"] 
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
-                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      <div>
-                        <span className="text-xs font-bold block">Permitir Zerar Estoque</span>
-                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Autoriza o zeramento da contagem física em lote no Inventário Assistido</span>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
-                        form.permissoes.acoes["estoque.zerar"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
-                      }`}>
-                        {form.permissoes.acoes["estoque.zerar"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-
-                    {/* Visualizar Extrato de Crédito */}
-                    <div 
-                      onClick={() => handleToggleAcao("credito.extrato")}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
-                        form.permissoes.acoes["credito.extrato"] 
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
-                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      <div>
-                        <span className="text-xs font-bold block">Visualizar Extrato de Crédito</span>
-                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Visualizar extrato e histórico de movimentações de crédito</span>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
-                        form.permissoes.acoes["credito.extrato"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
-                      }`}>
-                        {form.permissoes.acoes["credito.extrato"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-
-                    {/* Adicionar Crédito */}
-                    <div 
-                      onClick={() => handleToggleAcao("credito.adicionar")}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
-                        form.permissoes.acoes["credito.adicionar"] 
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
-                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      <div>
-                        <span className="text-xs font-bold block">Adicionar Crédito</span>
-                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Autoriza adicionar créditos manualmente para clientes</span>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
-                        form.permissoes.acoes["credito.adicionar"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
-                      }`}>
-                        {form.permissoes.acoes["credito.adicionar"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-
-                    {/* Remover Crédito */}
-                    <div 
-                      onClick={() => handleToggleAcao("credito.remover")}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
-                        form.permissoes.acoes["credito.remover"] 
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
-                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      <div>
-                        <span className="text-xs font-bold block">Remover Crédito</span>
-                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Autoriza remover/debitar créditos manualmente dos clientes</span>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
-                        form.permissoes.acoes["credito.remover"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
-                      }`}>
-                        {form.permissoes.acoes["credito.remover"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-
-                    {/* Estornar Crédito */}
-                    <div 
-                      onClick={() => handleToggleAcao("credito.estornar")}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
-                        form.permissoes.acoes["credito.estornar"] 
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
-                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      <div>
-                        <span className="text-xs font-bold block">Estornar Crédito</span>
-                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Autoriza estornar movimentações de crédito</span>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
-                        form.permissoes.acoes["credito.estornar"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
-                      }`}>
-                        {form.permissoes.acoes["credito.estornar"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-
-                    {/* Recalcular Saldo de Crédito */}
-                    <div 
-                      onClick={() => handleToggleAcao("credito.recalcular")}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer select-none transition-all duration-200 ${
-                        form.permissoes.acoes["credito.recalcular"] 
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 font-bold" 
-                          : "bg-white dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-50/50 text-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      <div>
-                        <span className="text-xs font-bold block">Recalcular Saldo de Crédito</span>
-                        <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">Autoriza o recálculo administrativo do saldo de crédito</span>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
-                        form.permissoes.acoes["credito.recalcular"] ? "bg-emerald-500 border-emerald-600 text-white" : "border-zinc-300 dark:border-zinc-700 bg-transparent"
-                      }`}>
-                        {form.permissoes.acoes["credito.recalcular"] && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-blue-50/25 dark:bg-blue-950/5 border border-blue-200/50 rounded-xl p-4 space-y-2 mt-4">
-                  <h5 className="text-[11px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">💡 Dica de Segurança</h5>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-450 leading-relaxed">
-                    Você pode alterar os limites de visualização financeira e de relatórios de um perfil desmarcando os respectivos menus de <strong>Despesas</strong>, <strong>Outras Receitas</strong>, <strong>Comissões</strong> e <strong>Relatórios</strong>.
-                  </p>
-                </div>
-              </div>
-
             </div>
 
             <DialogFooter className="p-6 border-t border-zinc-150 dark:border-zinc-850/50 gap-2 flex flex-col sm:flex-row bg-zinc-50/50 dark:bg-zinc-900/10 -mx-6 -mb-6 mt-6">

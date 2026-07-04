@@ -47,6 +47,10 @@ export default function Clientes() {
   const nomeInputRef = useRef(null);
   const nav = useNavigate();
   const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const canCreate = isAdmin || user?.perfil?.permissoes?.["clientes.criar"] === true;
+  const canEdit = isAdmin || user?.perfil?.permissoes?.["clientes.editar"] === true;
+  const canDelete = isAdmin || user?.perfil?.permissoes?.["clientes.excluir"] === true;
 
   // Controle de Paginação
   const [currentPage, setCurrentPage] = useState(1);
@@ -60,9 +64,9 @@ export default function Clientes() {
   const [creditReason, setCreditReason] = useState("");
   const [creditSubmitting, setCreditSubmitting] = useState(false);
 
-  const podeVisualizarExtrato = user?.role === "admin" || !!user?.perfil?.permissoes?.acoes?.["credito.extrato"];
-  const podeAdicionarCredito = user?.role === "admin" || !!user?.perfil?.permissoes?.acoes?.["credito.adicionar"];
-  const podeRemoverCredito = user?.role === "admin" || !!user?.perfil?.permissoes?.acoes?.["credito.remover"];
+  const podeVisualizarExtrato = user?.role === "admin" || user?.perfil?.permissoes?.["clientes.credito.visualizar"] === true || !!user?.perfil?.permissoes?.acoes?.["credito.extrato"];
+  const podeAdicionarCredito = user?.role === "admin" || user?.perfil?.permissoes?.["clientes.credito.gerenciar"] === true || !!user?.perfil?.permissoes?.acoes?.["credito.adicionar"];
+  const podeRemoverCredito = user?.role === "admin" || user?.perfil?.permissoes?.["clientes.credito.gerenciar"] === true || !!user?.perfil?.permissoes?.acoes?.["credito.remover"];
 
   const handleCreditoManual = (cliente, op) => {
     setSelectedClienteForCredit(cliente);
@@ -589,11 +593,11 @@ export default function Clientes() {
             </Button>
 
             <Dialog open={open} onOpenChange={(v) => { setOpen(v); setNameError(false); setWhatsappStatus(null); if (!v) setForm(blank); }}>
-              <DialogTrigger asChild>
-                <Button data-testid="add-cliente-btn" className="flex-1 sm:flex-initial bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold h-10 flex items-center justify-center gap-1.5">
+              {canCreate && (
+                <Button onClick={() => setOpen(true)} data-testid="add-cliente-btn" className="flex-1 sm:flex-initial bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold h-10 flex items-center justify-center gap-1.5">
                   <Plus className="w-4 h-4" /> Novo cliente
                 </Button>
-              </DialogTrigger>
+              )}
               <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg max-h-[80vh] sm:max-h-[90vh] overflow-y-auto p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
                 <DialogHeader><DialogTitle className="text-zinc-900 dark:text-zinc-50">{form.id ? "Editar" : "Novo"} cliente</DialogTitle></DialogHeader>
                 <div className="space-y-3">
@@ -840,39 +844,43 @@ export default function Clientes() {
                           </>
                         )}
                         
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={async () => await edit(c)}
-                              data-testid={`edit-cliente-${c.id}`}
-                              className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 p-2 h-8 w-8"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Editar Cliente</p>
-                          </TooltipContent>
-                        </Tooltip>
+                        {canEdit && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={async () => await edit(c)}
+                                data-testid={`edit-cliente-${c.id}`}
+                                className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 p-2 h-8 w-8"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Editar Cliente</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                         
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => del(c.id)}
-                              data-testid={`delete-cliente-${c.id}`}
-                              className="text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 p-2 h-8 w-8"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Excluir Cliente</p>
-                          </TooltipContent>
-                        </Tooltip>
+                        {canDelete && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => del(c.id)}
+                                data-testid={`delete-cliente-${c.id}`}
+                                className="text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 p-2 h-8 w-8"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Excluir Cliente</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -976,24 +984,28 @@ export default function Clientes() {
                   >
                     <History className="w-3.5 h-3.5" /> Histórico
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => await edit(c)}
-                    data-testid={`edit-cliente-card-${c.id}`}
-                    className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" /> Editar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => del(c.id)}
-                    data-testid={`delete-cliente-card-${c.id}`}
-                    className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Excluir
-                  </Button>
+                  {canEdit && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => await edit(c)}
+                      data-testid={`edit-cliente-card-${c.id}`}
+                      className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" /> Editar
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => del(c.id)}
+                      data-testid={`delete-cliente-card-${c.id}`}
+                      className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Excluir
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}

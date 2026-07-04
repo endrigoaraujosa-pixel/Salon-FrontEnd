@@ -13,12 +13,19 @@ import { Checkbox } from "../components/ui/checkbox";
 import { toast } from "sonner";
 import AuditModal from "../components/AuditModal";
 import SearchableSelect from "../components/SearchableSelect";
+import { useAuth } from "../auth";
 
 const blank = { nome: "", categoria_id: "", duracao_minutos: 60, valor: 0, descricao: "", ativo: true, produtos_vinculados: [] };
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const normalizeText = (str) => !str ? "" : str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 export default function Servicos() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const canCreate = isAdmin || user?.perfil?.permissoes?.["servicos.criar"] === true;
+  const canEdit = isAdmin || user?.perfil?.permissoes?.["servicos.editar"] === true;
+  const canDelete = isAdmin || user?.perfil?.permissoes?.["servicos.excluir"] === true;
+
   const [list, setList] = useState([]);
   const [produtos, setProdutos] = useState([]);
   const [categorias, setCategorias] = useState([]);
@@ -567,7 +574,9 @@ export default function Servicos() {
           </div>
         } 
         action={
-          <Button onClick={() => { setForm(blank); setOpen(true); }} className="bg-[#84A59D] hover:bg-[#6F9189]"><Plus className="w-4 h-4 mr-1" /> Novo serviço</Button>
+          canCreate && (
+            <Button onClick={() => { setForm(blank); setOpen(true); }} className="bg-[#84A59D] hover:bg-[#6F9189]"><Plus className="w-4 h-4 mr-1" /> Novo serviço</Button>
+          )
         } 
       />
 
@@ -792,22 +801,26 @@ export default function Servicos() {
                           </span>
                           
                           <div className="flex gap-1.5">
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              onClick={() => edit(s)} 
-                              className="hover:bg-zinc-100 dark:hover:bg-zinc-800 h-7 text-xs font-semibold px-2"
-                            >
-                              <Edit2 className="w-3.5 h-3.5 mr-1" /> Editar
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={() => del(s.id)} 
-                              className="h-7 w-7 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 p-0 flex items-center justify-center"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
+                            {canEdit && (
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => edit(s)} 
+                                className="hover:bg-zinc-100 dark:hover:bg-zinc-800 h-7 text-xs font-semibold px-2"
+                              >
+                                <Edit2 className="w-3.5 h-3.5 mr-1" /> Editar
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => del(s.id)} 
+                                className="h-7 w-7 text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 p-0 flex items-center justify-center"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>

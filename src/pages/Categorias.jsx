@@ -10,10 +10,15 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from ".
 import { Tags, Plus, Edit2, Trash2, Check, X, History } from "lucide-react";
 import { toast } from "sonner";
 import AuditModal from "../components/AuditModal";
+import { useAuth } from "../auth";
 
 const blank = { nome: "", tipo: "ambos", ativo: true };
 
 export default function Categorias() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const canManage = isAdmin || user?.perfil?.permissoes?.["cadastros.categorias"] === true;
+
   const [list, setList] = useState([]);
   const [open, setOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -80,15 +85,17 @@ export default function Categorias() {
         overline="Catálogo"
         title="Categorias"
         action={
-          <Button
-            onClick={() => {
-              setForm(blank);
-              setOpen(true);
-            }}
-            className="bg-[#84A59D] hover:bg-[#6F9189]"
-          >
-            <Plus className="w-4 h-4 mr-1" /> Nova categoria
-          </Button>
+          canManage && (
+            <Button
+              onClick={() => {
+                setForm(blank);
+                setOpen(true);
+              }}
+              className="bg-[#84A59D] hover:bg-[#6F9189]"
+            >
+              <Plus className="w-4 h-4 mr-1" /> Nova categoria
+            </Button>
+          )
         }
       />
 
@@ -203,12 +210,16 @@ export default function Categorias() {
                   </td>
                   <td className="px-6 py-3 text-right">
                     <div className="flex justify-end gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => edit(cat)}>
-                        <Edit2 className="w-4 h-4 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => del(cat.id)}>
-                        <Trash2 className="w-4 h-4 text-rose-500" />
-                      </Button>
+                      {canManage && (
+                        <>
+                          <Button size="sm" variant="ghost" onClick={() => edit(cat)}>
+                            <Edit2 className="w-4 h-4 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => del(cat.id)}>
+                            <Trash2 className="w-4 h-4 text-rose-500" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import http from "../api";
+import { useAuth } from "../auth";
+import { toast } from "../components/ui/sonner";
 import { PageHeader } from "../components/Page";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -264,7 +266,23 @@ const REPORTS_LIST = [
   }
 ];
 
+/**
+ * Maps each report tab id to the permission key required to view it.
+ * Returns null for reports that don't require a specific permission (admin-only check is still applied).
+ */
+const getReportPermKey = (tab) => {
+  if (!tab) return null;
+  if (tab === "dre") return "relatorios.dre";
+  if (tab === "caixa") return "relatorios.caixa";
+  if (tab === "cartoes") return "relatorios.cartoes";
+  if (tab === "produtos" || tab === "servicos") return "relatorios.vendas";
+  if (["resultado_consolidado", "rentabilidade_servicos", "rentabilidade_produtos", "analitico_vendas"].includes(tab)) return "relatorios.operacional";
+  if (tab.startsWith("estoque")) return "relatorios.estoque";
+  return null;
+};
+
 export default function Relatorios() {
+  const { user } = useAuth();
   const [from, setFrom] = useState(firstDayMonth());
   const [to, setTo] = useState(todayStr());
   const [tab, setTab] = useState("dre");
@@ -280,7 +298,13 @@ export default function Relatorios() {
   const getFormaLabel = (forma) => {
     if (FORMA_LABELS[forma]) return FORMA_LABELS[forma];
     const found = formasCartaoList.find(f => f.forma_pagamento === forma);
-    return found ? found.descricao : forma;
+    if (found) return found.descricao;
+    
+    if (typeof forma === 'string') {
+      if (forma.startsWith('debito_')) return 'Débito (Customizado)';
+      if (forma.startsWith('credito_')) return 'Crédito (Customizado)';
+    }
+    return forma;
   };
 
   const getFilterPaymentOptions = () => {
@@ -436,6 +460,17 @@ export default function Relatorios() {
   }, [tab, hasInitializedCaixa]);
 
   const reload = (options = {}) => {
+    // --- Permission pre-check (before the spinner is shown) ---
+    const permKey = getReportPermKey(tab);
+    if (permKey && user?.role !== 'admin') {
+      const hasPermission = user?.perfil?.permissoes?.[permKey] === true;
+      if (!hasPermission) {
+        const reportTitle = REPORTS_LIST.find(r => r.id === tab)?.title || "este relatório";
+        toast.error(`Sem permissão: Você não tem acesso ao relatório "${reportTitle}".`);
+        return; // abort — never shows the loading spinner
+      }
+    }
+    // -----------------------------------------------------------
     setLoadingReport(true);
     const params = { data_inicio: from, data_fim: to };
     const nextProdutosPage = options.produtosPage || produtosPage;
@@ -455,6 +490,11 @@ export default function Relatorios() {
         .then((r) => setDre(r.data))
         .catch((err) => {
           console.error("DRE error:", err);
+          if (err.response?.status === 403) {
+            toast.error("Acesso negado: Você não tem permissão para visualizar o relatório DRE.");
+          } else {
+            toast.error("Erro ao carregar o relatório DRE.");
+          }
           setDre({
             receita_servicos: 0,
             receita_vendas_diretas: 0,
@@ -478,7 +518,27 @@ export default function Relatorios() {
         .then((r) => setCaixa(r.data))
         .catch((err) => {
           console.error("Caixa error:", err);
-          setCaixa({ pagamentos: [], total: 0 });
+          if (err.response?.status === 403) {
+            toast.error("Acesso negado: Você não tem permissão para visualizar o relatório de caixa.");
+          } else {
+            toast.error("Erro ao carregar o relatório de caixa.");
+          }
+          setCaixa({
+            pagamentos: [],
+            total: 0,
+            total_pagamentos: 0,
+            totais: {
+              bruto: 0,
+              troco: 0,
+              geral: 0,
+              dinheiro: 0,
+              pix: 0,
+              cartao_credito: 0,
+              cartao_debito: 0,
+              vale: 0,
+              credito_cliente: 0
+            }
+          });
         });
     }
     if (tab === "cartoes") {
@@ -493,6 +553,11 @@ export default function Relatorios() {
         .then((r) => setCartoes(r.data))
         .catch((err) => {
           console.error("Cartoes error:", err);
+          if (err.response?.status === 403) {
+            toast.error("Acesso negado: Você não tem permissão para visualizar o relatório de cartões.");
+          } else {
+            toast.error("Erro ao carregar o relatório de cartões.");
+          }
           setCartoes({ transacoes: [], totais: { bruto: 0, taxa: 0, liquido: 0 }, por_adquirente: [] });
         });
     }
@@ -515,6 +580,11 @@ export default function Relatorios() {
         .then((r) => setProdutos(r.data))
         .catch((err) => {
           console.error("Produtos error:", err);
+          if (err.response?.status === 403) {
+            toast.error("Acesso negado: Você não tem permissão para visualizar o relatório de produtos.");
+          } else {
+            toast.error("Erro ao carregar o relatório de produtos.");
+          }
           setProdutos([]);
         });
     }
@@ -531,6 +601,11 @@ export default function Relatorios() {
         .then((r) => setServicos(r.data))
         .catch((err) => {
           console.error("Servicos error:", err);
+          if (err.response?.status === 403) {
+            toast.error("Acesso negado: Você não tem permissão para visualizar o relatório de serviços.");
+          } else {
+            toast.error("Erro ao carregar o relatório de serviços.");
+          }
           setServicos([]);
         });
     }
@@ -546,6 +621,11 @@ export default function Relatorios() {
         .then((r) => setResultadoOperacional(r.data))
         .catch((err) => {
           console.error("Resultado Operacional error:", err);
+          if (err.response?.status === 403) {
+            toast.error("Acesso negado: Você não tem permissão para visualizar este relatório operacional.");
+          } else {
+            toast.error("Erro ao carregar o relatório de resultado operacional.");
+          }
           setResultadoOperacional({
             consolidado: { receita_servicos: 0, receita_produtos: 0, receita_total: 0, cmv: 0, comissoes: 0, taxas: 0, resultado_operacional: 0, margem_operacional: 0 },
             servicos: [],
@@ -582,6 +662,11 @@ export default function Relatorios() {
         .then((r) => setEstoqueReportData(r.data))
         .catch((err) => {
           console.error(`Error loading ${tab}:`, err);
+          if (err.response?.status === 403) {
+            toast.error("Acesso negado: Você não tem permissão para visualizar este relatório de estoque.");
+          } else {
+            toast.error("Erro ao carregar o relatório de estoque.");
+          }
           setEstoqueReportData(null);
         });
     }

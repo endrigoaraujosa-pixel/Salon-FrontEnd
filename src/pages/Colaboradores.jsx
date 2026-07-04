@@ -9,10 +9,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { UserCog, Plus, Edit2, Trash2, History } from "lucide-react";
 import { toast } from "sonner";
 import AuditModal from "../components/AuditModal";
+import { useAuth } from "../auth";
 
 const blank = { nome: "", cargo: "", telefone: "", comissao_sozinho: 40, comissao_ajuda: 30, comissao_auxiliar: 20, ativo: true, foto: null };
 
 export default function Colaboradores() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const canCreate = isAdmin || user?.perfil?.permissoes?.["colaboradores.criar"] === true;
+  const canEdit = isAdmin || user?.perfil?.permissoes?.["colaboradores.editar"] === true;
+  const canDelete = isAdmin || user?.perfil?.permissoes?.["colaboradores.excluir"] === true;
+  const canViewSensitiveData = isAdmin || user?.perfil?.permissoes?.["colaboradores.dados_sensiveis"] === true;
+
   const [list, setList] = useState([]);
   const [open, setOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -122,7 +130,9 @@ export default function Colaboradores() {
     <div className="p-6 lg:p-8 fade-in">
       <PageHeader overline="Equipe" title="Colaboradores" action={
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); setNameError(false); if (!v) setForm(blank); }}>
-          <DialogTrigger asChild><Button data-testid="add-colaborador-btn" className="bg-[#84A59D] hover:bg-[#6F9189]"><Plus className="w-4 h-4 mr-1" /> Novo colaborador</Button></DialogTrigger>
+          {canCreate && (
+            <Button onClick={() => setOpen(true)} data-testid="add-colaborador-btn" className="bg-[#84A59D] hover:bg-[#6F9189]"><Plus className="w-4 h-4 mr-1" /> Novo colaborador</Button>
+          )}
           <DialogContent>
             <DialogHeader><DialogTitle>{form.id ? "Editar" : "Novo"} colaborador</DialogTitle></DialogHeader>
             <div className="space-y-3">
@@ -223,14 +233,23 @@ export default function Colaboradores() {
                 <span className={`text-xs px-2 py-0.5 rounded-full ${c.ativo ? "bg-emerald-100 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}>{c.ativo ? "Ativo" : "Inativo"}</span>
               </div>
               <div className="mt-4 text-sm text-zinc-600 space-y-1">
-                <div>📞 {c.telefone || "—"}</div>
-                <div>Comissão sozinho: <b>{c.comissao_sozinho !== null && c.comissao_sozinho !== undefined ? c.comissao_sozinho : c.comissao_principal}%</b></div>
-                <div>Comissão c/ assistente: <b>{c.comissao_ajuda || 30}%</b></div>
-                <div>Comissão auxiliar: <b>{c.comissao_auxiliar}%</b></div>
+                {/* Dados sensíveis: exibe se tem permissão global OU se é o próprio colaborador vinculado */}
+                {(canViewSensitiveData || c.telefone !== undefined) && (
+                  <div>📞 {c.telefone || "—"}</div>
+                )}
+                {(canViewSensitiveData || c.comissao_sozinho !== undefined) && (
+                  <div>Comissão sozinho: <b>{c.comissao_sozinho !== null && c.comissao_sozinho !== undefined ? c.comissao_sozinho : c.comissao_principal}%</b></div>
+                )}
+                {(canViewSensitiveData || c.comissao_ajuda !== undefined) && (
+                  <div>Comissão c/ assistente: <b>{c.comissao_ajuda !== undefined ? c.comissao_ajuda : 30}%</b></div>
+                )}
+                {(canViewSensitiveData || c.comissao_auxiliar !== undefined) && (
+                  <div>Comissão auxiliar: <b>{c.comissao_auxiliar}%</b></div>
+                )}
               </div>
               <div className="mt-4 pt-3 border-t border-zinc-100 flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => edit(c)}><Edit2 className="w-3 h-3 mr-1" /> Editar</Button>
-                <Button size="sm" variant="ghost" onClick={() => del(c.id)}><Trash2 className="w-3 h-3 text-rose-500" /></Button>
+                {canEdit && <Button size="sm" variant="outline" onClick={() => edit(c)}><Edit2 className="w-3 h-3 mr-1" /> Editar</Button>}
+                {canDelete && <Button size="sm" variant="ghost" onClick={() => del(c.id)}><Trash2 className="w-3 h-3 text-rose-500" /></Button>}
               </div>
             </div>
           ))}

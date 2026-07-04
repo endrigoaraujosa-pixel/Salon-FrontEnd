@@ -48,7 +48,7 @@ export default function ClienteCreditoExtrato() {
     totalDebitos: 0
   });
 
-  const podeEstornar = user?.role === "admin" || !!user?.perfil?.permissoes?.acoes?.["credito.estornar"];
+  const podeEstornar = user?.role === "admin" || user?.perfil?.permissoes?.["clientes.credito.gerenciar"] === true || !!user?.perfil?.permissoes?.acoes?.["credito.estornar"];
 
   // Fetch clients to populate the filter dropdown
   const loadClients = async () => {

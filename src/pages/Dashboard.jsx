@@ -45,6 +45,7 @@ const fmtTime = (s) => s ? new Date(s).toLocaleTimeString("pt-BR", { hour: '2-di
 export default function Dashboard() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const canViewFaturamento = isAdmin || user?.perfil?.permissoes?.["dashboard.faturamento"] === true;
   const [d, setD] = useState(null);
   const [selectedColab, setSelectedColab] = useState("todos");
   
@@ -225,8 +226,8 @@ export default function Dashboard() {
       </div>
 
       {/* KPI Cards Grid */}
-      <div className={`grid grid-cols-2 ${isAdmin ? "lg:grid-cols-5" : "lg:grid-cols-4"} gap-3 sm:gap-4`}>
-        {isAdmin && (
+      <div className={`grid grid-cols-2 ${canViewFaturamento ? "lg:grid-cols-5" : "lg:grid-cols-4"} gap-3 sm:gap-4`}>
+        {canViewFaturamento && (
           <Stat 
             icon={DollarSign} 
             label="Faturamento Período" 
@@ -235,7 +236,7 @@ export default function Dashboard() {
             onClick={() => handleOpenDetail("faturamento")} 
           />
         )}
-        {isAdmin && (
+        {canViewFaturamento && (
           <Stat 
             icon={TrendingUp} 
             label="Ticket Médio" 
@@ -294,7 +295,7 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        {isAdmin && <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{fmtBRL(s.total)}</div>}
+                        {canViewFaturamento && <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{fmtBRL(s.total)}</div>}
                         <div className="text-xs text-zinc-400 dark:text-zinc-500 font-semibold">{s.qtd}x atendimentos</div>
                       </div>
                       <ArrowUpRight className="w-3.5 h-3.5 text-zinc-300 group-hover:text-[#84A59D] transition-all opacity-0 group-hover:opacity-100 transform translate-x-[-4px] group-hover:translate-x-0" />
@@ -854,7 +855,7 @@ export default function Dashboard() {
               {selectedMetric === "ticket_medio" && `Média do Ticket: ${fmtBRL(detailData.length ? (detailData.reduce((acc, x) => acc + x.valor_pago, 0) / detailData.length) : 0)}`}
               {selectedMetric === "clientes" && `Total Clientes Ativos: ${detailData.length}`}
               {selectedMetric === "estoque" && `Total Itens Alerta: ${detailData.length}`}
-              {selectedMetric === "top_servico" && (isAdmin ? `Faturamento do Serviço: ${fmtBRL(detailData.reduce((acc, x) => acc + x.valor, 0))} (${detailData.length}x)` : `Total de Atendimentos: ${detailData.length}`)}
+              {selectedMetric === "top_servico" && (canViewFaturamento ? `Faturamento do Serviço: ${fmtBRL(detailData.reduce((acc, x) => acc + x.valor, 0))} (${detailData.length}x)` : `Total de Atendimentos: ${detailData.length}`)}
               {selectedMetric === "servicos_agendados" && `Total de Serviços Agendados: ${detailData.reduce((acc, x) => acc + x.qtd, 0)}`}
               {selectedMetric === "servicos_agendados_detalhe" && `Total Agendados: ${detailData.length} agendamento(s) | Valor Estimado: ${fmtBRL(detailData.reduce((acc, x) => acc + x.valor, 0))}`}
             </div>
