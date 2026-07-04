@@ -41,6 +41,7 @@ export default function CadastroDescontos() {
   const [requerAutorizacao, setRequerAutorizacao] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [incideComissao, setIncideComissao] = useState(true);
+  const [perfisList, setPerfisList] = useState([]);
 
   // Search filter states for lists inside the modal
   const [searchServico, setSearchServico] = useState("");
@@ -66,6 +67,10 @@ export default function CadastroDescontos() {
 
     http.get("/users")
       .then((r) => setUsersList(r.data.filter(u => u.ativo)))
+      .catch(() => {});
+
+    http.get("/perfis-acesso")
+      .then((r) => setPerfisList(r.data))
       .catch(() => {});
   };
 
@@ -565,7 +570,7 @@ export default function CadastroDescontos() {
       {/* Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-          <Card className="w-full max-w-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-850 rounded-2xl shadow-xl flex flex-col max-h-[90vh] my-8">
+          <Card className="w-full max-w-4xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-850 rounded-2xl shadow-xl flex flex-col max-h-[90vh] my-8">
             <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 p-5 shrink-0">
               <h3 className="font-display font-bold text-lg text-zinc-900 dark:text-zinc-50">
                 {isEditing ? "Editar Regra de Desconto" : "Nova Regra de Desconto"}
@@ -690,7 +695,7 @@ export default function CadastroDescontos() {
                   </div>
 
                   {/* Right Column: Linking & Permissions (Tabs) */}
-                  <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden flex flex-col md:max-h-[450px]">
+                  <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden flex flex-col md:max-h-[550px]">
                     <div className="flex border-b border-zinc-200 dark:border-zinc-800 bg-zinc-55/30 dark:bg-zinc-950/40 select-none shrink-0">
                       <button
                         type="button"
@@ -752,7 +757,7 @@ export default function CadastroDescontos() {
                                 className="pl-8 h-8 text-xs bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 rounded-lg"
                               />
                             </div>
-                            <div className="h-28 overflow-y-auto border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-2 rounded-lg space-y-1">
+                            <div className="h-44 overflow-y-auto border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-2 rounded-lg space-y-1">
                               {filteredServicos.length === 0 ? (
                                 <div className="text-[11px] text-zinc-400 text-center py-4">Nenhum serviço encontrado.</div>
                               ) : (
@@ -804,7 +809,7 @@ export default function CadastroDescontos() {
                                 className="pl-8 h-8 text-xs bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 rounded-lg"
                               />
                             </div>
-                            <div className="h-28 overflow-y-auto border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-2 rounded-lg space-y-1">
+                            <div className="h-44 overflow-y-auto border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-2 rounded-lg space-y-1">
                               {filteredProdutos.length === 0 ? (
                                 <div className="text-[11px] text-zinc-400 text-center py-4">Nenhum produto encontrado.</div>
                               ) : (
@@ -861,7 +866,7 @@ export default function CadastroDescontos() {
                                   className="pl-8 h-8 text-xs bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 rounded-lg"
                                 />
                               </div>
-                              <div className="h-44 overflow-y-auto border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-2 rounded-lg space-y-1">
+                              <div className="h-72 overflow-y-auto border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-2 rounded-lg space-y-1">
                                 {filteredUsers.length === 0 ? (
                                   <div className="text-[11px] text-zinc-400 text-center py-4">Nenhum usuário ativo encontrado.</div>
                                 ) : (
@@ -875,7 +880,9 @@ export default function CadastroDescontos() {
                                       />
                                       <div className="flex flex-col min-w-0">
                                         <span className="truncate font-bold text-zinc-700 dark:text-zinc-300">{u.name || u.email}</span>
-                                        <span className="text-[10px] text-zinc-450 truncate uppercase font-semibold">{u.role}</span>
+                                        <span className="text-[10px] text-zinc-450 truncate uppercase font-semibold">
+                                          {perfisList.find(p => p.id === u.perfil_acesso_id)?.nome || (u.role === 'admin' ? 'Administrador' : 'Funcionário')}
+                                        </span>
                                       </div>
                                     </label>
                                   ))
