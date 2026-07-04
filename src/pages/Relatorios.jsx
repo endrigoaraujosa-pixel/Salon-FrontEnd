@@ -298,7 +298,13 @@ export default function Relatorios() {
   const getFormaLabel = (forma) => {
     if (FORMA_LABELS[forma]) return FORMA_LABELS[forma];
     const found = formasCartaoList.find(f => f.forma_pagamento === forma);
-    return found ? found.descricao : forma;
+    if (found) return found.descricao;
+    
+    if (typeof forma === 'string') {
+      if (forma.startsWith('debito_')) return 'Débito (Customizado)';
+      if (forma.startsWith('credito_')) return 'Crédito (Customizado)';
+    }
+    return forma;
   };
 
   const getFilterPaymentOptions = () => {

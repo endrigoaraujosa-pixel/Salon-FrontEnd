@@ -94,7 +94,25 @@ export default function VendaPagamento() {
   };
 
   const getFormaPagamentoLabel = (forma) => {
-    return getFormasDisponiveis().find(f => f.v === forma)?.l || FORMAS.find(f => f.v === forma)?.l || forma || "";
+    const foundDisponivel = getFormasDisponiveis().find(f => f.v === forma);
+    if (foundDisponivel) return foundDisponivel.l;
+    
+    const foundBase = FORMAS.find(f => f.v === forma);
+    if (foundBase) return foundBase.l;
+    
+    const foundTaxa = taxasCartao.find(t => t.forma_pagamento === forma);
+    if (foundTaxa) {
+      if (foundTaxa.descricao) return foundTaxa.descricao;
+      const typeName = foundTaxa.tipo_cartao === 'credito' ? 'Crédito' : 'Débito';
+      const brandName = foundTaxa.bandeira ? foundTaxa.bandeira.trim() : '';
+      return `${typeName} ${brandName}`.trim();
+    }
+    
+    if (typeof forma === 'string') {
+      if (forma.startsWith('debito_')) return 'Débito (Customizado)';
+      if (forma.startsWith('credito_')) return 'Crédito (Customizado)';
+    }
+    return forma || "";
   };
   
   // Estados para edição de pagamento
@@ -187,7 +205,7 @@ export default function VendaPagamento() {
 
     return Object.entries(totalPorForma).map(([forma, total]) => ({
       forma,
-      label: FORMAS.find(f => f.v === forma)?.l || forma,
+      label: getFormaPagamentoLabel(forma),
       total
     })).filter(x => x.total > 0.01);
   };
@@ -896,7 +914,7 @@ export default function VendaPagamento() {
             
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6">
               <Button variant="outline" size="sm" onClick={addLine} className="justify-center h-9 text-xs" disabled={!temPermissaoPagamento}><Plus className="w-3 h-3 mr-1" /> Adicionar forma</Button>
-              <Button data-testid="vpay-finish-btn" onClick={() => executePayment()} className="bg-[#84A59D] hover:bg-[#6F9189] justify-center text-white h-9 text-xs font-semibold" disabled={!temPermissaoPagamento}><CheckCircle2 className="w-4 h-4 mr-1" /> Registrar e Finalizar</Button>
+              <Button data-testid="vpay-finish-btn" onClick={() => executePayment()} className="bg-[#84A59D] hover:bg-[#6F9189] justify-center text-white h-9 text-xs font-semibold" disabled={!temPermissaoPagamento || saldo <= 0.01}><CheckCircle2 className="w-4 h-4 mr-1" /> Registrar e Finalizar</Button>
             </div>
           </div>
         </div>
@@ -1076,7 +1094,7 @@ export default function VendaPagamento() {
                   <div key={p.id} className="p-3 bg-zinc-50 dark:bg-zinc-950/40 rounded-xl border border-zinc-155 dark:border-zinc-850 flex flex-col gap-1.5 text-xs">
                     <div className="flex justify-between items-center w-full">
                       <span className="font-semibold text-zinc-700 dark:text-zinc-350 capitalize flex items-center gap-1.5">
-                        {FORMAS.find((f) => f.v === p.forma_pagamento)?.l || p.forma_pagamento}
+                        {getFormaPagamentoLabel(p.forma_pagamento)}
                         {p.cartao_bandeira && (
                           <span className="text-[10px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-1.5 py-0.5 rounded-full font-bold uppercase">
                             {p.cartao_bandeira}
