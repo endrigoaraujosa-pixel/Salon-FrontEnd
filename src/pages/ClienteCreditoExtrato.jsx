@@ -30,6 +30,10 @@ export default function ClienteCreditoExtrato() {
   // Custom Confirmation Dialog for Estorno
   const [confirmEstornoOpen, setConfirmEstornoOpen] = useState(false);
   const [selectedMovForEstorno, setSelectedMovForEstorno] = useState(null);
+
+  // State for balance details modal
+  const [saldoDetailsOpen, setSaldoDetailsOpen] = useState(false);
+  const [saldoSearchTerm, setSaldoSearchTerm] = useState("");
   
   // Pagination states
   const [page, setPage] = useState(1);
@@ -222,10 +226,27 @@ export default function ClienteCreditoExtrato() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
         
-        <Card className="p-5 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/15 dark:to-zinc-900 border border-emerald-100 dark:border-emerald-900/40 rounded-xl shadow-xs">
+        <Card 
+          onClick={() => {
+            if (!selectedClienteId) {
+              setSaldoSearchTerm("");
+              setSaldoDetailsOpen(true);
+            }
+          }}
+          className={`p-5 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/15 dark:to-zinc-900 border border-emerald-100 dark:border-emerald-900/40 rounded-xl shadow-xs ${
+            !selectedClienteId ? "cursor-pointer hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-800 transition-all duration-200" : ""
+          }`}
+        >
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-450 uppercase tracking-wider">Saldo Atual</span>
+              <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-455 uppercase tracking-wider flex items-center gap-1.5">
+                Saldo Atual 
+                {!selectedClienteId && (
+                  <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 normal-case font-normal">
+                    (clique para ver detalhes)
+                  </span>
+                )}
+              </span>
               <h2 className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-350 mt-1 leading-none">
                 R$ {stats.saldoAtual.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
               </h2>
@@ -488,6 +509,100 @@ export default function ClienteCreditoExtrato() {
               className="bg-rose-600 hover:bg-rose-700 text-white w-full sm:w-auto h-10 font-bold"
             >
               Confirmar Estorno
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Detalhamento de Saldo por Cliente */}
+      <Dialog open={saldoDetailsOpen} onOpenChange={setSaldoDetailsOpen}>
+        <DialogContent className="sm:max-w-[550px] max-h-[85vh] flex flex-col p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold font-display text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
+              <User className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              Saldos de Crédito por Cliente
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Barra de busca dentro do modal */}
+          <div className="relative my-3">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-450" />
+            <Input
+              type="text"
+              placeholder="Pesquisar cliente..."
+              value={saldoSearchTerm}
+              onChange={(e) => setSaldoSearchTerm(e.target.value)}
+              className="pl-10 h-10 bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 rounded-lg text-sm"
+            />
+          </div>
+
+          {/* Listagem de clientes com saldos */}
+          <div className="overflow-y-auto pr-1 flex-1 min-h-[300px] max-h-[50vh] border border-zinc-200 dark:border-zinc-800 rounded-lg">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-zinc-50 dark:bg-zinc-900 sticky top-0 border-b border-zinc-200 dark:border-zinc-800 text-[10px] font-bold uppercase tracking-wider text-zinc-550">
+                <tr>
+                  <th className="px-4 py-3">Cliente</th>
+                  <th className="px-4 py-3 text-right">Saldo Atual</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                {(() => {
+                  const filtered = clients
+                    .filter(c => {
+                      const balance = Number(c.saldo_credito || 0);
+                      if (Math.abs(balance) <= 0.01) return false;
+                      
+                      const search = saldoSearchTerm.trim().toLowerCase();
+                      if (!search) return true;
+                      
+                      const nameMatch = (c.nome || "").toLowerCase().includes(search);
+                      const phoneMatch = (c.telefone || "").toLowerCase().includes(search);
+                      return nameMatch || phoneMatch;
+                    })
+                    .sort((a, b) => Number(b.saldo_credito || 0) - Number(a.saldo_credito || 0));
+
+                  if (filtered.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={2} className="px-4 py-8 text-center text-zinc-400 italic">
+                          Nenhum cliente com saldo encontrado
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  return filtered.map((c) => (
+                    <tr
+                      key={c.id}
+                      onClick={() => {
+                        setSelectedClienteId(c.id);
+                        setSaldoDetailsOpen(false);
+                      }}
+                      className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition-colors"
+                    >
+                      <td className="px-4 py-3 font-medium text-zinc-800 dark:text-zinc-200">
+                        <div>
+                          <div className="text-sm font-semibold">{c.nome}</div>
+                          {c.telefone && <div className="text-[10px] text-zinc-400">{c.telefone}</div>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono font-extrabold text-sm text-emerald-600 dark:text-emerald-400">
+                        R$ {Number(c.saldo_credito || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ));
+                })()}
+              </tbody>
+            </table>
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setSaldoDetailsOpen(false)}
+              className="w-full sm:w-auto h-10 font-semibold"
+            >
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>
