@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Calendar, Users, Scissors, Package, UserCog, 
   LogOut, ShoppingBag, Wallet, BarChart3, UsersRound, DollarSign, 
   TrendingUp, Menu, X, Tags, ClipboardList, MessageSquare,
-  FolderOpen
+  FolderOpen, Megaphone
 } from "lucide-react";
 
 import { Button } from "../components/ui/button";
@@ -17,6 +17,7 @@ const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true, permKey: "dashboard.visualizar" },
   { to: "/agenda", label: "Agenda", icon: Calendar, permKey: "agenda.visualizar" },
   { to: "/agenda/whatsapp-historico", label: "Histórico WhatsApp", icon: MessageSquare, permKey: "agenda.whatsapp_historico" },
+  { to: "/whatsapp/mensagem-massa", label: "Mensagem em Massa", icon: Megaphone, permKey: "configuracoes.whatsapp_mensagem_massa", whatsappOnly: true },
   { to: "/vendas-diretas", label: "Vendas", icon: ShoppingBag, permKey: "vendas.visualizar" },
   { to: "/clientes", label: "Clientes", icon: Users, permKey: "clientes.visualizar" },
   { to: "/colaboradores", label: "Colaboradores", icon: UserCog, permKey: "colaboradores.visualizar" },
@@ -104,8 +105,8 @@ export default function Layout() {
 
   const renderNavItems = (isMobile = false) => {
     return nav.filter((n) => {
-      // Se for o histórico do WhatsApp e o serviço estiver inativo, oculta
-      if (n.to === "/agenda/whatsapp-historico" && !whatsappAtivo) {
+      // Oculta itens exclusivos do WhatsApp quando o serviço está inativo
+      if ((n.to === "/agenda/whatsapp-historico" || n.whatsappOnly) && !whatsappAtivo) {
         return false;
       }
 
