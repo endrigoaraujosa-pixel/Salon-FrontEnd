@@ -6,12 +6,12 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
-import { UserCog, Plus, Edit2, Trash2, History } from "lucide-react";
+import { UserCog, Plus, Edit2, Trash2, History, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import AuditModal from "../components/AuditModal";
 import { useAuth } from "../auth";
 
-const blank = { nome: "", cargo: "", telefone: "", comissao_sozinho: 40, comissao_ajuda: 30, comissao_auxiliar: 20, ativo: true, foto: null };
+const blank = { nome: "", cargo: "", telefone: "", comissao_sozinho: 40, comissao_ajuda: 30, comissao_auxiliar: 20, usar_comissao_avancada: false, ativo: true, foto: null };
 
 export default function Colaboradores() {
   const { user } = useAuth();
@@ -28,6 +28,7 @@ export default function Colaboradores() {
   const [form, setForm] = useState(blank);
   const [auditOpen, setAuditOpen] = useState(false);
   const [nameError, setNameError] = useState(false);
+  const [comissoesServicosOpen, setComissoesServicosOpen] = useState(false);
   const nomeInputRef = useRef(null);
 
   const handlePhotoChange = (e) => {
@@ -121,7 +122,8 @@ export default function Colaboradores() {
       ...c,
       comissao_sozinho: c.comissao_sozinho !== undefined && c.comissao_sozinho !== null ? c.comissao_sozinho : (c.comissao_principal || 40),
       comissao_ajuda: c.comissao_ajuda !== undefined && c.comissao_ajuda !== null ? c.comissao_ajuda : 30,
-      comissao_auxiliar: c.comissao_auxiliar !== undefined && c.comissao_auxiliar !== null ? c.comissao_auxiliar : 20
+      comissao_auxiliar: c.comissao_auxiliar !== undefined && c.comissao_auxiliar !== null ? c.comissao_auxiliar : 20,
+      usar_comissao_avancada: !!c.usar_comissao_avancada
     }); 
     setOpen(true); 
   };
@@ -190,10 +192,27 @@ export default function Colaboradores() {
                 <div><Label>Telefone</Label><Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} /></div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div><Label>Sozinho (%)</Label><Input type="number" value={form.comissao_sozinho} onChange={(e) => setForm({ ...form, comissao_sozinho: e.target.value })} /></div>
-                <div><Label>Com assistente (%)</Label><Input type="number" value={form.comissao_ajuda} onChange={(e) => setForm({ ...form, comissao_ajuda: e.target.value })} /></div>
-                <div><Label>Auxiliar (%)</Label><Input type="number" value={form.comissao_auxiliar} onChange={(e) => setForm({ ...form, comissao_auxiliar: e.target.value })} /></div>
+                <div><Label>Sozinho (%)</Label><Input type="number" disabled={form.usar_comissao_avancada} value={form.comissao_sozinho} onChange={(e) => setForm({ ...form, comissao_sozinho: e.target.value })} /></div>
+                <div><Label>Com assistente (%)</Label><Input type="number" disabled={form.usar_comissao_avancada} value={form.comissao_ajuda} onChange={(e) => setForm({ ...form, comissao_ajuda: e.target.value })} /></div>
+                <div><Label>Auxiliar (%)</Label><Input type="number" disabled={form.usar_comissao_avancada} value={form.comissao_auxiliar} onChange={(e) => setForm({ ...form, comissao_auxiliar: e.target.value })} /></div>
               </div>
+              <div className="flex items-center gap-2">
+                <Switch checked={form.usar_comissao_avancada} onCheckedChange={(v) => setForm({ ...form, usar_comissao_avancada: v })} />
+                <Label>Utilizar Comissão Avançada por Serviço</Label>
+              </div>
+              {form.id && form.usar_comissao_avancada && (
+                <div className="pt-1">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="w-full text-[#84A59D] border-[#84A59D] hover:bg-[#84A59D]/10 gap-1.5"
+                    onClick={() => setComissoesServicosOpen(true)}
+                  >
+                    <Settings2 className="w-4 h-4" />
+                    Configurar Comissões por Serviço
+                  </Button>
+                </div>
+              )}
               <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: v })} /><Label>Ativo</Label></div>
             </div>
             <DialogFooter><Button data-testid="save-colab-btn" onClick={save} className="bg-[#84A59D] hover:bg-[#6F9189]">Salvar</Button></DialogFooter>
@@ -279,6 +298,211 @@ export default function Colaboradores() {
         tituloModulo="Colaboradores"
         onRestoreSuccess={load}
       />
+
+      <Dialog open={comissoesServicosOpen} onOpenChange={setComissoesServicosOpen}>
+        <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Comissões por Serviço - {form.nome}</DialogTitle>
+          </DialogHeader>
+          <ComissoesServicosForm 
+            colaboradorId={form.id} 
+            defaultComissaoSozinho={Number(form.comissao_sozinho || 0)}
+            defaultComissaoAjuda={Number(form.comissao_ajuda || 0)}
+            defaultComissaoAuxiliar={Number(form.comissao_auxiliar || 0)}
+            onClose={() => setComissoesServicosOpen(false)} 
+          />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function ComissoesServicosForm({ colaboradorId, defaultComissaoSozinho, defaultComissaoAjuda, defaultComissaoAuxiliar, onClose }) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [servicosComissoes, setServicosComissoes] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    if (colaboradorId) {
+      loadComissoes();
+    }
+  }, [colaboradorId]);
+
+  const loadComissoes = async () => {
+    try {
+      setLoading(true);
+      const res = await http.get(`/colaboradores/${colaboradorId}/comissoes-servicos`);
+      setServicosComissoes(res.data);
+    } catch (e) {
+      toast.error("Erro ao carregar comissões por serviço.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleValueChange = (servicoId, field, value) => {
+    if (value === "") {
+      setServicosComissoes(prev => prev.map(item => {
+        if (item.servico_id === servicoId) {
+          return { ...item, [field]: "" };
+        }
+        return item;
+      }));
+      return;
+    }
+
+    let val = parseFloat(value);
+    if (!isNaN(val)) {
+      if (val < 0) val = 0;
+      if (val > 100) val = 100;
+    } else {
+      val = 0;
+    }
+
+    setServicosComissoes(prev => prev.map(item => {
+      if (item.servico_id === servicoId) {
+        return { ...item, [field]: val };
+      }
+      return item;
+    }));
+  };
+
+  const handleSave = async () => {
+    for (const item of servicosComissoes) {
+      const solo = Number(item.comissao_sozinho);
+      const ajuda = Number(item.comissao_ajuda);
+      const aux = Number(item.comissao_auxiliar);
+      
+      if (isNaN(solo) || solo < 0 || solo > 100 ||
+          isNaN(ajuda) || ajuda < 0 || ajuda > 100 ||
+          isNaN(aux) || aux < 0 || aux > 100) {
+        toast.error(`Os percentuais do serviço "${item.servico_nome}" devem estar entre 0% e 100%.`);
+        return;
+      }
+    }
+
+    try {
+      setSaving(true);
+      const payload = {
+        comissoes: servicosComissoes.map(c => ({
+          servico_id: c.servico_id,
+          comissao_sozinho: Number(c.comissao_sozinho || 0),
+          comissao_ajuda: Number(c.comissao_ajuda || 0),
+          comissao_auxiliar: Number(c.comissao_auxiliar || 0)
+        }))
+      };
+      await http.put(`/colaboradores/${colaboradorId}/comissoes-servicos`, payload);
+      toast.success("Comissões atualizadas com sucesso!");
+      onClose();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Erro ao salvar comissões.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const filteredServicos = servicosComissoes.filter(item => 
+    (item.servico_nome || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item.servico_descricao || "").toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (loading) {
+    return <div className="py-8 text-center text-zinc-500">Carregando serviços e configurações...</div>;
+  }
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="mb-4">
+        <Input 
+          type="text" 
+          placeholder="Pesquisar por nome ou descrição do serviço..." 
+          value={searchTerm} 
+          onChange={(e) => setSearchTerm(e.target.value)} 
+          className="w-full"
+        />
+      </div>
+      <div className="flex-1 overflow-y-auto pr-2 py-2">
+        <div className="border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 font-semibold">
+              <tr>
+                <th className="p-3">Serviço</th>
+                <th className="p-3 w-32">Sozinho (%)</th>
+                <th className="p-3 w-32">Com assistente (%)</th>
+                <th className="p-3 w-32">Auxiliar (%)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+              {filteredServicos.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="p-4 text-center text-zinc-500">Nenhum serviço encontrado.</td>
+                </tr>
+              ) : (
+                filteredServicos.map((item) => {
+                  const isCustom = 
+                    Number(item.comissao_sozinho || 0) !== defaultComissaoSozinho ||
+                    Number(item.comissao_ajuda || 0) !== defaultComissaoAjuda ||
+                    Number(item.comissao_auxiliar || 0) !== defaultComissaoAuxiliar;
+
+                  return (
+                    <tr 
+                      key={item.servico_id} 
+                      className={isCustom 
+                        ? "bg-emerald-50 dark:bg-emerald-950/20 hover:bg-emerald-100/50 dark:hover:bg-emerald-950/30 transition-colors" 
+                        : "hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20 transition-colors"
+                      }
+                    >
+                      <td className="p-3 font-medium text-zinc-700 dark:text-zinc-300">
+                        <div>{item.servico_nome}</div>
+                        {item.servico_descricao && (
+                          <div className="text-xs text-zinc-400 dark:text-zinc-500 font-normal mt-0.5">{item.servico_descricao}</div>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <Input 
+                          type="number" 
+                          min={0}
+                          max={100}
+                          value={item.comissao_sozinho} 
+                          onChange={(e) => handleValueChange(item.servico_id, 'comissao_sozinho', e.target.value)}
+                          className="h-8 py-0 px-2"
+                        />
+                      </td>
+                      <td className="p-3">
+                        <Input 
+                          type="number" 
+                          min={0}
+                          max={100}
+                          value={item.comissao_ajuda} 
+                          onChange={(e) => handleValueChange(item.servico_id, 'comissao_ajuda', e.target.value)}
+                          className="h-8 py-0 px-2"
+                        />
+                      </td>
+                      <td className="p-3">
+                        <Input 
+                          type="number" 
+                          min={0}
+                          max={100}
+                          value={item.comissao_auxiliar} 
+                          onChange={(e) => handleValueChange(item.servico_id, 'comissao_auxiliar', e.target.value)}
+                          className="h-8 py-0 px-2"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <DialogFooter className="pt-4 border-t border-zinc-100 dark:border-zinc-900">
+        <Button variant="outline" onClick={onClose} disabled={saving}>Cancelar</Button>
+        <Button onClick={handleSave} className="bg-[#84A59D] hover:bg-[#6F9189]" disabled={saving}>
+          {saving ? "Salvando..." : "Salvar Alterações"}
+        </Button>
+      </DialogFooter>
     </div>
   );
 }
