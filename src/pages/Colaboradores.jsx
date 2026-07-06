@@ -234,7 +234,7 @@ export default function Colaboradores() {
                   <Button 
                     type="button" 
                     variant="outline" 
-                    className="w-full text-[#84A59D] border-[#84A59D] hover:bg-[#84A59D]/10 gap-1.5"
+                    className="w-full text-[#84A59D] border-[#84A59D] hover:bg-[#84A59D]/10 hover:text-[#84A59D] gap-1.5"
                     onClick={() => setComissoesServicosOpen(true)}
                   >
                     <Settings2 className="w-4 h-4" />
