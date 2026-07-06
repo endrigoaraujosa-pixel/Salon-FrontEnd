@@ -32,13 +32,13 @@ const PercentageInput = React.forwardRef(
           onChange={handleChange}
           disabled={disabled}
           className={cn(
-            "h-8 pr-7 text-right font-mono text-sm border-zinc-200 dark:border-zinc-750 bg-white dark:bg-zinc-900 focus-visible:ring-1 focus-visible:ring-[#84A59D]",
+            "h-8 pr-7 text-right font-mono text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-50 border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 focus-visible:ring-1 focus-visible:ring-[#84A59D]",
             className
           )}
           ref={ref}
           {...props}
         />
-        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-600 text-xs select-none">%</span>
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-650 dark:text-zinc-300 text-sm font-bold select-none">%</span>
       </div>
     );
   }
