@@ -9,7 +9,7 @@ import { Textarea } from "../components/ui/textarea";
 import {
   ArrowLeft, Send, Clock, Users, CheckCircle2, AlertCircle,
   XCircle, Calendar, MessageSquare, ChevronLeft, ChevronRight, Loader2,
-  RefreshCw, Eye, X, Radio, BanIcon, Megaphone, Info, Image
+  RefreshCw, Eye, X, Radio, BanIcon, Megaphone, Info, Image, Timer, Zap, Shield
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -204,6 +204,11 @@ export default function WhatsappMassMessage() {
   // Modal confirmação
   const [confirmando, setConfirmando] = useState(false);
 
+  // Configuração do envio inteligente
+  const [intervaloMin, setIntervaloMin] = useState(3);
+  const [intervaloMax, setIntervaloMax] = useState(8);
+  const [salvandoIntervalo, setSalvandoIntervalo] = useState(false);
+
   // ── Carregar clientes ──────────────────────────────────────────────────────
   const loadClientes = useCallback(async () => {
     setLoadingClientes(true);
@@ -232,10 +237,38 @@ export default function WhatsappMassMessage() {
     }
   }, []);
 
+  // ── Carregar configuração do intervalo inteligente ────────────────────────
+  const loadConfig = useCallback(async () => {
+    try {
+      const res = await http.get("/configuracoes/whatsapp");
+      const cfg = res.data;
+      if (cfg.massa_intervalo_min != null) setIntervaloMin(cfg.massa_intervalo_min);
+      if (cfg.massa_intervalo_max != null) setIntervaloMax(cfg.massa_intervalo_max);
+    } catch {
+      // Usa valores padrão se não conseguir carregar
+    }
+  }, []);
+
+  const salvarIntervalo = useCallback(async (min, max) => {
+    setSalvandoIntervalo(true);
+    try {
+      await http.post("/configuracoes/whatsapp", {
+        massa_intervalo_min: min,
+        massa_intervalo_max: max
+      });
+      toast.success("Intervalo de envio atualizado!");
+    } catch {
+      toast.error("Erro ao salvar intervalo.");
+    } finally {
+      setSalvandoIntervalo(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadClientes();
     loadCampanhas();
-  }, [loadClientes, loadCampanhas]);
+    loadConfig();
+  }, [loadClientes, loadCampanhas, loadConfig]);
 
   // ── Mídia ────────────────────────────────────────────────────────────────
   const handleMediaUpload = (e) => {
@@ -294,6 +327,21 @@ export default function WhatsappMassMessage() {
     setSelectedIds(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     );
+  };
+
+  // ── Estimativa de tempo ────────────────────────────────────────────────────
+  const estimativaEnvio = () => {
+    const total = selectedIds.length;
+    if (total <= 1) return null;
+    const mediaSegundos = (intervaloMin + intervaloMax) / 2;
+    const totalSegundos = (total - 1) * mediaSegundos;
+    if (totalSegundos < 60) return `~${Math.round(totalSegundos)}s`;
+    const minutos = Math.floor(totalSegundos / 60);
+    const segs = Math.round(totalSegundos % 60);
+    if (minutos < 60) return `~${minutos}min ${segs > 0 ? segs + "s" : ""}`;
+    const horas = Math.floor(minutos / 60);
+    const mins = minutos % 60;
+    return `~${horas}h ${mins > 0 ? mins + "min" : ""}`;
   };
 
   // ── Enviar / Agendar ──────────────────────────────────────────────────────
@@ -374,10 +422,20 @@ export default function WhatsappMassMessage() {
               </div>
               <div className="flex items-center gap-2">
                 {modoEnvio === "agora"
-                  ? <><Send className="w-4 h-4 text-emerald-500" /><span>Envio <strong>imediato</strong> em background</span></>
+                  ? <><Send className="w-4 h-4 text-emerald-500" /><span>Envio <strong>inteligente</strong> em background</span></>
                   : <><Clock className="w-4 h-4 text-blue-500" /><span>Agendado para <strong>{formatDateTimeBR(dataAgendamento)}</strong></span></>
                 }
               </div>
+              <div className="flex items-center gap-2">
+                <Timer className="w-4 h-4 text-amber-500" />
+                <span>Intervalo: <strong>{intervaloMin}–{intervaloMax}s</strong> entre cada envio</span>
+              </div>
+              {estimativaEnvio() && (
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-zinc-400" />
+                  <span>Tempo estimado: <strong>{estimativaEnvio()}</strong></span>
+                </div>
+              )}
             </div>
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => setConfirmando(false)}>Cancelar</Button>
@@ -597,6 +655,95 @@ export default function WhatsappMassMessage() {
                 />
                 <p className="text-xs text-zinc-400">
                   O servidor processará a campanha automaticamente no horário selecionado.
+                </p>
+              </div>
+            )}
+          </Card>
+
+          {/* Envio Inteligente */}
+          <Card className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-amber-500" />
+                Envio Inteligente
+              </h3>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                <Zap className="w-3 h-3" /> Anti-bloqueio
+              </span>
+            </div>
+
+            <div className="rounded-xl border border-amber-200 dark:border-amber-900/30 bg-amber-50/50 dark:bg-amber-950/10 p-3 mb-4">
+              <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed flex items-start gap-2">
+                <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                As mensagens são enviadas uma por vez com intervalos aleatórios entre cada disparo, simulando comportamento humano e reduzindo o risco de bloqueio pelo WhatsApp.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="intervalo-min" className="text-xs flex items-center gap-1">
+                  <Timer className="w-3 h-3 text-zinc-400" />
+                  Intervalo mínimo
+                </Label>
+                <div className="relative">
+                  <input
+                    id="intervalo-min"
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={intervaloMin}
+                    onChange={e => {
+                      const v = Math.max(1, Math.min(60, parseInt(e.target.value) || 1));
+                      setIntervaloMin(v);
+                      if (v > intervaloMax) setIntervaloMax(v);
+                    }}
+                    className="w-full h-10 px-3 pr-8 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-400 font-semibold">seg</span>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="intervalo-max" className="text-xs flex items-center gap-1">
+                  <Timer className="w-3 h-3 text-zinc-400" />
+                  Intervalo máximo
+                </Label>
+                <div className="relative">
+                  <input
+                    id="intervalo-max"
+                    type="number"
+                    min={1}
+                    max={120}
+                    value={intervaloMax}
+                    onChange={e => {
+                      const v = Math.max(intervaloMin, Math.min(120, parseInt(e.target.value) || intervaloMin));
+                      setIntervaloMax(v);
+                    }}
+                    className="w-full h-10 px-3 pr-8 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-400 font-semibold">seg</span>
+                </div>
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={salvandoIntervalo}
+              onClick={() => salvarIntervalo(intervaloMin, intervaloMax)}
+              className="w-full text-xs h-8 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-300 dark:hover:bg-amber-950/20 dark:hover:text-amber-400"
+            >
+              {salvandoIntervalo ? (
+                <><Loader2 className="w-3 h-3 animate-spin mr-1" /> Salvando...</>
+              ) : (
+                <><CheckCircle2 className="w-3 h-3 mr-1" /> Salvar intervalo</>
+              )}
+            </Button>
+
+            {selectedIds.length > 1 && estimativaEnvio() && (
+              <div className="mt-3 p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  Tempo estimado para <strong className="text-zinc-700 dark:text-zinc-300">{selectedIds.length} clientes</strong>: <strong className="text-emerald-600 dark:text-emerald-400">{estimativaEnvio()}</strong>
                 </p>
               </div>
             )}
