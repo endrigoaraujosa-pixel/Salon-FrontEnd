@@ -9,7 +9,7 @@ import { Textarea } from "../components/ui/textarea";
 import {
   ArrowLeft, Send, Clock, Users, CheckCircle2, AlertCircle,
   XCircle, Calendar, MessageSquare, ChevronRight, Loader2,
-  RefreshCw, Eye, X, Radio, BanIcon, Megaphone, Info
+  RefreshCw, Eye, X, Radio, BanIcon, Megaphone, Info, Image
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -109,11 +109,27 @@ function CampanhaDetalheModal({ campanha, onClose }) {
               ))}
             </div>
 
-            {/* Mensagem */}
+            {/* Mensagem e Mídia */}
             <div>
-              <Label className="text-xs font-semibold mb-1.5 block">Mensagem enviada</Label>
-              <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-sm whitespace-pre-wrap text-zinc-700 dark:text-zinc-300 font-mono leading-relaxed max-h-32 overflow-y-auto">
-                {detalhe?.campanha?.mensagem}
+              <Label className="text-xs font-semibold mb-1.5 block">Conteúdo enviado</Label>
+              <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-sm text-zinc-700 dark:text-zinc-300 font-mono leading-relaxed overflow-hidden">
+                {detalhe?.campanha?.midia_base64 && (
+                  <div className="mb-3 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+                    <img 
+                      src={detalhe.campanha.midia_base64} 
+                      alt="Anexo da campanha" 
+                      className="w-full max-h-48 object-contain bg-black/5" 
+                    />
+                    {detalhe.campanha.midia_nome && (
+                      <div className="px-3 py-1.5 text-[10px] text-zinc-500 bg-zinc-100 dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 truncate">
+                        📎 {detalhe.campanha.midia_nome}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="whitespace-pre-wrap max-h-32 overflow-y-auto pr-2">
+                  {detalhe?.campanha?.mensagem}
+                </div>
               </div>
             </div>
 
@@ -165,6 +181,10 @@ export default function WhatsappMassMessage() {
     return toLocalInputValue(d);
   });
 
+  // Mídia
+  const [midiaFile, setMidiaFile] = useState(null);
+  const [midiaBase64, setMidiaBase64] = useState(null);
+
   // Clientes
   const [clientes, setClientes] = useState([]);
   const [loadingClientes, setLoadingClientes] = useState(true);
@@ -213,6 +233,34 @@ export default function WhatsappMassMessage() {
     loadCampanhas();
   }, [loadClientes, loadCampanhas]);
 
+  // ── Mídia ────────────────────────────────────────────────────────────────
+  const handleMediaUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Por favor, selecione uma imagem.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("A imagem deve ter no máximo 5MB.");
+      return;
+    }
+
+    setMidiaFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setMidiaBase64(ev.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeMedia = () => {
+    setMidiaFile(null);
+    setMidiaBase64(null);
+  };
+
   // ── Preview da mensagem ───────────────────────────────────────────────────
   const previewMensagem = () => {
     return (mensagem || "").replace(/{nome}/g, "Maria da Silva");
@@ -254,7 +302,10 @@ export default function WhatsappMassMessage() {
       const payload = {
         titulo,
         mensagem: mensagem.trim(),
-        agendado_para: modoEnvio === "agendado" ? dataAgendamento : null
+        agendado_para: modoEnvio === "agendado" ? dataAgendamento : null,
+        midia_base64: midiaBase64,
+        midia_nome: midiaFile?.name,
+        midia_tipo: midiaFile?.type
       };
       await http.post("/whatsapp/campanhas", payload);
       if (modoEnvio === "agora") {
@@ -264,6 +315,8 @@ export default function WhatsappMassMessage() {
       }
       setMensagem("");
       setTitulo("Mensagem em Massa");
+      setMidiaFile(null);
+      setMidiaBase64(null);
       setTimeout(loadCampanhas, 1500);
     } catch (e) {
       toast.error(e.response?.data?.detail || "Erro ao criar campanha");
@@ -368,14 +421,31 @@ export default function WhatsappMassMessage() {
                 <MessageSquare className="w-4 h-4 text-emerald-500" />
                 Mensagem
               </h3>
-              <Button
-                variant="outline"
-                size="xs"
-                onClick={() => setMensagem("Olá, {nome}! 🌟\n\nPassamos para avisar que temos uma novidade especial esperando por você.\n\nVenha nos visitar e aproveite!\n\nAté breve! 💚")}
-                className="text-xs text-zinc-500"
-              >
-                Usar modelo
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="xs"
+                  className="text-xs text-zinc-500 relative overflow-hidden"
+                >
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleMediaUpload}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    title="Anexar Imagem"
+                  />
+                  <Image className="w-3.5 h-3.5 mr-1" />
+                  Imagem
+                </Button>
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={() => setMensagem("Olá, {nome}! 🌟\n\nPassamos para avisar que temos uma novidade especial esperando por você.\n\nVenha nos visitar e aproveite!\n\nAté breve! 💚")}
+                  className="text-xs text-zinc-500"
+                >
+                  Usar modelo
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
@@ -424,10 +494,24 @@ export default function WhatsappMassMessage() {
                 </div>
                 <div className="rounded-2xl bg-[#E5DDD5] dark:bg-zinc-950 p-4 border border-zinc-200 dark:border-zinc-800 relative overflow-hidden min-h-[180px]">
                   <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: "radial-gradient(#000 10%, transparent 10%)", backgroundSize: "20px 20px" }} />
-                  {mensagem ? (
-                    <div className="relative self-start bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 p-3.5 rounded-2xl rounded-tl-none shadow-sm max-w-[85%] text-sm whitespace-pre-wrap leading-relaxed">
-                      {previewMensagem()}
-                      <div className="text-[10px] text-zinc-400 text-right mt-1.5">
+                  {mensagem || midiaBase64 ? (
+                    <div className="relative self-start bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 p-2 rounded-2xl rounded-tl-none shadow-sm max-w-[85%] text-sm whitespace-pre-wrap leading-relaxed">
+                      {midiaBase64 && (
+                        <div className="relative mb-2 w-full rounded-xl overflow-hidden group">
+                          <img src={midiaBase64} alt="Preview" className="w-full object-cover rounded-xl max-h-[200px]" />
+                          <button
+                            onClick={removeMedia}
+                            className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-red-500/80 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all"
+                            title="Remover imagem"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
+                      <div className="px-1.5 pb-1">
+                        {previewMensagem()}
+                      </div>
+                      <div className="text-[10px] text-zinc-400 text-right pr-1.5 pb-0.5">
                         {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} ✓✓
                       </div>
                     </div>
