@@ -78,6 +78,21 @@ export default function Colaboradores() {
   const load = () => http.get("/colaboradores").then((r) => setList(r.data));
   useEffect(() => { load(); }, []);
 
+  const handleFormComissaoChange = (field, value) => {
+    if (value === "") {
+      setForm(prev => ({ ...prev, [field]: "" }));
+      return;
+    }
+    let val = parseFloat(value);
+    if (!isNaN(val)) {
+      if (val < 0) val = 0;
+      if (val > 100) val = 100;
+    } else {
+      val = 0;
+    }
+    setForm(prev => ({ ...prev, [field]: val }));
+  };
+
   const save = async () => {
     if (!form.nome || !form.nome.trim()) {
       toast.error("O preenchimento do campo Nome é obrigatório para a conclusão do cadastro.");
@@ -85,13 +100,25 @@ export default function Colaboradores() {
       nomeInputRef.current?.focus();
       return;
     }
+
+    const comissao_sozinho = Number(form.comissao_sozinho || 0);
+    const comissao_ajuda = Number(form.comissao_ajuda || 0);
+    const comissao_auxiliar = Number(form.comissao_auxiliar || 0);
+
+    if (comissao_sozinho < 0 || comissao_sozinho > 100 ||
+        comissao_ajuda < 0 || comissao_ajuda > 100 ||
+        comissao_auxiliar < 0 || comissao_auxiliar > 100) {
+      toast.error("Os percentuais de comissão padrão do colaborador devem estar entre 0% e 100%.");
+      return;
+    }
+
     try {
       const payload = { 
         ...form, 
-        comissao_principal: Number(form.comissao_sozinho || 0), 
-        comissao_sozinho: Number(form.comissao_sozinho || 0), 
-        comissao_ajuda: Number(form.comissao_ajuda || 0), 
-        comissao_auxiliar: Number(form.comissao_auxiliar || 0) 
+        comissao_principal: comissao_sozinho, 
+        comissao_sozinho: comissao_sozinho, 
+        comissao_ajuda: comissao_ajuda, 
+        comissao_auxiliar: comissao_auxiliar 
       };
       if (form.id) await http.put(`/colaboradores/${form.id}`, payload); else await http.post("/colaboradores", payload);
       toast.success("Salvo"); setOpen(false); setForm(blank); load();
@@ -192,9 +219,9 @@ export default function Colaboradores() {
                 <div><Label>Telefone</Label><Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} /></div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div><Label>Sozinho (%)</Label><Input type="number" disabled={form.usar_comissao_avancada} value={form.comissao_sozinho} onChange={(e) => setForm({ ...form, comissao_sozinho: e.target.value })} /></div>
-                <div><Label>Com assistente (%)</Label><Input type="number" disabled={form.usar_comissao_avancada} value={form.comissao_ajuda} onChange={(e) => setForm({ ...form, comissao_ajuda: e.target.value })} /></div>
-                <div><Label>Auxiliar (%)</Label><Input type="number" disabled={form.usar_comissao_avancada} value={form.comissao_auxiliar} onChange={(e) => setForm({ ...form, comissao_auxiliar: e.target.value })} /></div>
+                <div><Label>Sozinho (%)</Label><Input type="number" min={0} max={100} disabled={form.usar_comissao_avancada} value={form.comissao_sozinho} onChange={(e) => handleFormComissaoChange('comissao_sozinho', e.target.value)} /></div>
+                <div><Label>Com assistente (%)</Label><Input type="number" min={0} max={100} disabled={form.usar_comissao_avancada} value={form.comissao_ajuda} onChange={(e) => handleFormComissaoChange('comissao_ajuda', e.target.value)} /></div>
+                <div><Label>Auxiliar (%)</Label><Input type="number" min={0} max={100} disabled={form.usar_comissao_avancada} value={form.comissao_auxiliar} onChange={(e) => handleFormComissaoChange('comissao_auxiliar', e.target.value)} /></div>
               </div>
               <div className="flex items-center gap-2">
                 <Switch checked={form.usar_comissao_avancada} onCheckedChange={(v) => setForm({ ...form, usar_comissao_avancada: v })} />
@@ -246,7 +273,14 @@ export default function Colaboradores() {
                   </div>
                   <div>
                     <div className="font-display text-lg font-semibold">{c.nome}</div>
-                    <div className="text-sm text-zinc-500">{c.cargo || "—"}</div>
+                    <div className="text-sm text-zinc-500 flex flex-wrap items-center gap-1.5 mt-0.5">
+                      <span>{c.cargo || "—"}</span>
+                      {c.usar_comissao_avancada && (
+                        <span className="inline-flex items-center rounded bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-200/30 dark:border-emerald-900/30">
+                          Comissão Avançada
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${c.ativo ? "bg-emerald-100 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}>{c.ativo ? "Ativo" : "Inativo"}</span>
