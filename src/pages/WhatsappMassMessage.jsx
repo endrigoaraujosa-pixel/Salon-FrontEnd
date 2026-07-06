@@ -8,7 +8,7 @@ import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 import {
   ArrowLeft, Send, Clock, Users, CheckCircle2, AlertCircle,
-  XCircle, Calendar, MessageSquare, ChevronRight, Loader2,
+  XCircle, Calendar, MessageSquare, ChevronLeft, ChevronRight, Loader2,
   RefreshCw, Eye, X, Radio, BanIcon, Megaphone, Info, Image
 } from "lucide-react";
 import { toast } from "sonner";
@@ -189,6 +189,9 @@ export default function WhatsappMassMessage() {
   const [clientes, setClientes] = useState([]);
   const [loadingClientes, setLoadingClientes] = useState(true);
   const [filtroCliente, setFiltroCliente] = useState("");
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [clientPage, setClientPage] = useState(1);
+  const CLIENTS_PER_PAGE = 100;
 
   // Campanhas
   const [campanhas, setCampanhas] = useState([]);
@@ -208,6 +211,7 @@ export default function WhatsappMassMessage() {
       const res = await http.get("/clientes", { params: { limit: 9999 } });
       const lista = (res.data?.data || res.data || []).filter(c => c.telefone && c.telefone.trim() !== "");
       setClientes(lista);
+      setSelectedIds(lista.map(c => c.id));
     } catch {
       toast.error("Erro ao carregar clientes");
     } finally {
@@ -271,6 +275,9 @@ export default function WhatsappMassMessage() {
     !filtroCliente || c.nome.toLowerCase().includes(filtroCliente.toLowerCase())
   );
 
+  const totalClientPages = Math.max(1, Math.ceil(clientesFiltrados.length / CLIENTS_PER_PAGE));
+  const clientesPaginados = clientesFiltrados.slice((clientPage - 1) * CLIENTS_PER_PAGE, clientPage * CLIENTS_PER_PAGE);
+
   // ── Cancelar campanha ─────────────────────────────────────────────────────
   const handleCancelar = async (campanha) => {
     try {
@@ -282,14 +289,21 @@ export default function WhatsappMassMessage() {
     }
   };
 
+  // ── Seleção Individual de Clientes ─────────────────────────────────────────
+  const toggleClientSelection = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
   // ── Enviar / Agendar ──────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!mensagem.trim()) {
       toast.error("Escreva uma mensagem antes de enviar.");
       return;
     }
-    if (clientes.length === 0) {
-      toast.error("Nenhum cliente com telefone cadastrado.");
+    if (selectedIds.length === 0) {
+      toast.error("Selecione pelo menos um cliente para enviar.");
       return;
     }
     setConfirmando(true);
@@ -305,11 +319,12 @@ export default function WhatsappMassMessage() {
         agendado_para: modoEnvio === "agendado" ? dataAgendamento : null,
         midia_base64: midiaBase64,
         midia_nome: midiaFile?.name,
-        midia_tipo: midiaFile?.type
+        midia_tipo: midiaFile?.type,
+        cliente_ids: selectedIds
       };
       await http.post("/whatsapp/campanhas", payload);
       if (modoEnvio === "agora") {
-        toast.success(`Envio iniciado para ${clientes.length} cliente(s)! Acompanhe o progresso no histórico.`);
+        toast.success(`Envio iniciado para ${selectedIds.length} cliente(s)! Acompanhe o progresso no histórico.`);
       } else {
         toast.success(`Campanha agendada com sucesso para ${formatDateTimeBR(dataAgendamento)}!`);
       }
@@ -317,6 +332,7 @@ export default function WhatsappMassMessage() {
       setTitulo("Mensagem em Massa");
       setMidiaFile(null);
       setMidiaBase64(null);
+      setSelectedIds(clientes.map(c => c.id)); // Reset selection to all
       setTimeout(loadCampanhas, 1500);
     } catch (e) {
       toast.error(e.response?.data?.detail || "Erro ao criar campanha");
@@ -354,7 +370,7 @@ export default function WhatsappMassMessage() {
             <div className="bg-zinc-50 dark:bg-zinc-950 rounded-xl p-3 text-sm text-zinc-700 dark:text-zinc-300 mb-4 space-y-1.5 border border-zinc-200 dark:border-zinc-800">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-emerald-500" />
-                <span><strong>{clientes.length}</strong> clientes serão notificados</span>
+                <span><strong>{selectedIds.length}</strong> clientes serão notificados</span>
               </div>
               <div className="flex items-center gap-2">
                 {modoEnvio === "agora"
@@ -590,13 +606,13 @@ export default function WhatsappMassMessage() {
           <div className="flex justify-end gap-3">
             <Button
               onClick={handleSubmit}
-              disabled={sending || !mensagem.trim() || clientes.length === 0}
+              disabled={sending || !mensagem.trim() || selectedIds.length === 0}
               className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white font-bold h-11 px-7 rounded-xl shadow-sm flex items-center gap-2 text-sm disabled:opacity-50"
             >
               {sending ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Processando...</>
               ) : modoEnvio === "agora" ? (
-                <><Send className="w-4 h-4" /> Enviar para {clientes.length} cliente{clientes.length !== 1 ? "s" : ""}</>
+                <><Send className="w-4 h-4" /> Enviar para {selectedIds.length} cliente{selectedIds.length !== 1 ? "s" : ""}</>
               ) : (
                 <><Clock className="w-4 h-4" /> Agendar Envio</>
               )}
@@ -614,8 +630,8 @@ export default function WhatsappMassMessage() {
                 <Users className="w-4 h-4 text-emerald-500" />
                 Clientes elegíveis
               </h3>
-              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full">
-                {loadingClientes ? "..." : clientes.length}
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-0.5 rounded-full">
+                {selectedIds.length} / {clientes.length}
               </span>
             </div>
 
@@ -623,10 +639,29 @@ export default function WhatsappMassMessage() {
               <input
                 type="text"
                 value={filtroCliente}
-                onChange={e => setFiltroCliente(e.target.value)}
+                onChange={e => { setFiltroCliente(e.target.value); setClientPage(1); }}
                 placeholder="Buscar cliente..."
                 className="w-full h-8 px-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
+            </div>
+
+            <div className="flex gap-2 mb-3">
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={() => setSelectedIds(clientes.map(c => c.id))}
+                className="text-[10px] h-6 py-0.5 px-2 flex-1 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/20"
+              >
+                Marcar Todos
+              </Button>
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={() => setSelectedIds([])}
+                className="text-[10px] h-6 py-0.5 px-2 flex-1 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/20"
+              >
+                Desmarcar Todos
+              </Button>
             </div>
 
             {loadingClientes ? (
@@ -639,27 +674,71 @@ export default function WhatsappMassMessage() {
                 <span>Nenhum cliente com telefone</span>
               </div>
             ) : (
-              <div className="max-h-64 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                {clientesFiltrados.slice(0, 50).map(c => (
-                  <div key={c.id} className="flex items-center gap-2.5 px-3 py-2">
-                    <div className="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center shrink-0">
-                      <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                        {c.nome.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium text-zinc-900 dark:text-zinc-100 truncate">{c.nome}</div>
-                      <div className="text-[10px] text-zinc-400">{c.telefone}</div>
-                    </div>
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  </div>
-                ))}
-                {clientesFiltrados.length > 50 && (
-                  <div className="px-3 py-2 text-center text-xs text-zinc-400">
-                    + {clientesFiltrados.length - 50} clientes não exibidos
+              <>
+                {filtroCliente && (
+                  <div className="mb-2 text-[11px] text-zinc-400">
+                    {clientesFiltrados.length} resultado{clientesFiltrados.length !== 1 ? "s" : ""} encontrado{clientesFiltrados.length !== 1 ? "s" : ""}
                   </div>
                 )}
-              </div>
+                <div className="max-h-96 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                  {clientesPaginados.map(c => {
+                    const isSelected = selectedIds.includes(c.id);
+                    return (
+                      <div
+                        key={c.id}
+                        onClick={() => toggleClientSelection(c.id)}
+                        className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-950/30 transition-colors select-none"
+                      >
+                        <div className="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center shrink-0">
+                          <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                            {c.nome.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-zinc-900 dark:text-zinc-100 truncate">{c.nome}</div>
+                          <div className="text-[10px] text-zinc-400">{c.telefone}</div>
+                        </div>
+                        {isSelected ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full border border-zinc-300 dark:border-zinc-700 shrink-0 transition-all hover:border-zinc-400" />
+                        )}
+                      </div>
+                    );
+                  })}
+                  {clientesFiltrados.length === 0 && filtroCliente && (
+                    <div className="px-3 py-4 text-center text-xs text-zinc-400">
+                      Nenhum cliente encontrado para "{filtroCliente}"
+                    </div>
+                  )}
+                </div>
+                {totalClientPages > 1 && (
+                  <div className="flex items-center justify-between mt-2.5 px-1">
+                    <span className="text-[10px] text-zinc-400">
+                      {(clientPage - 1) * CLIENTS_PER_PAGE + 1}–{Math.min(clientPage * CLIENTS_PER_PAGE, clientesFiltrados.length)} de {clientesFiltrados.length}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setClientPage(p => Math.max(1, p - 1))}
+                        disabled={clientPage === 1}
+                        className="p-1 rounded-md text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="text-[10px] font-semibold text-zinc-600 dark:text-zinc-400 min-w-[3rem] text-center">
+                        {clientPage} / {totalClientPages}
+                      </span>
+                      <button
+                        onClick={() => setClientPage(p => Math.min(totalClientPages, p + 1))}
+                        disabled={clientPage === totalClientPages}
+                        className="p-1 rounded-md text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                      >
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             <div className="mt-3 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 flex items-start gap-2">

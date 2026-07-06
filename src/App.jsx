@@ -131,7 +131,7 @@ function App() {
               <Route path="/cadastros/descontos" element={<PermissionRoute permission="cadastros.descontos"><CadastroDescontos /></PermissionRoute>} />
               <Route path="/cadastros/motivos-estoque" element={<PermissionRoute permission="cadastros.motivos_estoque"><ConfiguracoesMotivosEstoque /></PermissionRoute>} />
               <Route path="/agenda/whatsapp-historico" element={<PermissionRoute permission="agenda.whatsapp_historico"><AgendaWhatsAppHistorico /></PermissionRoute>} />
-              <Route path="/whatsapp/mensagem-massa" element={<PermissionRoute permission="configuracoes.whatsapp"><WhatsappMassMessage /></PermissionRoute>} />
+              <Route path="/whatsapp/mensagem-massa" element={<PermissionRoute permission="configuracoes.whatsapp_mensagem_massa"><WhatsappMassMessage /></PermissionRoute>} />
               <Route path="/usuarios" element={<Usuarios />} />
             </Route>
           </Routes>

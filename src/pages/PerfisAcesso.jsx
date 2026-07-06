@@ -90,6 +90,7 @@ const defaultPermissions = {
   "configuracoes.empresa": false,
   "configuracoes.sistema": false,
   "configuracoes.whatsapp": false,
+  "configuracoes.whatsapp_mensagem_massa": false,
   "configuracoes.perfis_acesso": false,
   "usuarios.visualizar": false,
   "usuarios.criar": false,
@@ -124,7 +125,8 @@ const permissionGroups = [
       { key: "agenda.pagamento.excluir", label: "Excluir Pagamentos", desc: "Remover pagamentos vinculados a agendamentos." },
       { key: "agenda.aplicar_desconto", label: "Aplicar Descontos", desc: "Permitir descontos nos fechamentos da agenda." },
       { key: "agenda.excluir", label: "Excluir Agendamentos", desc: "Excluir agendamentos fisicamente do sistema." },
-      { key: "agenda.whatsapp_historico", label: "Histórico do WhatsApp", desc: "Consultar histórico de lembretes e envios de mensagens." }
+      { key: "agenda.whatsapp_historico", label: "Histórico do WhatsApp", desc: "Consultar histórico de lembretes e envios de mensagens." },
+      { key: "configuracoes.whatsapp_mensagem_massa", label: "WhatsApp - Mensagem em Massa", desc: "Acessar a tela de campanhas de envio de mensagens em massa." }
     ]
   },
   {

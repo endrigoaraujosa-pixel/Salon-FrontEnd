@@ -17,7 +17,7 @@ const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true, permKey: "dashboard.visualizar" },
   { to: "/agenda", label: "Agenda", icon: Calendar, permKey: "agenda.visualizar" },
   { to: "/agenda/whatsapp-historico", label: "Histórico WhatsApp", icon: MessageSquare, permKey: "agenda.whatsapp_historico" },
-  { to: "/whatsapp/mensagem-massa", label: "Mensagem em Massa", icon: Megaphone, permKey: "configuracoes.whatsapp", whatsappOnly: true },
+  { to: "/whatsapp/mensagem-massa", label: "Mensagem em Massa", icon: Megaphone, permKey: "configuracoes.whatsapp_mensagem_massa", whatsappOnly: true },
   { to: "/vendas-diretas", label: "Vendas", icon: ShoppingBag, permKey: "vendas.visualizar" },
   { to: "/clientes", label: "Clientes", icon: Users, permKey: "clientes.visualizar" },
   { to: "/colaboradores", label: "Colaboradores", icon: UserCog, permKey: "colaboradores.visualizar" },
