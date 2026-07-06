@@ -335,17 +335,17 @@ export default function Colaboradores() {
       />
 
       <Dialog open={comissoesServicosOpen} onOpenChange={setComissoesServicosOpen}>
-        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-5xl max-h-[92dvh] flex flex-col p-0 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl">
-          <DialogHeader className="shrink-0 px-5 sm:px-6 pt-5 pb-3 border-b border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/20">
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-5xl max-h-[92dvh] flex flex-col p-0 overflow-hidden rounded-2xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-2xl">
+          <DialogHeader className="shrink-0 px-5 sm:px-6 pt-5 pb-3 border-b border-zinc-300 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950/20">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-[#84A59D]/15 dark:bg-[#84A59D]/10 text-[#4F736B] dark:text-[#84A59D]">
                 <Settings2 className="w-5 h-5 animate-pulse-subtle" />
               </div>
               <div className="min-w-0">
-                <DialogTitle className="font-display text-base sm:text-lg font-bold text-zinc-800 dark:text-zinc-100 flex flex-wrap items-center gap-x-2 gap-y-1 pr-6">
+                <DialogTitle className="font-display text-base sm:text-xl font-bold text-zinc-900 dark:text-zinc-50 flex flex-wrap items-center gap-x-2 gap-y-1 pr-6">
                   Comissões por Serviço — <span className="text-[#4F736B] dark:text-[#84A59D] font-extrabold">{form.nome}</span>
                 </DialogTitle>
-                <p className="text-xs text-zinc-450 dark:text-zinc-500 mt-0.5">
+                <p className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-350 mt-1 font-medium leading-relaxed">
                   Defina taxas personalizadas de comissão por serviço executado. Valores não preenchidos seguirão as taxas padrão.
                 </p>
               </div>
@@ -547,32 +547,32 @@ function ComissoesServicosForm({ colaboradorId, defaultComissaoSozinho, defaultC
     <div className="h-full flex flex-col min-h-0">
       <div className="flex-1 min-h-0 overflow-y-auto pr-1 sm:pr-2 space-y-3">
       {/* Resumo de Configuração e Valores Padrão */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-zinc-50/50 dark:bg-zinc-950/20 border border-zinc-100 dark:border-zinc-800/80 p-3 rounded-2xl text-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-zinc-50/50 dark:bg-zinc-950/20 border border-zinc-300 dark:border-zinc-700 p-3 rounded-2xl text-xs">
         <div className="space-y-1">
-          <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase font-bold block">Serviços Totais</span>
-          <span className="font-semibold text-zinc-800 dark:text-zinc-200 text-sm">{servicosComissoes.length} cadastrados</span>
+          <span className="text-xs text-zinc-600 dark:text-zinc-400 uppercase font-bold block">Serviços Totais</span>
+          <span className="font-bold text-zinc-900 dark:text-zinc-50 text-sm sm:text-base">{servicosComissoes.length} cadastrados</span>
         </div>
         <div className="space-y-1">
-          <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase font-bold block">Comissões Personalizadas</span>
-          <span className="inline-flex items-center gap-1 font-semibold text-sm">
-            <span className={customCount > 0 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-zinc-650 dark:text-zinc-350"}>
+          <span className="text-xs text-zinc-600 dark:text-zinc-400 uppercase font-bold block">Comissões Personalizadas</span>
+          <span className="inline-flex items-center gap-1 font-semibold text-sm sm:text-base">
+            <span className={customCount > 0 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-zinc-800 dark:text-zinc-200 font-bold"}>
               {customCount} serviços
             </span>
           </span>
         </div>
-        <div className="space-y-1 md:col-span-2 bg-[#FAFDFD] dark:bg-zinc-900/60 border border-[#E1EEED] dark:border-zinc-800 px-3 py-1.5 rounded-xl">
-          <span className="text-[10px] text-[#4F736B] dark:text-[#84A59D] uppercase font-extrabold block">Taxas Padrão do Profissional</span>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-0.5 text-[11px] text-zinc-600 dark:text-zinc-400 font-medium">
-            <span>Sozinho: <strong className="text-zinc-800 dark:text-zinc-200">{defaultComissaoSozinho}%</strong></span>
-            <span>Com assistente: <strong className="text-zinc-800 dark:text-zinc-200">{defaultComissaoAjuda}%</strong></span>
-            <span>Auxiliar: <strong className="text-zinc-800 dark:text-zinc-200">{defaultComissaoAuxiliar}%</strong></span>
+        <div className="space-y-1 md:col-span-2 bg-[#FAFDFD] dark:bg-zinc-900/60 border border-[#B2D3D0] dark:border-zinc-700 px-3 py-1.5 rounded-xl">
+          <span className="text-xs text-[#4F736B] dark:text-[#84A59D] uppercase font-extrabold block">Taxas Padrão do Profissional</span>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-0.5 text-xs sm:text-sm text-zinc-800 dark:text-zinc-200 font-bold">
+            <span>Sozinho: <strong className="text-zinc-900 dark:text-zinc-50">{defaultComissaoSozinho}%</strong></span>
+            <span>Com assistente: <strong className="text-zinc-900 dark:text-zinc-50">{defaultComissaoAjuda}%</strong></span>
+            <span>Auxiliar: <strong className="text-zinc-900 dark:text-zinc-50">{defaultComissaoAuxiliar}%</strong></span>
           </div>
         </div>
       </div>
 
       {/* Painel: Atualizar por Categoria */}
       {categoriasComServicos.length > 0 && (
-        <div className="border border-zinc-200/80 dark:border-zinc-805/90 rounded-2xl overflow-hidden shadow-sm bg-white dark:bg-zinc-950 transition-all duration-300">
+        <div className="border border-zinc-300 dark:border-zinc-700 rounded-2xl overflow-hidden shadow-sm bg-white dark:bg-zinc-950 transition-all duration-300">
           <button
             type="button"
             onClick={() => setCatPanelOpen(!catPanelOpen)}
@@ -583,20 +583,20 @@ function ComissoesServicosForm({ colaboradorId, defaultComissaoSozinho, defaultC
                 <Layers className="w-3.5 h-3.5" />
               </div>
               <div>
-                <span className="text-sm font-bold text-zinc-700 dark:text-zinc-200">Atualização em Lote por Categoria</span>
-                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-0.5">Defina taxas em massa para todos os serviços de uma categoria específica</p>
+                <span className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-50">Atualização em Lote por Categoria</span>
+                <p className="text-xs text-zinc-650 dark:text-zinc-350 mt-1">Defina taxas em massa para todos os serviços de uma categoria específica</p>
               </div>
             </div>
             {catPanelOpen ? <ChevronDown className="w-4 h-4 text-zinc-400" /> : <ChevronRight className="w-4 h-4 text-zinc-400" />}
           </button>
           
           {catPanelOpen && (
-            <div className="px-5 py-4 bg-zinc-50/30 dark:bg-zinc-900/10 border-t border-zinc-100 dark:border-zinc-850 space-y-4">
+            <div className="px-5 py-4 bg-zinc-50/30 dark:bg-zinc-900/10 border-t border-zinc-300 dark:border-zinc-700 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
                 <div className="sm:col-span-1">
-                  <Label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Selecionar Categoria</Label>
+                  <Label className="text-xs sm:text-sm font-bold text-zinc-750 dark:text-zinc-200">Selecionar Categoria</Label>
                   <Select value={catSelecionada} onValueChange={setCatSelecionada}>
-                    <SelectTrigger className="h-9 text-xs bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-850">
+                    <SelectTrigger className="h-9 text-xs sm:text-sm font-medium text-zinc-800 dark:text-zinc-200 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700">
                       <SelectValue placeholder="Escolha a categoria" />
                     </SelectTrigger>
                     <SelectContent className="dark:bg-zinc-900 dark:border-zinc-800">
@@ -609,7 +609,7 @@ function ComissoesServicosForm({ colaboradorId, defaultComissaoSozinho, defaultC
                   </Select>
                 </div>
                 <div className="relative">
-                  <Label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Sozinho (%)</Label>
+                  <Label className="text-xs sm:text-sm font-bold text-zinc-700 dark:text-zinc-300">Sozinho (%)</Label>
                   <div className="relative flex items-center mt-1">
                        <PercentageInput
                          id="cat-solo"
@@ -620,7 +620,7 @@ function ComissoesServicosForm({ colaboradorId, defaultComissaoSozinho, defaultC
                   </div>
                 </div>
                 <div className="relative">
-                  <Label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Com assistente (%)</Label>
+                  <Label className="text-xs sm:text-sm font-bold text-zinc-700 dark:text-zinc-300">Com assistente (%)</Label>
                   <div className="relative flex items-center mt-1">
                        <PercentageInput
                          id="cat-ajuda"
@@ -631,7 +631,7 @@ function ComissoesServicosForm({ colaboradorId, defaultComissaoSozinho, defaultC
                   </div>
                 </div>
                 <div className="relative">
-                  <Label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Auxiliar (%)</Label>
+                  <Label className="text-xs sm:text-sm font-bold text-zinc-700 dark:text-zinc-300">Auxiliar (%)</Label>
                   <div className="relative flex items-center mt-1">
                        <PercentageInput
                          id="cat-aux"
@@ -642,8 +642,8 @@ function ComissoesServicosForm({ colaboradorId, defaultComissaoSozinho, defaultC
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-zinc-100 dark:border-zinc-850/80 pt-3">
-                <p className="text-[10px] text-zinc-400 dark:text-zinc-550 font-medium">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-zinc-300 dark:border-zinc-700 pt-3">
+                <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 font-bold">
                   {catSelecionada
                     ? `⚠️ Isso atualizará os percentuais de ${servicosComissoes.filter(s => s.categoria_id === catSelecionada).length} serviço(s) na lista local.`
                     : "Escolha uma categoria e preencha as taxas desejadas acima. Campos vazios não serão modificados."
@@ -667,20 +667,20 @@ function ComissoesServicosForm({ colaboradorId, defaultComissaoSozinho, defaultC
 
       {/* Caixa de Busca com Ícone */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 dark:text-zinc-500" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 dark:text-zinc-400" />
         <Input 
           type="text" 
           placeholder="Pesquisar por nome ou descrição do serviço..." 
           value={searchTerm} 
           onChange={(e) => setSearchTerm(e.target.value)} 
-          className="w-full pl-9 h-10 bg-zinc-50/50 dark:bg-zinc-950/20 border-zinc-200 dark:border-zinc-800 rounded-xl focus:bg-white dark:focus:bg-zinc-950 transition-colors"
+          className="w-full pl-9 h-10 text-sm sm:text-base text-zinc-900 dark:text-zinc-50 placeholder:text-zinc-500 dark:placeholder:text-zinc-400 font-medium bg-zinc-50/50 dark:bg-zinc-950/20 border-zinc-300 dark:border-zinc-700 rounded-xl focus:bg-white dark:focus:bg-zinc-950 transition-colors"
         />
       </div>
 
       {/* Tabela de Serviços Scrollable */}
-      <div className="min-h-[220px] max-h-[42vh] overflow-auto border border-zinc-200 dark:border-zinc-850 rounded-2xl shadow-sm bg-white dark:bg-zinc-900 pr-1 py-1">
+      <div className="min-h-[220px] max-h-[42vh] overflow-auto border border-zinc-300 dark:border-zinc-700 rounded-2xl shadow-sm bg-white dark:bg-zinc-900 pr-1 py-1">
         <table className="w-full min-w-[820px] text-sm text-left border-collapse">
-          <thead className="bg-zinc-50/80 dark:bg-zinc-950/40 text-[11px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold sticky top-0 backdrop-blur-md z-10 border-b border-zinc-150 dark:border-zinc-850">
+          <thead className="bg-zinc-50/80 dark:bg-zinc-950/40 text-xs sm:text-sm uppercase tracking-wider text-zinc-800 dark:text-zinc-100 font-bold sticky top-0 backdrop-blur-md z-10 border-b border-zinc-300 dark:border-zinc-700">
             <tr>
               <th className="p-4">Serviço</th>
               <th className="p-4 w-36">Sozinho</th>
@@ -689,7 +689,7 @@ function ComissoesServicosForm({ colaboradorId, defaultComissaoSozinho, defaultC
               <th className="p-4 w-20 text-center">Ações</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-850/80">
+          <tbody className="divide-y divide-zinc-300 dark:divide-zinc-700">
             {filteredServicos.length === 0 ? (
               <tr>
                 <td colSpan="5" className="p-12 text-center text-zinc-450 dark:text-zinc-550 italic">
@@ -714,22 +714,22 @@ function ComissoesServicosForm({ colaboradorId, defaultComissaoSozinho, defaultC
                         : "hover:bg-zinc-50/50 dark:hover:bg-zinc-950/30"
                     }`}
                   >
-                    <td className="p-4 font-medium text-zinc-700 dark:text-zinc-200">
-                      <div className="font-semibold text-sm">{item.servico_nome}</div>
-                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    <td className="p-4 font-medium text-zinc-850 dark:text-zinc-100">
+                      <div className="font-bold text-sm sm:text-base text-zinc-900 dark:text-zinc-50">{item.servico_nome}</div>
+                      <div className="flex flex-wrap items-center gap-2 mt-1.5">
                         {item.servico_descricao && (
-                          <span className="text-xs text-zinc-400 dark:text-zinc-500 font-normal truncate max-w-[240px]" title={item.servico_descricao}>
+                          <span className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-350 font-medium truncate max-w-[280px]" title={item.servico_descricao}>
                             {item.servico_descricao}
                           </span>
                         )}
                         {catNome && (
-                          <span className="inline-flex items-center gap-0.5 text-[9px] font-extrabold uppercase tracking-wide text-zinc-500 bg-zinc-100 dark:text-zinc-400 dark:bg-zinc-800 px-1.5 py-0.5 rounded-md border border-zinc-200/40 dark:border-zinc-750">
-                            <Layers className="w-2.5 h-2.5 text-[#84A59D]" />
+                          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-zinc-600 bg-zinc-100 dark:text-zinc-350 dark:bg-zinc-800 px-2 py-0.5 rounded-md border border-zinc-300 dark:border-zinc-700">
+                            <Layers className="w-3 h-3 text-[#84A59D]" />
                             {catNome}
                           </span>
                         )}
                         {isCustom && (
-                          <span className="inline-flex items-center text-[9px] font-extrabold uppercase tracking-wide text-emerald-700 bg-emerald-50 border border-emerald-100 dark:text-emerald-400 dark:bg-emerald-950/45 dark:border-emerald-900/60 px-1.5 py-0.5 rounded-md">
+                          <span className="inline-flex items-center text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200 dark:text-emerald-350 dark:bg-emerald-950/45 dark:border-emerald-900/60 px-2 py-0.5 rounded-md">
                             Personalizado
                           </span>
                         )}
@@ -761,11 +761,11 @@ function ComissoesServicosForm({ colaboradorId, defaultComissaoSozinho, defaultC
                           max={100}
                           value={item.comissao_auxiliar} 
                           onChange={(e) => handleValueChange(item.servico_id, 'comissao_auxiliar', e.target.value)}
-                          className={`h-8 pr-7 text-right font-mono text-sm border-zinc-200 dark:border-zinc-750 bg-white dark:bg-zinc-900 focus-visible:ring-1 focus-visible:ring-[#84A59D] ${
-                            Number(item.comissao_auxiliar || 0) !== defaultComissaoAuxiliar ? "font-bold text-emerald-600 dark:text-emerald-400" : ""
+                          className={`h-8 pr-7 text-right font-mono text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-50 border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 focus-visible:ring-1 focus-visible:ring-[#84A59D] ${
+                            Number(item.comissao_auxiliar || 0) !== defaultComissaoAuxiliar ? "font-bold text-emerald-600 dark:text-emerald-450" : ""
                           }`}
                         />
-                        <span className="absolute right-2 text-zinc-400 dark:text-zinc-600 text-xs select-none">%</span>
+                        <span className="absolute right-2 text-zinc-650 dark:text-zinc-300 text-sm font-bold select-none">%</span>
                       </div>
                     </td>
                     <td className="p-4 text-center">
@@ -791,20 +791,20 @@ function ComissoesServicosForm({ colaboradorId, defaultComissaoSozinho, defaultC
       </div>
 
       {/* Caixa de informações da legenda */}
-      <div className="flex items-start gap-2 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100/60 dark:border-blue-900/30 p-3 rounded-xl text-[11px] text-blue-700 dark:text-blue-400/90 leading-relaxed shadow-sm">
-        <Info className="w-4 h-4 shrink-0 text-blue-500 mt-0.5 animate-pulse" />
+      <div className="flex items-start gap-2 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/60 p-3.5 rounded-xl text-xs sm:text-sm text-blue-900 dark:text-blue-250 leading-relaxed shadow-sm font-medium">
+        <Info className="w-4.5 h-4.5 shrink-0 text-blue-600 mt-0.5 animate-pulse" />
         <div>
-          <strong>Dica de Visualização:</strong> Os serviços que possuem comissão personalizada são assinalados com fundo destacado, borda esquerda verde e badge <span className="bg-emerald-50 dark:bg-emerald-950/45 dark:border-emerald-900 border border-emerald-100 text-emerald-700 dark:text-emerald-450 px-1 py-0.2 rounded font-semibold text-[9px] uppercase tracking-wide mx-0.5">Personalizado</span>. Use o botão de redefinição (<RotateCcw className="w-3 h-3 inline mx-0.5 text-zinc-550" />) para restaurar a taxa padrão a qualquer momento.
+          <strong>Dica de Visualização:</strong> Os serviços que possuem comissão personalizada são assinalados com fundo destacado, borda esquerda verde e badge <span className="bg-emerald-50 dark:bg-emerald-950/45 dark:border-emerald-900 border border-emerald-250 text-emerald-800 dark:text-emerald-350 px-1.5 py-0.5 rounded font-bold text-[10px] uppercase tracking-wide mx-0.5">Personalizado</span>. Use o botão de redefinição (<RotateCcw className="w-3.5 h-3.5 inline mx-0.5 text-zinc-700 dark:text-zinc-300" />) para restaurar a taxa padrão a qualquer momento.
         </div>
       </div>
 
       </div>
 
-      <DialogFooter className="shrink-0 mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-900 bg-white dark:bg-zinc-900 flex-row justify-end gap-2 space-x-0">
-        <Button variant="outline" onClick={onClose} disabled={saving} className="rounded-xl px-5 border-zinc-200 dark:border-zinc-800">
+      <DialogFooter className="shrink-0 mt-4 pt-3 border-t border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 flex-row justify-end gap-2 space-x-0">
+        <Button variant="outline" onClick={onClose} disabled={saving} className="rounded-xl px-5 text-sm sm:text-base font-bold text-zinc-750 dark:text-zinc-200 border-zinc-300 dark:border-zinc-700">
           Cancelar
         </Button>
-        <Button onClick={handleSave} className="bg-[#84A59D] hover:bg-[#6F9189] text-white font-semibold rounded-xl px-6 gap-1.5 shadow-sm" disabled={saving}>
+        <Button onClick={handleSave} className="bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold text-sm sm:text-base rounded-xl px-6 gap-2 shadow-sm" disabled={saving}>
           {saving ? (
             <>
               <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
