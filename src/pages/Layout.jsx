@@ -287,7 +287,7 @@ export default function Layout() {
       {/* Main Content Area */}
       <main className="flex-1 overflow-x-hidden min-h-screen flex flex-col">
         {/* Desktop Top Header Bar for Sidebar Toggle & Theme/User stats */}
-        <header className="hidden md:flex items-center justify-between h-16 px-6 bg-card border-b border-border z-20 sticky top-0 shrink-0 select-none">
+        <header className="hidden md:flex items-center justify-between h-20 px-6 lg:px-8 bg-card border-b border-border z-20 sticky top-0 shrink-0 select-none">
           <div className="flex items-center gap-4">
             <Button 
               variant="ghost" 
@@ -326,8 +326,8 @@ export default function Layout() {
           
           <div className="flex items-center gap-4">
             <div className="text-right hidden lg:block">
-              <div className="font-medium text-xs text-foreground">{user?.name}</div>
-              <div className="text-[10px] text-muted-foreground">{user?.email}</div>
+              <div className="font-semibold text-sm text-foreground">{user?.name}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{user?.email}</div>
             </div>
             <ThemeToggle />
             <Button 
