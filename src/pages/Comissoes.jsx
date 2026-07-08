@@ -1676,30 +1676,30 @@ export default function Comissoes() {
 
             return (
               <>
-                {/* Header fixo - Mais espaçado */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-8 py-5.5 border-b border-zinc-150 dark:border-zinc-800 shrink-0 bg-white dark:bg-zinc-900">
-                  <div className="flex items-center gap-4">
+                {/* Header fixo - Compacto e elegante */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 sm:px-8 sm:py-5 border-b border-zinc-150 dark:border-zinc-800 shrink-0 bg-white dark:bg-zinc-900">
+                  <div className="flex items-center gap-3">
                     {(() => {
                       const colabObj = colaboradores.find(col => col.id === selectedColab?.colaborador_id);
-                      if (colabObj?.foto) return <img src={colabObj.foto} alt={selectedColab?.colaborador_nome} className="w-16 h-16 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-700 shadow-sm" />;
-                      return <div className="w-16 h-16 rounded-full bg-[#EAF0EE] dark:bg-zinc-855 text-[#3A4F4A] dark:text-[#EAF0EE] font-bold text-base shrink-0 flex items-center justify-center border border-[#D5E2DF] dark:border-zinc-700 select-none">{getInitials(selectedColab?.colaborador_nome)}</div>;
+                      if (colabObj?.foto) return <img src={colabObj.foto} alt={selectedColab?.colaborador_nome} className="w-10 h-10 sm:w-16 sm:h-16 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-700 shadow-sm" />;
+                      return <div className="w-10 h-10 sm:w-16 sm:h-16 rounded-full bg-[#EAF0EE] dark:bg-zinc-855 text-[#3A4F4A] dark:text-[#EAF0EE] font-bold text-sm sm:text-base shrink-0 flex items-center justify-center border border-[#D5E2DF] dark:border-zinc-700 select-none">{getInitials(selectedColab?.colaborador_nome)}</div>;
                     })()}
-                    <div className="min-w-0 flex-1">
-                      <DialogTitle className="font-display font-black text-xl text-[#3A4F4A] dark:text-zinc-100 truncate leading-tight m-0 p-0">
+                    <div className="min-w-0 flex-1 pr-8 sm:pr-0">
+                      <DialogTitle className="font-display font-bold sm:font-black text-base sm:text-xl text-[#3A4F4A] dark:text-zinc-100 truncate leading-tight m-0 p-0">
                         Detalhamento de Comissões: {selectedColab?.colaborador_nome}
                       </DialogTitle>
                       {selectedColab && (
-                        <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[9px] sm:text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider">
                           <span>Políticas:</span>
-                          <span className="bg-zinc-100 dark:bg-zinc-800/60 px-2 py-0.5 rounded text-zinc-655 dark:text-zinc-300 font-bold">Solo {selectedColab.comissao_sozinho != null ? selectedColab.comissao_sozinho : selectedColab.comissao_principal}%</span>
-                          <span className="bg-zinc-100 dark:bg-zinc-800/60 px-2 py-0.5 rounded text-zinc-655 dark:text-zinc-300 font-bold">c/ Aux {selectedColab.comissao_ajuda || 30}%</span>
-                          <span className="bg-zinc-100 dark:bg-zinc-800/60 px-2 py-0.5 rounded text-zinc-655 dark:text-zinc-300 font-bold">Aux {selectedColab.comissao_auxiliar}%</span>
+                          <span className="bg-zinc-100 dark:bg-zinc-800/60 px-1.5 py-0.5 rounded text-zinc-600 dark:text-zinc-350">Solo {selectedColab.comissao_sozinho != null ? selectedColab.comissao_sozinho : selectedColab.comissao_principal}%</span>
+                          <span className="bg-zinc-100 dark:bg-zinc-800/60 px-1.5 py-0.5 rounded text-zinc-600 dark:text-zinc-350">c/ Aux {selectedColab.comissao_ajuda || 30}%</span>
+                          <span className="bg-zinc-100 dark:bg-zinc-800/60 px-1.5 py-0.5 rounded text-zinc-600 dark:text-zinc-350">Aux {selectedColab.comissao_auxiliar}%</span>
                         </div>
                       )}
                     </div>
                   </div>
                   {/* PDF Print Button */}
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="hidden sm:flex items-center gap-2 shrink-0">
                     <Button
                       onClick={() => generateIndividualPDF(selectedColab)}
                       variant="outline"
@@ -1711,81 +1711,86 @@ export default function Comissoes() {
                   </div>
                 </div>
 
-                {/* Painel de Busca e Filtros Locais - Mais alto e com fontes maiores */}
-                <div className="px-8 py-4.5 border-b border-zinc-150 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 flex flex-wrap items-center justify-between gap-4 shrink-0">
-                  <div className="relative flex-1 min-w-[280px]">
-                    <Search className="absolute left-3.5 top-3 h-4 w-4 text-zinc-400" />
+                {/* Painel de Busca e Filtros Locais - Compacto e integrado */}
+                <div className="px-4 py-2.5 sm:px-8 sm:py-3.5 border-b border-zinc-150 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 flex flex-row items-center gap-2.5 shrink-0">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-400" />
                     <Input
-                      placeholder="Buscar por serviço, produto, cliente, papel ou documento..."
+                      placeholder="Buscar no extrato..."
                       value={modalSearch}
                       onChange={(e) => setModalSearch(e.target.value)}
-                      className="pl-10 h-10 text-xs sm:text-sm bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-855"
+                      className="pl-9 pr-8 h-9 text-xs sm:text-sm bg-white dark:bg-zinc-955 border-zinc-200 dark:border-zinc-855 rounded-lg"
                     />
                     {modalSearch && (
-                      <button onClick={() => setModalSearch("")} className="absolute right-3.5 top-3 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-350">
-                        <X className="h-4 w-4" />
+                      <button onClick={() => setModalSearch("")} className="absolute right-2.5 top-2.5 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-350">
+                        <X className="h-3.5 w-3.5" />
                       </button>
                     )}
                   </div>
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] uppercase font-bold text-zinc-455 dark:text-zinc-500 tracking-wider">Tipo:</span>
-                      <Select value={modalTypeFilter} onValueChange={setModalTypeFilter}>
-                        <SelectTrigger className="w-32 h-10 text-xs sm:text-sm bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-855">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="dark:bg-zinc-950 dark:border-zinc-850">
-                          <SelectItem value="todos" className="text-xs sm:text-sm">Todos</SelectItem>
-                          <SelectItem value="servico" className="text-xs sm:text-sm">Serviços</SelectItem>
-                          <SelectItem value="produto" className="text-xs sm:text-sm">Produtos</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider hidden xs:inline">Tipo:</span>
+                    <Select value={modalTypeFilter} onValueChange={setModalTypeFilter}>
+                      <SelectTrigger className="w-24 sm:w-32 h-9 text-xs sm:text-sm bg-white dark:bg-zinc-955 border-zinc-200 dark:border-zinc-855 rounded-lg">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="dark:bg-zinc-950 dark:border-zinc-850">
+                        <SelectItem value="todos" className="text-xs sm:text-sm">Todos</SelectItem>
+                        <SelectItem value="servico" className="text-xs sm:text-sm">Serviços</SelectItem>
+                        <SelectItem value="produto" className="text-xs sm:text-sm">Produtos</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
-                {/* Totais do Modal - Mais espaçado e visível */}
-                {selectedColab && (
-                  <div className="flex flex-wrap border-b border-zinc-150 dark:border-zinc-800 bg-zinc-100/30 dark:bg-zinc-950/60 shrink-0 divide-x divide-zinc-200 dark:divide-zinc-800/80 overflow-x-auto select-none">
-                    <div className="flex flex-col justify-center items-center text-center px-6 py-4.5 min-w-[130px]">
-                      <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-550 tracking-wider whitespace-nowrap mb-0.5">Serv. Principal</span>
-                      <span className="font-bold text-base text-zinc-700 dark:text-zinc-200">{fmtBRL(filteredTotalPrincipalSum)}</span>
-                    </div>
-                    <div className="flex flex-col justify-center items-center text-center px-6 py-4.5 min-w-[130px]">
-                      <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider whitespace-nowrap mb-0.5">Serv. Auxiliar</span>
-                      <span className="font-bold text-base text-zinc-700 dark:text-zinc-200">{fmtBRL(filteredTotalAuxiliarSum)}</span>
-                    </div>
-                    <div className="flex flex-col justify-center items-center text-center px-6 py-4.5 min-w-[130px] text-rose-500">
-                      <span className="text-[10px] uppercase font-bold text-rose-455 tracking-wider whitespace-nowrap mb-0.5">Custo Insumos</span>
-                      <span className="font-bold text-base">-{fmtBRL(filteredTotalInsumosSum)}</span>
-                    </div>
-                    {data?.descontar_taxa_cartao_comissao && (
-                      <div className="flex flex-col justify-center items-center text-center px-6 py-4.5 min-w-[120px] text-rose-500">
-                        <span className="text-[10px] uppercase font-bold text-rose-455 tracking-wider whitespace-nowrap mb-0.5">Taxa Cartão</span>
-                        <span className="font-bold text-base">-{fmtBRL(filteredTotalTaxaCartaoSum)}</span>
+                {/* Totais do Modal - Grid Responsivo e Moderno (Compacto no Mobile) */}
+                {selectedColab && (() => {
+                  const hasTaxa = !!data?.descontar_taxa_cartao_comissao;
+                  return (
+                    <div className="grid grid-cols-3 sm:flex sm:flex-wrap border-b border-zinc-150 dark:border-zinc-800 bg-zinc-100/30 dark:bg-zinc-955/60 shrink-0 sm:divide-x divide-zinc-200 dark:divide-zinc-800/80 overflow-x-auto select-none p-2 sm:p-0 gap-1.5 sm:gap-0">
+                      <div className="flex flex-col justify-center items-center text-center p-1.5 sm:px-6 sm:py-4.5 rounded-lg sm:rounded-none bg-white dark:bg-zinc-900 sm:bg-transparent shadow-sm sm:shadow-none border border-zinc-100 dark:border-zinc-850 sm:border-0 min-w-0 sm:min-w-[130px]">
+                        <span className="block sm:hidden text-[8px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider whitespace-nowrap mb-0.5">Principal</span>
+                        <span className="hidden sm:block text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider whitespace-nowrap mb-0.5">Serv. Principal</span>
+                        <span className="font-bold text-[11px] sm:text-base text-zinc-700 dark:text-zinc-200">{fmtBRL(filteredTotalPrincipalSum)}</span>
                       </div>
-                    )}
-                    <div className="flex flex-col justify-center items-center text-center px-6 py-4.5 min-w-[160px]">
-                      <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-550 tracking-wider whitespace-nowrap mb-0.5">Vendas Prods.</span>
-                      <span className="font-bold text-base text-zinc-700 dark:text-zinc-200">
-                        {fmtBRL(filteredTotalProdutosSum)}
-                        <span className="text-[10px] text-zinc-400 dark:text-zinc-550 ml-1.5 font-semibold">(+{fmtBRL(filteredTotalComissaoProdutosSum)})</span>
-                      </span>
+                      <div className="flex flex-col justify-center items-center text-center p-1.5 sm:px-6 sm:py-4.5 rounded-lg sm:rounded-none bg-white dark:bg-zinc-900 sm:bg-transparent shadow-sm sm:shadow-none border border-zinc-150 dark:border-zinc-800 sm:border-0 min-w-0 sm:min-w-[130px]">
+                        <span className="block sm:hidden text-[8px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider whitespace-nowrap mb-0.5">Auxiliar</span>
+                        <span className="hidden sm:block text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider whitespace-nowrap mb-0.5">Serv. Auxiliar</span>
+                        <span className="font-bold text-[11px] sm:text-base text-zinc-700 dark:text-zinc-200">{fmtBRL(filteredTotalAuxiliarSum)}</span>
+                      </div>
+                      <div className="flex flex-col justify-center items-center text-center p-1.5 sm:px-6 sm:py-4.5 rounded-lg sm:rounded-none bg-white dark:bg-zinc-900 sm:bg-transparent shadow-sm sm:shadow-none border border-zinc-150 dark:border-zinc-800 sm:border-0 min-w-0 sm:min-w-[130px] text-rose-500">
+                        <span className="block sm:hidden text-[8px] uppercase font-bold text-rose-455 tracking-wider whitespace-nowrap mb-0.5">Insumos</span>
+                        <span className="hidden sm:block text-[10px] uppercase font-bold text-rose-455 tracking-wider whitespace-nowrap mb-0.5">Custo Insumos</span>
+                        <span className="font-bold text-[11px] sm:text-base">-{fmtBRL(filteredTotalInsumosSum)}</span>
+                      </div>
+                      {hasTaxa && (
+                        <div className="flex flex-col justify-center items-center text-center p-1.5 sm:px-6 sm:py-4.5 rounded-lg sm:rounded-none bg-white dark:bg-zinc-900 sm:bg-transparent shadow-sm sm:shadow-none border border-zinc-150 dark:border-zinc-800 sm:border-0 min-w-0 sm:min-w-[120px] text-rose-500">
+                          <span className="block sm:hidden text-[8px] uppercase font-bold text-rose-455 tracking-wider whitespace-nowrap mb-0.5">Taxa</span>
+                          <span className="hidden sm:block text-[10px] uppercase font-bold text-rose-455 tracking-wider whitespace-nowrap mb-0.5">Taxa Cartão</span>
+                          <span className="font-bold text-[11px] sm:text-base">-{fmtBRL(filteredTotalTaxaCartaoSum)}</span>
+                        </div>
+                      )}
+                      <div className="flex flex-col justify-center items-center text-center p-1.5 sm:px-6 sm:py-4.5 rounded-lg sm:rounded-none bg-white dark:bg-zinc-900 sm:bg-transparent shadow-sm sm:shadow-none border border-zinc-150 dark:border-zinc-800 sm:border-0 min-w-0 sm:min-w-[160px] col-span-1">
+                        <span className="block sm:hidden text-[8px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider whitespace-nowrap mb-0.5">Vendas</span>
+                        <span className="hidden sm:block text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider whitespace-nowrap mb-0.5">Vendas Prods.</span>
+                        <span className="font-bold text-[10px] sm:text-base text-zinc-700 dark:text-zinc-200">
+                          {fmtBRL(filteredTotalProdutosSum)}
+                          <span className="text-[8px] sm:text-[10px] text-zinc-400 dark:text-zinc-555 ml-0.5 font-semibold">({fmtBRL(filteredTotalComissaoProdutosSum)})</span>
+                        </span>
+                      </div>
+                      <div className={`flex flex-col justify-center items-center text-center p-1.5 sm:px-7 sm:py-3 rounded-lg sm:rounded-none bg-emerald-50/70 dark:bg-emerald-950/20 sm:bg-emerald-50/70 sm:dark:bg-emerald-950/20 sm:ml-auto border border-emerald-150 dark:border-emerald-900/30 sm:border-0 sm:border-l border-zinc-200 dark:border-zinc-800 min-w-0 sm:min-w-[160px] shadow-sm sm:shadow-none ${hasTaxa ? 'col-span-1' : 'col-span-2'}`}>
+                        <span className="text-[8px] sm:text-[10px] uppercase font-extrabold text-emerald-800 dark:text-emerald-400 tracking-wider whitespace-nowrap mb-0.5">Comissão Líquida</span>
+                        <span className="font-black text-xs sm:text-xl text-emerald-700 dark:text-emerald-400 leading-tight">{fmtBRL(filteredTotalComissaoSum)}</span>
+                      </div>
                     </div>
-                    <div className="flex flex-col justify-center items-center text-center px-7 py-3 bg-emerald-50/70 dark:bg-emerald-950/20 ml-auto min-w-[160px] border-l border-zinc-200 dark:border-zinc-800">
-                      <span className="text-[9px] uppercase font-extrabold text-emerald-800 dark:text-emerald-455 tracking-wider whitespace-nowrap mb-0.5">Comissão Líquida</span>
-                      <span className="font-black text-xl text-emerald-700 dark:text-emerald-400 leading-tight">{fmtBRL(filteredTotalComissaoSum)}</span>
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Tabela com scroll interno — desktop (Mais espaçada) */}
                 {selectedColab && (
                   <div className="hidden lg:flex flex-col flex-1 min-h-0 overflow-hidden">
-                    <div className="overflow-y-auto overflow-x-auto flex-1">
+                    <div className="overflow-y-auto overflow-x-auto flex-1 overscroll-contain scroll-smooth">
                       <table className="w-full text-[13px] min-w-[1300px]">
-                        <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">
+                        <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-955 border-b border-zinc-200 dark:border-zinc-800 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">
                           <tr>
                             <th className="px-5 py-4 text-left font-bold">Data</th>
                             <th className="px-5 py-4 text-left font-bold">Documento</th>
@@ -1832,7 +1837,7 @@ export default function Comissoes() {
                                         }
                                       </span>
                                       {item.numero != null && (
-                                        <span className="text-[11px] text-zinc-600 dark:text-zinc-350 font-semibold">
+                                        <span className="text-[11px] text-zinc-600 dark:text-zinc-355 font-semibold">
                                           {item.cliente_nome || "Consumidor"}
                                         </span>
                                       )}
@@ -1858,7 +1863,7 @@ export default function Comissoes() {
                                     <span>{item.descricao}</span>
                                     {item.insumos_pendentes && (
                                       <div className="mt-1">
-                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900/60 whitespace-nowrap">
+                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-950/40 dark:text-rose-455 whitespace-nowrap">
                                           <AlertTriangle className="w-2.5 h-2.5" /> Ins. Pend.
                                         </span>
                                       </div>
@@ -1915,76 +1920,91 @@ export default function Comissoes() {
                   </div>
                 )}
 
-                {/* Cards mobile com scroll interno (Mais espaçados) */}
+                {/* Cards mobile com scroll interno (Mais compactos e legíveis) */}
                 {selectedColab && (
-                  <div className="block lg:hidden flex-1 overflow-y-auto p-5 space-y-4 min-h-0">
+                  <div className="block lg:hidden flex-1 overflow-y-auto overscroll-contain scroll-smooth p-4 space-y-3.5 min-h-0 bg-zinc-50/30 dark:bg-zinc-950/20">
                     {filteredDetalhes.length === 0 ? (
-                      <div className="text-center py-16 text-zinc-400 dark:text-zinc-550 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
+                      <div className="text-center py-12 text-zinc-400 dark:text-zinc-550 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-900">
                         Sem movimentações correspondentes aos filtros.
                       </div>
                     ) : (
                       filteredDetalhes.map((item, idx) => (
-                        <div key={idx} className="bg-zinc-50/50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4.5 space-y-3.5 shadow-sm">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className={`inline-flex px-2 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider ${
-                              item.tipo === 'servico'
-                                ? 'bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-950/40 dark:text-blue-400'
-                                : 'bg-purple-50 text-purple-700 border border-purple-100 dark:bg-purple-950/40 dark:text-purple-400'
-                            }`}>{item.tipo === 'servico' ? 'Serviço' : 'Produto'}</span>
-                            {item.pago
-                              ? <span className="inline-flex px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 text-[9.5px] font-bold uppercase">Pago</span>
-                              : <span className="inline-flex px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/40 dark:text-amber-400 text-[9.5px] font-bold uppercase">Pendente</span>
-                            }
-                          </div>
-                          <div className="font-bold text-sm text-zinc-850 dark:text-zinc-100 leading-snug">
-                            {item.descricao}
-                          </div>
-                          {item.insumos_pendentes && (
-                            <div>
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-950/40 dark:text-rose-400">
-                                <AlertTriangle className="w-2.5 h-2.5" /> Insumos Pendentes
-                              </span>
-                            </div>
-                          )}
-                          <div className="grid grid-cols-2 gap-3 text-xs pt-2 border-t border-zinc-100 dark:border-zinc-855">
-                            <div>
-                              <span className="text-[9.5px] text-zinc-400 dark:text-zinc-550 uppercase font-bold block mb-0.5">Data / Hora</span>
-                              <span className="font-mono text-zinc-700 dark:text-zinc-300">{fmtDateTime(item.data)}</span>
+                        <div key={idx} className="bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800/80 rounded-2xl p-4.5 space-y-3 shadow-sm hover:border-zinc-350 dark:hover:border-zinc-700 transition-colors duration-150">
+                          {/* Top Header: Tipo, Data e Status */}
+                          <div className="flex items-center justify-between text-[11px] text-zinc-400 dark:text-zinc-500">
+                            <div className="flex items-center gap-2">
+                              <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                                item.tipo === 'servico'
+                                  ? 'bg-blue-50/80 text-blue-700 border border-blue-100/50 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/30'
+                                  : 'bg-purple-50/80 text-purple-700 border border-purple-100/50 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-900/30'
+                              }`}>{item.tipo === 'servico' ? 'Serviço' : 'Produto'}</span>
+                              <span className="text-[10.5px] font-medium text-zinc-500 dark:text-zinc-400">{fmtDateTime(item.data)}</span>
                             </div>
                             <div>
-                              <span className="text-[9.5px] text-zinc-400 dark:text-zinc-555 uppercase font-bold block mb-0.5">Documento</span>
-                              <span className="font-mono text-zinc-700 dark:text-zinc-300 font-bold block">
-                                {item.numero != null ? `#${String(item.numero).padStart(6, "0")} (${item.tipo === 'servico' ? 'S' : 'V'})` : "—"}
-                              </span>
-                              {item.numero != null && item.cliente_nome && (
-                                <span className="text-[10px] text-zinc-600 dark:text-zinc-355 font-semibold truncate block">{item.cliente_nome}</span>
+                              {item.pago ? (
+                                <span className="inline-flex px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/30 text-[9px] font-bold uppercase tracking-wider">
+                                  Pago
+                                </span>
+                              ) : (
+                                <span className="inline-flex px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-150 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/30 text-[9px] font-bold uppercase tracking-wider">
+                                  Pendente
+                                </span>
                               )}
                             </div>
-                            <div>
-                              <span className="text-[9.5px] text-zinc-400 dark:text-zinc-555 uppercase font-bold block mb-0.5">Papel / Valor</span>
-                              <span className="text-zinc-750 dark:text-zinc-350 font-medium">{item.papel} ({fmtBRL(item.valor_movimentacao)})</span>
+                          </div>
+
+                          {/* Descrição e Info do Documento */}
+                          <div className="space-y-1">
+                            <h4 className="font-bold text-sm text-zinc-800 dark:text-zinc-100 leading-snug">
+                              {item.descricao}
+                            </h4>
+                            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+                              {item.numero != null && (
+                                <>
+                                  <span className="font-mono font-semibold">#{String(item.numero).padStart(6, "0")}</span>
+                                  <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700 shrink-0 self-center" />
+                                  <span className="truncate max-w-[150px] font-medium">{item.cliente_nome || "Consumidor"}</span>
+                                  <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700 shrink-0 self-center" />
+                                </>
+                              )}
+                              <span className="bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-[10px] font-medium text-zinc-650 dark:text-zinc-300">{item.papel}</span>
                             </div>
-                            {item.tipo === 'servico' && (item.custo_produtos > 0 || (item.descontou_taxa_cartao && item.taxa_cartao_descontada > 0)) && (
-                              <div>
-                                <span className="text-[9.5px] text-zinc-400 dark:text-zinc-555 uppercase font-bold block mb-0.5">Deduções</span>
-                                <span className="text-rose-500 dark:text-rose-455 block font-medium">
-                                  {item.custo_produtos > 0 && `Insumo: -${fmtBRL(item.custo_produtos)}`}
-                                  {item.descontou_taxa_cartao && item.taxa_cartao_descontada > 0 && ` Taxa: -${fmtBRL(item.taxa_cartao_descontada)}`}
+                            {item.insumos_pendentes && (
+                              <div className="pt-0.5">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-950/40 dark:text-rose-455">
+                                  <AlertTriangle className="w-2.5 h-2.5" /> Insumos Pendentes
                                 </span>
                               </div>
                             )}
                           </div>
-                          
-                          <div className="flex items-center justify-between bg-zinc-100/60 dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-855 p-3 rounded-lg text-xs mt-1.5">
-                            <div>
-                              <span className="text-[9.5px] text-zinc-400 uppercase font-bold block">Base × Taxa</span>
-                              <span className="text-zinc-700 dark:text-zinc-300 font-medium">
-                                {fmtBRL(item.tipo === 'servico' ? (item.base_comissao != null ? item.base_comissao : item.valor_movimentacao) : item.valor_movimentacao)} × <b className="font-mono">{item.percentual_aplicado}%</b>
-                              </span>
+
+                          {/* Caixa Financeira Unificada */}
+                          <div className="flex items-stretch justify-between bg-zinc-50/50 dark:bg-zinc-950/40 border border-zinc-100/80 dark:border-zinc-855 rounded-xl p-3 text-xs gap-3">
+                            <div className="flex flex-col justify-center space-y-2 text-[11px]">
+                              <div>
+                                <span className="text-zinc-400 dark:text-zinc-550 block text-[9px] uppercase font-bold tracking-wider mb-0.5">Valor do Item</span>
+                                <span className="font-mono font-semibold text-zinc-700 dark:text-zinc-200">{fmtBRL(item.valor_movimentacao)}</span>
+                              </div>
+                              {item.tipo === 'servico' && (item.custo_produtos > 0 || (item.descontou_taxa_cartao && item.taxa_cartao_descontada > 0)) && (
+                                <div>
+                                  <span className="text-zinc-400 dark:text-zinc-550 block text-[9px] uppercase font-bold tracking-wider mb-0.5">Deduções</span>
+                                  <span className="text-rose-500 dark:text-rose-400 font-medium block">
+                                    {item.custo_produtos > 0 && `Insumo: -${fmtBRL(item.custo_produtos)}`}
+                                    {item.descontou_taxa_cartao && item.taxa_cartao_descontada > 0 && ` Taxa: -${fmtBRL(item.taxa_cartao_descontada)}`}
+                                  </span>
+                                </div>
+                              )}
+                              <div>
+                                <span className="text-zinc-400 dark:text-zinc-555 block text-[9px] uppercase font-bold tracking-wider mb-0.5">Base × Taxa</span>
+                                <span className="text-zinc-650 dark:text-zinc-300 font-medium">
+                                  {fmtBRL(item.tipo === 'servico' ? (item.base_comissao != null ? item.base_comissao : item.valor_movimentacao) : item.valor_movimentacao)} × <b className="font-mono">{item.percentual_aplicado}%</b>
+                                </span>
+                              </div>
                             </div>
-                            <div className="text-right">
-                              <span className="text-[9.5px] text-emerald-800 dark:text-emerald-500 uppercase font-extrabold block">Comissão</span>
-                              <span className="font-mono font-black text-emerald-600 dark:text-emerald-455 text-sm">{fmtBRL(item.valor_comissao)}</span>
+                            
+                            <div className="flex flex-col justify-center items-end bg-emerald-50/40 dark:bg-emerald-950/10 border border-emerald-100/50 dark:border-emerald-900/20 px-3.5 py-2 rounded-lg shrink-0">
+                              <span className="text-[9px] text-emerald-800 dark:text-emerald-400 uppercase font-extrabold tracking-wider block mb-0.5">Comissão</span>
+                              <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm">{fmtBRL(item.valor_comissao)}</span>
                             </div>
                           </div>
                         </div>
@@ -1993,11 +2013,11 @@ export default function Comissoes() {
                   </div>
                 )}
 
-                {/* Footer fixo */}
-                <div className="border-t border-zinc-150 dark:border-zinc-800 px-8 py-4.5 shrink-0 flex justify-end bg-white dark:bg-zinc-900 select-none">
+                {/* Footer fixo - Altura ajustada */}
+                <div className="border-t border-zinc-150 dark:border-zinc-800 px-4 py-3 sm:px-8 sm:py-4.5 shrink-0 flex justify-end bg-white dark:bg-zinc-900 select-none">
                   <Button 
                     onClick={() => setDetailsOpen(false)} 
-                    className="h-10 px-6 text-xs sm:text-sm font-semibold border border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100/80 dark:hover:bg-zinc-800/80 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors duration-200"
+                    className="w-full sm:w-auto h-10 px-6 text-xs sm:text-sm font-semibold border border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100/80 dark:hover:bg-zinc-800/80 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors duration-200"
                   >
                     Fechar Extrato
                   </Button>

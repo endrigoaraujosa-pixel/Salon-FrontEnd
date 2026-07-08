@@ -188,8 +188,14 @@ export default function Pagamento() {
     }
   }, [autorizarDialogOpen]);
 
-  const toggleSaleSelection = (saleId) => {
-    setPendingSales(prev => prev.map(s => s.id === saleId ? { ...s, selected: !s.selected } : s));
+  const toggleSaleSelection = async (saleId) => {
+    const updatedSales = pendingSales.map(s => s.id === saleId ? { ...s, selected: !s.selected } : s);
+    setPendingSales(updatedSales);
+    if (temDescontoAplicado) {
+      const activeDescontoId = descontoMeta.desconto_id;
+      const activeVendasIds = updatedSales.filter(s => s.selected).map(s => s.id);
+      await applyDiscountOnBackend(activeDescontoId, null, activeVendasIds);
+    }
   };
 
   if (!ag) return <div className="p-8 text-zinc-400">Carregando...</div>;
@@ -208,7 +214,22 @@ export default function Pagamento() {
     } catch (e) {}
   }
   const temDescontoAplicado = !!descontoMeta;
-  const valorOriginalAgendamento = temDescontoAplicado ? (ag.valor_total + (descontoMeta?.total_descontado || 0)) : ag.valor_total;
+
+  // Calculo de Desconto Geral (Servicos + Produtos)
+  const totalDescontoServicos = descontoMeta?.total_descontado || 0;
+  const totalDescontoProdutos = pendingSales.filter(s => s.selected && s.desconto_aplicado).reduce((sum, s) => {
+    let dMeta = s.desconto_aplicado;
+    if (typeof dMeta === 'string') {
+      try { dMeta = JSON.parse(dMeta); } catch(e) {}
+    }
+    return sum + (dMeta?.total_descontado || 0);
+  }, 0);
+  const totalDescontoGeral = totalDescontoServicos + totalDescontoProdutos;
+
+  const valorServicosOriginal = saldoAgendamento + totalDescontoServicos;
+  const valorProdutosOriginal = totalSalesSelected + totalDescontoProdutos;
+
+  const valorOriginalAgendamento = temDescontoAplicado ? (ag.valor_total + totalDescontoServicos) : ag.valor_total;
 
   const getConsolidadoPorForma = () => {
     const totalPorForma = {};
@@ -248,15 +269,48 @@ export default function Pagamento() {
       } catch (e) {}
     }
 
-    if (!vinculados || ((!vinculados.services || vinculados.services.length === 0) && (!vinculados.products || vinculados.products.length === 0))) {
+    const hasLinkedServices = Array.isArray(vinculados?.services) && vinculados.services.length > 0;
+    const hasLinkedProducts = Array.isArray(vinculados?.products) && vinculados.products.length > 0;
+
+    const itensAgendamento = Array.isArray(ag.itens) ? ag.itens : [];
+    
+    const selectedProducts = [];
+    pendingSales.filter(s => s.selected).forEach(s => {
+      if (Array.isArray(s.itens) && s.itens.length > 0) {
+        selectedProducts.push(...s.itens);
+      } else if (s.produto_id) {
+        selectedProducts.push({ produto_id: s.produto_id });
+      }
+    });
+
+    // Check general discount (no restrictions at all)
+    if (!hasLinkedServices && !hasLinkedProducts) {
       return true;
     }
 
-    const itensAgendamento = Array.isArray(ag.itens) ? ag.itens : [];
-    return itensAgendamento.some(item => vinculados.services?.includes(item.servico_id));
+    // 1. Desconto vinculado apenas a Produtos
+    if (hasLinkedProducts && !hasLinkedServices) {
+      if (selectedProducts.length === 0) return false;
+      return selectedProducts.some(p => vinculados.products.includes(p.produto_id));
+    }
+
+    // 2. Desconto vinculado a Serviços e Produtos
+    if (hasLinkedServices && hasLinkedProducts) {
+      if (selectedProducts.length === 0) return false;
+      const matchService = itensAgendamento.some(s => vinculados.services.includes(s.servico_id));
+      const matchProduct = selectedProducts.some(p => vinculados.products.includes(p.produto_id));
+      return matchService && matchProduct;
+    }
+
+    // 3. Desconto vinculado apenas a Serviços
+    if (hasLinkedServices && !hasLinkedProducts) {
+      return itensAgendamento.some(s => vinculados.services.includes(s.servico_id));
+    }
+
+    return false;
   };
 
-  const applyDiscountOnBackend = async (dId, authData = null) => {
+  const applyDiscountOnBackend = async (dId, authData = null, customVendasIds = null) => {
     setLoadingDesconto(true);
     try {
       if (authData) {
@@ -277,7 +331,14 @@ export default function Pagamento() {
         });
       }
 
-      await http.post(`/agendamentos/${id}/aplicar-desconto`, { descontoId: dId });
+      const targetVendasIds = customVendasIds !== null 
+        ? customVendasIds 
+        : pendingSales.filter(s => s.selected).map(s => s.id);
+
+      await http.post(`/agendamentos/${id}/aplicar-desconto`, { 
+        descontoId: dId, 
+        vendasDiretasIds: targetVendasIds 
+      });
       toast.success(dId ? "Desconto aplicado com sucesso!" : "Desconto removido com sucesso!");
       setDescontoId("");
       setAutorizarDialogOpen(false);
@@ -295,7 +356,7 @@ export default function Pagamento() {
     if (!desc) return;
 
     if (!isDescontoAplicavel(desc)) {
-      toast.error("Este desconto não é válido para os serviços deste agendamento.");
+      toast.error("Este desconto não é válido para os serviços do agendamento ou produtos selecionados.");
       return;
     }
 
@@ -893,8 +954,25 @@ export default function Pagamento() {
                               <span>{item.produto_nome}</span>
                             </div>
                             <div className="flex items-center gap-4 text-right">
-                              <span className="text-zinc-400 dark:text-zinc-500 font-normal">{item.quantidade}x {fmtBRL(item.preco_unitario)}</span>
-                              <span className="text-zinc-700 dark:text-zinc-200 font-semibold min-w-[70px]">{fmtBRL(item.subtotal || (item.quantidade * item.preco_unitario))}</span>
+                              <span className="text-zinc-400 dark:text-zinc-500 font-normal">
+                                {item.preco_unitario_original !== undefined && item.preco_unitario_original !== item.preco_unitario ? (
+                                  <>
+                                    {item.quantidade}x <span className="line-through">{fmtBRL(item.preco_unitario_original)}</span> <span className="text-zinc-600 dark:text-zinc-300 font-semibold">{fmtBRL(item.preco_unitario)}</span>
+                                  </>
+                                ) : (
+                                  `${item.quantidade}x ${fmtBRL(item.preco_unitario)}`
+                                )}
+                              </span>
+                              <div className="flex flex-col items-end">
+                                <span className="text-zinc-700 dark:text-zinc-200 font-semibold min-w-[70px]">
+                                  {fmtBRL(item.subtotal || (item.quantidade * item.preco_unitario))}
+                                </span>
+                                {item.preco_unitario_original !== undefined && item.preco_unitario_original !== item.preco_unitario && (
+                                  <span className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold">
+                                    - {fmtBRL((item.preco_unitario_original - item.preco_unitario) * item.quantidade)}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -939,10 +1017,18 @@ export default function Pagamento() {
                       {descontoMeta?.descricao && (
                         <div className="text-xs text-emerald-700/70 dark:text-emerald-400/70 mt-0.5">{descontoMeta.descricao}</div>
                       )}
-                      <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
-                        Total descontado: <strong>{fmtBRL(descontoMeta?.total_descontado)}</strong>
+                      <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5 space-y-1">
+                        <div>Total descontado: <strong>{fmtBRL(totalDescontoGeral)}</strong></div>
+                        {totalDescontoServicos > 0 && (
+                          <div>• Nos serviços: <strong>{fmtBRL(totalDescontoServicos)}</strong></div>
+                        )}
+                        {totalDescontoProdutos > 0 && (
+                          <div>• Nos produtos: <strong>{fmtBRL(totalDescontoProdutos)}</strong></div>
+                        )}
                         {descontoMeta?.incide_comissao === false && (
-                          <span className="ml-2 text-[10px] bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full">Não incide na comissão</span>
+                          <div className="pt-0.5">
+                            <span className="text-[10px] bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded-full">Não incide na comissão</span>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -992,27 +1078,37 @@ export default function Pagamento() {
                   </table>
                 </div>
 
-                {/* Trocar por outro desconto - só sem pagamentos */}
-                {ag.pagamentos?.length === 0 && (
-                  <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                    <Label className="text-xs text-zinc-500 dark:text-zinc-400">Substituir por outro desconto:</Label>
-                    <div className="flex gap-2 mt-1">
-                      <Select onValueChange={handleSelectDesconto} disabled={loadingDesconto}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Selecione outro desconto..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {descontos.filter(d => isDescontoAplicavel(d) && d.id !== descontoMeta?.desconto_id).map(d => (
-                            <SelectItem key={d.id} value={d.id}>
-                              {d.codigo} - {d.descricao || ""} ({d.tipo === 'porcentagem' ? `${d.valor}%` : fmtBRL(d.valor)}) {d.requer_autorizacao ? "🔒" : ""}
-                            </SelectItem>
+                {/* Detalhamento por produto */}
+                {pendingSales.filter(s => s.selected).some(s => s.desconto_aplicado) && (
+                  <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden mt-3">
+                    <table className="w-full text-sm">
+                      <thead className="bg-zinc-50 dark:bg-zinc-900 text-xs uppercase text-zinc-500 dark:text-zinc-400">
+                        <tr>
+                          <th className="px-4 py-2 text-left">Produto</th>
+                          <th className="px-4 py-2 text-right">Original</th>
+                          <th className="px-4 py-2 text-right">Desconto</th>
+                          <th className="px-4 py-2 text-right">Final</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                        {pendingSales
+                          .filter(s => s.selected && s.desconto_aplicado)
+                          .flatMap(s => s.itens || [])
+                          .filter(item => item.preco_unitario_original !== undefined && item.preco_unitario_original !== item.preco_unitario)
+                          .map((item, i) => (
+                            <tr key={i} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30">
+                              <td className="px-4 py-2 font-medium text-zinc-800 dark:text-zinc-200">{item.produto_nome || "Produto"}</td>
+                              <td className="px-4 py-2 text-right text-zinc-500 dark:text-zinc-400">
+                                {fmtBRL(item.preco_unitario_original * item.quantidade)}
+                              </td>
+                              <td className="px-4 py-2 text-right text-rose-600 dark:text-rose-400 font-semibold">
+                                {`- ${fmtBRL((item.preco_unitario_original - item.preco_unitario) * item.quantidade)}`}
+                              </td>
+                              <td className="px-4 py-2 text-right font-bold text-zinc-900 dark:text-zinc-100">{fmtBRL(item.subtotal)}</td>
+                            </tr>
                           ))}
-                          {descontos.filter(d => isDescontoAplicavel(d) && d.id !== descontoMeta?.desconto_id).length === 0 && (
-                            <SelectItem disabled value="none">Nenhum outro desconto disponível</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
@@ -1199,20 +1295,20 @@ export default function Pagamento() {
                 <div className="bg-zinc-50/50 dark:bg-zinc-950/30 border border-zinc-150 dark:border-zinc-800/80 rounded-xl p-3.5 space-y-2 text-xs">
                   <div className="flex justify-between items-center text-zinc-555 dark:text-zinc-400">
                     <span>Serviços Realizados</span>
-                    <span className="font-mono font-medium">{fmtBRL(saldoAgendamento)}</span>
+                    <span className="font-mono font-medium">{fmtBRL(valorServicosOriginal)}</span>
                   </div>
                   
-                  {totalSalesSelected > 0 && (
+                  {valorProdutosOriginal > 0 && (
                     <div className="flex justify-between items-center text-zinc-555 dark:text-zinc-400">
                       <span>Vendas Diretas Selecionadas</span>
-                      <span className="font-mono font-bold text-[#84A59D]">{fmtBRL(totalSalesSelected)}</span>
+                      <span className="font-mono font-medium">{fmtBRL(valorProdutosOriginal)}</span>
                     </div>
                   )}
-
-                  {temDescontoAplicado && (
+                  
+                  {totalDescontoGeral > 0 && (
                     <div className="flex justify-between items-center text-rose-500 font-medium">
                       <span>Desconto Aplicado</span>
-                      <span className="font-mono font-bold">- {fmtBRL(descontoMeta?.total_descontado)}</span>
+                      <span className="font-mono font-bold">- {fmtBRL(totalDescontoGeral)}</span>
                     </div>
                   )}
                 </div>
