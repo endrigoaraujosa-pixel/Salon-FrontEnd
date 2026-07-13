@@ -231,7 +231,7 @@
 }
 
 .event-badge.status-pending {
-  background-color: #0EA5E9;
+  background-color: rgb(224, 242, 254);
   /* Blue (Sky 500 / Timeline Stripe) */
   color: rgb(12 74 110);
 }
