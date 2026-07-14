@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import http from "../api";
 import { PageHeader, EmptyState } from "../components/Page";
+import { cn } from "@/lib/utils";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -18,9 +19,10 @@ import {
   PaginationContent,
   PaginationItem,
 } from "../components/ui/pagination";
+import { formatAgendaDateTime } from "../lib/date";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const fmtDT = (s) => new Date(s).toLocaleString("pt-BR");
+const fmtDT = (s) => formatAgendaDateTime(s);
 
 const STATUS_COLORS = {
   pendente: "bg-amber-100 text-amber-700",
@@ -77,8 +79,21 @@ export default function VendasDiretas() {
   const [novaVendaItens, setNovaVendaItens] = useState([]);
   const [fromAgenda, setFromAgenda] = useState(false);
   const dialogOpenedOnce = useRef(false); // guard to skip reset-on-close at initial mount
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 768 : false);
+  const quantityInputRef = useRef(null);
+  const handleCreateNovaVendaRef = useRef();
   const nav = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Pagination states
   const [page, setPage] = useState(1);
@@ -170,6 +185,7 @@ export default function VendasDiretas() {
       setNovaVendaItens([]);
       setSelectedAddCategory("all");
       setFromAgenda(false);
+      setCurrentStep(1);
       setForm({ produto_id: "", quantidade: 1, colaborador_id: "", cliente_id: "", data_venda: getTodayStr() });
       // Se veio da agenda e fechou o modal sem salvar, volta para a agenda
       if (wasFromAgenda) {
@@ -178,6 +194,36 @@ export default function VendasDiretas() {
     } else {
       dialogOpenedOnce.current = true;
     }
+  }, [open]);
+
+  // Autofocus input de quantidade quando um produto é selecionado
+  useEffect(() => {
+    if (form.produto_id && quantityInputRef.current) {
+      quantityInputRef.current.focus();
+      quantityInputRef.current.select();
+    }
+  }, [form.produto_id]);
+
+  // Atalhos de teclado quando o modal de Nova Venda está aberto
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "F2") {
+        e.preventDefault();
+        const btn = document.querySelector('[data-testid="venda-produto"]');
+        if (btn) {
+          btn.focus();
+          btn.click();
+        }
+      } else if (e.key === "F4") {
+        e.preventDefault();
+        if (handleCreateNovaVendaRef.current) {
+          handleCreateNovaVendaRef.current();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open]);
 
   const produto = produtos.find((p) => p.id === form.produto_id);
@@ -241,6 +287,8 @@ export default function VendasDiretas() {
     }
   };
 
+  handleCreateNovaVendaRef.current = handleCreateNovaVenda;
+
   const handleAddNovaVendaItem = () => {
     if (!form.produto_id) {
       toast.error("Selecione um produto.");
@@ -296,8 +344,13 @@ export default function VendasDiretas() {
         }
       ]);
     }
-    setForm({ ...form, produto_id: "" });
+    setForm({ ...form, produto_id: "", quantidade: 1 });
     toast.success(`"${prod.nome}" adicionado!`);
+
+    setTimeout(() => {
+      const btn = document.querySelector('[data-testid="venda-produto"]');
+      if (btn) btn.focus();
+    }, 100);
   };
 
   const handleIncrementNovaVendaQtd = (idx, delta) => {
@@ -325,6 +378,32 @@ export default function VendasDiretas() {
     }
     const copia = [...novaVendaItens];
     copia[idx].quantidade = novaQtd;
+    setNovaVendaItens(copia);
+  };
+
+  const handleSetNovaVendaQtd = (idx, qty) => {
+    if (qty <= 0) {
+      return;
+    }
+    const item = novaVendaItens[idx];
+    const prod = produtos.find(p => p.id === item.produto_id);
+    if (prod) {
+      const qtyPerUnit = Number(prod.quantidade_por_unidade || 0);
+      const maxAllowed = qtyPerUnit > 0 ? (prod.quantidade_estoque / qtyPerUnit) : prod.quantidade_estoque;
+      if (qty > maxAllowed) {
+        if (configSistema?.permitir_estoque_negativo) {
+          toast.warning(`Estoque insuficiente. A operação será concluída e o produto "${prod.nome}" ficará com saldo negativo.`);
+        } else {
+          const formattedMax = qtyPerUnit > 0 
+            ? `${Number(maxAllowed.toFixed(2))} ${prod.unidade_medida || 'un'} (${Number(prod.quantidade_estoque.toFixed(3))} ${prod.unidade_medida_insumo || 'un'})`
+            : `${Number(prod.quantidade_estoque.toFixed(3))} ${prod.unidade_medida || 'un'}`;
+          toast.error(`Estoque insuficiente para "${prod.nome}". Disponível: ${formattedMax}`);
+          return;
+        }
+      }
+    }
+    const copia = [...novaVendaItens];
+    copia[idx].quantidade = qty;
     setNovaVendaItens(copia);
   };
 
@@ -498,258 +577,498 @@ export default function VendasDiretas() {
               <Plus className="w-4 h-4 mr-1" /> Nova venda
             </Button>
           )}
-          <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-5xl w-full p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl border-0" style={{ maxHeight: '85vh' }}>
+          <DialogContent className="w-[95vw] max-w-[95vw] md:max-w-6xl w-full p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl border-0 md:h-[85vh] md:max-h-[90vh]" style={{ maxHeight: '90vh' }}>
             {/* fixed header */}
             <div className="px-6 sm:px-8 pt-6 pb-5 border-b border-zinc-100 dark:border-zinc-800 shrink-0 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-md">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-3 text-lg font-bold text-zinc-800 dark:text-zinc-100">
-                  <div className="p-2 bg-[#EAF0EE] dark:bg-emerald-900/30 text-[#3A4F4A] dark:text-emerald-400 rounded-xl shadow-sm">
+                  <div className="p-2 bg-[#EAF0EE] dark:bg-emerald-900/30 text-[#3A4F4A] dark:text-emerald-450 rounded-xl shadow-sm">
                     <Plus className="w-6 h-6" />
                   </div>
                   <div>
-                    <span className="block font-display text-xl font-extrabold text-zinc-950 dark:text-zinc-50">Nova Venda Direta</span>
+                    <span className="block font-display text-xl font-extrabold text-zinc-950 dark:text-zinc-50 font-sans">Nova Venda Direta</span>
                     <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">Preencha os dados e adicione os itens ao carrinho</span>
                   </div>
                 </DialogTitle>
               </DialogHeader>
             </div>
 
-            {/* Scrollable body */}
-            <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-6 space-y-6 bg-zinc-50/30 dark:bg-zinc-950/50">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
-                {/* 1. Category */}
-                <div className="space-y-2">
-                  <Label className="text-sm text-zinc-600 dark:text-zinc-300 font-bold block tracking-wide">1. Categoria do Produto</Label>
-                  <SearchableSelect
-                    placeholder="Todas as categorias"
-                    searchPlaceholder="Pesquisar categoria..."
-                    options={[
-                      { value: "all", label: "Todas as categorias" },
-                      { value: "none", label: "Sem categoria" },
-                      ...categorias
-                        .filter(c => c.tipo && (c.tipo.toLowerCase() === "produto" || c.tipo.toLowerCase() === "ambos"))
-                        .map(c => ({
+            {/* Stepper indicator (Mobile only) */}
+            {isMobile && (
+              <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex justify-between items-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 select-none shrink-0">
+                {[
+                  { step: 1, label: "Dados" },
+                  { step: 2, label: "Produtos" },
+                  { step: 3, label: "Carrinho" },
+                  { step: 4, label: "Resumo" }
+                ].map((s) => (
+                  <div key={s.step} className="flex items-center gap-1.5">
+                    <span className={cn(
+                      "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black transition-all",
+                      currentStep === s.step
+                        ? "bg-[#3A4F4A] text-white dark:bg-emerald-500 dark:text-zinc-950 scale-110"
+                        : currentStep > s.step
+                          ? "bg-[#EAF0EE] text-[#3A4F4A] dark:bg-emerald-900/30 dark:text-emerald-400"
+                          : "bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-700"
+                    )}>
+                      {s.step}
+                    </span>
+                    <span className={cn(
+                      "hidden sm:inline font-sans",
+                      currentStep === s.step ? "text-[#3A4F4A] dark:text-emerald-400 font-bold" : ""
+                    )}>
+                      {s.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Split layout: Two columns on desktop, active stepper panel on mobile */}
+            <div className="flex-1 overflow-y-auto md:overflow-hidden md:flex md:flex-row bg-zinc-50/30 dark:bg-zinc-950/50">
+              
+              {/* LEFT COLUMN (Form + selection) on Desktop / STEP 1 & 2 on Mobile */}
+              <div className={cn(
+                "md:w-[55%] md:flex md:flex-col md:gap-4 md:overflow-y-auto md:p-6 md:border-r md:border-zinc-200 md:dark:border-zinc-800 p-4 space-y-4",
+                isMobile ? ((currentStep === 1 || currentStep === 2) ? "block" : "hidden") : "flex"
+              )}>
+                
+                {/* 1. Dados gerais (Always block on desktop, only step 1 on mobile) */}
+                <div className={cn(
+                  "bg-white dark:bg-zinc-900 p-4 border border-zinc-200 dark:border-zinc-800/80 rounded-xl shadow-xs space-y-3",
+                  isMobile ? (currentStep === 1 ? "block" : "hidden") : "block"
+                )}>
+                  <div className="text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">
+                    Dados da Venda
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* Responsável */}
+                    <div className="space-y-1">
+                      <Label className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">Responsável *</Label>
+                      <SearchableSelect
+                        placeholder="Profissional..."
+                        searchPlaceholder="Pesquisar profissional..."
+                        options={colaboradores.filter(c => c.ativo).map((c) => ({
                           value: c.id,
                           label: c.nome
-                        }))
-                    ]}
-                    value={selectedAddCategory}
-                    onValueChange={(val) => { setSelectedAddCategory(val); setForm({ ...form, produto_id: "" }); }}
-                  />
-                </div>
-
-                {/* 2. Product */}
-                <div className="space-y-2">
-                  <Label className="text-sm text-zinc-600 dark:text-zinc-300 font-bold block tracking-wide">2. Selecionar Produto</Label>
-                  <SearchableSelect
-                    placeholder="Selecione o produto..."
-                    searchPlaceholder="Pesquisar produto pelo nome..."
-                    triggerTestId="venda-produto"
-                    options={produtos
-                      .filter(p => {
-                        if (p.uso_exclusivo_servicos) return false;
-                        const matchesCategory =
-                          selectedAddCategory === "all" ||
-                          (selectedAddCategory === "none" && !p.categoria_id) ||
-                          p.categoria_id === selectedAddCategory;
-                        return matchesCategory;
-                      })
-                      .map((p) => {
-                        const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
-                        const qtyStr = qtyPerUnit > 0 
-                          ? `${Number((p.quantidade_estoque / qtyPerUnit).toFixed(2))} ${p.unidade_medida || 'un'} (${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida_insumo || 'un'})`
-                          : `${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida || 'un'}`;
-                        return {
-                          value: p.id,
-                          label: `${p.nome} — ${fmtBRL(p.preco_venda)} (Estoque: ${qtyStr})`
-                        };
-                      })
-                    }
-                    value={form.produto_id}
-                    onValueChange={(val) => setForm({ ...form, produto_id: val })}
-                  />
-                </div>
-              </div>
-
-              {/* Qtd and Add button */}
-              <div className="flex flex-col sm:flex-row items-end gap-4 bg-white dark:bg-zinc-900 p-5 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
-                <div className="w-full sm:w-1/3 space-y-2">
-                  <Label className="text-sm text-zinc-600 dark:text-zinc-300 font-bold block tracking-wide">Quantidade *</Label>
-                  <Input
-                    data-testid="venda-qtd"
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={form.quantidade}
-                    onChange={(e) => setForm({ ...form, quantidade: e.target.value })}
-                    className="h-11 border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 text-base font-semibold focus:ring-2 focus:ring-[#84A59D]"
-                  />
-                </div>
-                <div className="w-full sm:flex-1">
-                  <Button
-                    type="button"
-                    onClick={handleAddNovaVendaItem}
-                    className="w-full bg-[#84A59D] hover:bg-[#6F9189] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white shadow-md h-11 font-bold text-sm tracking-wide transition-all hover:scale-[1.01]"
-                  >
-                    <Plus className="w-5 h-5 mr-2" /> Adicionar Produto
-                  </Button>
-                </div>
-              </div>
-
-              {/* Vendedor & Cliente select */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 bg-white dark:bg-zinc-900 p-5 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
-                <div className="space-y-2">
-                  <Label className="text-sm text-zinc-600 dark:text-zinc-300 font-bold block tracking-wide">Responsável pela Venda *</Label>
-                  <SearchableSelect
-                    placeholder="Selecione o profissional..."
-                    searchPlaceholder="Pesquisar profissional pelo nome..."
-                    options={colaboradores.filter(c => c.ativo).map((c) => ({
-                      value: c.id,
-                      label: c.nome
-                    }))}
-                    value={form.colaborador_id || ""}
-                    onValueChange={(v) => setForm({ ...form, colaborador_id: v })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm text-zinc-600 dark:text-zinc-300 font-bold block tracking-wide">
-                    Cliente {fromAgenda ? "*" : "(opcional)"}
-                  </Label>
-                  {fromAgenda ? (
-                    <div className="flex items-center gap-2 h-11 px-4 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg">
-                      <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 truncate">
-                        {clientes.find(c => c.id === form.cliente_id)?.nome || "Cliente vinculado"}
-                      </span>
-                      <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full shrink-0">Da Agenda</span>
+                        }))}
+                        value={form.colaborador_id || ""}
+                        onValueChange={(v) => setForm({ ...form, colaborador_id: v })}
+                      />
                     </div>
-                  ) : (
-                    <SearchableSelect
-                      placeholder="Selecione o cliente..."
-                      searchPlaceholder="Pesquisar cliente pelo nome..."
-                      options={clientes.map((c) => ({
-                        value: c.id,
-                        label: c.telefone ? `${c.nome} — ${c.telefone}` : c.nome
-                      }))}
-                      value={form.cliente_id || ""}
-                      onValueChange={(v) => setForm({ ...form, cliente_id: v })}
-                    />
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm text-zinc-600 dark:text-zinc-300 font-bold block tracking-wide">Data da Venda *</Label>
-                  <Input
-                    type="date"
-                    max={getTodayStr()}
-                    value={form.data_venda || ""}
-                    onChange={(e) => setForm({ ...form, data_venda: e.target.value })}
-                    className="h-11 border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 text-sm font-semibold focus:ring-2 focus:ring-[#84A59D]"
-                  />
-                </div>
-              </div>
 
-              {/* Temporary Cart items list */}
-              {novaVendaItens.length > 0 ? (
-                <div className="space-y-4">
-                  <h3 className="text-sm font-extrabold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block pl-1 border-l-4 border-[#84A59D] dark:border-emerald-500">
-                    Itens no Carrinho
-                  </h3>
-                  <div className="space-y-1.5">
-                    {novaVendaItens.map((item, idx) => (
-                      <div key={idx} className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 transition-all duration-200 hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-sm">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <p className="font-bold text-sm text-zinc-900 dark:text-zinc-100 leading-tight truncate">{item.produto_nome}</p>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 font-semibold">
-                              {fmtBRL(item.preco_unitario)} / un
-                            </p>
+                    {/* Cliente */}
+                    <div className="space-y-1">
+                      <Label className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">
+                        Cliente {fromAgenda ? "*" : "(opcional)"}
+                      </Label>
+                      {fromAgenda ? (
+                        <div className="flex items-center gap-2 h-10 px-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md">
+                          <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-100 truncate">
+                            {clientes.find(c => c.id === form.cliente_id)?.nome || "Vinculado"}
+                          </span>
+                          <span className="text-[8px] font-black uppercase text-emerald-600 dark:text-emerald-450 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded shrink-0">Agenda</span>
+                        </div>
+                      ) : (
+                        <SearchableSelect
+                          placeholder="Consumidor Final"
+                          searchPlaceholder="Pesquisar cliente..."
+                          options={clientes.map((c) => ({
+                            value: c.id,
+                            label: c.telefone ? `${c.nome} — ${c.telefone}` : c.nome
+                          }))}
+                          value={form.cliente_id || ""}
+                          onValueChange={(v) => setForm({ ...form, cliente_id: v })}
+                        />
+                      )}
+                    </div>
+
+                    {/* Data */}
+                    <div className="space-y-1">
+                      <Label className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">Data da Venda *</Label>
+                      <Input
+                        type="date"
+                        max={getTodayStr()}
+                        value={form.data_venda || ""}
+                        onChange={(e) => setForm({ ...form, data_venda: e.target.value })}
+                        className="h-10 border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-xs font-semibold focus:ring-1 focus:ring-[#84A59D]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Inclusão de Produtos (Always block on desktop, only step 2 on mobile) */}
+                <div className={cn(
+                  "bg-white dark:bg-zinc-900 p-4 border border-zinc-200 dark:border-zinc-800/80 rounded-xl shadow-xs space-y-3",
+                  isMobile ? (currentStep === 2 ? "block" : "hidden") : "block"
+                )}>
+                  <div className="text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">
+                    Adicionar Itens
+                  </div>
+
+                  <div className="grid grid-cols-12 gap-3">
+                    {/* Categoria */}
+                    <div className="col-span-12 md:col-span-4 space-y-1">
+                      <Label className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">Categoria (Filtro)</Label>
+                      <SearchableSelect
+                        placeholder="Todas"
+                        searchPlaceholder="Pesquisar..."
+                        options={[
+                          { value: "all", label: "Todas" },
+                          { value: "none", label: "Sem categoria" },
+                          ...categorias
+                            .filter(c => c.tipo && (c.tipo.toLowerCase() === "produto" || c.tipo.toLowerCase() === "ambos"))
+                            .map(c => ({
+                              value: c.id,
+                              label: c.nome
+                            }))
+                        ]}
+                        value={selectedAddCategory}
+                        onValueChange={(val) => { setSelectedAddCategory(val); setForm({ ...form, produto_id: "" }); }}
+                      />
+                    </div>
+
+                    {/* Produto */}
+                    <div className="col-span-12 md:col-span-8 space-y-1">
+                      <Label className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">Pesquisar Produto (F2) *</Label>
+                      <SearchableSelect
+                        placeholder="Selecione o produto..."
+                        searchPlaceholder="Pesquisar produto pelo nome..."
+                        triggerTestId="venda-produto"
+                        options={produtos
+                          .filter(p => {
+                            if (p.uso_exclusivo_servicos) return false;
+                            const matchesCategory =
+                              selectedAddCategory === "all" ||
+                              (selectedAddCategory === "none" && !p.categoria_id) ||
+                              p.categoria_id === selectedAddCategory;
+                            return matchesCategory;
+                          })
+                          .map((p) => {
+                            const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
+                            const qtyStr = qtyPerUnit > 0 
+                              ? `${Number((p.quantidade_estoque / qtyPerUnit).toFixed(2))} ${p.unidade_medida || 'un'} (${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida_insumo || 'un'})`
+                              : `${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida || 'un'}`;
+                            return {
+                              value: p.id,
+                              label: `${p.nome} — ${fmtBRL(p.preco_venda)} (Estoque: ${qtyStr})`
+                            };
+                          })
+                        }
+                        value={form.produto_id}
+                        onValueChange={(val) => setForm({ ...form, produto_id: val })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-12 gap-3">
+                    {/* Qtd */}
+                    <div className="col-span-5 md:col-span-4 space-y-1">
+                      <Label className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">Quantidade *</Label>
+                      <Input
+                        ref={quantityInputRef}
+                        data-testid="venda-qtd"
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value={form.quantidade}
+                        onChange={(e) => setForm({ ...form, quantidade: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddNovaVendaItem();
+                          }
+                        }}
+                        className="h-10 border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-xs font-semibold focus:ring-1 focus:ring-[#84A59D]"
+                      />
+                    </div>
+
+                    {/* Botão */}
+                    <div className="col-span-7 md:col-span-8 flex items-end">
+                      <Button
+                        type="button"
+                        onClick={handleAddNovaVendaItem}
+                        className="w-full bg-[#84A59D] hover:bg-[#6F9189] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white shadow-sm h-10 font-bold text-xs tracking-wide transition-all hover:scale-[1.01]"
+                      >
+                        <Plus className="w-4 h-4 mr-1.5" /> Adicionar (Enter)
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Selected Product Info Card (Always block on desktop, only step 2 on mobile) */}
+                <div className={cn(
+                  isMobile ? (currentStep === 2 ? "block" : "hidden") : "block"
+                )}>
+                  {produto && (
+                    <div className="bg-[#EAF0EE]/30 dark:bg-emerald-950/10 p-4 border border-zinc-200/80 dark:border-emerald-800/20 rounded-xl space-y-2.5">
+                      <div className="text-xs font-bold text-[#3A4F4A] dark:text-emerald-500 uppercase tracking-widest block font-sans">
+                        Informações do Produto
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        {/* Preço */}
+                        <div className="flex items-center gap-1.5">
+                          <div className="p-1 bg-[#EAF0EE] dark:bg-emerald-950/40 text-[#3A4F4A] dark:text-emerald-450 rounded-md shrink-0">
+                            <span className="text-[10px] font-bold font-mono">R$</span>
                           </div>
+                          <div className="min-w-0">
+                            <span className="text-[9px] text-zinc-400 uppercase tracking-wider block font-semibold">Preço</span>
+                            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 font-mono truncate block">
+                              {fmtBRL(produto.preco_venda)}
+                            </span>
+                          </div>
+                        </div>
 
-                          <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 pt-2.5 sm:pt-0 border-zinc-100 dark:border-zinc-800">
-                            {/* Incr / Decr */}
-                            <div className="flex items-center gap-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-0.5 rounded-lg shadow-xs">
-                              <button
-                                type="button"
-                                onClick={() => handleIncrementNovaVendaQtd(idx, -1)}
-                                className="w-7 h-7 rounded-md bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-white transition-colors"
-                                title="Diminuir"
-                              >
-                                <Minus className="w-3.5 h-3.5" />
-                              </button>
-                              <span className="w-10 text-center text-xs font-black text-zinc-800 dark:text-zinc-200">
-                                {item.quantidade}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleIncrementNovaVendaQtd(idx, 1)}
-                                className="w-7 h-7 rounded-md bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-white transition-colors"
-                                title="Aumentar"
-                              >
-                                <Plus className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
+                        {/* Estoque */}
+                        <div className="flex items-center gap-1.5">
+                          <div className="p-1 bg-[#EAF0EE] dark:bg-emerald-950/40 text-[#3A4F4A] dark:text-emerald-450 rounded-md shrink-0">
+                            <ShoppingCart className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-[9px] text-zinc-400 uppercase tracking-wider block font-semibold">Estoque</span>
+                            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 font-mono truncate block">
+                              {(() => {
+                                const qtyPerUnit = Number(produto.quantidade_por_unidade || 0);
+                                return qtyPerUnit > 0
+                                  ? `${Number((produto.quantidade_estoque / qtyPerUnit).toFixed(2))} ${produto.unidade_medida || 'un'}`
+                                  : `${Number(produto.quantidade_estoque.toFixed(2))} ${produto.unidade_medida || 'un'}`;
+                              })()}
+                            </span>
+                          </div>
+                        </div>
 
-                            {/* Subtotal */}
-                            <div className="text-right min-w-[80px]">
-                              <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-widest">Subtotal</div>
-                              <div className="font-bold text-sm text-[#3A4F4A] dark:text-emerald-400 font-mono leading-tight mt-0.5">
-                                {fmtBRL(item.preco_unitario * item.quantidade)}
-                              </div>
-                            </div>
-
-                            {/* Remove */}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveNovaVendaItem(idx)}
-                              className="p-1.5 rounded-lg text-rose-500 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-900/50 dark:hover:text-rose-300 transition-colors shrink-0"
-                              title="Remover produto"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                        {/* Comissão */}
+                        <div className="flex items-center gap-1.5">
+                          <div className="p-1 bg-[#EAF0EE] dark:bg-emerald-950/40 text-[#3A4F4A] dark:text-emerald-450 rounded-md shrink-0">
+                            <span className="text-[10px] font-bold font-mono">%</span>
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-[9px] text-zinc-400 uppercase tracking-wider block font-semibold">Comissão</span>
+                            <span className="text-xs font-bold text-zinc-855 dark:text-zinc-255 truncate block">
+                              {produto.comissao > 0 ? `${Number(produto.comissao)}%` : "N/A"}
+                            </span>
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl p-10 flex flex-col items-center justify-center text-center bg-white dark:bg-zinc-900/50 shadow-sm">
-                  <div className="p-4 bg-[#EAF0EE] dark:bg-emerald-900/20 text-[#3A4F4A] dark:text-emerald-500 rounded-2xl mb-4">
-                    <ShoppingCart className="w-8 h-8" />
+              </div>
+
+              {/* RIGHT COLUMN (Cart & Financial Summary) on Desktop / STEP 3 & 4 on Mobile */}
+              <div className={cn(
+                "md:w-[45%] md:flex md:flex-col md:overflow-hidden md:bg-zinc-50/50 md:dark:bg-zinc-900/30",
+                isMobile ? ((currentStep === 3 || currentStep === 4) ? "block" : "hidden") : "flex"
+              )}>
+                {/* Header or Cart Title (Desktop only) */}
+                {!isMobile && (
+                  <div className="flex px-4 pt-4 justify-between items-center text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider select-none shrink-0">
+                    <span>Itens no Carrinho</span>
+                    <span className="bg-[#EAF0EE] dark:bg-zinc-800 text-[#3A4F4A] dark:text-zinc-300 px-2 py-0.5 rounded font-mono text-[10px]">
+                      {novaVendaItens.length} produto(s)
+                    </span>
                   </div>
-                  <h4 className="font-display font-extrabold text-zinc-800 dark:text-zinc-200 text-lg">O carrinho está vazio</h4>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2 max-w-sm leading-relaxed">Selecione uma categoria, um produto e informe a quantidade acima para começar a adicionar itens.</p>
+                )}
+
+                {/* Cart list (Always visible on desktop, only Step 3 on mobile) */}
+                <div className={cn(
+                  "md:flex-1 md:overflow-y-auto md:p-4 p-4 space-y-4",
+                  isMobile ? (currentStep === 3 ? "block" : "hidden") : "block"
+                )}>
+                  {novaVendaItens.length > 0 ? (
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-xs">
+                      <table className="w-full text-xs">
+                        <thead className="bg-zinc-50 dark:bg-zinc-955 text-[10px] uppercase font-bold text-zinc-550 dark:text-zinc-450 border-b border-zinc-200 dark:border-zinc-800">
+                          <tr>
+                            <th className="px-3 py-2 text-left">Produto</th>
+                            <th className="px-2 py-2 text-right">Unit.</th>
+                            <th className="px-2 py-2 text-center w-28">Qtd</th>
+                            <th className="px-2 py-2 text-right">Total</th>
+                            <th className="px-2 py-2"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                          {novaVendaItens.map((item, idx) => (
+                            <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
+                              <td className="px-3 py-2.5 font-bold text-zinc-800 dark:text-zinc-200 max-w-[120px] truncate" title={item.produto_nome}>
+                                {item.produto_nome}
+                              </td>
+                              <td className="px-2 py-2.5 text-right font-mono text-zinc-500 dark:text-zinc-400">
+                                {fmtBRL(item.preco_unitario)}
+                              </td>
+                              <td className="px-2 py-2.5">
+                                <div className="flex items-center gap-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850 p-0.5 rounded-lg w-full max-w-[90px] mx-auto">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleIncrementNovaVendaQtd(idx, -1)}
+                                    className="w-5 h-5 rounded bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-655 dark:text-zinc-355 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                                  >
+                                    <Minus className="w-2.5 h-2.5" />
+                                  </button>
+                                  <input
+                                    type="number"
+                                    min="0.01"
+                                    step="0.01"
+                                    value={item.quantidade}
+                                    onChange={(e) => {
+                                      const val = Number(e.target.value);
+                                      if (!isNaN(val)) {
+                                        handleSetNovaVendaQtd(idx, val);
+                                      }
+                                    }}
+                                    className="w-8 h-5 text-[10px] font-bold text-center border-none bg-transparent focus-visible:ring-0 p-0 text-zinc-900 dark:text-zinc-100 font-mono"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleIncrementNovaVendaQtd(idx, 1)}
+                                    className="w-5 h-5 rounded bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-655 dark:text-zinc-355 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                                  >
+                                    <Plus className="w-2.5 h-2.5" />
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="px-2 py-2.5 text-right font-bold font-mono text-[#3A4F4A] dark:text-emerald-450">
+                                {fmtBRL(item.preco_unitario * item.quantidade)}
+                              </td>
+                              <td className="px-2 py-2.5 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveNovaVendaItem(idx)}
+                                  className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl p-8 flex flex-col items-center justify-center text-center bg-white dark:bg-zinc-900/50 shadow-sm min-h-[220px]">
+                      <div className="p-3 bg-[#EAF0EE] dark:bg-emerald-900/20 text-[#3A4F4A] dark:text-emerald-500 rounded-xl mb-3">
+                        <ShoppingCart className="w-6 h-6" />
+                      </div>
+                      <h4 className="font-bold text-zinc-800 dark:text-zinc-250 text-sm">O carrinho está vazio</h4>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-xs leading-relaxed">Adicione produtos pelo painel de produtos para continuar.</p>
+                    </div>
+                  )}
                 </div>
-              )}
+
+                {/* Sticky Summary & Action Buttons (Always visible on desktop, only Step 4 on mobile) */}
+                <div className={cn(
+                  "md:shrink-0 md:border-t md:border-zinc-200 md:dark:border-zinc-800 md:bg-white md:dark:bg-zinc-900/50 p-4 space-y-4",
+                  isMobile ? (currentStep === 4 ? "block" : "hidden") : "block"
+                )}>
+                  {/* Financial Summary */}
+                  <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 space-y-2 shadow-xs">
+                    <div className="flex justify-between items-center text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                      <span>Itens lançados:</span>
+                      <span className="font-mono text-zinc-850 dark:text-zinc-100 font-black">
+                        {novaVendaItens.length}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                      <span>Subtotal:</span>
+                      <span className="font-mono text-zinc-850 dark:text-zinc-100 font-bold">
+                        {fmtBRL(novaVendaItens.reduce((acc, item) => acc + (item.preco_unitario * item.quantidade), 0))}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                      <span>Desconto:</span>
+                      <span className="font-mono text-zinc-850 dark:text-zinc-100 font-bold">{fmtBRL(0)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                      <span>Acréscimos:</span>
+                      <span className="font-mono text-zinc-850 dark:text-zinc-100 font-bold">{fmtBRL(0)}</span>
+                    </div>
+                    <div className="border-t border-zinc-150 dark:border-zinc-800 pt-2 flex justify-between items-center">
+                      <span className="text-xs font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">Total Geral:</span>
+                      <span className="font-black text-xl text-[#3A4F4A] dark:text-emerald-450 font-mono">
+                        {fmtBRL(novaVendaItens.reduce((acc, item) => acc + (item.preco_unitario * item.quantidade), 0))}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Desktop Action Buttons */}
+                  {!isMobile && (
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-1/3 h-11 border-zinc-255 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold text-xs"
+                        onClick={() => setOpen(false)}
+                      >
+                        Cancelar (Esc)
+                      </Button>
+                      <Button
+                        data-testid="save-venda-btn"
+                        onClick={() => handleCreateNovaVenda()}
+                        disabled={novaVendaItens.length === 0}
+                        className="w-2/3 h-11 bg-[#84A59D] hover:bg-[#6F9189] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-transform hover:scale-[1.01]"
+                      >
+                        <CreditCard className="w-4 h-4 mr-1.5" /> Ir para pagamento (F4)
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
             </div>
 
-            {/* fixed footer */}
-            <div className="px-6 sm:px-8 py-5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-md shrink-0">
-              <div className="flex items-center justify-between bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-6 py-4 mb-5 shadow-sm">
-                <div className="text-sm text-zinc-500 dark:text-zinc-400 font-semibold flex items-center gap-3">
-                  <span className="font-black text-[#3A4F4A] dark:text-zinc-900 text-base bg-[#EAF0EE] dark:bg-emerald-400 px-3.5 py-1.5 rounded-xl shadow-inner">
-                    {novaVendaItens.length}
-                  </span>
-                  <span>item(ns) selecionados</span>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs text-zinc-400 dark:text-zinc-500 font-extrabold uppercase tracking-widest">Total da Venda</div>
-                  <div className="font-black text-3xl text-[#3A4F4A] dark:text-emerald-400 leading-none mt-1">
-                    {fmtBRL(novaVendaItens.reduce((acc, item) => acc + (item.preco_unitario * item.quantidade), 0))}
-                  </div>
-                </div>
+            {/* Mobile Navigation Footer (Visible only on mobile) */}
+            {isMobile && (
+              <div className="px-4 py-3 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-between gap-3 shrink-0">
+                {currentStep > 1 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setCurrentStep(currentStep - 1)}
+                    className="w-1/2 h-11 border-zinc-200 text-zinc-700 dark:text-zinc-300 font-bold text-xs"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setOpen(false)}
+                    className="w-1/2 h-11 border-zinc-200 text-zinc-750 font-bold text-xs"
+                  >
+                    Cancelar
+                  </Button>
+                )}
+
+                {currentStep < 4 ? (
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (currentStep === 1 && !form.colaborador_id) {
+                        toast.error("Selecione o profissional responsável.");
+                        return;
+                      }
+                      if (currentStep === 2 && novaVendaItens.length === 0) {
+                        toast.error("Adicione pelo menos um produto ao carrinho.");
+                        return;
+                      }
+                      setCurrentStep(currentStep + 1);
+                    }}
+                    className="w-1/2 h-11 bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold text-xs"
+                  >
+                    Avançar <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => handleCreateNovaVenda()}
+                    disabled={novaVendaItens.length === 0}
+                    className="w-1/2 h-11 bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold text-xs"
+                  >
+                    <CreditCard className="w-4 h-4 mr-1" /> Pagar (F4)
+                  </Button>
+                )}
               </div>
-              <div className="flex flex-col sm:flex-row gap-3 justify-end">
-                <Button type="button" variant="outline" className="h-12 px-6 border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-bold text-zinc-700 dark:text-zinc-300" onClick={() => setOpen(false)}>Cancelar</Button>
-                <Button
-                  data-testid="save-venda-btn"
-                  onClick={() => handleCreateNovaVenda()}
-                  disabled={novaVendaItens.length === 0}
-                  className="h-12 px-8 bg-[#84A59D] hover:bg-[#6F9189] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white shadow-lg font-bold text-base transition-transform hover:scale-[1.02]"
-                >
-                  <CreditCard className="w-5 h-5 mr-2" /> Criar e ir para pagamento
-                </Button>
-              </div>
-            </div>
+            )}
           </DialogContent>
         </Dialog>
       } />
