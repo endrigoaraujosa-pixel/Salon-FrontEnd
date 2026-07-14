@@ -581,13 +581,13 @@ export default function VendasDiretas() {
             {/* fixed header */}
             <div className="px-6 sm:px-8 pt-6 pb-5 border-b border-zinc-100 dark:border-zinc-800 shrink-0 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-md">
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-3 text-lg font-bold text-zinc-800 dark:text-zinc-100">
+                <DialogTitle className="flex items-center gap-3 text-lg font-bold text-zinc-950 dark:text-zinc-50">
                   <div className="p-2 bg-[#EAF0EE] dark:bg-emerald-900/30 text-[#3A4F4A] dark:text-emerald-450 rounded-xl shadow-sm">
                     <Plus className="w-6 h-6" />
                   </div>
                   <div>
                     <span className="block font-display text-xl font-extrabold text-zinc-950 dark:text-zinc-50 font-sans">Nova Venda Direta</span>
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium mt-0.5">Preencha os dados e adicione os itens ao carrinho</span>
+                    <span className="text-xs text-zinc-705 dark:text-zinc-305 font-semibold mt-0.5">Preencha os dados e adicione os itens ao carrinho</span>
                   </div>
                 </DialogTitle>
               </DialogHeader>
@@ -595,7 +595,7 @@ export default function VendasDiretas() {
 
             {/* Stepper indicator (Mobile only) */}
             {isMobile && (
-              <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex justify-between items-center text-xs font-semibold text-zinc-500 dark:text-zinc-400 select-none shrink-0">
+              <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex justify-between items-center text-xs font-semibold text-zinc-700 dark:text-zinc-300 select-none shrink-0">
                 {[
                   { step: 1, label: "Dados" },
                   { step: 2, label: "Produtos" },
@@ -638,14 +638,14 @@ export default function VendasDiretas() {
                   "bg-white dark:bg-zinc-900 p-4 border border-zinc-200 dark:border-zinc-800/80 rounded-xl shadow-xs space-y-3",
                   isMobile ? (currentStep === 1 ? "block" : "hidden") : "block"
                 )}>
-                  <div className="text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">
+                  <div className="text-xs font-black text-zinc-650 dark:text-zinc-400 uppercase tracking-wider block">
                     Dados da Venda
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {/* Responsável */}
                     <div className="space-y-1">
-                      <Label className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">Responsável *</Label>
+                      <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold">Responsável *</Label>
                       <SearchableSelect
                         placeholder="Profissional..."
                         searchPlaceholder="Pesquisar profissional..."
@@ -660,12 +660,12 @@ export default function VendasDiretas() {
 
                     {/* Cliente */}
                     <div className="space-y-1">
-                      <Label className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">
+                      <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold">
                         Cliente {fromAgenda ? "*" : "(opcional)"}
                       </Label>
                       {fromAgenda ? (
                         <div className="flex items-center gap-2 h-10 px-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md">
-                          <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-100 truncate">
+                          <span className="text-xs font-semibold text-zinc-950 dark:text-zinc-50 truncate">
                             {clientes.find(c => c.id === form.cliente_id)?.nome || "Vinculado"}
                           </span>
                           <span className="text-[8px] font-black uppercase text-emerald-600 dark:text-emerald-450 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded shrink-0">Agenda</span>
@@ -686,7 +686,7 @@ export default function VendasDiretas() {
 
                     {/* Data */}
                     <div className="space-y-1">
-                      <Label className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">Data da Venda *</Label>
+                      <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold">Data da Venda *</Label>
                       <Input
                         type="date"
                         max={getTodayStr()}
@@ -703,14 +703,14 @@ export default function VendasDiretas() {
                   "bg-white dark:bg-zinc-900 p-4 border border-zinc-200 dark:border-zinc-800/80 rounded-xl shadow-xs space-y-3",
                   isMobile ? (currentStep === 2 ? "block" : "hidden") : "block"
                 )}>
-                  <div className="text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">
+                  <div className="text-xs font-black text-zinc-650 dark:text-zinc-400 uppercase tracking-wider block">
                     Adicionar Itens
                   </div>
 
                   <div className="grid grid-cols-12 gap-3">
                     {/* Categoria */}
                     <div className="col-span-12 md:col-span-4 space-y-1">
-                      <Label className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">Categoria (Filtro)</Label>
+                      <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold">Categoria (Filtro)</Label>
                       <SearchableSelect
                         placeholder="Todas"
                         searchPlaceholder="Pesquisar..."
@@ -731,7 +731,7 @@ export default function VendasDiretas() {
 
                     {/* Produto */}
                     <div className="col-span-12 md:col-span-8 space-y-1">
-                      <Label className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">Pesquisar Produto (F2) *</Label>
+                      <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold">Pesquisar Produto (F2) *</Label>
                       <SearchableSelect
                         placeholder="Selecione o produto..."
                         searchPlaceholder="Pesquisar produto pelo nome..."
@@ -765,7 +765,7 @@ export default function VendasDiretas() {
                   <div className="grid grid-cols-12 gap-3">
                     {/* Qtd */}
                     <div className="col-span-5 md:col-span-4 space-y-1">
-                      <Label className="text-xs text-zinc-500 dark:text-zinc-400 font-bold">Quantidade *</Label>
+                      <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold">Quantidade *</Label>
                       <Input
                         ref={quantityInputRef}
                         data-testid="venda-qtd"
@@ -803,18 +803,18 @@ export default function VendasDiretas() {
                 )}>
                   {produto && (
                     <div className="bg-[#EAF0EE]/30 dark:bg-emerald-950/10 p-4 border border-zinc-200/80 dark:border-emerald-800/20 rounded-xl space-y-2.5">
-                      <div className="text-xs font-bold text-[#3A4F4A] dark:text-emerald-500 uppercase tracking-widest block font-sans">
+                      <div className="text-xs font-bold text-[#263532] dark:text-emerald-400 uppercase tracking-widest block font-sans">
                         Informações do Produto
                       </div>
                       <div className="grid grid-cols-3 gap-3">
                         {/* Preço */}
                         <div className="flex items-center gap-1.5">
-                          <div className="p-1 bg-[#EAF0EE] dark:bg-emerald-950/40 text-[#3A4F4A] dark:text-emerald-450 rounded-md shrink-0">
+                          <div className="p-1 bg-[#EAF0EE] dark:bg-emerald-950/40 text-[#263532] dark:text-emerald-450 rounded-md shrink-0">
                             <span className="text-[10px] font-bold font-mono">R$</span>
                           </div>
                           <div className="min-w-0">
-                            <span className="text-[9px] text-zinc-400 uppercase tracking-wider block font-semibold">Preço</span>
-                            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 font-mono truncate block">
+                            <span className="text-[9px] text-zinc-650 dark:text-zinc-400 uppercase tracking-wider block font-semibold">Preço</span>
+                            <span className="text-xs font-bold text-zinc-950 dark:text-zinc-100 font-mono truncate block">
                               {fmtBRL(produto.preco_venda)}
                             </span>
                           </div>
@@ -822,12 +822,12 @@ export default function VendasDiretas() {
 
                         {/* Estoque */}
                         <div className="flex items-center gap-1.5">
-                          <div className="p-1 bg-[#EAF0EE] dark:bg-emerald-950/40 text-[#3A4F4A] dark:text-emerald-450 rounded-md shrink-0">
+                          <div className="p-1 bg-[#EAF0EE] dark:bg-emerald-950/40 text-[#263532] dark:text-emerald-450 rounded-md shrink-0">
                             <ShoppingCart className="w-3.5 h-3.5" />
                           </div>
                           <div className="min-w-0">
-                            <span className="text-[9px] text-zinc-400 uppercase tracking-wider block font-semibold">Estoque</span>
-                            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 font-mono truncate block">
+                            <span className="text-[9px] text-zinc-655 dark:text-zinc-400 uppercase tracking-wider block font-semibold">Estoque</span>
+                            <span className="text-xs font-bold text-zinc-955 dark:text-zinc-100 font-mono truncate block">
                               {(() => {
                                 const qtyPerUnit = Number(produto.quantidade_por_unidade || 0);
                                 return qtyPerUnit > 0
@@ -840,12 +840,12 @@ export default function VendasDiretas() {
 
                         {/* Comissão */}
                         <div className="flex items-center gap-1.5">
-                          <div className="p-1 bg-[#EAF0EE] dark:bg-emerald-950/40 text-[#3A4F4A] dark:text-emerald-450 rounded-md shrink-0">
+                          <div className="p-1 bg-[#EAF0EE] dark:bg-emerald-950/40 text-[#263532] dark:text-emerald-450 rounded-md shrink-0">
                             <span className="text-[10px] font-bold font-mono">%</span>
                           </div>
                           <div className="min-w-0">
-                            <span className="text-[9px] text-zinc-400 uppercase tracking-wider block font-semibold">Comissão</span>
-                            <span className="text-xs font-bold text-zinc-855 dark:text-zinc-255 truncate block">
+                            <span className="text-[9px] text-zinc-655 dark:text-zinc-400 uppercase tracking-wider block font-semibold">Comissão</span>
+                            <span className="text-xs font-bold text-zinc-955 dark:text-zinc-100 truncate block">
                               {produto.comissao > 0 ? `${Number(produto.comissao)}%` : "N/A"}
                             </span>
                           </div>
@@ -863,7 +863,7 @@ export default function VendasDiretas() {
               )}>
                 {/* Header or Cart Title (Desktop only) */}
                 {!isMobile && (
-                  <div className="flex px-4 pt-4 justify-between items-center text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider select-none shrink-0">
+                  <div className="flex px-4 pt-4 justify-between items-center text-xs font-black text-zinc-650 dark:text-zinc-400 uppercase tracking-wider select-none shrink-0">
                     <span>Itens no Carrinho</span>
                     <span className="bg-[#EAF0EE] dark:bg-zinc-800 text-[#3A4F4A] dark:text-zinc-300 px-2 py-0.5 rounded font-mono text-[10px]">
                       {novaVendaItens.length} produto(s)
@@ -879,7 +879,7 @@ export default function VendasDiretas() {
                   {novaVendaItens.length > 0 ? (
                     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-xs">
                       <table className="w-full text-xs">
-                        <thead className="bg-zinc-50 dark:bg-zinc-955 text-[10px] uppercase font-bold text-zinc-550 dark:text-zinc-450 border-b border-zinc-200 dark:border-zinc-800">
+                        <thead className="bg-zinc-50 dark:bg-zinc-955 text-[10px] uppercase font-bold text-zinc-700 dark:text-zinc-300 border-b border-zinc-200 dark:border-zinc-800">
                           <tr>
                             <th className="px-3 py-2 text-left">Produto</th>
                             <th className="px-2 py-2 text-right">Unit.</th>
@@ -891,10 +891,10 @@ export default function VendasDiretas() {
                         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                           {novaVendaItens.map((item, idx) => (
                             <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
-                              <td className="px-3 py-2.5 font-bold text-zinc-800 dark:text-zinc-200 max-w-[120px] truncate" title={item.produto_nome}>
+                              <td className="px-3 py-2.5 font-bold text-zinc-950 dark:text-zinc-100 max-w-[120px] truncate" title={item.produto_nome}>
                                 {item.produto_nome}
                               </td>
-                              <td className="px-2 py-2.5 text-right font-mono text-zinc-500 dark:text-zinc-400">
+                              <td className="px-2 py-2.5 text-right font-mono text-zinc-700 dark:text-zinc-300 font-bold">
                                 {fmtBRL(item.preco_unitario)}
                               </td>
                               <td className="px-2 py-2.5">
@@ -902,7 +902,7 @@ export default function VendasDiretas() {
                                   <button
                                     type="button"
                                     onClick={() => handleIncrementNovaVendaQtd(idx, -1)}
-                                    className="w-5 h-5 rounded bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-655 dark:text-zinc-355 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                                    className="w-5 h-5 rounded bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
                                   >
                                     <Minus className="w-2.5 h-2.5" />
                                   </button>
@@ -917,25 +917,25 @@ export default function VendasDiretas() {
                                         handleSetNovaVendaQtd(idx, val);
                                       }
                                     }}
-                                    className="w-8 h-5 text-[10px] font-bold text-center border-none bg-transparent focus-visible:ring-0 p-0 text-zinc-900 dark:text-zinc-100 font-mono"
+                                    className="w-8 h-5 text-[10px] font-bold text-center border-none bg-transparent focus-visible:ring-0 p-0 text-zinc-950 dark:text-zinc-100 font-mono"
                                   />
                                   <button
                                     type="button"
                                     onClick={() => handleIncrementNovaVendaQtd(idx, 1)}
-                                    className="w-5 h-5 rounded bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-655 dark:text-zinc-355 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                                    className="w-5 h-5 rounded bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
                                   >
                                     <Plus className="w-2.5 h-2.5" />
                                   </button>
                                 </div>
                               </td>
-                              <td className="px-2 py-2.5 text-right font-bold font-mono text-[#3A4F4A] dark:text-emerald-450">
+                              <td className="px-2 py-2.5 text-right font-bold font-mono text-[#263532] dark:text-emerald-400">
                                 {fmtBRL(item.preco_unitario * item.quantidade)}
                               </td>
                               <td className="px-2 py-2.5 text-center">
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveNovaVendaItem(idx)}
-                                  className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                                  className="p-1 rounded text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -950,8 +950,8 @@ export default function VendasDiretas() {
                       <div className="p-3 bg-[#EAF0EE] dark:bg-emerald-900/20 text-[#3A4F4A] dark:text-emerald-500 rounded-xl mb-3">
                         <ShoppingCart className="w-6 h-6" />
                       </div>
-                      <h4 className="font-bold text-zinc-800 dark:text-zinc-250 text-sm">O carrinho está vazio</h4>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-xs leading-relaxed">Adicione produtos pelo painel de produtos para continuar.</p>
+                      <h4 className="font-bold text-zinc-950 dark:text-zinc-100 text-sm">O carrinho está vazio</h4>
+                      <p className="text-xs text-zinc-700 dark:text-zinc-300 mt-1 max-w-xs leading-relaxed font-semibold">Adicione produtos pelo painel de produtos para continuar.</p>
                     </div>
                   )}
                 </div>
@@ -963,29 +963,29 @@ export default function VendasDiretas() {
                 )}>
                   {/* Financial Summary */}
                   <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 space-y-2 shadow-xs">
-                    <div className="flex justify-between items-center text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                    <div className="flex justify-between items-center text-xs font-bold text-zinc-700 dark:text-zinc-300">
                       <span>Itens lançados:</span>
-                      <span className="font-mono text-zinc-850 dark:text-zinc-100 font-black">
+                      <span className="font-mono text-zinc-950 dark:text-zinc-100 font-black">
                         {novaVendaItens.length}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                    <div className="flex justify-between items-center text-xs font-bold text-zinc-700 dark:text-zinc-300">
                       <span>Subtotal:</span>
-                      <span className="font-mono text-zinc-850 dark:text-zinc-100 font-bold">
+                      <span className="font-mono text-zinc-955 dark:text-zinc-100 font-black">
                         {fmtBRL(novaVendaItens.reduce((acc, item) => acc + (item.preco_unitario * item.quantidade), 0))}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                    <div className="flex justify-between items-center text-xs font-bold text-zinc-700 dark:text-zinc-300">
                       <span>Desconto:</span>
-                      <span className="font-mono text-zinc-850 dark:text-zinc-100 font-bold">{fmtBRL(0)}</span>
+                      <span className="font-mono text-zinc-955 dark:text-zinc-100 font-black">{fmtBRL(0)}</span>
                     </div>
-                    <div className="flex justify-between items-center text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                    <div className="flex justify-between items-center text-xs font-bold text-zinc-700 dark:text-zinc-300">
                       <span>Acréscimos:</span>
-                      <span className="font-mono text-zinc-850 dark:text-zinc-100 font-bold">{fmtBRL(0)}</span>
+                      <span className="font-mono text-zinc-955 dark:text-zinc-100 font-black">{fmtBRL(0)}</span>
                     </div>
                     <div className="border-t border-zinc-150 dark:border-zinc-800 pt-2 flex justify-between items-center">
-                      <span className="text-xs font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">Total Geral:</span>
-                      <span className="font-black text-xl text-[#3A4F4A] dark:text-emerald-450 font-mono">
+                      <span className="text-xs font-black text-zinc-950 dark:text-zinc-100 uppercase tracking-wider">Total Geral:</span>
+                      <span className="font-black text-xl text-[#1e2a27] dark:text-emerald-350 font-mono">
                         {fmtBRL(novaVendaItens.reduce((acc, item) => acc + (item.preco_unitario * item.quantidade), 0))}
                       </span>
                     </div>
@@ -1079,7 +1079,7 @@ export default function VendasDiretas() {
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center w-full lg:w-auto">
             <div className="w-full sm:w-64">
-              <Label className="text-xs text-zinc-500 font-medium mb-1 block">Pesquisa</Label>
+              <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold mb-1 block">Pesquisa</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400 w-4 h-4" />
                 <Input
@@ -1091,7 +1091,7 @@ export default function VendasDiretas() {
               </div>
             </div>
             <div className="w-full sm:w-auto">
-              <Label className="text-xs text-zinc-500 font-medium mb-1 block">Data Inicial</Label>
+              <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold mb-1 block">Data Inicial</Label>
               <Input
                 type="date"
                 className="w-full sm:w-44 focus:ring-2 focus:ring-[#84A59D] transition-all bg-transparent text-foreground border-input"
@@ -1100,7 +1100,7 @@ export default function VendasDiretas() {
               />
             </div>
             <div className="w-full sm:w-auto">
-              <Label className="text-xs text-zinc-500 font-medium mb-1 block">Data Final</Label>
+              <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold mb-1 block">Data Final</Label>
               <Input
                 type="date"
                 className="w-full sm:w-44 focus:ring-2 focus:ring-[#84A59D] transition-all bg-transparent text-foreground border-input"
@@ -1164,7 +1164,7 @@ export default function VendasDiretas() {
         {/* Row 2: Product, Seller, and Client Filters */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-zinc-100 pt-4 dark:border-zinc-800">
           <div>
-            <Label className="text-xs text-zinc-500 font-medium mb-1 block">Filtrar por Produto</Label>
+            <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold mb-1 block">Filtrar por Produto</Label>
             <SearchableSelect
               placeholder="Todos os produtos"
               searchPlaceholder="Pesquisar produto pelo nome..."
@@ -1181,7 +1181,7 @@ export default function VendasDiretas() {
           </div>
 
           <div>
-            <Label className="text-xs text-zinc-500 font-medium mb-1 block">Filtrar por Vendedor</Label>
+            <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold mb-1 block">Filtrar por Vendedor</Label>
             <SearchableSelect
               placeholder="Todos os vendedores"
               searchPlaceholder="Pesquisar vendedor pelo nome..."
@@ -1198,7 +1198,7 @@ export default function VendasDiretas() {
           </div>
 
           <div>
-            <Label className="text-xs text-zinc-500 font-medium mb-1 block">Filtrar por Cliente</Label>
+            <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold mb-1 block">Filtrar por Cliente</Label>
             <SearchableSelect
               placeholder="Todos os clientes"
               searchPlaceholder="Pesquisar cliente pelo nome..."
