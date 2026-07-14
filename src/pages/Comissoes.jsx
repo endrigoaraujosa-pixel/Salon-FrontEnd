@@ -614,7 +614,7 @@ export default function Comissoes() {
                 <tbody>
             `;
 
-            const detalhes = c.detalhes || [];
+            const detalhes = c.detalhes ? [...c.detalhes].sort((a, b) => new Date(b.data) - new Date(a.data)) : [];
             if (detalhes.length === 0) {
               htmlContent += `
                 <tr>
@@ -1014,7 +1014,7 @@ export default function Comissoes() {
     <tbody>
 `;
 
-      const detalhes = colab.detalhes || [];
+      const detalhes = colab.detalhes ? [...colab.detalhes].sort((a, b) => new Date(b.data) - new Date(a.data)) : [];
       if (detalhes.length === 0) {
         htmlContent += `
           <tr>
@@ -1628,7 +1628,7 @@ export default function Comissoes() {
                 (modalStatusFilter === "pago" && item.pago) ||
                 (modalStatusFilter === "pendente" && !item.pago);
               return matchSearch && matchType && matchStatus;
-            }) : [];
+            }).sort((a, b) => new Date(b.data) - new Date(a.data)) : [];
 
             const filteredTotalPrincipalSum = filteredDetalhes.reduce((sum, d) => {
               if (d.tipo === 'servico' && (d.papel === 'Principal' || d.papel === 'Sozinho' || d.papel === 'Principal (Sozinho)' || d.papel === 'Principal (Com ajuda)')) {
