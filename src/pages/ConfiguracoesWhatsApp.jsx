@@ -202,7 +202,8 @@ export default function ConfiguracoesWhatsApp() {
       .replace(/{data}/g, "15/06/2026")
       .replace(/{hora}/g, "14:30")
       .replace(/{servico}/g, "Corte Feminino + Escova")
-      .replace(/{profissional}/g, "Gabriela Costa");
+      .replace(/{profissional}/g, "Gabriela Costa")
+      .replace(/{dia_semana}/g, "amanhã, segunda-feira");
   };
 
   const mockMessageAgradecimento = () => {
@@ -551,6 +552,7 @@ export default function ConfiguracoesWhatsApp() {
                     ['{hora}', 'Hora do agendamento'],
                     ['{servico}', 'Serviço agendado'],
                     ['{profissional}', 'Profissional responsável'],
+                    ['{dia_semana}', 'Dia da semana contextualizado (ex: amanhã, quarta-feira)'],
                   ].map(([v, d]) => (
                     <div key={v} className="grid grid-cols-3 p-2.5">
                       <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">{v}</span>
