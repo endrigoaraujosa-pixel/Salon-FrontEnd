@@ -215,8 +215,12 @@ export default function Agenda() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(null);
   const [openSenha, setOpenSenha] = useState(false);
-  const [senhaData, setSenhaData] = useState({ agendamento_id: null, novo_status: null, email: "", senha: "" });
+  const [senhaData, setSenhaData] = useState({ agendamento_id: null, novo_status: null, email: "", senha: "", motivo: "" });
   const [carregandoSenha, setCarregandoSenha] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelMotivo, setCancelMotivo] = useState("");
+  const [cancelAgendamentoId, setCancelAgendamentoId] = useState(null);
+  const [cancellandoStatus, setCancellandoStatus] = useState("cancelado");
   const [openResumo, setOpenResumo] = useState(false);
   const [resumoAgendamento, setResumoAgendamento] = useState(null);
   const [previewPhoto, setPreviewPhoto] = useState(null);
@@ -1245,16 +1249,18 @@ export default function Agenda() {
       const map = {};
       const dados = r.data || [];
       dados.forEach((a) => {
-        const day = new Date(a.data_hora).toLocaleDateString("pt-BR", { timeZone: "America/Recife", day: "2-digit" });
-        if (!map[day]) {
-          map[day] = {
-            count: 0,
-            hasPending: false
-          };
-        }
-        map[day].count += 1;
-        if (a.status !== "concluido" && a.status !== "cancelado") {
-          map[day].hasPending = true;
+        if (a.status !== "cancelado") {
+          const day = new Date(a.data_hora).toLocaleDateString("pt-BR", { timeZone: "America/Recife", day: "2-digit" });
+          if (!map[day]) {
+            map[day] = {
+              count: 0,
+              hasPending: false
+            };
+          }
+          map[day].count += 1;
+          if (a.status !== "concluido") {
+            map[day].hasPending = true;
+          }
         }
       });
       setMonthEvents(map);
@@ -1538,8 +1544,20 @@ export default function Agenda() {
       }
     }
 
+    if (status === "cancelado") {
+      setCancelAgendamentoId(id);
+      setCancelMotivo("");
+      if (agendamento?.status === "concluido") {
+        setCancellandoStatus("cancelado_concluido");
+      } else {
+        setCancellandoStatus("cancelado");
+      }
+      setCancelModalOpen(true);
+      return;
+    }
+
     if (agendamento?.status === "concluido" && status !== "concluido") {
-      setSenhaData({ agendamento_id: id, novo_status: status, email: "", senha: "" });
+      setSenhaData({ agendamento_id: id, novo_status: status, email: "", senha: "", motivo: "" });
       setOpenSenha(true);
       return;
     }
@@ -1646,12 +1664,13 @@ export default function Agenda() {
       console.log("Alterando status com credenciais...");
       await http.post(`/agendamentos/${senhaData.agendamento_id}/status`, {
         status: senhaData.novo_status,
-        senha: senhaData.senha
+        senha: senhaData.senha,
+        motivo: senhaData.motivo
       });
       console.log("Status alterado com sucesso!");
-      toast.success("Status atualizado com sucesso");
+      toast.success("Status updated successfully");
       setOpenSenha(false);
-      setSenhaData({ agendamento_id: null, novo_status: null, email: "", senha: "" });
+      setSenhaData({ agendamento_id: null, novo_status: null, email: "", senha: "", motivo: "" });
       loadDay(data);
       loadMonth(monthCursor.y, monthCursor.m);
       return;
@@ -2437,8 +2456,92 @@ export default function Agenda() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setOpenSenha(false); setSenhaData({ agendamento_id: null, novo_status: null, email: "", senha: "" }); }} disabled={carregandoSenha}>Cancelar</Button>
+            <Button variant="outline" onClick={() => { setOpenSenha(false); setSenhaData({ agendamento_id: null, novo_status: null, email: "", senha: "", motivo: "" }); }} disabled={carregandoSenha}>Cancelar</Button>
             <Button onClick={confirmarMudancaStatus} className="btn-primary" disabled={carregandoSenha}>{carregandoSenha ? "Validando..." : "Confirmar"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para motivo do cancelamento */}
+      <Dialog open={cancelModalOpen} onOpenChange={(v) => { if (!v) setCancelModalOpen(false); }}>
+        <DialogContent className="dialog-content w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800" aria-describedby="dialog-cancelar-motivo">
+          <DialogHeader className="dialog-header">
+            <DialogTitle className="dialog-title flex items-center gap-2 text-rose-600 dark:text-rose-400">
+              <CalendarOff className="w-5 h-5" />
+              <span>Motivo do Cancelamento</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div id="dialog-cancelar-motivo" className="sr-only">Dialogo para inserir o motivo do cancelamento do agendamento</div>
+          <div className="dialog-body py-4">
+            <Label htmlFor="cancel-motive-input" className="form-label mb-2 block font-medium text-xs text-zinc-600 dark:text-zinc-400">
+              Por favor, informe o motivo do cancelamento (máximo 100 caracteres):
+            </Label>
+            <Textarea
+              id="cancel-motive-input"
+              value={cancelMotivo}
+              onChange={(e) => setCancelMotivo(e.target.value)}
+              placeholder="Digite o motivo do cancelamento..."
+              maxLength={100}
+              rows={3}
+              className="form-input text-xs w-full resize-none bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-2.5"
+            />
+            <div className="text-[10px] text-zinc-450 dark:text-zinc-500 mt-1.5 text-right">
+              {cancelMotivo.length} / 100 caracteres
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCancelModalOpen(false);
+                setCancelAgendamentoId(null);
+                setCancelMotivo("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!cancelMotivo || !cancelMotivo.trim()) {
+                  toast.error("O motivo do cancelamento é obrigatório.");
+                  return;
+                }
+                if (cancelMotivo.length > 100) {
+                  toast.error("O motivo do cancelamento deve ter no máximo 100 caracteres.");
+                  return;
+                }
+
+                if (cancellandoStatus === "cancelado_concluido") {
+                  setCancelModalOpen(false);
+                  setSenhaData({
+                    agendamento_id: cancelAgendamentoId,
+                    novo_status: "cancelado",
+                    email: "",
+                    senha: "",
+                    motivo: cancelMotivo.trim()
+                  });
+                  setOpenSenha(true);
+                } else {
+                  try {
+                    await http.post(`/agendamentos/${cancelAgendamentoId}/status`, {
+                      status: "cancelado",
+                      motivo: cancelMotivo.trim()
+                    });
+                    toast.success("Agendamento cancelado com sucesso");
+                    setCancelModalOpen(false);
+                    setCancelAgendamentoId(null);
+                    setCancelMotivo("");
+                    loadDay(data);
+                    loadMonth(monthCursor.y, monthCursor.m);
+                  } catch (e) {
+                    toast.error(e.response?.data?.detail || "Erro ao cancelar agendamento");
+                  }
+                }
+              }}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-bold"
+            >
+              Confirmar Cancelamento
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
