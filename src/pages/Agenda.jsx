@@ -5,6 +5,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
+import { Checkbox } from "../components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import StatusBadge, { STATUS_LABELS } from "../components/StatusBadge";
@@ -221,6 +222,7 @@ export default function Agenda() {
   const [cancelMotivo, setCancelMotivo] = useState("");
   const [cancelAgendamentoId, setCancelAgendamentoId] = useState(null);
   const [cancellandoStatus, setCancellandoStatus] = useState("cancelado");
+  const [exibirCancelados, setExibirCancelados] = useState(false);
   const [openResumo, setOpenResumo] = useState(false);
   const [resumoAgendamento, setResumoAgendamento] = useState(null);
   const [previewPhoto, setPreviewPhoto] = useState(null);
@@ -1919,6 +1921,21 @@ export default function Agenda() {
               </SelectContent>
             </Select>
           </div>
+          {view === "timeline" && (
+            <div className="flex items-center gap-2 h-9 self-end mb-0.5 ml-2">
+              <Checkbox
+                id="exibir-cancelados-checkbox"
+                checked={exibirCancelados}
+                onCheckedChange={setExibirCancelados}
+              />
+              <Label
+                htmlFor="exibir-cancelados-checkbox"
+                className="text-xs font-semibold text-zinc-650 dark:text-zinc-400 cursor-pointer select-none"
+              >
+                Exibir agendamentos cancelados
+              </Label>
+            </div>
+          )}
         </div>
       )}
 
@@ -1941,6 +1958,7 @@ export default function Agenda() {
             onCardClick={openResumoModal}
             onUnavailabilityClick={handleOpenDetailsIndisponibilidade}
             loading={true}
+            exibirCancelados={exibirCancelados}
           />
         ) : (
           <>
@@ -2102,7 +2120,7 @@ export default function Agenda() {
           )}
         </>
       ) : view === "timeline" ? (
-        <AgendaTimeline data={data} selectedStatus={selectedStatus} selectedInsumos={selectedInsumos} selectedColaborador={selectedColaborador} searchNumero={searchNumero} servicos={servicos} colaboradores={colaboradores} onCardClick={openResumoModal} onUnavailabilityClick={handleOpenDetailsIndisponibilidade} loading={false} />
+        <AgendaTimeline data={data} selectedStatus={selectedStatus} selectedInsumos={selectedInsumos} selectedColaborador={selectedColaborador} searchNumero={searchNumero} servicos={servicos} colaboradores={colaboradores} onCardClick={openResumoModal} onUnavailabilityClick={handleOpenDetailsIndisponibilidade} loading={false} exibirCancelados={exibirCancelados} />
       ) : (
         <>
           <div className="flex items-center gap-2 mb-4">
