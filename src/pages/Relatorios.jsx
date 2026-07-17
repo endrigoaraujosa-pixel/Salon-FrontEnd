@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import http from "../api";
 import { useAuth } from "../auth";
 import { toast } from "../components/ui/sonner";
+import { formatAgendaDate, formatAgendaDateTime } from "../lib/date.js";
 import { PageHeader } from "../components/Page";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -128,6 +129,15 @@ const REPORTS_LIST = [
     category: "Vendas",
     badgeColor: "bg-amber-50 text-amber-700 border-amber-250 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/40",
     iconColor: "text-amber-500"
+  },
+  {
+    id: "agendamentos_cancelados",
+    title: "Agendamentos Cancelados",
+    description: "Consulta detalhada dos agendamentos cancelados, incluindo motivo do cancelamento, usuário responsável e data/hora do cancelamento.",
+    icon: Calendar,
+    category: "Vendas",
+    badgeColor: "bg-rose-50 text-rose-700 border-rose-250 dark:bg-rose-950/30 dark:text-rose-455 dark:border-rose-800/40",
+    iconColor: "text-rose-500"
   },
   {
     id: "resultado_consolidado",
@@ -276,6 +286,7 @@ const getReportPermKey = (tab) => {
   if (tab === "caixa") return "relatorios.caixa";
   if (tab === "cartoes") return "relatorios.cartoes";
   if (tab === "produtos" || tab === "servicos") return "relatorios.vendas";
+  if (tab === "agendamentos_cancelados") return "relatorios.cancelados";
   if (["resultado_consolidado", "rentabilidade_servicos", "rentabilidade_produtos", "analitico_vendas"].includes(tab)) return "relatorios.operacional";
   if (tab.startsWith("estoque")) return "relatorios.estoque";
   return null;
@@ -291,6 +302,7 @@ export default function Relatorios() {
   const [produtos, setProdutos] = useState(null);
   const [servicos, setServicos] = useState(null);
   const [cartoes, setCartoes] = useState(null);
+  const [cancelados, setCancelados] = useState(null);
   
   const [adquirentesList, setAdquirentesList] = useState([]);
   const [formasCartaoList, setFormasCartaoList] = useState([]);
@@ -415,6 +427,7 @@ export default function Relatorios() {
   const [filterFormaPagamentoServico, setFilterFormaPagamentoServico] = useState("todos");
   const [filterClienteServico, setFilterClienteServico] = useState("todos");
   const [filterStatusServico, setFilterStatusServico] = useState("todos");
+  const [filterClienteCancelados, setFilterClienteCancelados] = useState("todos");
 
   // Busca e Ordenação
   const [searchQuery, setSearchQuery] = useState("");
@@ -607,6 +620,24 @@ export default function Relatorios() {
             toast.error("Erro ao carregar o relatório de serviços.");
           }
           setServicos([]);
+        });
+    }
+    if (tab === "agendamentos_cancelados") {
+      const cancelParams = {
+        data_inicio: from,
+        data_fim: to,
+        cliente_id: filterClienteCancelados
+      };
+      promise = http.get("/relatorios/agendamentos-cancelados", { params: cancelParams })
+        .then((r) => setCancelados(r.data))
+        .catch((err) => {
+          console.error("Cancelados error:", err);
+          if (err.response?.status === 403) {
+            toast.error("Acesso negado: Você não tem permissão para visualizar o relatório de agendamentos cancelados.");
+          } else {
+            toast.error("Erro ao carregar o relatório de agendamentos cancelados.");
+          }
+          setCancelados([]);
         });
     }
     if (["resultado_consolidado", "rentabilidade_servicos", "rentabilidade_produtos", "analitico_vendas"].includes(tab)) {
@@ -852,7 +883,8 @@ export default function Relatorios() {
       filterColaboradorServico, filterServico, filterFormaPagamentoServico, filterClienteServico, filterStatusServico,
       filterDreCategory, filterDreStatus,
       filterOperacionalColab, filterOperacionalCatServico, filterOperacionalCatProduto, filterUnidade,
-      filterEstoqueCategorias, filterEstoqueProduto
+      filterEstoqueCategorias, filterEstoqueProduto,
+      filterClienteCancelados
     });
     reload({ produtosPage: nextProdutosPage });
   };
@@ -887,6 +919,9 @@ export default function Relatorios() {
       generatedFilters.filterOperacionalCatServico !== filterOperacionalCatServico ||
       generatedFilters.filterOperacionalCatProduto !== filterOperacionalCatProduto ||
       generatedFilters.filterUnidade !== filterUnidade
+    )) ||
+    (tab === "agendamentos_cancelados" && (
+      generatedFilters.filterClienteCancelados !== filterClienteCancelados
     )) ||
     (tab && tab.startsWith("estoque") && (
       JSON.stringify(generatedFilters.filterEstoqueCategorias) !== JSON.stringify(filterEstoqueCategorias) ||
@@ -1805,6 +1840,173 @@ export default function Relatorios() {
     );
   };
 
+  const renderCanceladosReport = () => {
+    if (!cancelados) return <div className="text-zinc-400 p-8 text-center">Carregando...</div>;
+
+    const filtered = cancelados.filter(item => {
+      if (!searchReportQuery) return true;
+      const q = searchReportQuery.toLowerCase();
+      const client = (item.cliente_nome || "").toLowerCase();
+      const motive = (item.cancelado_motivo || "").toLowerCase();
+      const userCancel = (item.cancelado_por_nome || "").toLowerCase();
+      
+      let profsList = [];
+      try {
+        profsList = typeof item.profissionais === 'string' ? JSON.parse(item.profissionais) : (item.profissionais || []);
+      } catch (e) {}
+      const profs = profsList.map(p => p.nome || "").join(" ").toLowerCase();
+
+      let servicesList = [];
+      try {
+        servicesList = typeof item.itens === 'string' ? JSON.parse(item.itens) : (item.itens || []);
+      } catch (e) {}
+      const services = servicesList.map(i => i.nome || "").join(" ").toLowerCase();
+
+      return client.includes(q) || motive.includes(q) || userCancel.includes(q) || profs.includes(q) || services.includes(q);
+    });
+
+    return (
+      <div className="space-y-6 print-area">
+        {/* CSS de impressão self-contained premium */}
+        <style dangerouslySetInnerHTML={{__html: `
+          @media print {
+            body {
+              background-color: white !important;
+              color: black !important;
+              font-size: 11px !important;
+            }
+            .no-print {
+              display: none !important;
+            }
+            .print-full-width {
+              width: 100% !important;
+              max-width: 100% !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              border: none !important;
+              box-shadow: none !important;
+            }
+            .print-area {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+            }
+            th, td {
+              padding: 6px 8px !important;
+            }
+          }
+        `}} />
+
+        {/* Header de Impressão (visível apenas na impressão) */}
+        <div className="hidden print:block border-b border-zinc-300 pb-4 mb-4">
+          <div className="flex justify-between items-end">
+            <div>
+              {empresa?.nome_fantasia && (
+                <div className="text-xs font-bold uppercase tracking-wider text-[#84A59D] mb-1">{empresa.nome_fantasia}</div>
+              )}
+              <h1 className="text-xl font-bold text-zinc-800">Relatório de Agendamentos Cancelados</h1>
+              <p className="text-xs text-zinc-500 mt-1">
+                Período selecionado: <b>{formatAgendaDate(from)}</b> até <b>{formatAgendaDate(to)}</b>
+                {filterClienteCancelados !== 'todos' && (
+                  <> | Cliente: <b>{clientesList.find(c => c.id === filterClienteCancelados)?.nome || '—'}</b></>
+                )}
+              </p>
+            </div>
+            <div className="text-right text-[10px] text-zinc-400 pb-1">
+              Gerado em: {formatAgendaDateTime(new Date())}
+            </div>
+          </div>
+        </div>
+
+        {/* Controls Row (no-print) */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 no-print bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+            <Input
+              placeholder="Pesquisar por cliente, profissional, serviço..."
+              className="pl-9 text-xs"
+              value={searchReportQuery}
+              onChange={(e) => setSearchReportQuery(e.target.value)}
+            />
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex items-center gap-2 text-xs"
+            onClick={() => window.print()}
+          >
+            <Printer className="w-4 h-4" /> Imprimir Relatório
+          </Button>
+        </div>
+
+        {/* Cards de Métricas Rápidas */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-rose-50/50 dark:bg-rose-950/10 border border-rose-100 dark:border-rose-900/30 p-4 rounded-xl">
+            <div className="text-xs font-semibold text-rose-800 dark:text-rose-400 uppercase tracking-wider">Total de Cancelamentos</div>
+            <div className="text-2xl font-bold text-rose-900 dark:text-rose-300 mt-1">{filtered.length}</div>
+          </div>
+          <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl">
+            <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">Período Selecionado</div>
+            <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 mt-2">{formatAgendaDate(from)} a {formatAgendaDate(to)}</div>
+          </div>
+        </div>
+
+        {/* Tabela de Resultados */}
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm print-full-width">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-zinc-50/50 dark:bg-zinc-800/40 text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
+                  <th className="px-4 py-3">Data/Hora Agendado</th>
+                  <th className="px-4 py-3">Cliente</th>
+                  <th className="px-4 py-3">Profissional</th>
+                  <th className="px-4 py-3">Serviço(s)</th>
+                  <th className="px-4 py-3">Motivo do Cancelamento</th>
+                  <th className="px-4 py-3">Responsável</th>
+                  <th className="px-4 py-3">Data/Hora Cancelado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-200/60 dark:divide-zinc-800/50 text-xs text-zinc-700 dark:text-zinc-300">
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-zinc-400">Nenhum agendamento cancelado encontrado neste período.</td>
+                  </tr>
+                ) : (
+                  filtered.map((item) => {
+                    let profsList = [];
+                    let servicesList = [];
+                    try {
+                      profsList = typeof item.profissionais === 'string' ? JSON.parse(item.profissionais) : (item.profissionais || []);
+                    } catch (e) {}
+                    try {
+                      servicesList = typeof item.itens === 'string' ? JSON.parse(item.itens) : (item.itens || []);
+                    } catch (e) {}
+
+                    const profsStr = profsList.map(p => p.nome).filter(Boolean).join(", ") || "—";
+                    const servsStr = servicesList.map(s => s.nome).filter(Boolean).join(", ") || "—";
+
+                    return (
+                      <tr key={item.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20">
+                        <td className="px-4 py-3 whitespace-nowrap">{formatAgendaDateTime(item.data_hora)}</td>
+                        <td className="px-4 py-3 font-semibold text-zinc-850 dark:text-zinc-200">{item.cliente_nome || "Consumidor"}</td>
+                        <td className="px-4 py-3">{profsStr}</td>
+                        <td className="px-4 py-3">{servsStr}</td>
+                        <td className="px-4 py-3 max-w-xs break-words italic text-zinc-600 dark:text-zinc-400">"{item.cancelado_motivo || "—"}"</td>
+                        <td className="px-4 py-3 whitespace-nowrap font-medium">{item.cancelado_por_nome || "—"}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{formatAgendaDateTime(item.cancelado_em)}</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 fade-in max-w-7xl mx-auto w-full overflow-x-hidden">
       <PageHeader overline="Análise" title="Relatórios" />
@@ -2237,6 +2439,25 @@ export default function Relatorios() {
                       <SelectItem value="cancelado">Cancelado</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+            )}
+
+            {tab === "agendamentos_cancelados" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mt-4 border-t border-zinc-100 pt-3">
+                {/* Cliente */}
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Cliente</Label>
+                  <SearchableSelect
+                    placeholder="Todos os clientes"
+                    searchPlaceholder="Pesquisar cliente..."
+                    options={[
+                      { value: "todos", label: "Todos os clientes" },
+                      ...clientesList.map((c) => ({ value: c.id, label: c.nome }))
+                    ]}
+                    value={filterClienteCancelados}
+                    onValueChange={setFilterClienteCancelados}
+                  />
                 </div>
               </div>
             )}
@@ -4927,6 +5148,9 @@ export default function Relatorios() {
         <TabsContent value="estoque_perdas_quebras">
           {renderEstoqueReport("estoque_perdas_quebras")}
         </TabsContent>
+        <TabsContent value="agendamentos_cancelados">
+          {renderCanceladosReport()}
+        </TabsContent>
       </Tabs>
     )}
       {/* Rentabilidade Detail Dialog */}
@@ -5497,6 +5721,22 @@ const renderHelpContent = (reportId) => {
         <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
           <HelpSection title="Objetivo do Relatório">
             <p>Consolidar e quantificar financeiramente as saídas de estoque justificadas como perdas, quebras, desperdício ou roubo no período.</p>
+          </HelpSection>
+        </div>
+      );
+    case "agendamentos_cancelados":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Listar e auditar de forma consolidada todos os agendamentos que foram marcados com o status "Cancelado" no período de tempo selecionado.</p>
+          </HelpSection>
+          <HelpSection title="Quando utilizar">
+            <p>Use para monitorar a taxa de cancelamentos, identificar padrões de recusa ou motivos frequentes alegados pelos clientes, e auditar qual funcionário realizou a operação no sistema.</p>
+          </HelpSection>
+          <HelpSection title="Explicação das Colunas">
+            <p><strong>Motivo do Cancelamento:</strong> O texto digitado obrigatoriamente pelo operador ao efetuar o cancelamento.</p>
+            <p><strong>Responsável:</strong> O nome do usuário autenticado no sistema que realizou a alteração de status.</p>
+            <p><strong>Data/Hora Cancelado:</strong> O registro temporal exato (no fuso local) de quando o status do agendamento foi alterado para Cancelado.</p>
           </HelpSection>
         </div>
       );

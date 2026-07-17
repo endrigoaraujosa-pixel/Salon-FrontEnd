@@ -32,7 +32,7 @@ const HOUR_END = 24;
 const ROW_HEIGHT = 64; // Increased for a more spacious premium feel
 const HOUR_WIDTH = 120; // Slightly wider hour blocks for better readability
 
-export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, selectedColaborador, searchNumero, servicos, onCardClick, onUnavailabilityClick, loading: parentLoading = false }) {
+export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, selectedColaborador, searchNumero, servicos, onCardClick, onUnavailabilityClick, loading: parentLoading = false, exibirCancelados = false }) {
   const [colaboradores, setColaboradores] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
   const [indisponibilidades, setIndisponibilidades] = useState([]);
@@ -64,6 +64,8 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
 
   const filteredAgendamentos = useMemo(() => {
     return agendamentos.filter(a => {
+      if (!exibirCancelados && a.status === "cancelado") return false;
+
       if (selectedStatus && selectedStatus !== "all" && a.status !== selectedStatus) return false;
 
       if (selectedInsumos && selectedInsumos !== "all") {
@@ -94,7 +96,7 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
 
       return true;
     });
-  }, [agendamentos, selectedStatus, selectedInsumos, selectedColaborador, searchNumero, servicos]);
+  }, [agendamentos, selectedStatus, selectedInsumos, selectedColaborador, searchNumero, servicos, exibirCancelados]);
 
   useEffect(() => {
     setLocalLoading(true);

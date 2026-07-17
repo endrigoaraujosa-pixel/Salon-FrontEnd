@@ -78,6 +78,7 @@ const defaultPermissions = {
   "relatorios.cartoes": false,
   "relatorios.operacional": false,
   "relatorios.vendas": false,
+  "relatorios.cancelados": false,
   "relatorios.estoque": false,
   "cadastros.visualizar": false,
   "cadastros.categorias": false,
@@ -221,6 +222,7 @@ const permissionGroups = [
       { key: "relatorios.cartoes", label: "Visualizar Relatório de Cartões", desc: "Visualizar taxas de adquirentes e datas de liquidação." },
       { key: "relatorios.operacional", label: "Visualizar Resultados Operacionais", desc: "Visualizar ticket médio e desempenho." },
       { key: "relatorios.vendas", label: "Visualizar Relatório de Vendas", desc: "Consultar vendas de produtos e serviços." },
+      { key: "relatorios.cancelados", label: "Visualizar Relatório de Cancelados", desc: "Consultar agendamentos cancelados, motivos e responsáveis." },
       { key: "relatorios.estoque", label: "Visualizar Relatório de Estoque", desc: "Acessar relatórios de insumos, perdas e valorização." }
     ]
   },

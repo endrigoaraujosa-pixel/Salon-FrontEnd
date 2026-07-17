@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth";
 import { ThemeProvider } from "./ThemeProvider";
 import { Toaster } from "./components/ui/sonner";
+import UpdateBanner from "./components/UpdateBanner";
 import Login from "./pages/Login";
 import Layout from "./pages/Layout";
 import Dashboard from "./pages/Dashboard";
@@ -94,6 +95,7 @@ function App() {
 
       <AuthProvider>
         <BrowserRouter>
+          <UpdateBanner />
           <Toaster position="top-right" richColors />
           <Routes>
             <Route path="/login" element={<Login />} />
