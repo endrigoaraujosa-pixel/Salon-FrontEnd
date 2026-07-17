@@ -296,10 +296,9 @@ export default function Pagamento() {
 
     // 2. Desconto vinculado a Serviços e Produtos
     if (hasLinkedServices && hasLinkedProducts) {
-      if (selectedProducts.length === 0) return false;
       const matchService = itensAgendamento.some(s => vinculados.services.includes(s.servico_id));
       const matchProduct = selectedProducts.some(p => vinculados.products.includes(p.produto_id));
-      return matchService && matchProduct;
+      return matchService || matchProduct;
     }
 
     // 3. Desconto vinculado apenas a Serviços
