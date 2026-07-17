@@ -56,7 +56,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "npx vite build",
+    "build": "node scripts/generate-version.js && npx vite build",
     "preview": "vite preview"
   },
   "browserslist": {

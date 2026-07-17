@@ -225,6 +225,12 @@ export default function Layout() {
               {renderNavItems(true)}
             </nav>
             
+            <div className="px-4 py-1.5 border-t border-border shrink-0">
+              <span className="text-[10px] text-muted-foreground/60" data-testid="app-version-mobile">
+                {typeof __APP_VERSION__ !== 'undefined' ? `v${__APP_VERSION__.version} • build ${__APP_VERSION__.build}` : ''}
+              </span>
+            </div>
+
             <div className="p-2 border-t border-border shrink-0 bg-muted/20 dark:bg-muted/10">
               <div className="flex items-center justify-between gap-2 px-2 py-1">
                 <div className="min-w-0 flex-1">
@@ -283,6 +289,12 @@ export default function Layout() {
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {renderNavItems(false)}
         </nav>
+
+        <div className="px-4 py-2 border-t border-border shrink-0">
+          <span className="text-[10px] text-muted-foreground/60" data-testid="app-version">
+            {typeof __APP_VERSION__ !== 'undefined' ? `v${__APP_VERSION__.version} • build ${__APP_VERSION__.build}` : ''}
+          </span>
+        </div>
       </aside>
 
       {/* Main Content Area */}
