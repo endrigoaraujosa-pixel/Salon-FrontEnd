@@ -2008,7 +2008,7 @@ export default function Relatorios() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 fade-in max-w-7xl mx-auto w-full overflow-x-hidden">
+    <div className="p-4 sm:p-6 lg:p-8 fade-in max-w-[1600px] mx-auto w-full overflow-x-hidden">
       <PageHeader overline="Análise" title="Relatórios" />
 
       <style>{`
@@ -3449,27 +3449,28 @@ export default function Relatorios() {
                   <table className="w-full text-xs text-left">
                     <thead>
                       <tr className="border-b border-zinc-100 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider">
-                        <th className="pb-3 font-semibold">Data / Hora</th>
-                        <th className="pb-3 font-semibold">Forma de Pagamento</th>
-                        <th className="pb-3 font-semibold">Tipo</th>
-                        <th className="pb-3 font-semibold">Adquirente</th>
-                        <th className="pb-3 font-semibold">Bandeira</th>
-                        <th className="pb-3 text-center font-semibold">Parcelas</th>
-                        <th className="pb-3 text-right font-semibold">Taxa %</th>
-                        <th className="pb-3 text-right font-semibold">Valor Bruto</th>
-                        <th className="pb-3 text-right font-semibold">Taxa Cobrada</th>
-                        <th className="pb-3 text-right font-semibold">Valor Líquido</th>
-                        <th className="pb-3 text-right font-semibold">Previsão Recebimento</th>
+                        <th className="px-3 pb-3 font-semibold w-[140px]">Data / Hora</th>
+                        <th className="px-3 pb-3 font-semibold w-[95px]">Origem</th>
+                        <th className="px-3 pb-3 font-semibold w-[80px]">Tipo</th>
+                        <th className="px-3 pb-3 font-semibold w-[90px]">Bandeira</th>
+                        <th className="px-3 pb-3 font-semibold min-w-[110px]">Adquirente</th>
+                        <th className="px-3 pb-3 font-semibold min-w-[130px]">Forma de Pagamento</th>
+                        <th className="px-3 pb-3 text-center font-semibold w-[70px]">Parcelas</th>
+                        <th className="px-3 pb-3 text-right font-semibold w-[70px]">Taxa %</th>
+                        <th className="px-3 pb-3 text-right font-semibold w-[105px]">Valor Bruto</th>
+                        <th className="px-3 pb-3 text-right font-semibold w-[105px]">Taxa Cobrada</th>
+                        <th className="px-3 pb-3 text-right font-semibold w-[105px]">Valor Líquido</th>
+                        <th className="px-3 pb-3 text-right font-semibold w-[130px]">Previsão Recebimento</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-50 dark:divide-zinc-850">
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-650 dark:text-zinc-350">
                       {(cartoes.transacoes || []).map((t, idx) => {
                         const dataPrev = t.data_recebimento_prevista ? new Date(t.data_recebimento_prevista).toLocaleDateString("pt-BR") : "-";
                         return (
                           <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20 transition-colors">
-                            <td className="py-3.5 text-zinc-500 dark:text-zinc-400 font-mono whitespace-nowrap">{fmtDT(t.data_venda)}</td>
-                            <td className="py-3.5 font-medium text-zinc-800 dark:text-zinc-200">{t.forma_pagamento_label}</td>
-                            <td className="py-3.5">
+                            <td className="px-3 py-4 text-zinc-500 dark:text-zinc-400 font-mono whitespace-nowrap">{fmtDT(t.data_venda)}</td>
+                            <td className="px-3 py-4 text-zinc-500 dark:text-zinc-400 font-mono whitespace-nowrap">{t.origem_identificador || "—"}</td>
+                            <td className="px-3 py-4">
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                                 t.tipo_cartao === 'credito' 
                                   ? 'bg-indigo-55 bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/20 dark:text-indigo-400' 
@@ -3478,8 +3479,7 @@ export default function Relatorios() {
                                 {t.tipo_cartao === 'credito' ? 'Crédito' : 'Débito'}
                               </span>
                             </td>
-                            <td className="py-3.5 text-zinc-600 dark:text-zinc-300 font-medium">{t.adquirente_nome}</td>
-                            <td className="py-3.5">
+                            <td className="px-3 py-4">
                               {t.bandeira ? (
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200">
                                   {t.bandeira}
@@ -3488,18 +3488,20 @@ export default function Relatorios() {
                                 <span className="text-zinc-400">—</span>
                               )}
                             </td>
-                            <td className="py-3.5 text-center font-mono text-zinc-650 dark:text-zinc-400">{t.parcelas ? `${t.parcelas}x` : "-"}</td>
-                            <td className="py-3.5 text-right font-mono text-zinc-500">{t.taxa_percentual !== null ? `${t.taxa_percentual}%` : "-"}</td>
-                            <td className="py-3.5 text-right font-mono font-semibold text-zinc-700 dark:text-zinc-300">{fmtBRL(t.valor_bruto)}</td>
-                            <td className="py-3.5 text-right font-mono text-rose-500 font-medium">-{fmtBRL(t.taxa_valor)}</td>
-                            <td className="py-3.5 text-right font-mono text-emerald-600 dark:text-emerald-400 font-bold">{fmtBRL(t.valor_liquido)}</td>
-                            <td className="py-3.5 text-right font-mono text-zinc-500">{dataPrev}</td>
+                            <td className="px-3 py-4 text-zinc-600 dark:text-zinc-300 font-medium whitespace-nowrap">{t.adquirente_nome}</td>
+                            <td className="px-3 py-4 font-medium text-zinc-850 dark:text-zinc-150 whitespace-nowrap">{t.forma_pagamento_label}</td>
+                            <td className="px-3 py-4 text-center font-mono text-zinc-650 dark:text-zinc-400">{t.parcelas ? `${t.parcelas}x` : "-"}</td>
+                            <td className="px-3 py-4 text-right font-mono text-zinc-500">{t.taxa_percentual !== null ? `${t.taxa_percentual}%` : "-"}</td>
+                            <td className="px-3 py-4 text-right font-mono font-semibold text-zinc-750 dark:text-zinc-200">{fmtBRL(t.valor_bruto)}</td>
+                            <td className="px-3 py-4 text-right font-mono text-rose-500 font-medium">-{fmtBRL(t.taxa_valor)}</td>
+                            <td className="px-3 py-4 text-right font-mono text-emerald-600 dark:text-emerald-400 font-bold">{fmtBRL(t.valor_liquido)}</td>
+                            <td className="px-3 py-4 text-right font-mono text-zinc-500">{dataPrev}</td>
                           </tr>
                         );
                       })}
                       {(cartoes.transacoes || []).length === 0 && (
                         <tr>
-                          <td colSpan={11} className="py-8 text-center text-zinc-400">Nenhuma transação encontrada no período.</td>
+                          <td colSpan={12} className="py-8 text-center text-zinc-400">Nenhuma transação encontrada no período.</td>
                         </tr>
                       )}
                     </tbody>
@@ -5598,6 +5600,42 @@ const renderHelpContent = (reportId) => {
           </HelpSection>
           <HelpSection title="Como Interpretar">
             <p>Foque nos produtos com maior volume de venda (Qtd) e maior Margem (%). Itens com alta quantidade mas baixíssima margem geram esforço operacional, mas pouco retorno financeiro efetivo.</p>
+          </HelpSection>
+        </div>
+      );
+    case "cartoes":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>O relatório de Cartões apresenta um extrato analítico das transações realizadas por cartão (crédito e débito) no período selecionado, facilitando a conciliação de adquirentes, controle de taxas aplicadas e previsão de recebimento de saldos liquidados.</p>
+          </HelpSection>
+          <HelpSection title="Quando utilizar">
+            <p>Utilize para conferir os descontos de taxas cobradas pelas adquirentes (maquininhas), acompanhar a data prevista para o depósito dos valores na conta bancária da empresa, e conciliar a origem de cada pagamento com seu respectivo atendimento ou venda de produtos.</p>
+          </HelpSection>
+          <HelpSection title="Explicação dos Filtros">
+            <p><strong>Período (De/Até):</strong> Filtra transações cuja data de venda/pagamento ocorreu no intervalo selecionado.</p>
+            <p><strong>Adquirente:</strong> Permite isolar transações de uma maquininha/credenciadora específica ou identificar transações legadas sem adquirente definida.</p>
+            <p><strong>Tipo de Cartão:</strong> Filtra as vendas entre Crédito e Débito.</p>
+            <p><strong>Forma de Pagamento:</strong> Permite isolar por uma modalidade de pagamento específica cadastrada.</p>
+          </HelpSection>
+          <HelpSection title="Significado das Colunas">
+            <p><strong>Data / Hora:</strong> Data e horário exatos em que a transação foi realizada.</p>
+            <p><strong>Origem:</strong> Identificador do registro de origem da transação, exibido no formato <code>000189 | S</code> (para Atendimento/Serviço) ou <code>000189 | V</code> (para Venda de Produtos).</p>
+            <p><strong>Forma de Pagamento:</strong> Modalidade do cartão e a descrição da taxa associada.</p>
+            <p><strong>Tipo:</strong> Indica se a transação foi no crédito ou no débito.</p>
+            <p><strong>Adquirente / Bandeira:</strong> Empresa credenciadora e bandeira do cartão do cliente.</p>
+            <p><strong>Parcelas:</strong> Número de parcelas da venda no crédito (ex: 1x, 2x, etc.).</p>
+            <p><strong>Taxa %:</strong> Percentual de taxa contratado para aquela forma de pagamento/adquirente.</p>
+            <p><strong>Valor Bruto:</strong> Valor total cobrado do cliente.</p>
+            <p><strong>Taxa Cobrada:</strong> Valor em reais descontado pela adquirente.</p>
+            <p><strong>Valor Líquido:</strong> Valor final a ser recebido pela empresa (Valor Bruto - Taxa Cobrada).</p>
+            <p><strong>Previsão Recebimento:</strong> Data estimada para a liquidação e depósito dos valores em conta.</p>
+          </HelpSection>
+          <HelpSection title="Fórmulas Utilizadas">
+            <div className="font-mono bg-zinc-50 dark:bg-zinc-950 p-2.5 rounded border border-zinc-150 dark:border-zinc-800 text-[11px] space-y-1">
+              <div>• Taxa Cobrada = (Valor Bruto × Taxa %) / 100</div>
+              <div>• Valor Líquido = Valor Bruto - Taxa Cobrada</div>
+            </div>
           </HelpSection>
         </div>
       );
