@@ -71,6 +71,7 @@ export default function Comissoes() {
   const [modalSearch, setModalSearch] = useState("");
   const [modalTypeFilter, setModalTypeFilter] = useState("todos"); // 'todos' | 'servico' | 'produto'
   const [modalStatusFilter, setModalStatusFilter] = useState("todos"); // 'todos' | 'pago' | 'pendente'
+  const [modalInsumosFilter, setModalInsumosFilter] = useState(false);
   
   // Estado para confirmação de insumos pendentes
 
@@ -759,6 +760,7 @@ export default function Comissoes() {
     setModalSearch("");
     setModalTypeFilter("todos");
     setModalStatusFilter("todos");
+    setModalInsumosFilter(false);
     setDetailsOpen(true);
   };
 
@@ -1627,7 +1629,8 @@ export default function Comissoes() {
               const matchStatus = modalStatusFilter === "todos" || 
                 (modalStatusFilter === "pago" && item.pago) ||
                 (modalStatusFilter === "pendente" && !item.pago);
-              return matchSearch && matchType && matchStatus;
+              const matchInsumos = !modalInsumosFilter || !!item.insumos_pendentes;
+              return matchSearch && matchType && matchStatus && matchInsumos;
             }).sort((a, b) => new Date(b.data) - new Date(a.data)) : [];
 
             const filteredTotalPrincipalSum = filteredDetalhes.reduce((sum, d) => {
@@ -1712,8 +1715,8 @@ export default function Comissoes() {
                 </div>
 
                 {/* Painel de Busca e Filtros Locais - Compacto e integrado */}
-                <div className="px-4 py-2.5 sm:px-8 sm:py-3.5 border-b border-zinc-150 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 flex flex-row items-center gap-2.5 shrink-0">
-                  <div className="relative flex-1">
+                <div className="px-4 py-2.5 sm:px-8 sm:py-3.5 border-b border-zinc-150 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
+                  <div className="relative flex-1 min-w-[150px]">
                     <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-400" />
                     <Input
                       placeholder="Buscar no extrato..."
@@ -1739,6 +1742,16 @@ export default function Comissoes() {
                         <SelectItem value="produto" className="text-xs sm:text-sm">Produtos</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-855 rounded-lg h-9 px-3">
+                    <Checkbox
+                      id="modal-insumos-pendentes"
+                      checked={modalInsumosFilter}
+                      onCheckedChange={setModalInsumosFilter}
+                    />
+                    <Label htmlFor="modal-insumos-pendentes" className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 cursor-pointer select-none">
+                      Insumos Pendentes
+                    </Label>
                   </div>
                 </div>
 
