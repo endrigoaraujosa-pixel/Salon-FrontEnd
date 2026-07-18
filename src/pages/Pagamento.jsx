@@ -710,7 +710,10 @@ export default function Pagamento() {
 
   // Abrir modal de edição
   const openEditDialog = (payment) => {
-    setEditingPayment({ ...payment });
+    setEditingPayment({
+      ...payment,
+      parcelas: payment.cartao_parcelas || payment.parcelas || 1
+    });
     setEditFormOpen(true);
   };
 
@@ -1436,6 +1439,11 @@ export default function Pagamento() {
                         {p.cartao_bandeira && (
                           <span className="text-[10px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-1.5 py-0.5 rounded-full font-bold uppercase">
                             {p.cartao_bandeira}
+                          </span>
+                        )}
+                        {p.cartao_tipo === 'credito' && p.cartao_parcelas && (
+                          <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-1.5 py-0.5 rounded-full font-medium">
+                            {p.cartao_parcelas}x
                           </span>
                         )}
                       </span>
