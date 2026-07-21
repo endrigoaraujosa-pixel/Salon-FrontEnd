@@ -9,7 +9,7 @@ import { Checkbox } from "../components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import StatusBadge, { STATUS_LABELS } from "../components/StatusBadge";
-import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle, ShoppingCart, Loader2, Printer, AlertTriangle, AlertCircle, CalendarOff } from "lucide-react";
+import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle, ShoppingCart, Loader2, Printer, AlertTriangle, AlertCircle, CalendarOff, Globe, Check, XCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import AgendaTimeline from "../components/AgendaTimeline";
@@ -233,6 +233,11 @@ export default function Agenda() {
   const [deletingId, setDeletingId] = useState(null);
   const [pastDateConfirmOpen, setPastDateConfirmOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
+  
+  const [solicitacoes, setSolicitacoes] = useState([]);
+  const [openSolicitacoes, setOpenSolicitacoes] = useState(false);
+  const [loadingSolicitacoes, setLoadingSolicitacoes] = useState(false);
+  
   const nav = useNavigate();
 
   const [openNewClient, setOpenNewClient] = useState(false);
@@ -1269,11 +1274,16 @@ export default function Agenda() {
     });
   };
 
+  const loadSolicitacoes = () => {
+    return http.get("/solicitacoes-online").then((r) => setSolicitacoes(r.data || [])).catch(() => {});
+  };
+
   useEffect(() => {
     setLoading(true);
     Promise.all([
       loadDay(data),
       loadMonth(today.getFullYear(), today.getMonth() + 1),
+      loadSolicitacoes(),
       http.get("/clientes").then((r) => setClientes(r.data || [])),
       http.get("/servicos").then((r) => setServicos(r.data || [])),
       http.get("/colaboradores").then((r) => setColaboradores(r.data || [])),
@@ -1333,6 +1343,34 @@ export default function Agenda() {
       } else {
         toast.error(errorMsg);
       }
+    }
+  };
+
+  const handleAprovarSolicitacao = async (id) => {
+    setLoadingSolicitacoes(true);
+    try {
+      await http.post(`/solicitacoes-online/${id}/aprovar`);
+      toast.success("Solicitação aprovada e agendamento criado com sucesso!");
+      loadSolicitacoes();
+      loadDay(data);
+      loadMonth(monthCursor.y, monthCursor.m);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Erro ao aprovar solicitação");
+    } finally {
+      setLoadingSolicitacoes(false);
+    }
+  };
+
+  const handleRejeitarSolicitacao = async (id) => {
+    setLoadingSolicitacoes(true);
+    try {
+      await http.post(`/solicitacoes-online/${id}/rejeitar`);
+      toast.success("Solicitação rejeitada com sucesso.");
+      loadSolicitacoes();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Erro ao rejeitar solicitação");
+    } finally {
+      setLoadingSolicitacoes(false);
     }
   };
 
@@ -1856,9 +1894,29 @@ export default function Agenda() {
             </Button>
           )}
         </div>
-        {canCreate && (
-          <button className="btn-primary w-full sm:w-auto justify-center" onClick={openNew}><Plus className="w-4 h-4 mr-2" /> Novo Agendamento</button>
-        )}
+        <div className="flex gap-2 w-full sm:w-auto">
+          {canCreate && (
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                loadSolicitacoes();
+                setOpenSolicitacoes(true);
+              }}
+              className="relative w-full sm:w-auto h-10 border-zinc-200 dark:border-zinc-800"
+            >
+              <Globe className="w-4 h-4 mr-2" /> 
+              Online
+              {solicitacoes.filter(s => s.status === 'pendente').length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full animate-bounce">
+                  {solicitacoes.filter(s => s.status === 'pendente').length}
+                </span>
+              )}
+            </Button>
+          )}
+          {canCreate && (
+            <button className="btn-primary w-full sm:w-auto justify-center" onClick={openNew}><Plus className="w-4 h-4 mr-2" /> Novo</button>
+          )}
+        </div>
       </div>
 
       {view !== "calendario" && (
@@ -2319,6 +2377,74 @@ export default function Agenda() {
             </div>
           )}
           <DialogFooter><Button data-testid="save-ag-btn" onClick={save} className="btn-primary w-full">Salvar Agendamento</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Solicitações Online */}
+      <Dialog open={openSolicitacoes} onOpenChange={(open) => { setOpenSolicitacoes(open); if (open) loadSolicitacoes(); }}>
+        <DialogContent className="dialog-content w-[95vw] max-w-[95vw] sm:max-w-2xl p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800" aria-describedby="dialog-solicitacoes">
+          <DialogHeader className="dialog-header">
+            <DialogTitle className="dialog-title flex items-center justify-between gap-2 w-full pr-6">
+              <div className="flex items-center gap-2">
+                <Globe className="w-5 h-5 text-[#84A59D]" /> Solicitações Online Pendentes
+              </div>
+              <Button size="sm" variant="ghost" onClick={loadSolicitacoes} className="h-8 text-xs text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">
+                <RefreshCw className="w-3.5 h-3.5 mr-1" /> Atualizar
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          <div id="dialog-solicitacoes" className="sr-only">Lista de solicitações de agendamento feitas online pelos clientes</div>
+          <div className="dialog-body space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+            {solicitacoes.filter(s => s.status === 'pendente').length === 0 ? (
+              <div className="text-center py-10 text-zinc-500 dark:text-zinc-400">
+                <Globe className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                <p>Nenhuma solicitação pendente no momento.</p>
+              </div>
+            ) : (
+              solicitacoes.filter(s => s.status === 'pendente').map(sol => (
+                <div key={sol.id} className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm relative">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div>
+                      <div className="font-bold text-lg text-zinc-900 dark:text-zinc-100">{sol.nome_cliente || sol.cliente_nome}</div>
+                      <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-2">{sol.telefone || sol.cliente_telefone}</div>
+                      <div className="flex items-center gap-2 text-sm font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 px-3 py-1.5 rounded-lg w-fit">
+                        <CalendarDays className="w-4 h-4" />
+                        {new Date(sol.data_hora_desejada || sol.data_hora).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                      <div className="mt-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                        {(Array.isArray(sol.servicos) ? sol.servicos : (typeof sol.servicos === 'string' ? (() => { try { return JSON.parse(sol.servicos); } catch(e) { return []; } })() : [])).map((s, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#84A59D]"></span>
+                            {s.servico_nome} {s.colaborador_nome ? `(Prof: ${s.colaborador_nome})` : ''}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex sm:flex-col gap-2 w-full sm:w-auto">
+                      <Button 
+                        onClick={() => handleAprovarSolicitacao(sol.id)} 
+                        disabled={loadingSolicitacoes}
+                        className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-10"
+                      >
+                        <Check className="w-4 h-4 mr-2" /> Aprovar
+                      </Button>
+                      <Button 
+                        onClick={() => handleRejeitarSolicitacao(sol.id)} 
+                        variant="outline" 
+                        disabled={loadingSolicitacoes}
+                        className="flex-1 sm:flex-none text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 h-10"
+                      >
+                        <XCircle className="w-4 h-4 mr-2" /> Rejeitar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenSolicitacoes(false)}>Fechar</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

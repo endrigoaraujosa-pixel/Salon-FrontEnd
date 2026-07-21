@@ -61,6 +61,15 @@ export default function Configuracoes() {
       permKey: "configuracoes.sistema",
       color: "text-purple-600 dark:text-purple-450",
       bgColor: "bg-purple-50 dark:bg-purple-950/15"
+    },
+    {
+      title: "Agendamento Online",
+      description: "Defina os dias e horários de funcionamento disponíveis para o portal de agendamento online.",
+      icon: Sliders,
+      route: "/configuracoes/agendamento-online",
+      permKey: "configuracoes.sistema",
+      color: "text-amber-500",
+      bgColor: "bg-amber-50 dark:bg-amber-950/15"
     }
   ];
 

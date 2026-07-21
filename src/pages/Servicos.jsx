@@ -15,7 +15,7 @@ import AuditModal from "../components/AuditModal";
 import SearchableSelect from "../components/SearchableSelect";
 import { useAuth } from "../auth";
 
-const blank = { nome: "", categoria_id: "", duracao_minutos: 60, valor: 0, descricao: "", ativo: true, produtos_vinculados: [] };
+const blank = { nome: "", categoria_id: "", duracao_minutos: 60, valor: 0, descricao: "", ativo: true, produtos_vinculados: [], disponivel_online: true };
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const normalizeText = (str) => !str ? "" : str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
@@ -649,7 +649,10 @@ export default function Servicos() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: v })} /><Label>Ativo</Label></div>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2"><Switch checked={form.ativo} onCheckedChange={(v) => setForm({ ...form, ativo: v })} /><Label>Ativo</Label></div>
+              <div className="flex items-center gap-2"><Switch checked={form.disponivel_online !== false} onCheckedChange={(v) => setForm({ ...form, disponivel_online: v })} /><Label>Disponível Online</Label></div>
+            </div>
           </div>
           <DialogFooter><Button onClick={save} className="bg-[#84A59D] hover:bg-[#6F9189] w-full">Salvar Serviço</Button></DialogFooter>
         </DialogContent>
