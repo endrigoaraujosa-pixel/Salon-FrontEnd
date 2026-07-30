@@ -989,6 +989,7 @@ export default function Agenda() {
         cliente_id: agForUtilized.cliente_id,
         data_hora: agForUtilized.data_hora,
         observacoes: agForUtilized.observacoes || "",
+        only_insumos: true,
         itens_selecionados: updatedItens.map(x => ({
           servico_id: x.servico_id,
           colaborador_id: x.colaborador_id,
