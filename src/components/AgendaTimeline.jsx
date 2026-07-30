@@ -18,6 +18,47 @@ const toDateInputInTimezone = (dtStr) => {
   return `${getValue("year")}-${getValue("month")}-${getValue("day")}`;
 };
 
+// Alternar facilmente para reverter a exibição de faixas simultâneas (true = ativa faixas, false = restaura original)
+const ENABLE_TIMELINE_TRACKS = true;
+
+const getTracks = (items, calcBlock) => {
+  // Ordenar itens pela posição de início (left)
+  const sorted = [...items].sort((a, b) => {
+    const startA = calcBlock(a).left;
+    const startB = calcBlock(b).left;
+    return startA - startB;
+  });
+
+  const tracks = []; // array de faixas (tracks) onde cada faixa guarda agendamentos não conflitantes
+
+  sorted.forEach((item) => {
+    const { left, width } = calcBlock(item);
+    const right = left + width;
+
+    let placed = false;
+    for (let i = 0; i < tracks.length; i++) {
+      const overlap = tracks[i].some((existing) => {
+        const extBlock = calcBlock(existing);
+        const extRight = extBlock.left + extBlock.width;
+        // Interseção entre dois intervalos (com margem de 1px para evitar encostar no outro bloco)
+        return Math.max(left, extBlock.left) < Math.min(right, extRight);
+      });
+
+      if (!overlap) {
+        tracks[i].push(item);
+        placed = true;
+        break;
+      }
+    }
+
+    if (!placed) {
+      tracks.push([item]);
+    }
+  });
+
+  return tracks;
+};
+
 // Status -> cor (vertical stripe + bg suave)
 const STATUS_COLORS = {
   agendado: { stripe: "#0EA5E9", bg: "#E0F2FE", text: "#0369A1" },
@@ -283,56 +324,73 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
               {/* Linhas: colaboradores */}
               {visibleColaboradores.length === 0 ? (
                 <div className="px-4 py-12 text-center text-sm text-zinc-400 select-none">Nenhum profissional ativo cadastrado.</div>
-              ) : visibleColaboradores.map((c) => (
-                <div key={c.id} className="flex border-b border-zinc-100 relative" style={{ height: `${ROW_HEIGHT}px` }} data-testid={`timeline-row-${c.id}`}>
-                  <div className="w-[220px] flex-shrink-0 px-4 py-3 border-r border-zinc-200 flex items-center gap-3 bg-white sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] select-none">
-                    {c.foto ? (
-                      <img 
-                        src={c.foto} 
-                        alt={c.nome} 
-                        className="w-10 h-10 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-800"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-[#EAF0EE] dark:bg-zinc-800 text-[#3A4F4A] dark:text-[#EAF0EE] font-semibold text-sm shrink-0 flex items-center justify-center border border-zinc-100 dark:border-zinc-800">
-                        {c.nome?.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <div className="font-semibold text-zinc-700 text-sm truncate max-w-[130px]">{c.nome}</div>
-                      <div className="text-[11px] text-zinc-400 truncate max-w-[130px]">{c.cargo || "Profissional"}</div>
-                    </div>
-                  </div>
-                  <div className="relative" style={{ width: `${totalWidth}px` }}>
-                    {/* Linhas verticais por hora */}
-                    {hours.map((h) => (
-                      <div key={h} className="absolute top-0 bottom-0 border-r border-zinc-100 pointer-events-none" style={{ left: `${(h - HOUR_START) * HOUR_WIDTH}px`, width: `${HOUR_WIDTH}px` }} />
-                    ))}
-                    {/* Blocos de agendamento */}
-                    {byColab[c.id]?.map((a) => {
-                      const { left, width } = calcBlock(a);
-                      const colors = STATUS_COLORS[a.status] || STATUS_COLORS.agendado;
-                      const time = fmtHour(a.data_hora);
-                      const isDifferentDate = a.data_hora && toDateInputInTimezone(a.data_hora) !== data;
-                      const dateStr = isDifferentDate ? ` (${new Date(a.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Recife' })})` : '';
-                      return (
-                        <div
-                          key={a.id}
-                          data-testid={`timeline-block-${a.id}`}
-                          className="absolute top-1.5 bottom-1.5 rounded-lg overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer select-none"
-                          style={{ left: `${left}px`, width: `${width}px`, background: colors.bg, borderLeft: `4px solid ${colors.stripe}` }}
-                          title={`${time}${dateStr} · ${a.cliente_nome} · ${a.itens?.map((i) => i.nome).join(", ")}`}
-                          onClick={() => onCardClick?.(a)}
-                        >
-                          <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden" style={{ color: colors.text }}>
-                            <div className="text-[11px] font-bold leading-tight truncate">{time} · {a.cliente_nome}</div>
-                            {isDifferentDate && (
-                              <div className="text-[9px] opacity-90 font-bold truncate mt-0.5">{new Date(a.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Recife' })}</div>
-                            )}
-                            <div className="text-[10px] opacity-80 leading-tight truncate mt-0.5 font-medium">{a.itens?.map((i) => i.nome).join(", ")}</div>
-                          </div>
+              ) : visibleColaboradores.map((c) => {
+                const colabAgendamentos = byColab[c.id] || [];
+                const tracks = ENABLE_TIMELINE_TRACKS ? getTracks(colabAgendamentos, calcBlock) : [colabAgendamentos];
+                const numTracks = tracks.length;
+                const rowHeight = ENABLE_TIMELINE_TRACKS ? Math.max(1, numTracks) * 64 : 64;
+
+                return (
+                  <div key={c.id} className="flex border-b border-zinc-100 relative" style={{ height: `${rowHeight}px` }} data-testid={`timeline-row-${c.id}`}>
+                    <div className="w-[220px] flex-shrink-0 px-4 py-3 border-r border-zinc-200 flex items-center gap-3 bg-white sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] select-none">
+                      {c.foto ? (
+                        <img 
+                          src={c.foto} 
+                          alt={c.nome} 
+                          className="w-10 h-10 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-800"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-[#EAF0EE] dark:bg-zinc-800 text-[#3A4F4A] dark:text-[#EAF0EE] font-semibold text-sm shrink-0 flex items-center justify-center border border-zinc-100 dark:border-zinc-800">
+                          {c.nome?.charAt(0).toUpperCase()}
                         </div>
-                      );
-                    })}
+                      )}
+                      <div className="min-w-0">
+                        <div className="font-semibold text-zinc-700 text-sm truncate max-w-[130px]">{c.nome}</div>
+                        <div className="text-[11px] text-zinc-400 truncate max-w-[130px]">{c.cargo || "Profissional"}</div>
+                      </div>
+                    </div>
+                    <div className="relative" style={{ width: `${totalWidth}px` }}>
+                      {/* Linhas verticais por hora */}
+                      {hours.map((h) => (
+                        <div key={h} className="absolute top-0 bottom-0 border-r border-zinc-100 pointer-events-none" style={{ left: `${(h - HOUR_START) * HOUR_WIDTH}px`, width: `${HOUR_WIDTH}px` }} />
+                      ))}
+                      {/* Blocos de agendamento */}
+                      {tracks.flatMap((track, trackIndex) => {
+                        return track.map((a) => {
+                          const { left, width } = calcBlock(a);
+                          const colors = STATUS_COLORS[a.status] || STATUS_COLORS.agendado;
+                          const time = fmtHour(a.data_hora);
+                          const isDifferentDate = a.data_hora && toDateInputInTimezone(a.data_hora) !== data;
+                          const dateStr = isDifferentDate ? ` (${new Date(a.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Recife' })})` : '';
+                          
+                          const blockStyle = ENABLE_TIMELINE_TRACKS
+                            ? { left: `${left}px`, width: `${width}px`, top: `${6 + trackIndex * 64}px`, height: "52px", background: colors.bg, borderLeft: `4px solid ${colors.stripe}` }
+                            : { left: `${left}px`, width: `${width}px`, background: colors.bg, borderLeft: `4px solid ${colors.stripe}` };
+
+                          const blockClass = ENABLE_TIMELINE_TRACKS
+                            ? "absolute rounded-lg overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer select-none"
+                            : "absolute top-1.5 bottom-1.5 rounded-lg overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer select-none";
+
+                          return (
+                            <div
+                              key={a.id}
+                              data-testid={`timeline-block-${a.id}`}
+                              className={blockClass}
+                              style={blockStyle}
+                              title={`${time}${dateStr} · ${a.cliente_nome} · ${a.itens?.map((i) => i.nome).join(", ")}`}
+                              onClick={() => onCardClick?.(a)}
+                            >
+                              <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden" style={{ color: colors.text }}>
+                                <div className="text-[11px] font-bold leading-tight truncate">{time} · {a.cliente_nome}</div>
+                                {isDifferentDate && (
+                                  <div className="text-[9px] opacity-90 font-bold truncate mt-0.5">{new Date(a.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Recife' })}</div>
+                                )}
+                                <div className="text-[10px] opacity-80 leading-tight truncate mt-0.5 font-medium">{a.itens?.map((i) => i.nome).join(", ")}</div>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })}
                     {/* Blocos de indisponibilidade */}
                     {indisponibilidades
                       .filter((i) => i.colaborador_id === c.id)
@@ -365,46 +423,64 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
                       })}
                   </div>
                 </div>
-              ))}
+              )})}
 
               {/* Agendamentos sem profissional */}
-              {agendamentosSemProf.length > 0 && (
-                <div className="flex border-b border-zinc-100 relative bg-zinc-50/50" style={{ height: `${ROW_HEIGHT}px` }}>
-                  <div className="w-[220px] flex-shrink-0 px-4 py-3 border-r border-zinc-200 flex items-center bg-zinc-50/50 sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] select-none">
-                    <div className="text-xs text-zinc-400 font-semibold italic">Sem profissional definido</div>
+              {(() => {
+                if (agendamentosSemProf.length === 0) return null;
+                const tracks = ENABLE_TIMELINE_TRACKS ? getTracks(agendamentosSemProf, calcBlock) : [agendamentosSemProf];
+                const numTracks = tracks.length;
+                const rowHeight = ENABLE_TIMELINE_TRACKS ? Math.max(1, numTracks) * 64 : 64;
+
+                return (
+                  <div className="flex border-b border-zinc-100 relative bg-zinc-50/50" style={{ height: `${rowHeight}px` }}>
+                    <div className="w-[220px] flex-shrink-0 px-4 py-3 border-r border-zinc-200 flex items-center bg-zinc-50/50 sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.02)] select-none">
+                      <div className="text-xs text-zinc-400 font-semibold italic">Sem profissional definido</div>
+                    </div>
+                    <div className="relative" style={{ width: `${totalWidth}px` }}>
+                      {/* Linhas verticais por hora */}
+                      {hours.map((h) => (
+                        <div key={h} className="absolute top-0 bottom-0 border-r border-zinc-100 pointer-events-none" style={{ left: `${(h - HOUR_START) * HOUR_WIDTH}px`, width: `${HOUR_WIDTH}px` }} />
+                      ))}
+                      {tracks.flatMap((track, trackIndex) => {
+                        return track.map((a) => {
+                          const { left, width } = calcBlock(a);
+                          const colors = STATUS_COLORS[a.status] || STATUS_COLORS.agendado;
+                          const time = fmtHour(a.data_hora);
+                          const isDifferentDate = a.data_hora && toDateInputInTimezone(a.data_hora) !== data;
+                          const dateStr = isDifferentDate ? ` (${new Date(a.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Recife' })})` : '';
+
+                          const blockStyle = ENABLE_TIMELINE_TRACKS
+                            ? { left: `${left}px`, width: `${width}px`, top: `${6 + trackIndex * 64}px`, height: "52px", background: colors.bg, borderLeft: `4px solid ${colors.stripe}` }
+                            : { left: `${left}px`, width: `${width}px`, background: colors.bg, borderLeft: `4px solid ${colors.stripe}` };
+
+                          const blockClass = ENABLE_TIMELINE_TRACKS
+                            ? "absolute rounded-lg overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 select-none"
+                            : "absolute top-1.5 bottom-1.5 rounded-lg overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 select-none";
+
+                          return (
+                            <div
+                              key={a.id}
+                              className={blockClass}
+                              style={blockStyle}
+                              title={`${time}${dateStr} · ${a.cliente_nome}`}
+                              onClick={() => onCardClick?.(a)}
+                            >
+                              <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden" style={{ color: colors.text }}>
+                                <div className="text-[11px] font-bold leading-tight truncate">{time} · {a.cliente_nome}</div>
+                                {isDifferentDate && (
+                                  <div className="text-[9px] opacity-90 font-bold truncate mt-0.5">{new Date(a.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Recife' })}</div>
+                                )}
+                                <div className="text-[10px] opacity-80 leading-tight truncate mt-0.5 font-medium">Sem Profissional</div>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })}
+                    </div>
                   </div>
-                  <div className="relative" style={{ width: `${totalWidth}px` }}>
-                    {/* Linhas verticais por hora */}
-                    {hours.map((h) => (
-                      <div key={h} className="absolute top-0 bottom-0 border-r border-zinc-100 pointer-events-none" style={{ left: `${(h - HOUR_START) * HOUR_WIDTH}px`, width: `${HOUR_WIDTH}px` }} />
-                    ))}
-                    {agendamentosSemProf.map((a) => {
-                      const { left, width } = calcBlock(a);
-                      const colors = STATUS_COLORS[a.status] || STATUS_COLORS.agendado;
-                      const time = fmtHour(a.data_hora);
-                      const isDifferentDate = a.data_hora && toDateInputInTimezone(a.data_hora) !== data;
-                      const dateStr = isDifferentDate ? ` (${new Date(a.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Recife' })})` : '';
-                      return (
-                        <div
-                          key={a.id}
-                          className="absolute top-1.5 bottom-1.5 rounded-lg overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 select-none"
-                          style={{ left: `${left}px`, width: `${width}px`, background: colors.bg, borderLeft: `4px solid ${colors.stripe}` }}
-                          title={`${time}${dateStr} · ${a.cliente_nome}`}
-                          onClick={() => onCardClick?.(a)}
-                        >
-                          <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden" style={{ color: colors.text }}>
-                            <div className="text-[11px] font-bold leading-tight truncate">{time} · {a.cliente_nome}</div>
-                            {isDifferentDate && (
-                              <div className="text-[9px] opacity-90 font-bold truncate mt-0.5">{new Date(a.data_hora).toLocaleDateString('pt-BR', { timeZone: 'America/Recife' })}</div>
-                            )}
-                            <div className="text-[10px] opacity-80 leading-tight truncate mt-0.5 font-medium">Sem Profissional</div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
 

@@ -28,6 +28,7 @@ const defaultPermissions = {
   "agenda.aplicar_desconto": false,
   "agenda.excluir": false,
   "agenda.whatsapp_historico": false,
+  "agenda.solicitacoes_online": false,
   "clientes.visualizar": false,
   "clientes.criar": false,
   "clientes.editar": false,
@@ -127,6 +128,7 @@ const permissionGroups = [
       { key: "agenda.aplicar_desconto", label: "Aplicar Descontos", desc: "Permitir descontos nos fechamentos da agenda." },
       { key: "agenda.excluir", label: "Excluir Agendamentos", desc: "Excluir agendamentos fisicamente do sistema." },
       { key: "agenda.whatsapp_historico", label: "Histórico do WhatsApp", desc: "Consultar histórico de lembretes e envios de mensagens." },
+      { key: "agenda.solicitacoes_online", label: "Solicitações Online", desc: "Visualizar e gerenciar solicitações de agendamento online." },
       { key: "configuracoes.whatsapp_mensagem_massa", label: "WhatsApp - Mensagem em Massa", desc: "Acessar a tela de campanhas de envio de mensagens em massa." }
     ]
   },
