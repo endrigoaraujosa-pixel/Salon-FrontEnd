@@ -358,7 +358,8 @@ export default function ClienteHistorico() {
                             <Scissors className="w-3.5 h-3.5 text-[#84A59D]" />
                             <span>Serviços Realizados</span>
                           </div>
-                          <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-950 shadow-sm">
+                          {/* Tabela de Serviços (Desktop) */}
+                          <div className="hidden sm:block border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-950 shadow-sm">
                             <div className="overflow-x-auto w-full">
                               <table className="w-full text-xs">
                                 <thead className="bg-zinc-50 dark:bg-zinc-900/80 text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider text-[9px] border-b border-zinc-200 dark:border-zinc-800">
@@ -442,6 +443,79 @@ export default function ClienteHistorico() {
                               </table>
                             </div>
                           </div>
+
+                          {/* Card Layout para Mobile (PWA Mobile) */}
+                          <div className="block sm:hidden space-y-3">
+                            {day.agendamentos.map((a) => (
+                              <div 
+                                key={a.id} 
+                                onClick={() => {
+                                  setSelectedAgendamento(a);
+                                  setDetailModalOpen(true);
+                                }}
+                                className="p-4 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl space-y-3 cursor-pointer active:bg-zinc-50 dark:active:bg-zinc-900 transition-colors shadow-sm"
+                              >
+                                <div className="flex items-center justify-between text-xs text-zinc-400 dark:text-zinc-500 font-mono">
+                                  <span>{a.numero ? `#${String(a.numero).padStart(6, '0')} | S` : "-"}</span>
+                                  <span>{new Date(a.data_hora).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
+                                
+                                <div className="space-y-1">
+                                  <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 leading-tight">
+                                    {a.itens?.map((i) => i.nome).join(", ")}
+                                  </div>
+                                  <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                                    Profissional: <span className="font-medium text-zinc-700 dark:text-zinc-300">{a.profissionais?.map(p => p.nome).join(" & ") || "-"}</span>
+                                  </div>
+                                </div>
+
+                                {(() => {
+                                  let desc = a.desconto_aplicado;
+                                  if (typeof desc === 'string') {
+                                    try { desc = JSON.parse(desc); } catch (e) {}
+                                  }
+                                  if (desc) {
+                                    return (
+                                      <div className="pt-0.5">
+                                        <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-[10px] px-2.5 py-1 rounded-full border border-emerald-100 dark:border-emerald-900 font-semibold">
+                                          🏷️ Cupom: {desc.codigo} (-{fmtBRL(desc.total_descontado)})
+                                        </span>
+                                      </div>
+                                    );
+                                  }
+
+                                  // Check for manual discount
+                                  const totalOriginal = a.itens?.reduce((sum, item) => sum + (item.valor_original !== undefined && item.valor_original !== null ? Number(item.valor_original) : Number(item.valor || 0)), 0) || 0;
+                                  const totalCobrado = a.itens?.reduce((sum, item) => sum + Number(item.valor || 0), 0) || 0;
+                                  const diff = totalOriginal - totalCobrado;
+                                  if (diff > 0.01) {
+                                    return (
+                                      <div className="pt-0.5">
+                                        <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-[10px] px-2.5 py-1 rounded-full border border-emerald-100 dark:border-emerald-900 font-semibold">
+                                          🏷️ Desconto Manual (-{fmtBRL(diff)})
+                                        </span>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+
+                                {a.observacoes && (
+                                  <div className="text-[11px] text-amber-800 dark:text-zinc-300 bg-amber-50/70 dark:bg-zinc-900/60 border border-amber-200/50 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 leading-relaxed flex items-start gap-1.5">
+                                    <span className="shrink-0 mt-0.5">📝</span>
+                                    <span><strong>Obs:</strong> {a.observacoes}</span>
+                                  </div>
+                                )}
+
+                                <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 pt-3">
+                                  <StatusBadge status={a.status} />
+                                  <span className="font-bold text-sm text-[#3A4F4A] dark:text-[#EAF0EE]">
+                                    {fmtBRL(a.valor_total)}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
 
@@ -452,7 +526,8 @@ export default function ClienteHistorico() {
                             <Package className="w-3.5 h-3.5 text-[#84A59D]" />
                             <span>Produtos Adquiridos</span>
                           </div>
-                          <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-950 shadow-sm">
+                          {/* Tabela de Produtos (Desktop) */}
+                          <div className="hidden sm:block border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-950 shadow-sm">
                             <div className="overflow-x-auto w-full">
                               <table className="w-full text-xs">
                                 <thead className="bg-zinc-50 dark:bg-zinc-900/80 text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider text-[9px] border-b border-zinc-200 dark:border-zinc-800">
@@ -531,6 +606,79 @@ export default function ClienteHistorico() {
                                 </tbody>
                               </table>
                             </div>
+                          </div>
+
+                          {/* Card Layout para Mobile (PWA Mobile) */}
+                          <div className="block sm:hidden space-y-3">
+                            {day.vendas.map((v) => {
+                              const vendaItens = Array.isArray(v.itens) && v.itens.length > 0 
+                                ? v.itens 
+                                : [{ 
+                                    produto_nome: v.produto_nome, 
+                                    quantidade: v.quantidade, 
+                                    preco_unitario: v.quantidade > 0 ? v.valor_total / v.quantidade : v.valor_total, 
+                                    subtotal: v.valor_total 
+                                  }];
+                              
+                              return vendaItens.map((item, idx) => (
+                                <div 
+                                  key={`${v.id}-${idx}`}
+                                  className="p-4 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl space-y-3 shadow-sm"
+                                >
+                                  <div className="flex items-center justify-between text-xs text-zinc-400 dark:text-zinc-500 font-mono">
+                                    <span>{v.numero_venda ? `#${String(v.numero_venda).padStart(6, '0')} | V` : "-"}</span>
+                                    <span>Responsável: <span className="font-medium text-zinc-600 dark:text-zinc-400">{v.colaborador_nome || "-"}</span></span>
+                                  </div>
+
+                                  <div className="space-y-1">
+                                    <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 leading-tight">
+                                      {item.produto_nome}
+                                    </div>
+                                    <div className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
+                                      <span>Qtd: <span className="font-bold text-zinc-700 dark:text-zinc-300">{item.quantidade}</span></span>
+                                      <span>Unitário: <span className="text-zinc-500 dark:text-zinc-400">{fmtBRL(item.preco_unitario)}</span></span>
+                                    </div>
+                                  </div>
+
+                                  {(() => {
+                                    let desc = v.desconto_aplicado;
+                                    if (typeof desc === 'string') {
+                                      try { desc = JSON.parse(desc); } catch (e) {}
+                                    }
+                                    if (desc) {
+                                      return (
+                                        <div className="pt-0.5">
+                                          <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-[10px] px-2.5 py-1 rounded-full border border-emerald-100 dark:border-emerald-900 font-semibold">
+                                            🏷️ Cupom: {desc.codigo} (-{fmtBRL(desc.total_descontado)})
+                                          </span>
+                                        </div>
+                                      );
+                                    }
+
+                                    // Check manual discount on product item
+                                    const orig = item.preco_unitario_original !== undefined ? item.preco_unitario_original : item.preco_unitario;
+                                    const diff = (orig - item.preco_unitario) * item.quantidade;
+                                    if (diff > 0.01) {
+                                      return (
+                                        <div className="pt-0.5">
+                                          <span className="inline-flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-[10px] px-2.5 py-1 rounded-full border border-emerald-100 dark:border-emerald-900 font-semibold">
+                                            🏷️ Desconto Manual (-{fmtBRL(diff)})
+                                          </span>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+
+                                  <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 pt-3">
+                                    <span className="text-xs text-zinc-400 dark:text-zinc-550 font-medium">Subtotal</span>
+                                    <span className="font-bold text-sm text-[#3A4F4A] dark:text-[#EAF0EE]">
+                                      {fmtBRL(item.subtotal)}
+                                    </span>
+                                  </div>
+                                </div>
+                              ));
+                            })}
                           </div>
                         </div>
                       )}
