@@ -238,6 +238,23 @@ export default function Agenda() {
   const [solicitacoes, setSolicitacoes] = useState([]);
   const [openSolicitacoes, setOpenSolicitacoes] = useState(false);
   const [loadingSolicitacoes, setLoadingSolicitacoes] = useState(false);
+  const [solicitacaoEditions, setSolicitacaoEditions] = useState({});
+
+  const updateSolEdition = (solId, sol, field, value) => {
+    setSolicitacaoEditions(prev => {
+      const current = prev[solId] || {
+        data_hora: toDatetimeLocalInput(sol.data_hora_desejada || sol.data_hora),
+        profissional_id: sol.profissional_id || ''
+      };
+      return {
+        ...prev,
+        [solId]: {
+          ...current,
+          [field]: value
+        }
+      };
+    });
+  };
   
   const nav = useNavigate();
 
@@ -1348,10 +1365,20 @@ export default function Agenda() {
     }
   };
 
-  const handleAprovarSolicitacao = async (id) => {
+  const handleAprovarSolicitacao = async (id, originalSol) => {
     setLoadingSolicitacoes(true);
     try {
-      await http.post(`/solicitacoes-online/${id}/aprovar`);
+      const edition = solicitacaoEditions[id];
+      const payload = {};
+      
+      if (edition?.data_hora) {
+        payload.data_hora = new Date(edition.data_hora).toISOString();
+      }
+      if (edition?.profissional_id !== undefined) {
+        payload.profissional_id = edition.profissional_id === "" ? null : edition.profissional_id;
+      }
+
+      await http.post(`/solicitacoes-online/${id}/aprovar`, payload);
       toast.success("Solicitação aprovada e agendamento criado com sucesso!");
       loadSolicitacoes();
       loadDay(data);
@@ -2403,45 +2430,77 @@ export default function Agenda() {
                 <p>Nenhuma solicitação pendente no momento.</p>
               </div>
             ) : (
-              solicitacoes.filter(s => s.status === 'pendente').map(sol => (
-                <div key={sol.id} className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm relative">
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                    <div>
-                      <div className="font-bold text-lg text-zinc-900 dark:text-zinc-100">{sol.nome_cliente || sol.cliente_nome}</div>
-                      <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-2">{sol.telefone || sol.cliente_telefone}</div>
-                      <div className="flex items-center gap-2 text-sm font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 px-3 py-1.5 rounded-lg w-fit">
-                        <CalendarDays className="w-4 h-4" />
-                        {new Date(sol.data_hora_desejada || sol.data_hora).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                      <div className="mt-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                        {(Array.isArray(sol.servicos) ? sol.servicos : (typeof sol.servicos === 'string' ? (() => { try { return JSON.parse(sol.servicos); } catch(e) { return []; } })() : [])).map((s, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#84A59D]"></span>
-                            {s.servico_nome} {s.colaborador_nome ? `(Prof: ${s.colaborador_nome})` : ''}
+              solicitacoes.filter(s => s.status === 'pendente').map(sol => {
+                const edition = solicitacaoEditions[sol.id] || {};
+                const currentValDateTime = edition.data_hora !== undefined ? edition.data_hora : toDatetimeLocalInput(sol.data_hora_desejada || sol.data_hora);
+                const currentValProf = edition.profissional_id !== undefined ? edition.profissional_id : (sol.profissional_id || '');
+
+                return (
+                  <div key={sol.id} className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm relative">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="font-bold text-lg text-zinc-900 dark:text-zinc-100">{sol.nome_cliente || sol.cliente_nome}</div>
+                        <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-2">{sol.telefone || sol.cliente_telefone}</div>
+                        <div className="flex items-center gap-2 text-sm font-medium bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 px-3 py-1.5 rounded-lg w-fit">
+                          <CalendarDays className="w-4 h-4" />
+                          {new Date(sol.data_hora_desejada || sol.data_hora).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                        <div className="mt-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                          {(Array.isArray(sol.servicos) ? sol.servicos : (typeof sol.servicos === 'string' ? (() => { try { return JSON.parse(sol.servicos); } catch(e) { return []; } })() : [])).map((s, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#84A59D]"></span>
+                              {s.servico_nome} {s.colaborador_nome ? `(Prof: ${s.colaborador_nome})` : ''}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Editor de Horário e Profissional antes de Aprovar */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 p-3 bg-zinc-50 dark:bg-zinc-900/40 rounded-xl border border-zinc-100 dark:border-zinc-800/60 max-w-md">
+                          <div className="form-group">
+                            <label className="text-[10px] font-bold text-zinc-500 mb-1 block uppercase tracking-wider">Ajustar Data e Hora</label>
+                            <Input
+                              type="datetime-local"
+                              value={currentValDateTime}
+                              onChange={(e) => updateSolEdition(sol.id, sol, 'data_hora', e.target.value)}
+                              className="h-8 text-xs bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
+                            />
                           </div>
-                        ))}
+                          <div className="form-group">
+                            <label className="text-[10px] font-bold text-zinc-500 mb-1 block uppercase tracking-wider">Mudar Profissional</label>
+                            <select
+                              value={currentValProf}
+                              onChange={(e) => updateSolEdition(sol.id, sol, 'profissional_id', e.target.value)}
+                              className="w-full h-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-[#84A59D]"
+                            >
+                              <option value="">Qualquer Profissional</option>
+                              {colaboradores.map(colab => (
+                                <option key={colab.id} value={colab.id}>{colab.nome}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex sm:flex-col gap-2 w-full sm:w-auto">
-                      <Button 
-                        onClick={() => handleAprovarSolicitacao(sol.id)} 
-                        disabled={loadingSolicitacoes}
-                        className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-10"
-                      >
-                        <Check className="w-4 h-4 mr-2" /> Aprovar
-                      </Button>
-                      <Button 
-                        onClick={() => handleRejeitarSolicitacao(sol.id)} 
-                        variant="outline" 
-                        disabled={loadingSolicitacoes}
-                        className="flex-1 sm:flex-none text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 h-10"
-                      >
-                        <XCircle className="w-4 h-4 mr-2" /> Rejeitar
-                      </Button>
+                      <div className="flex sm:flex-col gap-2 w-full sm:w-auto mt-4 sm:mt-0">
+                        <Button 
+                          onClick={() => handleAprovarSolicitacao(sol.id, sol)} 
+                          disabled={loadingSolicitacoes}
+                          className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-10"
+                        >
+                          <Check className="w-4 h-4 mr-2" /> Aprovar
+                        </Button>
+                        <Button 
+                          onClick={() => handleRejeitarSolicitacao(sol.id)} 
+                          variant="outline" 
+                          disabled={loadingSolicitacoes}
+                          className="flex-1 sm:flex-none text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 h-10"
+                        >
+                          <XCircle className="w-4 h-4 mr-2" /> Rejeitar
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
           <DialogFooter>

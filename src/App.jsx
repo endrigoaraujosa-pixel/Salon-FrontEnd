@@ -91,6 +91,19 @@ const PermissionRoute = ({ children, permission }) => {
 
 
 function App() {
+  // Redirecionamento para a agenda online se for um caminho de loja
+  const hostname = window.location.hostname;
+  const pathname = window.location.pathname;
+
+  // Caso 1: A URL contém o caminho /loja=salon
+  if (pathname.startsWith('/loja=')) {
+    const tenant = pathname.split('=')[1];
+    if (tenant) {
+      window.location.href = `http://${hostname.includes('localhost') ? 'localhost' : hostname}:5174/?loja=${tenant}`;
+      return null;
+    }
+  }
+
   return (
     <ThemeProvider>
 
