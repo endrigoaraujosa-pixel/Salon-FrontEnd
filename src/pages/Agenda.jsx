@@ -175,6 +175,7 @@ export default function Agenda() {
   const { user: me } = useAuth();
   const isAdmin = me?.role === "admin";
   const canCreate = isAdmin || me?.perfil?.permissoes?.["agenda.criar"] === true;
+  const canOnline = isAdmin || me?.perfil?.permissoes?.["agenda.solicitacoes_online"] === true;
   const canEdit = isAdmin || me?.perfil?.permissoes?.["agenda.editar"] === true;
   const canChangeStatus = isAdmin || me?.perfil?.permissoes?.["agenda.status"] === true;
   const canConclude = isAdmin || me?.perfil?.permissoes?.["agenda.concluir"] === true;
@@ -1275,6 +1276,7 @@ export default function Agenda() {
   };
 
   const loadSolicitacoes = () => {
+    if (!canOnline) return Promise.resolve();
     return http.get("/solicitacoes-online").then((r) => setSolicitacoes(r.data || [])).catch(() => {});
   };
 
@@ -1895,7 +1897,7 @@ export default function Agenda() {
           )}
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          {canCreate && (
+          {canOnline && (
             <Button 
               variant="outline" 
               onClick={() => {
