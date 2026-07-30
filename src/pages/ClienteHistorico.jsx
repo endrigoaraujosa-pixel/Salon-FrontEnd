@@ -5,12 +5,61 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { 
   ArrowLeft, Calendar, Search, ChevronDown, ChevronUp, 
-  Scissors, Package, DollarSign, Clock, User, CalendarDays, FileText, Users
+  Scissors, Package, DollarSign, Clock, User, CalendarDays, FileText, Users, CreditCard
 } from "lucide-react";
 import StatusBadge from "../components/StatusBadge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+const getFriendlyPaymentLabel = (method, taxasCartao = []) => {
+  if (!method) return "-";
+  const m = method.toLowerCase();
+  
+  // 1. Verificações personalizadas de taxas de cartões/adquirentes cadastrados
+  const foundTaxa = taxasCartao.find(t => t.forma_pagamento === method);
+  if (foundTaxa) {
+    if (foundTaxa.descricao) return foundTaxa.descricao;
+    const typeName = foundTaxa.tipo_cartao === 'credito' ? 'Crédito' : 'Débito';
+    const brandName = foundTaxa.bandeira ? foundTaxa.bandeira.trim() : '';
+    return `${typeName} ${brandName}`.trim();
+  }
+
+  // 2. Fallbacks de termos padrão
+  switch (m) {
+    case "dinheiro":
+      return "Dinheiro";
+    case "cartao_credito":
+    case "credito":
+      return "Cartão de Crédito";
+    case "cartao_debito":
+    case "debito":
+      return "Cartão de Débito";
+    case "pix":
+      return "Pix";
+    case "transferencia":
+      return "Transferência Bancária";
+    case "credito_cliente":
+      return "Crédito de Cliente";
+    case "saldo":
+      return "Saldo de Crédito";
+    case "outros":
+      return "Outros";
+    default:
+      if (m.startsWith('debito_')) return 'Cartão de Débito';
+      if (m.startsWith('credito_')) return 'Cartão de Crédito';
+      return method.charAt(0).toUpperCase() + method.slice(1).replace("_", " ");
+  }
+};
+
+const formatPaymentWithInstallments = (p, taxasCartao = []) => {
+  if (!p) return "";
+  const label = getFriendlyPaymentLabel(p.forma_pagamento, taxasCartao);
+  if (p.cartao_parcelas && p.cartao_parcelas > 1) {
+    return `${label} (${p.cartao_parcelas}x)`;
+  }
+  return label;
+};
 
 const getLocalDateString = (dateInput) => {
   if (!dateInput) return "1970-01-01";
@@ -54,6 +103,7 @@ export default function ClienteHistorico() {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedDays, setExpandedDays] = useState({});
   const [produtos, setProdutos] = useState([]);
+  const [taxasCartao, setTaxasCartao] = useState([]);
   const [selectedAgendamento, setSelectedAgendamento] = useState(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState(null);
@@ -65,6 +115,9 @@ export default function ClienteHistorico() {
     http.get("/produtos").then((r) => {
       setProdutos(r.data);
     });
+    http.get("/configuracoes/taxas-cartao").then((r) => {
+      setTaxasCartao(r.data || []);
+    }).catch(() => {});
   }, [id]);
 
   if (!data) return <div className="p-8 text-zinc-400">Carregando...</div>;
@@ -427,6 +480,15 @@ export default function ClienteHistorico() {
                                             <span><strong>Observações:</strong> {a.observacoes}</span>
                                           </div>
                                         )}
+                                        {a.pagamentos && a.pagamentos.length > 0 && (
+                                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                            {a.pagamentos.map((p, pIdx) => (
+                                              <span key={pIdx} className="inline-flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-300 text-[10px] px-2 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-700 font-semibold shadow-xs">
+                                                💳 {formatPaymentWithInstallments(p, taxasCartao)}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        )}
                                       </td>
                                       <td className="px-2 sm:px-4 py-3 text-zinc-500 dark:text-zinc-400">
                                         {a.profissionais?.map(p => p.nome).join(" & ") || "-"}
@@ -467,6 +529,15 @@ export default function ClienteHistorico() {
                                   <div className="text-xs text-zinc-500 dark:text-zinc-400">
                                     Profissional: <span className="font-medium text-zinc-700 dark:text-zinc-300">{a.profissionais?.map(p => p.nome).join(" & ") || "-"}</span>
                                   </div>
+                                  {a.pagamentos && a.pagamentos.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1.5">
+                                      {a.pagamentos.map((p, pIdx) => (
+                                        <span key={pIdx} className="inline-flex items-center gap-1 bg-zinc-100 dark:bg-zinc-855 text-zinc-650 dark:text-zinc-300 text-[10px] px-2 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-800 font-semibold shadow-xs">
+                                          💳 {formatPaymentWithInstallments(p, taxasCartao)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
 
                                 {(() => {
@@ -587,6 +658,15 @@ export default function ClienteHistorico() {
                                             }
                                             return null;
                                           })()}
+                                          {idx === 0 && v.pagamentos && v.pagamentos.length > 0 && (
+                                            <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                              {v.pagamentos.map((p, pIdx) => (
+                                                <span key={pIdx} className="inline-flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-300 text-[10px] px-2 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-700 font-semibold shadow-xs">
+                                                  💳 {formatPaymentWithInstallments(p, taxasCartao)}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          )}
                                         </td>
                                         <td className="px-2 sm:px-4 py-3 text-zinc-500 dark:text-zinc-400">
                                           {v.colaborador_nome || "-"}
@@ -638,6 +718,15 @@ export default function ClienteHistorico() {
                                       <span>Qtd: <span className="font-bold text-zinc-700 dark:text-zinc-300">{item.quantidade}</span></span>
                                       <span>Unitário: <span className="text-zinc-500 dark:text-zinc-400">{fmtBRL(item.preco_unitario)}</span></span>
                                     </div>
+                                    {idx === 0 && v.pagamentos && v.pagamentos.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mt-1.5">
+                                        {v.pagamentos.map((p, pIdx) => (
+                                          <span key={pIdx} className="inline-flex items-center gap-1 bg-zinc-100 dark:bg-zinc-855 text-zinc-650 dark:text-zinc-300 text-[10px] px-2 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-800 font-semibold shadow-xs">
+                                            💳 {formatPaymentWithInstallments(p, taxasCartao)}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
 
                                   {(() => {
@@ -759,6 +848,21 @@ export default function ClienteHistorico() {
                     </div>
                   </div>
                 </div>
+
+                {/* Forma de Pagamento Principal */}
+                {((selectedAgendamento.pagamentos && selectedAgendamento.pagamentos.length > 0) || selectedAgendamento.status === 'concluido') && (
+                  <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-3 shadow-xs">
+                    <CreditCard className="w-6 h-6 text-[#84A59D]" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">Forma de Pagamento</p>
+                      <p className="text-sm font-semibold text-zinc-850 dark:text-zinc-200 mt-0.5 truncate">
+                        {selectedAgendamento.pagamentos && selectedAgendamento.pagamentos.length > 0
+                          ? selectedAgendamento.pagamentos.map(p => formatPaymentWithInstallments(p, taxasCartao)).join(", ")
+                          : "Sem registro de pagamento"}
+                      </p>
+                    </div>
+                  </div>
+                )}
  
                 {/* Observações */}
                 <div className="space-y-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
@@ -926,8 +1030,8 @@ export default function ClienteHistorico() {
                       {selectedAgendamento.pagamentos.map((p, idx) => (
                         <div key={idx} className="bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] p-3 rounded-xl flex flex-col gap-1.5 shadow-xs text-xs">
                           <div className="flex justify-between items-center w-full">
-                            <span className="font-semibold text-zinc-700 dark:text-zinc-350 capitalize">
-                              {p.forma_pagamento}
+                            <span className="font-semibold text-zinc-700 dark:text-zinc-350">
+                              {formatPaymentWithInstallments(p, taxasCartao)}
                             </span>
                             <span className="font-mono font-bold text-zinc-800 dark:text-zinc-200">{fmtBRL(p.valor)}</span>
                           </div>
