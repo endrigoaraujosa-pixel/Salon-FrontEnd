@@ -9,7 +9,7 @@ import { Switch } from "../components/ui/switch";
 import { Input } from "../components/ui/input";
 import { Checkbox } from "../components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "../components/ui/dialog";
-import { ArrowLeft, Save, CalendarClock, AlertCircle, Globe, Copy, Users, User, Clock, Scissors, X, ChevronRight, Settings2 } from "lucide-react";
+import { ArrowLeft, Save, CalendarClock, AlertCircle, Globe, Copy, Users, User, Clock, Scissors, X, ChevronRight, Settings2, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 
 const DIAS_SEMANA = {
@@ -37,6 +37,7 @@ export default function ConfiguracoesAgendamentoOnline() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sistemaOnlineAtivo, setSistemaOnlineAtivo] = useState(true);
+  const [ocultarValoresOnline, setOcultarValoresOnline] = useState(false);
   const [activeTab, setActiveTab] = useState("horarios"); // 'horarios' | 'colaboradores'
   const [disponibilidades, setDisponibilidades] = useState([]);
 
@@ -90,6 +91,17 @@ export default function ConfiguracoesAgendamentoOnline() {
     }
   };
 
+  const handleToggleOcultarValores = async (checked) => {
+    setOcultarValoresOnline(checked);
+    try {
+      await http.post("/configuracoes/sistema", { ocultar_valores_online: checked });
+      toast.success(checked ? "Valores dos serviços ocultados no Agendamento Online." : "Valores dos serviços visíveis no Agendamento Online.");
+    } catch (e) {
+      toast.error("Erro ao atualizar exibição de valores dos serviços.");
+      setOcultarValoresOnline(!checked);
+    }
+  };
+
   // =================== HORÁRIOS DO SALÃO ===================
   const loadData = async () => {
     setLoading(true);
@@ -116,8 +128,13 @@ export default function ConfiguracoesAgendamentoOnline() {
         setDisponibilidades(init);
       }
 
-      if (sysRes.data && sysRes.data.agendamento_online_ativo !== undefined) {
-        setSistemaOnlineAtivo(Boolean(sysRes.data.agendamento_online_ativo));
+      if (sysRes.data) {
+        if (sysRes.data.agendamento_online_ativo !== undefined) {
+          setSistemaOnlineAtivo(Boolean(sysRes.data.agendamento_online_ativo));
+        }
+        if (sysRes.data.ocultar_valores_online !== undefined) {
+          setOcultarValoresOnline(Boolean(sysRes.data.ocultar_valores_online));
+        }
       }
     } catch (e) {
       toast.error("Erro ao carregar configurações de disponibilidade");
@@ -327,6 +344,33 @@ export default function ConfiguracoesAgendamentoOnline() {
                 id="global-online-switch"
                 checked={sistemaOnlineAtivo}
                 onCheckedChange={handleToggleGlobalOnline}
+              />
+            </div>
+          </div>
+        </Card>
+
+        {/* Exibição de Valores dos Serviços */}
+        <Card className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-[#84A59D]" />
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                  Ocultar valores dos serviços no Agendamento Online
+                </h3>
+              </div>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                Quando ativado, os clientes poderão selecionar os serviços normalmente, mas os preços não serão exibidos durante o agendamento (ideal para serviços com valores variáveis).
+              </p>
+            </div>
+            <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 flex-shrink-0">
+              <Label htmlFor="ocultar-valores-switch" className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                {ocultarValoresOnline ? "Ocultos" : "Exibidos"}
+              </Label>
+              <Switch
+                id="ocultar-valores-switch"
+                checked={ocultarValoresOnline}
+                onCheckedChange={handleToggleOcultarValores}
               />
             </div>
           </div>
