@@ -403,36 +403,38 @@ export default function ConfiguracoesAgendamentoOnline() {
                 {disponibilidades.map((disp, i) => (
                   <div 
                     key={disp.id || i}
-                    className={`flex items-center justify-between gap-4 p-4 rounded-xl border ${disp.ativo ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-sm' : 'bg-zinc-50 dark:bg-zinc-950/50 border-zinc-100 dark:border-zinc-850 opacity-70'} transition-all`}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border ${disp.ativo ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-sm' : 'bg-zinc-50 dark:bg-zinc-950/50 border-zinc-100 dark:border-zinc-850 opacity-70'} transition-all`}
                   >
-                    <div className="flex items-center gap-4 w-40">
-                      <Switch 
-                        checked={disp.ativo}
-                        onCheckedChange={() => toggleDay(i)}
-                      />
-                      <Label className="font-bold text-sm cursor-pointer" onClick={() => toggleDay(i)}>
-                        {DIAS_SEMANA[disp.dia_semana]}
-                      </Label>
+                    <div className="flex items-center gap-4 w-full sm:w-40 justify-between sm:justify-start">
+                      <div className="flex items-center gap-3">
+                        <Switch 
+                          checked={disp.ativo}
+                          onCheckedChange={() => toggleDay(i)}
+                        />
+                        <Label className="font-bold text-sm cursor-pointer" onClick={() => toggleDay(i)}>
+                          {DIAS_SEMANA[disp.dia_semana]}
+                        </Label>
+                      </div>
                     </div>
 
                     {disp.ativo ? (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
                         <Input 
                           type="time" 
                           value={disp.hora_inicio} 
                           onChange={(e) => updateTime(i, "hora_inicio", e.target.value)}
-                          className="w-32 text-center bg-zinc-50 dark:bg-zinc-950"
+                          className="w-28 sm:w-32 text-center bg-zinc-50 dark:bg-zinc-950"
                         />
-                        <span className="text-zinc-400 font-semibold">até</span>
+                        <span className="text-zinc-400 font-semibold text-xs sm:text-sm">até</span>
                         <Input 
                           type="time" 
                           value={disp.hora_fim} 
                           onChange={(e) => updateTime(i, "hora_fim", e.target.value)}
-                          className="w-32 text-center bg-zinc-50 dark:bg-zinc-950"
+                          className="w-28 sm:w-32 text-center bg-zinc-50 dark:bg-zinc-950"
                         />
                       </div>
                     ) : (
-                      <div className="text-xs text-zinc-400 font-semibold uppercase tracking-wider flex-1 text-center pr-12">
+                      <div className="text-xs text-zinc-400 font-semibold uppercase tracking-wider text-left sm:text-center sm:pr-12">
                         Fechado
                       </div>
                     )}
@@ -660,33 +662,35 @@ export default function ConfiguracoesAgendamentoOnline() {
                       {editDisponibilidades.map(disp => (
                         <div
                           key={disp.dia_semana}
-                          className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                          className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-lg border transition-all ${
                             disp.ativo
                               ? 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900'
                               : 'border-zinc-100 dark:border-zinc-850 bg-zinc-50 dark:bg-zinc-950/50 opacity-60'
                           }`}
                         >
-                          <Switch
-                            checked={disp.ativo}
-                            onCheckedChange={() => toggleEditDayColab(disp.dia_semana)}
-                          />
-                          <span className="font-bold text-xs w-20 text-zinc-700 dark:text-zinc-300">
-                            {DIAS_SEMANA_SHORT[disp.dia_semana]}
-                          </span>
+                          <div className="flex items-center gap-3">
+                            <Switch
+                              checked={disp.ativo}
+                              onCheckedChange={() => toggleEditDayColab(disp.dia_semana)}
+                            />
+                            <span className="font-bold text-xs w-20 text-zinc-700 dark:text-zinc-300">
+                              {DIAS_SEMANA_SHORT[disp.dia_semana]}
+                            </span>
+                          </div>
                           {disp.ativo ? (
-                            <div className="flex items-center gap-2 flex-1">
+                            <div className="flex items-center gap-2 flex-1 justify-start sm:justify-end mt-1 sm:mt-0">
                               <Input
                                 type="time"
                                 value={disp.hora_inicio}
                                 onChange={(e) => updateEditTimeColab(disp.dia_semana, "hora_inicio", e.target.value)}
-                                className="w-28 text-center text-xs h-8 bg-zinc-50 dark:bg-zinc-950"
+                                className="w-24 sm:w-28 text-center text-xs h-8 bg-zinc-50 dark:bg-zinc-950"
                               />
                               <span className="text-zinc-400 text-xs font-semibold">até</span>
                               <Input
                                 type="time"
                                 value={disp.hora_fim}
                                 onChange={(e) => updateEditTimeColab(disp.dia_semana, "hora_fim", e.target.value)}
-                                className="w-28 text-center text-xs h-8 bg-zinc-50 dark:bg-zinc-950"
+                                className="w-24 sm:w-28 text-center text-xs h-8 bg-zinc-50 dark:bg-zinc-950"
                               />
                             </div>
                           ) : (
