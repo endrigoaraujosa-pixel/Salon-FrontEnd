@@ -9,7 +9,7 @@ import { Switch } from "../components/ui/switch";
 import { Input } from "../components/ui/input";
 import { Checkbox } from "../components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "../components/ui/dialog";
-import { ArrowLeft, Save, CalendarClock, AlertCircle, Globe, Copy, Users, User, Clock, Scissors, X, ChevronRight, Settings2 } from "lucide-react";
+import { ArrowLeft, Save, CalendarClock, AlertCircle, Globe, Copy, Users, User, Clock, Scissors, X, ChevronRight, Settings2, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 
 const DIAS_SEMANA = {
@@ -37,6 +37,7 @@ export default function ConfiguracoesAgendamentoOnline() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sistemaOnlineAtivo, setSistemaOnlineAtivo] = useState(true);
+  const [ocultarValoresOnline, setOcultarValoresOnline] = useState(false);
   const [activeTab, setActiveTab] = useState("horarios"); // 'horarios' | 'colaboradores'
   const [disponibilidades, setDisponibilidades] = useState([]);
 
@@ -90,6 +91,17 @@ export default function ConfiguracoesAgendamentoOnline() {
     }
   };
 
+  const handleToggleOcultarValores = async (checked) => {
+    setOcultarValoresOnline(checked);
+    try {
+      await http.post("/configuracoes/sistema", { ocultar_valores_online: checked });
+      toast.success(checked ? "Valores dos serviços ocultados no Agendamento Online." : "Valores dos serviços visíveis no Agendamento Online.");
+    } catch (e) {
+      toast.error("Erro ao atualizar exibição de valores dos serviços.");
+      setOcultarValoresOnline(!checked);
+    }
+  };
+
   // =================== HORÁRIOS DO SALÃO ===================
   const loadData = async () => {
     setLoading(true);
@@ -116,8 +128,13 @@ export default function ConfiguracoesAgendamentoOnline() {
         setDisponibilidades(init);
       }
 
-      if (sysRes.data && sysRes.data.agendamento_online_ativo !== undefined) {
-        setSistemaOnlineAtivo(Boolean(sysRes.data.agendamento_online_ativo));
+      if (sysRes.data) {
+        if (sysRes.data.agendamento_online_ativo !== undefined) {
+          setSistemaOnlineAtivo(Boolean(sysRes.data.agendamento_online_ativo));
+        }
+        if (sysRes.data.ocultar_valores_online !== undefined) {
+          setOcultarValoresOnline(Boolean(sysRes.data.ocultar_valores_online));
+        }
       }
     } catch (e) {
       toast.error("Erro ao carregar configurações de disponibilidade");
@@ -332,6 +349,33 @@ export default function ConfiguracoesAgendamentoOnline() {
           </div>
         </Card>
 
+        {/* Exibição de Valores dos Serviços */}
+        <Card className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-[#84A59D]" />
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                  Ocultar valores dos serviços no Agendamento Online
+                </h3>
+              </div>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                Quando ativado, os clientes poderão selecionar os serviços normalmente, mas os preços não serão exibidos durante o agendamento (ideal para serviços com valores variáveis).
+              </p>
+            </div>
+            <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 flex-shrink-0">
+              <Label htmlFor="ocultar-valores-switch" className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                {ocultarValoresOnline ? "Ocultos" : "Exibidos"}
+              </Label>
+              <Switch
+                id="ocultar-valores-switch"
+                checked={ocultarValoresOnline}
+                onCheckedChange={handleToggleOcultarValores}
+              />
+            </div>
+          </div>
+        </Card>
+
         {/* Link de Agendamento Online */}
         <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
           <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-3">
@@ -403,36 +447,38 @@ export default function ConfiguracoesAgendamentoOnline() {
                 {disponibilidades.map((disp, i) => (
                   <div 
                     key={disp.id || i}
-                    className={`flex items-center justify-between gap-4 p-4 rounded-xl border ${disp.ativo ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-sm' : 'bg-zinc-50 dark:bg-zinc-950/50 border-zinc-100 dark:border-zinc-850 opacity-70'} transition-all`}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border ${disp.ativo ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-sm' : 'bg-zinc-50 dark:bg-zinc-950/50 border-zinc-100 dark:border-zinc-850 opacity-70'} transition-all`}
                   >
-                    <div className="flex items-center gap-4 w-40">
-                      <Switch 
-                        checked={disp.ativo}
-                        onCheckedChange={() => toggleDay(i)}
-                      />
-                      <Label className="font-bold text-sm cursor-pointer" onClick={() => toggleDay(i)}>
-                        {DIAS_SEMANA[disp.dia_semana]}
-                      </Label>
+                    <div className="flex items-center gap-4 w-full sm:w-40 justify-between sm:justify-start">
+                      <div className="flex items-center gap-3">
+                        <Switch 
+                          checked={disp.ativo}
+                          onCheckedChange={() => toggleDay(i)}
+                        />
+                        <Label className="font-bold text-sm cursor-pointer" onClick={() => toggleDay(i)}>
+                          {DIAS_SEMANA[disp.dia_semana]}
+                        </Label>
+                      </div>
                     </div>
 
                     {disp.ativo ? (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
                         <Input 
                           type="time" 
                           value={disp.hora_inicio} 
                           onChange={(e) => updateTime(i, "hora_inicio", e.target.value)}
-                          className="w-32 text-center bg-zinc-50 dark:bg-zinc-950"
+                          className="w-28 sm:w-32 text-center bg-zinc-50 dark:bg-zinc-950"
                         />
-                        <span className="text-zinc-400 font-semibold">até</span>
+                        <span className="text-zinc-400 font-semibold text-xs sm:text-sm">até</span>
                         <Input 
                           type="time" 
                           value={disp.hora_fim} 
                           onChange={(e) => updateTime(i, "hora_fim", e.target.value)}
-                          className="w-32 text-center bg-zinc-50 dark:bg-zinc-950"
+                          className="w-28 sm:w-32 text-center bg-zinc-50 dark:bg-zinc-950"
                         />
                       </div>
                     ) : (
-                      <div className="text-xs text-zinc-400 font-semibold uppercase tracking-wider flex-1 text-center pr-12">
+                      <div className="text-xs text-zinc-400 font-semibold uppercase tracking-wider text-left sm:text-center sm:pr-12">
                         Fechado
                       </div>
                     )}
@@ -660,33 +706,35 @@ export default function ConfiguracoesAgendamentoOnline() {
                       {editDisponibilidades.map(disp => (
                         <div
                           key={disp.dia_semana}
-                          className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                          className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-lg border transition-all ${
                             disp.ativo
                               ? 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900'
                               : 'border-zinc-100 dark:border-zinc-850 bg-zinc-50 dark:bg-zinc-950/50 opacity-60'
                           }`}
                         >
-                          <Switch
-                            checked={disp.ativo}
-                            onCheckedChange={() => toggleEditDayColab(disp.dia_semana)}
-                          />
-                          <span className="font-bold text-xs w-20 text-zinc-700 dark:text-zinc-300">
-                            {DIAS_SEMANA_SHORT[disp.dia_semana]}
-                          </span>
+                          <div className="flex items-center gap-3">
+                            <Switch
+                              checked={disp.ativo}
+                              onCheckedChange={() => toggleEditDayColab(disp.dia_semana)}
+                            />
+                            <span className="font-bold text-xs w-20 text-zinc-700 dark:text-zinc-300">
+                              {DIAS_SEMANA_SHORT[disp.dia_semana]}
+                            </span>
+                          </div>
                           {disp.ativo ? (
-                            <div className="flex items-center gap-2 flex-1">
+                            <div className="flex items-center gap-2 flex-1 justify-start sm:justify-end mt-1 sm:mt-0">
                               <Input
                                 type="time"
                                 value={disp.hora_inicio}
                                 onChange={(e) => updateEditTimeColab(disp.dia_semana, "hora_inicio", e.target.value)}
-                                className="w-28 text-center text-xs h-8 bg-zinc-50 dark:bg-zinc-950"
+                                className="w-24 sm:w-28 text-center text-xs h-8 bg-zinc-50 dark:bg-zinc-950"
                               />
                               <span className="text-zinc-400 text-xs font-semibold">até</span>
                               <Input
                                 type="time"
                                 value={disp.hora_fim}
                                 onChange={(e) => updateEditTimeColab(disp.dia_semana, "hora_fim", e.target.value)}
-                                className="w-28 text-center text-xs h-8 bg-zinc-50 dark:bg-zinc-950"
+                                className="w-24 sm:w-28 text-center text-xs h-8 bg-zinc-50 dark:bg-zinc-950"
                               />
                             </div>
                           ) : (
