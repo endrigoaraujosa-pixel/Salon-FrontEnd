@@ -61,7 +61,9 @@ export default function ConfiguracoesAgendamentoOnline() {
     if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
       return `http://localhost:5174/?loja=${tenant}`;
     } else {
-      return `${window.location.protocol}//${hostname}/loja=${tenant}`;
+      const parts = hostname.split('.');
+      const baseDomain = parts.length >= 2 ? parts.slice(1).join('.') : hostname;
+      return `${window.location.protocol}//agendamento.${baseDomain}/?loja=${tenant}`;
     }
   };
 
