@@ -36,6 +36,7 @@ export default function ConfiguracoesAgendamentoOnline() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sistemaOnlineAtivo, setSistemaOnlineAtivo] = useState(true);
   const [activeTab, setActiveTab] = useState("horarios"); // 'horarios' | 'colaboradores'
   const [disponibilidades, setDisponibilidades] = useState([]);
 
@@ -78,13 +79,28 @@ export default function ConfiguracoesAgendamentoOnline() {
       });
   };
 
+  const handleToggleGlobalOnline = async (checked) => {
+    setSistemaOnlineAtivo(checked);
+    try {
+      await http.post("/configuracoes/sistema", { agendamento_online_ativo: checked });
+      toast.success(checked ? "Agendamento Online ativado para os clientes!" : "Agendamento Online desativado.");
+    } catch (e) {
+      toast.error("Erro ao atualizar status do Agendamento Online.");
+      setSistemaOnlineAtivo(!checked);
+    }
+  };
+
   // =================== HORÁRIOS DO SALÃO ===================
   const loadData = async () => {
     setLoading(true);
     try {
-      const response = await http.get("/configuracoes-online/disponibilidade");
-      if (response.data && response.data.length > 0) {
-        setDisponibilidades(response.data);
+      const [dispRes, sysRes] = await Promise.all([
+        http.get("/configuracoes-online/disponibilidade").catch(() => ({ data: [] })),
+        http.get("/configuracoes/sistema").catch(() => ({ data: {} })),
+      ]);
+
+      if (dispRes.data && dispRes.data.length > 0) {
+        setDisponibilidades(dispRes.data);
       } else {
         // Init default
         const init = [];
@@ -98,6 +114,10 @@ export default function ConfiguracoesAgendamentoOnline() {
           });
         }
         setDisponibilidades(init);
+      }
+
+      if (sysRes.data && sysRes.data.agendamento_online_ativo !== undefined) {
+        setSistemaOnlineAtivo(Boolean(sysRes.data.agendamento_online_ativo));
       }
     } catch (e) {
       toast.error("Erro ao carregar configurações de disponibilidade");
@@ -113,6 +133,10 @@ export default function ConfiguracoesAgendamentoOnline() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Garantir também que o agendamento online fique ativo nas configurações do sistema ao salvar os horários
+      await http.post("/configuracoes/sistema", { agendamento_online_ativo: true });
+      setSistemaOnlineAtivo(true);
+
       // Remove temp IDs
       const payload = disponibilidades.map(d => ({
         dia_semana: d.dia_semana,
@@ -122,7 +146,7 @@ export default function ConfiguracoesAgendamentoOnline() {
       }));
 
       await http.post("/configuracoes-online/disponibilidade", { disponibilidades: payload });
-      toast.success("Configurações de horários salvas com sucesso!");
+      toast.success("Configurações salvas e Agendamento Online ATIVADO!");
       loadData();
     } catch (e) {
       toast.error(e.response?.data?.detail || "Erro ao salvar configurações");
@@ -275,6 +299,39 @@ export default function ConfiguracoesAgendamentoOnline() {
 
       <div className="space-y-6 max-w-4xl mt-6">
         
+        {/* Status do Agendamento Online */}
+        <Card className={`p-5 rounded-xl shadow-sm border transition-colors ${
+          sistemaOnlineAtivo 
+            ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50" 
+            : "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/50"
+        }`}>
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-full ${sistemaOnlineAtivo ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                  {sistemaOnlineAtivo ? "Agendamento Online Ativo" : "Agendamento Online Desativado"}
+                </h3>
+              </div>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                {sistemaOnlineAtivo 
+                  ? "Seus clientes podem acessar o portal e realizar novos agendamentos livremente."
+                  : "O portal de agendamento online está suspenso para clientes até que você o ative novamente."}
+              </p>
+            </div>
+            <div className="flex items-center gap-3 bg-white dark:bg-zinc-900 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800">
+              <Label htmlFor="global-online-switch" className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                {sistemaOnlineAtivo ? "Ativado" : "Desativado"}
+              </Label>
+              <Switch
+                id="global-online-switch"
+                checked={sistemaOnlineAtivo}
+                onCheckedChange={handleToggleGlobalOnline}
+              />
+            </div>
+          </div>
+        </Card>
+
         {/* Link de Agendamento Online */}
         <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
           <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-3">
