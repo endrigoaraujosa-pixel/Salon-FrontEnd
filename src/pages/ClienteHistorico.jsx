@@ -849,20 +849,6 @@ export default function ClienteHistorico() {
                   </div>
                 </div>
 
-                {/* Forma de Pagamento Principal */}
-                {((selectedAgendamento.pagamentos && selectedAgendamento.pagamentos.length > 0) || selectedAgendamento.status === 'concluido') && (
-                  <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-3 shadow-xs">
-                    <CreditCard className="w-6 h-6 text-[#84A59D]" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">Forma de Pagamento</p>
-                      <p className="text-sm font-semibold text-zinc-850 dark:text-zinc-200 mt-0.5 truncate">
-                        {selectedAgendamento.pagamentos && selectedAgendamento.pagamentos.length > 0
-                          ? selectedAgendamento.pagamentos.map(p => formatPaymentWithInstallments(p, taxasCartao)).join(", ")
-                          : "Sem registro de pagamento"}
-                      </p>
-                    </div>
-                  </div>
-                )}
  
                 {/* Observações */}
                 <div className="space-y-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
