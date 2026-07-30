@@ -99,7 +99,13 @@ function App() {
   if (pathname.startsWith('/loja=')) {
     const tenant = pathname.split('=')[1];
     if (tenant) {
-      window.location.href = `http://${hostname.includes('localhost') ? 'localhost' : hostname}:5174/?loja=${tenant}`;
+      if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
+        window.location.href = `http://localhost:5174/?loja=${tenant}`;
+      } else {
+        const parts = hostname.split('.');
+        const baseDomain = parts.length >= 2 ? parts.slice(1).join('.') : hostname;
+        window.location.href = `${window.location.protocol}//agendamento.${baseDomain}/?loja=${tenant}`;
+      }
       return null;
     }
   }
