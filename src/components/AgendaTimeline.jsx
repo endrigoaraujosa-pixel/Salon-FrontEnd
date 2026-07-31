@@ -377,7 +377,7 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
                               data-testid={`timeline-block-${a.id}`}
                               className={blockClass}
                               style={blockStyle}
-                              title={`${time}${dateStr} · ${a.cliente_nome} · ${a.itens?.map((i) => i.nome).join(", ")}`}
+                              title={`${time}${dateStr} · ${a.cliente_nome} · ${a.itens?.map((i) => i.nome).join(", ")}${a.observacoes ? ` · Obs: ${a.observacoes}` : ""}`}
                               onClick={() => onCardClick?.(a)}
                             >
                               <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden" style={{ color: colors.text }}>
@@ -463,7 +463,7 @@ export default function AgendaTimeline({ data, selectedStatus, selectedInsumos, 
                               key={a.id}
                               className={blockClass}
                               style={blockStyle}
-                              title={`${time}${dateStr} · ${a.cliente_nome}`}
+                              title={`${time}${dateStr} · ${a.cliente_nome}${a.observacoes ? ` · Obs: ${a.observacoes}` : ""}`}
                               onClick={() => onCardClick?.(a)}
                             >
                               <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden" style={{ color: colors.text }}>
