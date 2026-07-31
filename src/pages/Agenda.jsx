@@ -9,7 +9,7 @@ import { Checkbox } from "../components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import StatusBadge, { STATUS_LABELS } from "../components/StatusBadge";
-import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle, ShoppingCart, Loader2, Printer, AlertTriangle, AlertCircle, CalendarOff, Globe, Check, XCircle, RefreshCw } from "lucide-react";
+import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle, ShoppingCart, Loader2, Printer, AlertTriangle, AlertCircle, CalendarOff, Globe, Check, XCircle, RefreshCw, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import AgendaTimeline from "../components/AgendaTimeline";
@@ -2109,6 +2109,12 @@ export default function Agenda() {
                             return null;
                           })()}
                         </div>
+                        {a.observacoes && (
+                          <div className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 flex items-center gap-1.5 truncate">
+                            <MessageSquare className="w-3.5 h-3.5 text-[#84A59D] shrink-0" />
+                            <span className="truncate"><strong className="font-semibold text-zinc-700 dark:text-zinc-300">Obs:</strong> {a.observacoes}</span>
+                          </div>
+                        )}
                       </div>
                       <div className="agenda-price">
                         <div className="agenda-price-value">{fmtBRL(a.valor_total)}</div>
@@ -2454,6 +2460,16 @@ export default function Agenda() {
                             </div>
                           ))}
                         </div>
+
+                        {sol.observacoes && (
+                          <div className="mt-3 text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-300 p-3 rounded-xl border border-amber-200/80 dark:border-amber-800/50 flex items-start gap-2.5 shadow-xs">
+                            <MessageSquare className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                            <div className="min-w-0 flex-1">
+                              <span className="font-bold block text-amber-950 dark:text-amber-200 mb-0.5">Observações do cliente:</span>
+                              <span className="break-words leading-relaxed">{sol.observacoes}</span>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Editor de Horário e Profissional antes de Aprovar */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 p-3 bg-zinc-50 dark:bg-zinc-900/40 rounded-xl border border-zinc-100 dark:border-zinc-800/60 max-w-md">
