@@ -686,6 +686,7 @@ export default function Pagamento() {
         cliente_id: ag.cliente_id,
         data_hora: ag.data_hora,
         observacoes: ag.observacoes || "",
+        ignorar_conflito: true,
         itens_selecionados: missingProfs.map(x => ({
           servico_id: x.servico_id,
           colaborador_id: x.colaborador_id,
