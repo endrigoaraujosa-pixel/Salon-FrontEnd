@@ -1699,6 +1699,7 @@ export default function Agenda() {
         cliente_id: pendingAgendamento.cliente_id,
         data_hora: pendingAgendamento.data_hora,
         observacoes: pendingAgendamento.observacoes || "",
+        ignorar_conflito: true,
         itens_selecionados: missingProfs.map(x => ({
           servico_id: x.servico_id,
           colaborador_id: x.colaborador_id,
@@ -3162,11 +3163,7 @@ export default function Agenda() {
           <div className="py-4 text-sm text-zinc-600 dark:text-zinc-400">
             {renderConflictMessage(conflictMessage)}
             <br /><br />
-            <b>
-              {conflictMessage.includes("indisponibilidade") 
-                ? "Deseja continuar com o agendamento mesmo assim?" 
-                : "Deseja incluí-lo mesmo assim?"}
-            </b>
+            <b>Deseja prosseguir com o agendamento?</b>
           </div>
           <DialogFooter className="gap-2 flex flex-col sm:flex-row">
             <Button variant="outline" className="w-full sm:w-auto" onClick={() => setConflictConfirmOpen(false)}>Não</Button>
