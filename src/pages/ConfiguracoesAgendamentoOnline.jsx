@@ -38,6 +38,8 @@ export default function ConfiguracoesAgendamentoOnline() {
   const [saving, setSaving] = useState(false);
   const [sistemaOnlineAtivo, setSistemaOnlineAtivo] = useState(true);
   const [ocultarValoresOnline, setOcultarValoresOnline] = useState(false);
+  const [maxServicosOnline, setMaxServicosOnline] = useState("");
+  const [savingMaxServicos, setSavingMaxServicos] = useState(false);
   const [activeTab, setActiveTab] = useState("horarios"); // 'horarios' | 'colaboradores'
   const [disponibilidades, setDisponibilidades] = useState([]);
 
@@ -102,6 +104,26 @@ export default function ConfiguracoesAgendamentoOnline() {
     }
   };
 
+  const handleSaveMaxServicos = async () => {
+    setSavingMaxServicos(true);
+    try {
+      const val = maxServicosOnline === "" || maxServicosOnline === null ? null : parseInt(maxServicosOnline, 10);
+      const parsedVal = (val === null || isNaN(val) || val <= 0) ? null : val;
+      await http.post("/configuracoes/sistema", { max_servicos_agendamento_online: parsedVal });
+      if (parsedVal) {
+        setMaxServicosOnline(String(parsedVal));
+        toast.success(`Quantidade máxima de serviços salva: ${parsedVal}`);
+      } else {
+        setMaxServicosOnline("");
+        toast.success("Limite de serviços removido (Sem limite).");
+      }
+    } catch (e) {
+      toast.error("Erro ao salvar quantidade máxima de serviços.");
+    } finally {
+      setSavingMaxServicos(false);
+    }
+  };
+
   // =================== HORÁRIOS DO SALÃO ===================
   const loadData = async () => {
     setLoading(true);
@@ -134,6 +156,11 @@ export default function ConfiguracoesAgendamentoOnline() {
         }
         if (sysRes.data.ocultar_valores_online !== undefined) {
           setOcultarValoresOnline(Boolean(sysRes.data.ocultar_valores_online));
+        }
+        if (sysRes.data.max_servicos_agendamento_online !== undefined && sysRes.data.max_servicos_agendamento_online !== null) {
+          setMaxServicosOnline(String(sysRes.data.max_servicos_agendamento_online));
+        } else {
+          setMaxServicosOnline("");
         }
       }
     } catch (e) {
@@ -372,6 +399,40 @@ export default function ConfiguracoesAgendamentoOnline() {
                 checked={ocultarValoresOnline}
                 onCheckedChange={handleToggleOcultarValores}
               />
+            </div>
+          </div>
+        </Card>
+
+        {/* Quantidade Máxima de Serviços */}
+        <Card className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Scissors className="w-5 h-5 text-[#84A59D]" />
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                  Quantidade máxima de serviços por agendamento
+                </h3>
+              </div>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                Limite quantos serviços o cliente pode selecionar no mesmo agendamento online (ex.: 1, 2, 3, etc.). Deixe em branco para sem limite.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Input
+                type="number"
+                min="1"
+                placeholder="Sem limite"
+                value={maxServicosOnline}
+                onChange={(e) => setMaxServicosOnline(e.target.value)}
+                className="w-32 h-10 text-center font-medium bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
+              />
+              <Button
+                onClick={handleSaveMaxServicos}
+                disabled={savingMaxServicos}
+                className="bg-[#84A59D] hover:bg-[#6F9189] dark:bg-[#84A59D] dark:hover:bg-[#6F9189] text-white h-10 font-bold px-4 rounded-lg text-xs"
+              >
+                {savingMaxServicos ? "Salvando..." : "Salvar"}
+              </Button>
             </div>
           </div>
         </Card>
