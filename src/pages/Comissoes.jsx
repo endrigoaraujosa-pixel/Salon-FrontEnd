@@ -25,7 +25,10 @@ import {
   Printer,
   HelpCircle,
   Search,
-  X
+  X,
+  ShieldAlert,
+  ExternalLink,
+  Loader2
 } from "lucide-react";
 
 import { Checkbox } from "../components/ui/checkbox";
@@ -87,6 +90,36 @@ export default function Comissoes() {
   const [relatorioStatus, setRelatorioStatus] = useState("todos");
   const [relatorioExibirDetalhamento, setRelatorioExibirDetalhamento] = useState(false);
   const [empresa, setEmpresa] = useState(null);
+
+  // Estado para verificação de pendências do período
+  const [verificarModalOpen, setVerificarModalOpen] = useState(false);
+  const [verificarData, setVerificarData] = useState(null);
+  const [loadingVerificacao, setLoadingVerificacao] = useState(false);
+  const [modalActiveTab, setModalActiveTab] = useState("todas"); // 'todas' | 'nao_pagos' | 'insumos' | 'vendas'
+  const [modalSearchTerm, setModalSearchTerm] = useState("");
+
+  const handleVerificarPendencias = async () => {
+    setLoadingVerificacao(true);
+    setVerificarModalOpen(true);
+    setModalActiveTab("todas");
+    setModalSearchTerm("");
+    try {
+      const res = await http.get("/comissoes/verificar-pendencias", {
+        params: {
+          data_inicio: dataInicio,
+          data_fim: dataFim,
+          colaborador_id: colaboradorFilter
+        }
+      });
+      setVerificarData(res.data);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao verificar pendências do período.");
+      setVerificarModalOpen(false);
+    } finally {
+      setLoadingVerificacao(false);
+    }
+  };
 
   const load = () => {
     http.get("/comissoes", { 
@@ -1156,6 +1189,15 @@ export default function Comissoes() {
           <h1 className="font-display text-3xl font-extrabold text-[#3A4F4A] dark:text-zinc-100 tracking-tight">Comissões de Funcionários</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            onClick={handleVerificarPendencias}
+            variant="outline"
+            size="sm"
+            className="bg-amber-50/80 border-amber-200 text-amber-800 hover:bg-amber-100 flex items-center gap-1.5 h-9 px-3.5 text-xs font-bold rounded-lg dark:bg-amber-950/40 dark:border-amber-900/60 dark:text-amber-300 dark:hover:bg-amber-900/50 shadow-2xs transition-colors"
+          >
+            <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            Verificar Pendências
+          </Button>
           <Button 
             onClick={() => setRelatorioDialogOpen(true)}
             variant="outline" 
@@ -2181,6 +2223,286 @@ export default function Comissoes() {
               className="bg-[#84A59D] hover:bg-[#6F9189] dark:bg-[#84A59D] dark:hover:bg-[#6F9189] dark:text-zinc-950 text-white font-semibold text-xs h-9 px-5"
             >
               Gerar PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Verificação de Pendências do Período */}
+      <Dialog open={verificarModalOpen} onOpenChange={setVerificarModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden dark:bg-zinc-900 dark:border-zinc-800">
+          <DialogHeader className="p-6 pb-4 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 rounded-xl border border-amber-200/60 dark:border-amber-900/60">
+                  <ShieldAlert className="w-6 h-6" />
+                </div>
+                <div>
+                  <DialogTitle className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                    Verificação de Pendências do Período
+                  </DialogTitle>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    Período selecionado: <strong className="text-zinc-700 dark:text-zinc-300">{fmtDate(dataInicio)}</strong> a <strong className="text-zinc-700 dark:text-zinc-300">{fmtDate(dataFim)}</strong>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="p-6 overflow-y-auto space-y-6 flex-1">
+            {loadingVerificacao ? (
+              <div className="py-16 text-center space-y-3">
+                <Loader2 className="w-8 h-8 animate-spin text-[#84A59D] mx-auto" />
+                <p className="text-sm font-medium text-zinc-500">Analisando agendamentos, insumos e vendas do período...</p>
+              </div>
+            ) : verificarData ? (
+              <>
+                {/* Dashboard KPI Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Card 1: Total */}
+                  <div className={`p-4 rounded-xl border shadow-2xs transition-all ${
+                    verificarData.total_pendencias > 0
+                      ? 'bg-amber-50/50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/50'
+                      : 'bg-emerald-50/50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900/50'
+                  }`}>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block">
+                      Total de Pendências
+                    </span>
+                    <div className={`text-2xl font-black mt-1 ${
+                      verificarData.total_pendencias > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
+                    }`}>
+                      {verificarData.total_pendencias}
+                    </div>
+                    <span className="text-[10px] text-zinc-400 font-medium block mt-0.5">
+                      {verificarData.total_pendencias > 0 ? `Valor pendente: ${fmtBRL(verificarData.total_valor_pendente)}` : 'Nenhum impedimento'}
+                    </span>
+                  </div>
+
+                  {/* Card 2: Agendamentos Não Pagos */}
+                  <div className="bg-white border border-zinc-200 dark:bg-zinc-800/50 dark:border-zinc-700/60 p-4 rounded-xl shadow-2xs">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                      Não Pagos / Parciais
+                    </span>
+                    <div className="text-2xl font-black text-zinc-800 dark:text-zinc-100 mt-1">
+                      {verificarData.qtd_agendamentos_nao_pagos}
+                    </div>
+                    <span className="text-[10px] text-zinc-400 font-medium block mt-0.5">
+                      Agendamentos pendentes
+                    </span>
+                  </div>
+
+                  {/* Card 3: Insumos Pendentes */}
+                  <div className="bg-white border border-zinc-200 dark:bg-zinc-800/50 dark:border-zinc-700/60 p-4 rounded-xl shadow-2xs">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                      Insumos Pendentes
+                    </span>
+                    <div className="text-2xl font-black text-zinc-800 dark:text-zinc-100 mt-1">
+                      {verificarData.qtd_agendamentos_insumos_pendentes}
+                    </div>
+                    <span className="text-[10px] text-zinc-400 font-medium block mt-0.5">
+                      Consumo não informado
+                    </span>
+                  </div>
+
+                  {/* Card 4: Vendas Pendentes */}
+                  <div className="bg-white border border-zinc-200 dark:bg-zinc-800/50 dark:border-zinc-700/60 p-4 rounded-xl shadow-2xs">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+                      Vendas Pendentes
+                    </span>
+                    <div className="text-2xl font-black text-zinc-800 dark:text-zinc-100 mt-1">
+                      {verificarData.qtd_vendas_pendentes}
+                    </div>
+                    <span className="text-[10px] text-zinc-400 font-medium block mt-0.5">
+                      Vendas diretas não pagas
+                    </span>
+                  </div>
+                </div>
+
+                {verificarData.total_pendencias === 0 ? (
+                  <div className="py-12 px-6 text-center bg-emerald-50/60 border border-emerald-200/80 rounded-2xl dark:bg-emerald-950/20 dark:border-emerald-900/40 space-y-3">
+                    <CheckCircle2 className="w-14 h-14 text-emerald-500 mx-auto" />
+                    <h3 className="text-lg font-bold text-emerald-900 dark:text-emerald-200">
+                      Período limpo e pronto para fechamento!
+                    </h3>
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400 max-w-md mx-auto leading-relaxed">
+                      Nenhuma pendência financeira ou de consumo de insumos foi encontrada para o período selecionado. O fechamento das comissões pode ser realizado com segurança.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Filtros e Busca */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                      {/* Tabs */}
+                      <div className="flex flex-wrap items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl">
+                        <button
+                          type="button"
+                          onClick={() => setModalActiveTab("todas")}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                            modalActiveTab === "todas"
+                              ? "bg-white text-zinc-900 shadow-2xs dark:bg-zinc-900 dark:text-zinc-100"
+                              : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+                          }`}
+                        >
+                          Todas ({verificarData.total_pendencias})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setModalActiveTab("nao_pagos")}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                            modalActiveTab === "nao_pagos"
+                              ? "bg-white text-zinc-900 shadow-2xs dark:bg-zinc-900 dark:text-zinc-100"
+                              : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+                          }`}
+                        >
+                          Não Pagos ({verificarData.qtd_agendamentos_nao_pagos})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setModalActiveTab("insumos")}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                            modalActiveTab === "insumos"
+                              ? "bg-white text-zinc-900 shadow-2xs dark:bg-zinc-900 dark:text-zinc-100"
+                              : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+                          }`}
+                        >
+                          Insumos ({verificarData.qtd_agendamentos_insumos_pendentes})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setModalActiveTab("vendas")}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                            modalActiveTab === "vendas"
+                              ? "bg-white text-zinc-900 shadow-2xs dark:bg-zinc-900 dark:text-zinc-100"
+                              : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+                          }`}
+                        >
+                          Vendas ({verificarData.qtd_vendas_pendentes})
+                        </button>
+                      </div>
+
+                      {/* Input de busca */}
+                      <div className="relative min-w-[220px]">
+                        <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-400" />
+                        <Input
+                          type="text"
+                          placeholder="Buscar por cliente, nº ou descrição..."
+                          value={modalSearchTerm}
+                          onChange={(e) => setModalSearchTerm(e.target.value)}
+                          className="pl-8 h-8 text-xs bg-zinc-50 border-zinc-200 dark:bg-zinc-800 dark:border-zinc-700"
+                        />
+                        {modalSearchTerm && (
+                          <button
+                            type="button"
+                            onClick={() => setModalSearchTerm("")}
+                            className="absolute right-2.5 top-2.5 text-zinc-400 hover:text-zinc-600"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Tabela de Pendências */}
+                    <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-2xs">
+                      <div className="overflow-x-auto max-h-[380px]">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead className="bg-zinc-50 dark:bg-zinc-800/80 sticky top-0 border-b border-zinc-200 dark:border-zinc-700 z-10">
+                            <tr>
+                              <th className="p-3 font-bold text-zinc-500 dark:text-zinc-400">Doc / Tipo</th>
+                              <th className="p-3 font-bold text-zinc-500 dark:text-zinc-400">Data / Hora</th>
+                              <th className="p-3 font-bold text-zinc-500 dark:text-zinc-400">Cliente / Profissional</th>
+                              <th className="p-3 font-bold text-zinc-500 dark:text-zinc-400">Detalhamento da Pendência</th>
+                              <th className="p-3 font-bold text-zinc-500 dark:text-zinc-400 text-right">Valores</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            {(() => {
+                              let list = verificarData.todas_pendencias || [];
+                              if (modalActiveTab === "nao_pagos") {
+                                list = verificarData.agendamentos_nao_pagos || [];
+                              } else if (modalActiveTab === "insumos") {
+                                list = verificarData.agendamentos_insumos_pendentes || [];
+                              } else if (modalActiveTab === "vendas") {
+                                list = verificarData.vendas_pendentes || [];
+                              }
+
+                              if (modalSearchTerm.trim()) {
+                                const term = modalSearchTerm.toLowerCase().trim();
+                                list = list.filter(item => 
+                                  (item.cliente_nome && item.cliente_nome.toLowerCase().includes(term)) ||
+                                  (item.documento && item.documento.toLowerCase().includes(term)) ||
+                                  (item.descricao && item.descricao.toLowerCase().includes(term)) ||
+                                  (item.profissionais && item.profissionais.toLowerCase().includes(term))
+                                );
+                              }
+
+                              if (list.length === 0) {
+                                return (
+                                  <tr>
+                                    <td colSpan="5" className="py-8 text-center text-zinc-400 italic">
+                                      Nenhuma pendência encontrada com o filtro selecionado.
+                                    </td>
+                                  </tr>
+                                );
+                              }
+
+                              return list.map((item, idx) => {
+                                return (
+                                  <tr key={`${item.tipo}-${item.id}-${idx}`} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition-colors">
+                                    <td className="p-3 font-mono font-bold text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
+                                      {item.documento}
+                                    </td>
+                                    <td className="p-3 text-zinc-600 dark:text-zinc-400 whitespace-nowrap font-mono text-[11px]">
+                                      {formatAgendaDateTime(item.data)}
+                                    </td>
+                                    <td className="p-3">
+                                      <div className="font-semibold text-zinc-800 dark:text-zinc-200">{item.cliente_nome}</div>
+                                      <div className="text-[10px] text-zinc-400 font-medium">Prof: {item.profissionais}</div>
+                                    </td>
+                                    <td className="p-3 max-w-[280px]">
+                                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                                        item.tipo === 'agendamento_insumos'
+                                          ? 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/60'
+                                          : item.tipo === 'venda_pendente'
+                                          ? 'bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-900/60'
+                                          : 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60'
+                                      }`}>
+                                        {item.categoria}
+                                      </span>
+                                      <p className="text-[11px] text-zinc-600 dark:text-zinc-300 font-medium mt-1 leading-snug">
+                                        {item.descricao}
+                                      </p>
+                                    </td>
+                                    <td className="p-3 text-right font-mono whitespace-nowrap">
+                                      <div className="text-[11px] text-zinc-500">Total: {fmtBRL(item.valor_total)}</div>
+                                      {item.valor_pago > 0 && (
+                                        <div className="text-[10px] text-emerald-600 font-medium">Pago: {fmtBRL(item.valor_pago)}</div>
+                                      )}
+                                      <div className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+                                        Pendente: {fmtBRL(item.valor_restante)}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              });
+                            })()}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </>
+            ) : null}
+          </div>
+
+          <DialogFooter className="p-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900 shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => setVerificarModalOpen(false)}
+              className="text-xs h-9 px-4"
+            >
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>
