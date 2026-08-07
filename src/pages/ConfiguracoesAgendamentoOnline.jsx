@@ -40,6 +40,7 @@ export default function ConfiguracoesAgendamentoOnline() {
   const [ocultarValoresOnline, setOcultarValoresOnline] = useState(false);
   const [maxServicosOnline, setMaxServicosOnline] = useState("");
   const [savingMaxServicos, setSavingMaxServicos] = useState(false);
+  const [aceitarAgendamentoAutomatico, setAceitarAgendamentoAutomatico] = useState(false);
   const [activeTab, setActiveTab] = useState("horarios"); // 'horarios' | 'colaboradores'
   const [disponibilidades, setDisponibilidades] = useState([]);
 
@@ -104,6 +105,19 @@ export default function ConfiguracoesAgendamentoOnline() {
     }
   };
 
+  const handleToggleAceitarAutomatico = async (checked) => {
+    setAceitarAgendamentoAutomatico(checked);
+    try {
+      await http.post("/configuracoes/sistema", { aceitar_agendamento_online_automatico: checked });
+      toast.success(checked 
+        ? "Agendamentos online serão aceitos e confirmados automaticamente!" 
+        : "Aceite automático de agendamentos desativado.");
+    } catch (e) {
+      toast.error("Erro ao atualizar opção de aceite automático.");
+      setAceitarAgendamentoAutomatico(!checked);
+    }
+  };
+
   const handleSaveMaxServicos = async () => {
     setSavingMaxServicos(true);
     try {
@@ -161,6 +175,9 @@ export default function ConfiguracoesAgendamentoOnline() {
           setMaxServicosOnline(String(sysRes.data.max_servicos_agendamento_online));
         } else {
           setMaxServicosOnline("");
+        }
+        if (sysRes.data.aceitar_agendamento_online_automatico !== undefined) {
+          setAceitarAgendamentoAutomatico(Boolean(sysRes.data.aceitar_agendamento_online_automatico));
         }
       }
     } catch (e) {
@@ -371,6 +388,33 @@ export default function ConfiguracoesAgendamentoOnline() {
                 id="global-online-switch"
                 checked={sistemaOnlineAtivo}
                 onCheckedChange={handleToggleGlobalOnline}
+              />
+            </div>
+          </div>
+        </Card>
+
+        {/* Aceitar Solicitações Automaticamente */}
+        <Card className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <CalendarClock className="w-5 h-5 text-[#84A59D]" />
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                  Aceitar solicitações de agendamento automaticamente
+                </h3>
+              </div>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                Quando ativado, os agendamentos realizados pelos clientes no portal online serão confirmados automaticamente e inseridos diretamente na agenda, sem a necessidade de aceite manual em Solicitações Online Pendentes.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 flex-shrink-0">
+              <Label htmlFor="aceitar-automatico-switch" className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                {aceitarAgendamentoAutomatico ? "Ativado" : "Desativado"}
+              </Label>
+              <Switch
+                id="aceitar-automatico-switch"
+                checked={aceitarAgendamentoAutomatico}
+                onCheckedChange={handleToggleAceitarAutomatico}
               />
             </div>
           </div>

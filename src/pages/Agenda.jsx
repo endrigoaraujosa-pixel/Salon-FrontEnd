@@ -1329,6 +1329,34 @@ export default function Agenda() {
     loadMonth(monthCursor.y, monthCursor.m).finally(() => setLoading(false));
   }, [monthCursor]);
 
+  // Auto-refresh silencioso da agenda (atendimentos do dia, contagem do calendário e solicitações online)
+  useEffect(() => {
+    if (!isMounted.current) return;
+
+    const silentRefresh = () => {
+      if (document.visibilityState === "visible") {
+        loadDay(data, searchNumero);
+        loadMonth(monthCursor.y, monthCursor.m);
+        loadSolicitacoes();
+      }
+    };
+
+    const interval = setInterval(silentRefresh, 15000);
+
+    const handleFocus = () => {
+      silentRefresh();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleFocus);
+    };
+  }, [data, searchNumero, monthCursor]);
+
   useEffect(() => {
     if (openSenha) {
       setSenhaData((prev) => ({ ...prev, email: "", senha: "" }));
