@@ -65,6 +65,7 @@ export default function Despesas() {
   const [filterCategory, setFilterCategory] = useState("todos");
   const [filterStatus, setFilterStatus] = useState("todos");
   const [filterMonth, setFilterMonth] = useState("todos");
+  const [filterFornecedor, setFilterFornecedor] = useState("todos");
 
   const monthOptions = React.useMemo(() => {
     const months = [];
@@ -294,6 +295,12 @@ export default function Despesas() {
         if (!descMatch && !fornMatch && !docMatch) return false;
       }
 
+      // Filter by Fornecedor
+      if (filterFornecedor !== "todos") {
+        const fornMatch = (d.fornecedor || "") === filterFornecedor;
+        if (!fornMatch) return false;
+      }
+
       // Filter by Category
       if (filterCategory !== "todos" && d.categoria !== filterCategory) return false;
 
@@ -475,6 +482,23 @@ export default function Despesas() {
                   <SelectContent className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-150">
                     <SelectItem value="todos">Todas as Categorias</SelectItem>
                     {CATEGORIAS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="w-full md:w-44">
+              <Label className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Fornecedor</Label>
+              <div className="mt-1">
+                <Select value={filterFornecedor} onValueChange={setFilterFornecedor}>
+                  <SelectTrigger className="h-10 text-xs bg-zinc-50 dark:bg-zinc-950 border-zinc-250 dark:border-zinc-800 rounded-lg">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-150">
+                    <SelectItem value="todos">Todos os Fornecedores</SelectItem>
+                    {fornecedoresList.map((f) => (
+                      <SelectItem key={f.id} value={f.nome_razosocial}>{f.nome_razosocial}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
