@@ -788,6 +788,14 @@ export default function Comissoes() {
     setDataFim(formatDateString(lastDay));
   };
 
+  const setPeriodoMesAnterior = () => {
+    const now = new Date();
+    const prevMonthFirstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthLastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+    setDataInicio(formatDateString(prevMonthFirstDay));
+    setDataFim(formatDateString(prevMonthLastDay));
+  };
+
   const handleOpenDetails = (colab) => {
     setSelectedColab(colab);
     setModalSearch("");
@@ -1209,6 +1217,7 @@ export default function Comissoes() {
           <Button variant="outline" size="sm" onClick={setPeriodoHoje} className="hover:bg-zinc-50 border-zinc-200 dark:border-zinc-800 dark:hover:bg-zinc-800 dark:text-zinc-200">Hoje</Button>
           <Button variant="outline" size="sm" onClick={setPeriodoEstaSemana} className="hover:bg-zinc-50 border-zinc-200 dark:border-zinc-800 dark:hover:bg-zinc-800 dark:text-zinc-200">Esta Semana</Button>
           <Button variant="outline" size="sm" onClick={setPeriodoEsteMes} className="hover:bg-zinc-50 border-zinc-200 dark:border-zinc-800 dark:hover:bg-zinc-800 dark:text-zinc-200">Este Mês</Button>
+          <Button variant="outline" size="sm" onClick={setPeriodoMesAnterior} className="hover:bg-zinc-50 border-zinc-200 dark:border-zinc-800 dark:hover:bg-zinc-800 dark:text-zinc-200">Mês Anterior</Button>
         </div>
       </div>
 
