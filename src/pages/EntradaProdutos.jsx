@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { 
   Package, Plus, Trash2, Calendar, FileText, CheckCircle, 
-  HelpCircle, DollarSign, User, ListPlus, ArrowLeft, RefreshCw 
+  HelpCircle, DollarSign, User, ListPlus, ArrowLeft, RefreshCw, TrendingUp 
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -249,6 +249,13 @@ export default function EntradaProdutos() {
         title="Entrada de Produtos" 
         action={
           <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/relatorios?tab=estoque_variacao_preco")} 
+              className="flex items-center gap-1.5 border-zinc-250 dark:border-zinc-850 text-amber-700 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-100"
+            >
+              <TrendingUp className="w-4 h-4 text-amber-600" /> Variação de Preços
+            </Button>
             <Button 
               variant="outline" 
               onClick={() => navigate("/relatorios?tab=estoque_entradas")} 
