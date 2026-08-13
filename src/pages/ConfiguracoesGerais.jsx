@@ -19,6 +19,7 @@ export default function ConfiguracoesGerais() {
   const [trabalharCreditoCliente, setTrabalharCreditoCliente] = useState(false);
   const [descontarTaxaCartaoComissao, setDescontarTaxaCartaoComissao] = useState(false);
   const [agendamentoOnlineAtivo, setAgendamentoOnlineAtivo] = useState(false);
+  const [permitirAlterarPrecoProdutoVenda, setPermitirAlterarPrecoProdutoVenda] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -31,6 +32,7 @@ export default function ConfiguracoesGerais() {
         setTrabalharCreditoCliente(!!response.data.trabalhar_credito_cliente);
         setDescontarTaxaCartaoComissao(!!response.data.descontar_taxa_cartao_comissao);
         setAgendamentoOnlineAtivo(!!response.data.agendamento_online_ativo);
+        setPermitirAlterarPrecoProdutoVenda(!!response.data.permitir_alterar_preco_produto_venda);
       }
     } catch (e) {
       toast.error("Erro ao carregar configurações do sistema");
@@ -52,7 +54,8 @@ export default function ConfiguracoesGerais() {
         permitir_cliente_duplicado: permitirClienteDuplicado,
         trabalhar_credito_cliente: trabalharCreditoCliente,
         descontar_taxa_cartao_comissao: descontarTaxaCartaoComissao,
-        agendamento_online_ativo: agendamentoOnlineAtivo
+        agendamento_online_ativo: agendamentoOnlineAtivo,
+        permitir_alterar_preco_produto_venda: permitirAlterarPrecoProdutoVenda
       });
       toast.success("Configurações salvas com sucesso!");
     } catch (e) {
@@ -155,12 +158,33 @@ export default function ConfiguracoesGerais() {
           </div>
         </Card>
 
-        {/* Controle de Estoque e Inventário Card */}
-        <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
-          <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-5">
+        {/* Controle de Estoque e Venda de Produtos Card */}
+        <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm space-y-4">
+          <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-2">
             <Package className="w-5 h-5 text-[#84A59D]" />
-            <span>Controle de Estoque e Inventário</span>
+            <span>Venda de Produtos e Estoque</span>
           </h3>
+
+          <div className="flex items-start justify-between gap-4 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850">
+            <div className="space-y-1 flex-1">
+              <Label 
+                htmlFor="permitir-alterar-preco-produto" 
+                className="text-sm font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer"
+              >
+                Permitir alteração de valor do produto na venda
+              </Label>
+              <p className="text-xs text-zinc-550 dark:text-zinc-400 leading-relaxed max-w-xl">
+                Quando ativado, os usuários do sistema poderão ajustar o valor unitário do produto para um preço maior ou menor que o valor cadastrado (gerando acréscimo ou desconto) durante a realização da venda no balcão. Quando desativado, o valor do produto fica fixado ao preço cadastrado.
+              </p>
+            </div>
+            <div className="pt-1">
+              <Switch 
+                id="permitir-alterar-preco-produto"
+                checked={permitirAlterarPrecoProdutoVenda}
+                onCheckedChange={setPermitirAlterarPrecoProdutoVenda}
+              />
+            </div>
+          </div>
 
           <div className="flex items-start justify-between gap-4 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850">
             <div className="space-y-1 flex-1">
