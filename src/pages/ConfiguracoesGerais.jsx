@@ -18,7 +18,6 @@ export default function ConfiguracoesGerais() {
   const [permitirClienteDuplicado, setPermitirClienteDuplicado] = useState(false);
   const [trabalharCreditoCliente, setTrabalharCreditoCliente] = useState(false);
   const [descontarTaxaCartaoComissao, setDescontarTaxaCartaoComissao] = useState(false);
-  const [agendamentoOnlineAtivo, setAgendamentoOnlineAtivo] = useState(false);
   const [permitirAlterarPrecoProdutoVenda, setPermitirAlterarPrecoProdutoVenda] = useState(false);
 
   const loadData = async () => {
@@ -31,7 +30,6 @@ export default function ConfiguracoesGerais() {
         setPermitirClienteDuplicado(!!response.data.permitir_cliente_duplicado);
         setTrabalharCreditoCliente(!!response.data.trabalhar_credito_cliente);
         setDescontarTaxaCartaoComissao(!!response.data.descontar_taxa_cartao_comissao);
-        setAgendamentoOnlineAtivo(!!response.data.agendamento_online_ativo);
         setPermitirAlterarPrecoProdutoVenda(!!response.data.permitir_alterar_preco_produto_venda);
       }
     } catch (e) {
@@ -54,7 +52,6 @@ export default function ConfiguracoesGerais() {
         permitir_cliente_duplicado: permitirClienteDuplicado,
         trabalhar_credito_cliente: trabalharCreditoCliente,
         descontar_taxa_cartao_comissao: descontarTaxaCartaoComissao,
-        agendamento_online_ativo: agendamentoOnlineAtivo,
         permitir_alterar_preco_produto_venda: permitirAlterarPrecoProdutoVenda
       });
       toast.success("Configurações salvas com sucesso!");
@@ -80,7 +77,7 @@ export default function ConfiguracoesGerais() {
       <Button 
         variant="ghost" 
         onClick={() => navigate("/configuracoes")} 
-        className="mb-4 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+        className="mb-4 text-zinc-500 hover:text-[#84A59D] dark:text-zinc-400 dark:hover:text-zinc-200"
       >
         <ArrowLeft className="w-4 h-4 mr-1" /> Voltar para Configurações
       </Button>
@@ -99,35 +96,6 @@ export default function ConfiguracoesGerais() {
             <strong>Regras do Sistema:</strong> Ative as diretrizes gerais para padronizar o funcionamento dos agendamentos e cobranças em sua empresa.
           </div>
         </div>
-
-        {/* Agendamento Online Card */}
-        <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
-          <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-5">
-            <Sliders className="w-5 h-5 text-[#84A59D]" />
-            <span>Agendamento Online</span>
-          </h3>
-
-          <div className="flex items-start justify-between gap-4 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850">
-            <div className="space-y-1 flex-1">
-              <Label 
-                htmlFor="agendamento-online" 
-                className="text-sm font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer"
-              >
-                Habilitar Agendamento Online
-              </Label>
-              <p className="text-xs text-zinc-550 dark:text-zinc-400 leading-relaxed max-w-xl">
-                Quando ativado, os clientes poderão solicitar agendamentos através do link público. O sistema exibirá os horários disponíveis com base na agenda dos profissionais e nas configurações do sistema.
-              </p>
-            </div>
-            <div className="pt-1">
-              <Switch 
-                id="agendamento-online"
-                checked={agendamentoOnlineAtivo}
-                onCheckedChange={setAgendamentoOnlineAtivo}
-              />
-            </div>
-          </div>
-        </Card>
 
         {/* Main Restriction Setting Card */}
         <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
