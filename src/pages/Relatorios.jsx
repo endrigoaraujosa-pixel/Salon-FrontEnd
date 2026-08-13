@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import http from "../api";
 import { useAuth } from "../auth";
 import { toast } from "../components/ui/sonner";
@@ -286,6 +287,15 @@ const REPORTS_LIST = [
     category: "Estoque",
     badgeColor: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-455 dark:border-rose-800/40",
     iconColor: "text-rose-500"
+  },
+  {
+    id: "estoque_variacao_preco",
+    title: "Variação de Preço de Produtos",
+    description: "Análise da oscilação dos preços de custo das mercadorias ao longo do tempo, comparando o valor unitário das entradas por produto e fornecedor.",
+    icon: TrendingUp,
+    category: "Estoque",
+    badgeColor: "bg-amber-50 text-amber-700 border-amber-250 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/40",
+    iconColor: "text-amber-500"
   }
 ];
 
@@ -307,6 +317,7 @@ const getReportPermKey = (tab) => {
 
 export default function Relatorios() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [from, setFrom] = useState(firstDayMonth());
   const [to, setTo] = useState(todayStr());
   const [tab, setTab] = useState("dre");
@@ -460,10 +471,22 @@ export default function Relatorios() {
   const [filterEstoqueProduto, setFilterEstoqueProduto] = useState("todos");
   const [fornecedoresList, setFornecedoresList] = useState([]);
   const [filterFornecedorEntradas, setFilterFornecedorEntradas] = useState("todos");
+  const [filterApenasVariacao, setFilterApenasVariacao] = useState(false);
   const [searchEstoqueQuery, setSearchEstoqueQuery] = useState("");
   const [sortEstoqueField, setSortEstoqueField] = useState("");
   const [sortEstoqueDirection, setSortEstoqueDirection] = useState("asc");
   const [estoquePage, setEstoquePage] = useState(1);
+
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam) {
+      const found = REPORTS_LIST.find(r => r.id === tabParam);
+      if (found) {
+        setSelectedReport(tabParam);
+        setTab(tabParam);
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     http.get("/colaboradores").then((r) => setColaboradores(r.data)).catch(() => {});
@@ -699,13 +722,15 @@ export default function Relatorios() {
       else if (tab === "estoque_inventario") endpoint = "/relatorios/estoque/inventario";
       else if (tab === "estoque_perdas_quebras") endpoint = "/relatorios/estoque/perdas-quebras";
       else if (tab === "estoque_entradas") endpoint = "/relatorios/estoque/entradas";
+      else if (tab === "estoque_variacao_preco") endpoint = "/relatorios/estoque/variacao-preco";
 
       const queryParams = {
         data_inicio: from,
         data_fim: to,
         categorias: catsParam,
         produto_id: prodId,
-        fornecedor_id: filterFornecedorEntradas === "todos" ? undefined : filterFornecedorEntradas
+        fornecedor_id: filterFornecedorEntradas === "todos" ? undefined : filterFornecedorEntradas,
+        apenas_com_variacao: filterApenasVariacao
       };
 
       promise = http.get(endpoint, { params: queryParams })
@@ -1643,6 +1668,86 @@ export default function Relatorios() {
             </td>
             <td className="px-4 py-3 text-zinc-500 text-xs italic max-w-xs truncate" title={item.observacoes}>
               {item.observacoes || '-'}
+            </td>
+          </>
+        );
+      };
+    }
+    else if (tabName === "estoque_variacao_preco") {
+      dataList = estoqueReportData.registros || [];
+      exportTitle = "Variação de Preço de Produtos";
+      exportHeaders = ["Produto", "Fornecedor", "Data Entrada", "Nota Fiscal", "Qtd Recebida", "Custo Unitário", "Último Custo", "Variação (R$)", "Variação (%)", "Tendência"];
+      exportKeys = ["produto_nome", "fornecedor_nome", "data_entrada", "numero_nota", "quantidade", "custo_unitario", "ultimo_custo_unitario", "variacao_valor", "variacao_percentual", "tendencia"];
+
+      const resumo = estoqueReportData.resumo || {};
+
+      kpis = [
+        { label: "Registros Analisados", value: resumo.total_registros || 0, icon: Package, color: "text-blue-500", bg: "bg-blue-50" },
+        { label: "Aumentos de Custo", value: resumo.qtd_aumento || 0, icon: TrendingUp, color: "text-rose-600", bg: "bg-rose-50" },
+        { label: "Reduções de Custo", value: resumo.qtd_reducao || 0, icon: TrendingDown, color: "text-emerald-600", bg: "bg-emerald-50" },
+        { label: "Variação Média", value: `${(resumo.variacao_media_percentual || 0) > 0 ? '+' : ''}${(resumo.variacao_media_percentual || 0).toFixed(2)}%`, icon: Coins, color: (resumo.variacao_media_percentual || 0) > 0 ? "text-rose-600" : "text-emerald-600", bg: (resumo.variacao_media_percentual || 0) > 0 ? "bg-rose-50" : "bg-emerald-50" }
+      ];
+
+      headers = [
+        { label: "Produto", key: "produto_nome" },
+        { label: "Fornecedor", key: "fornecedor_nome" },
+        { label: "Data Entrada", key: "data_entrada" },
+        { label: "Nota / Série", key: "numero_nota" },
+        { label: "Qtd Recebida", key: "quantidade" },
+        { label: "Custo Unitário Atual", key: "custo_unitario" },
+        { label: "Último Custo", key: "ultimo_custo_unitario" },
+        { label: "Variação (R$ / %)", key: "variacao_valor" }
+      ];
+
+      rowRenderer = (item) => {
+        const isAumento = item.tendencia === 'aumento';
+        const isReducao = item.tendencia === 'reducao';
+        const isMantido = item.tendencia === 'mantido';
+        const isInicial = item.tendencia === 'inicial';
+
+        return (
+          <>
+            <td className="px-4 py-2.5 font-medium text-zinc-850 dark:text-zinc-100">
+              {item.produto_nome}
+            </td>
+            <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-300">
+              {item.fornecedor_nome || "Fornecedor não informado"}
+            </td>
+            <td className="px-4 py-2.5 text-zinc-500 font-mono">
+              {item.data_entrada ? formatAgendaDate(item.data_entrada) : "—"}
+            </td>
+            <td className="px-4 py-2.5 text-zinc-500 font-mono">
+              {item.numero_nota ? `${item.numero_nota}${item.serie_nota ? ` / ${item.serie_nota}` : ''}` : "Sem NF"}
+            </td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-300 font-mono font-semibold">
+              {formatReportQuantidade(item.quantidade, item)}
+            </td>
+            <td className="px-4 py-2.5 text-zinc-800 dark:text-zinc-100 font-mono font-bold">
+              {fmtBRL(item.custo_unitario)}
+            </td>
+            <td className="px-4 py-2.5 text-zinc-500 font-mono">
+              {item.ultimo_custo_unitario !== null ? fmtBRL(item.ultimo_custo_unitario) : "— (1ª Entrada)"}
+            </td>
+            <td className="px-4 py-2.5 font-mono text-xs">
+              {isInicial ? (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/30 dark:text-blue-400">
+                  1ª Entrada
+                </span>
+              ) : isMantido ? (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-zinc-100 text-zinc-600 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400">
+                  Sem alteração (R$ 0,00)
+                </span>
+              ) : isAumento ? (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 flex items-center gap-1 w-fit">
+                  <TrendingUp className="w-3 h-3 text-rose-600" />
+                  +{fmtBRL(item.variacao_valor)} (+{(item.variacao_percentual || 0).toFixed(2)}%)
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 flex items-center gap-1 w-fit">
+                  <TrendingDown className="w-3 h-3 text-emerald-600" />
+                  {fmtBRL(item.variacao_valor)} ({(item.variacao_percentual || 0).toFixed(2)}%)
+                </span>
+              )}
             </td>
           </>
         );
@@ -2706,7 +2811,7 @@ export default function Relatorios() {
                 </div>
 
                 <div className="flex flex-wrap gap-4">
-                  {["estoque_atual", "estoque_movimentacao", "estoque_consumo_insumos", "estoque_historico_ajustes", "estoque_perdas_quebras", "estoque_entradas"].includes(tab) && (
+                  {["estoque_atual", "estoque_movimentacao", "estoque_consumo_insumos", "estoque_historico_ajustes", "estoque_perdas_quebras", "estoque_entradas", "estoque_variacao_preco"].includes(tab) && (
                     <div className="w-full md:max-w-xs">
                       <Label className="text-[10px] uppercase font-bold text-zinc-550 tracking-wider">Produto Específico</Label>
                       <SearchableSelect
@@ -2722,7 +2827,7 @@ export default function Relatorios() {
                     </div>
                   )}
 
-                  {tab === "estoque_entradas" && (
+                  {(tab === "estoque_entradas" || tab === "estoque_variacao_preco") && (
                     <div className="w-full md:max-w-xs">
                       <Label className="text-[10px] uppercase font-bold text-zinc-550 tracking-wider">Fornecedor</Label>
                       <SearchableSelect
@@ -2735,6 +2840,20 @@ export default function Relatorios() {
                         value={filterFornecedorEntradas}
                         onValueChange={setFilterFornecedorEntradas}
                       />
+                    </div>
+                  )}
+
+                  {tab === "estoque_variacao_preco" && (
+                    <div className="flex items-center gap-2 self-end mb-2">
+                      <label className="flex items-center gap-2 text-xs font-semibold text-zinc-700 dark:text-zinc-300 cursor-pointer select-none bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 px-3 py-2 rounded-lg">
+                        <input
+                          type="checkbox"
+                          checked={filterApenasVariacao}
+                          onChange={(e) => setFilterApenasVariacao(e.target.checked)}
+                          className="rounded border-zinc-300 text-amber-600 focus:ring-amber-500 w-4 h-4"
+                        />
+                        <span>Apenas com alteração de preço (Altas/Baixas)</span>
+                      </label>
                     </div>
                   )}
                 </div>
@@ -5398,6 +5517,9 @@ export default function Relatorios() {
         <TabsContent value="estoque_entradas">
           {renderEstoqueReport("estoque_entradas")}
         </TabsContent>
+        <TabsContent value="estoque_variacao_preco">
+          {renderEstoqueReport("estoque_variacao_preco")}
+        </TabsContent>
         <TabsContent value="agendamentos_cancelados">
           {renderCanceladosReport()}
         </TabsContent>
@@ -6072,6 +6194,23 @@ const renderHelpContent = (reportId) => {
         <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
           <HelpSection title="Objetivo do Relatório">
             <p>Consolidar e quantificar financeiramente as saídas de estoque justificadas como perdas, quebras, desperdício ou roubo no período.</p>
+          </HelpSection>
+        </div>
+      );
+    case "estoque_variacao_preco":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>O Relatório de Variação de Preço de Produtos analisa a oscilação do preço de custo unitário das mercadorias ao longo do tempo, comparando cada nova entrada com o último preço praticado para o mesmo produto.</p>
+          </HelpSection>
+          <HelpSection title="Quando utilizar">
+            <p>Utilize para acompanhar aumentos e reduções nos custos dos fornecedores, subsidiar renegociações de preços de compra, evitar perda de margem de lucro e identificar oscilações atípicas no mercado.</p>
+          </HelpSection>
+          <HelpSection title="Indicadores e Tendências">
+            <p>🔴 <strong>Aumento:</strong> Custo unitário da nota fiscal atual é maior que o último custo registrado.</p>
+            <p>🟢 <strong>Redução:</strong> Custo unitário da nota fiscal atual é menor que o último custo registrado.</p>
+            <p>⚪ <strong>Mantido:</strong> O preço de custo unitário não sofreu alterações em relação à entrada anterior.</p>
+            <p>🔵 <strong>1ª Entrada:</strong> Primeiro registro de entrada cadastrado para o produto no histórico.</p>
           </HelpSection>
         </div>
       );
