@@ -4538,8 +4538,74 @@ export default function Relatorios() {
                 </div>
               </div>
 
-              {/* Table */}
-              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
+              {/* Mobile View: Cards */}
+              <div className="md:hidden space-y-3">
+                {sortedAndFilteredServicos.length === 0 ? (
+                  <div className="text-center py-8 text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs">
+                    Nenhum serviço encontrado.
+                  </div>
+                ) : (
+                  sortedAndFilteredServicos.map((s, idx) => (
+                    <div 
+                      key={idx} 
+                      className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 shadow-sm active:bg-zinc-50 dark:active:bg-zinc-800/60 transition-colors cursor-pointer space-y-2.5"
+                      onClick={() => handleShowRentabilidadeDetail(s, 'servico')}
+                    >
+                      <div className="flex items-start justify-between gap-2 border-b border-zinc-100 dark:border-zinc-800/80 pb-2">
+                        <div>
+                          <div className="font-semibold text-sm text-zinc-800 dark:text-zinc-100">{s.servico_nome}</div>
+                          <span className="text-[11px] text-zinc-400 font-mono">
+                            {(s.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })} serviço(s)
+                          </span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded text-[11px] font-bold border whitespace-nowrap font-mono ${
+                          s.margem >= 50 
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/50' 
+                            : s.margem >= 20 
+                            ? 'bg-amber-50 text-amber-650 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/50' 
+                            : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800/50'
+                        }`}>
+                          {(s.margem || 0).toFixed(1)}%
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block uppercase font-medium">Faturamento</span>
+                          <span className="font-mono font-semibold text-zinc-800 dark:text-zinc-200">{fmtBRL(s.faturamento)}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block uppercase font-medium">Insumos</span>
+                          <span className="font-mono font-medium text-rose-550 dark:text-rose-400">{fmtBRL(s.insumos)}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block uppercase font-medium">Comissão</span>
+                          <span className="font-mono font-medium text-amber-600 dark:text-amber-400">{fmtBRL(s.comissao)}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block uppercase font-medium">Taxas</span>
+                          <span className="font-mono font-medium text-amber-700 dark:text-amber-500">{fmtBRL(s.taxas)}</span>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-zinc-400 uppercase font-bold mr-1.5">Resultado:</span>
+                          <span className={`font-mono font-bold text-xs ${s.resultado_operacional >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                            {fmtBRL(s.resultado_operacional)}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-medium text-[#84A59D] flex items-center gap-0.5">
+                          Ver detalhamento &rarr;
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Desktop View: Table */}
+              <div className="hidden md:block bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left border-collapse min-w-[850px]">
                     <thead>
@@ -4683,8 +4749,74 @@ export default function Relatorios() {
                 </div>
               </div>
 
-              {/* Table */}
-              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
+              {/* Mobile View: Cards */}
+              <div className="md:hidden space-y-3">
+                {sortedAndFilteredProdutos.length === 0 ? (
+                  <div className="text-center py-8 text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs">
+                    Nenhum produto encontrado.
+                  </div>
+                ) : (
+                  paginatedRentabilidadeProdutos.map((p, idx) => (
+                    <div 
+                      key={idx} 
+                      className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 shadow-sm active:bg-zinc-50 dark:active:bg-zinc-800/60 transition-colors cursor-pointer space-y-2.5"
+                      onClick={() => handleShowRentabilidadeDetail(p, 'produto')}
+                    >
+                      <div className="flex items-start justify-between gap-2 border-b border-zinc-100 dark:border-zinc-800/80 pb-2">
+                        <div>
+                          <div className="font-semibold text-sm text-zinc-800 dark:text-zinc-100">{p.produto_nome}</div>
+                          <span className="text-[11px] text-zinc-400 font-mono">
+                            {(p.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })} un
+                          </span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded text-[11px] font-bold border whitespace-nowrap font-mono ${
+                          p.margem >= 40 
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/50' 
+                            : p.margem >= 15 
+                            ? 'bg-amber-50 text-amber-650 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/50' 
+                            : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800/50'
+                        }`}>
+                          {(p.margem || 0).toFixed(1)}%
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block uppercase font-medium">Faturamento</span>
+                          <span className="font-mono font-semibold text-zinc-800 dark:text-zinc-200">{fmtBRL(p.faturamento)}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block uppercase font-medium">CMV</span>
+                          <span className="font-mono font-medium text-rose-550 dark:text-rose-400">{fmtBRL(p.cmv)}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block uppercase font-medium">Comissão</span>
+                          <span className="font-mono font-medium text-amber-600 dark:text-amber-400">{fmtBRL(p.comissao)}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block uppercase font-medium">Taxas</span>
+                          <span className="font-mono font-medium text-amber-700 dark:text-amber-500">{fmtBRL(p.taxas)}</span>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-zinc-400 uppercase font-bold mr-1.5">Resultado:</span>
+                          <span className={`font-mono font-bold text-xs ${p.resultado_operacional >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                            {fmtBRL(p.resultado_operacional)}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-medium text-[#84A59D] flex items-center gap-0.5">
+                          Ver detalhamento &rarr;
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Desktop View: Table */}
+              <div className="hidden md:block bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left border-collapse min-w-[850px]">
                     <thead>
@@ -5213,77 +5345,142 @@ export default function Relatorios() {
                     Nenhum lançamento encontrado para este item no período.
                   </div>
                 ) : (
-                  <div className="overflow-x-auto border border-zinc-200 dark:border-zinc-800 rounded-xl max-h-[45vh] overflow-y-auto shadow-sm">
-                    <table className="w-full text-xs text-left border-collapse min-w-[850px]">
-                      <thead className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-[10px] uppercase font-bold text-zinc-500 tracking-wider">
-                        <tr>
-                          <th className="px-4 py-3">Data</th>
-                          <th className="px-4 py-3">Nº Venda/Agendamento</th>
-                          <th className="px-4 py-3 font-medium">Cliente</th>
-                          <th className="px-4 py-3 font-medium">Profissional</th>
-                          {detailType === 'produto' && <th className="px-4 py-3 text-center">Qtd</th>}
-                          <th className="px-4 py-3 text-right">Faturamento</th>
-                          <th className="px-4 py-3 text-right">{detailType === 'servico' ? 'Insumos' : 'CMV'}</th>
-                          <th className="px-4 py-3 text-right">Comissão</th>
-                          <th className="px-4 py-3 text-right">Taxas</th>
-                          <th className="px-4 py-3 text-right">Resultado</th>
-                          <th className="px-4 py-3 text-center">Margem</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-medium">
-                        {detailLaunches.map((launch, idx) => {
-                          const l_margem = launch.faturamento > 0 ? ((launch.resultado_operacional / launch.faturamento) * 100) : 0;
-                          return (
-                            <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
-                              <td className="px-4 py-3 whitespace-nowrap text-zinc-500 font-mono">
-                                {launch.data ? new Date(launch.data).toLocaleDateString('pt-BR') : '-'}
-                              </td>
-                              <td className="px-4 py-3 font-semibold text-zinc-800 dark:text-zinc-150">
-                                {launch.numero || '-'}
-                              </td>
-                              <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300 truncate max-w-[120px]" title={launch.cliente}>
-                                {launch.cliente}
-                              </td>
-                              <td className="px-4 py-3 text-zinc-650 dark:text-zinc-350 truncate max-w-[120px]" title={launch.profissional}>
-                                {launch.profissional}
-                              </td>
-                              {detailType === 'produto' && (
-                                <td className="px-4 py-3 text-center font-mono font-semibold text-zinc-700 dark:text-zinc-300">
-                                  {(launch.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}
-                                </td>
-                              )}
-                              <td className="px-4 py-3 text-right font-mono font-semibold text-zinc-800 dark:text-zinc-100">
-                                {fmtBRL(launch.faturamento)}
-                              </td>
-                              <td className="px-4 py-3 text-right font-mono text-rose-500">
-                                {fmtBRL(detailType === 'servico' ? launch.insumos : launch.cmv)}
-                              </td>
-                              <td className="px-4 py-3 text-right font-mono text-amber-600">
-                                {fmtBRL(launch.comissao)}
-                              </td>
-                              <td className="px-4 py-3 text-right font-mono text-amber-700">
-                                {fmtBRL(launch.taxas)}
-                              </td>
-                              <td className={`px-4 py-3 text-right font-mono font-bold ${launch.resultado_operacional >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                {fmtBRL(launch.resultado_operacional)}
-                              </td>
-                              <td className="px-4 py-3 text-center font-mono">
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                  l_margem >= (detailType === 'servico' ? 50 : 40)
-                                    ? 'bg-emerald-50 text-emerald-600'
-                                    : l_margem >= (detailType === 'servico' ? 20 : 15)
-                                    ? 'bg-amber-50 text-amber-600'
-                                    : 'bg-rose-50 text-rose-600'
-                                }`}>
-                                  {l_margem.toFixed(1)}%
+                  <>
+                    {/* Mobile View: Launch Cards */}
+                    <div className="md:hidden space-y-2.5 max-h-[45vh] overflow-y-auto pr-1">
+                      {detailLaunches.map((launch, idx) => {
+                        const l_margem = launch.faturamento > 0 ? ((launch.resultado_operacional / launch.faturamento) * 100) : 0;
+                        return (
+                          <div key={idx} className="bg-zinc-50/70 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-xs space-y-2 shadow-xs">
+                            <div className="flex items-center justify-between border-b border-zinc-200/60 dark:border-zinc-800 pb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-zinc-500 text-[11px]">
+                                  {launch.data ? new Date(launch.data).toLocaleDateString('pt-BR') : '-'}
                                 </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                                <span className="font-semibold text-zinc-800 dark:text-zinc-150">
+                                  #{launch.numero || '-'}
+                                </span>
+                              </div>
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold font-mono ${
+                                l_margem >= (detailType === 'servico' ? 50 : 40)
+                                  ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
+                                  : l_margem >= (detailType === 'servico' ? 20 : 15)
+                                  ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400'
+                                  : 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400'
+                              }`}>
+                                {l_margem.toFixed(1)}%
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">
+                              <div>
+                                <span className="text-[10px] text-zinc-400 block uppercase font-medium">Cliente</span>
+                                <span className="text-zinc-700 dark:text-zinc-300 truncate block font-medium" title={launch.cliente}>
+                                  {launch.cliente || '-'}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-zinc-400 block uppercase font-medium">Profissional</span>
+                                <span className="text-zinc-700 dark:text-zinc-300 truncate block font-medium" title={launch.profissional}>
+                                  {launch.profissional || '-'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-zinc-200/60 dark:border-zinc-800 text-[10px]">
+                              <div>
+                                <span className="text-zinc-400 block uppercase font-medium">Faturamento</span>
+                                <span className="font-mono font-semibold text-zinc-800 dark:text-zinc-100">{fmtBRL(launch.faturamento)}</span>
+                              </div>
+                              <div>
+                                <span className="text-zinc-400 block uppercase font-medium">{detailType === 'servico' ? 'Insumos' : 'CMV'}</span>
+                                <span className="font-mono text-rose-500 font-medium">{fmtBRL(detailType === 'servico' ? launch.insumos : launch.cmv)}</span>
+                              </div>
+                              <div>
+                                <span className="text-zinc-400 block uppercase font-medium">Resultado</span>
+                                <span className={`font-mono font-bold ${launch.resultado_operacional >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                  {fmtBRL(launch.resultado_operacional)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Desktop View: Launch Table */}
+                    <div className="hidden md:block overflow-x-auto border border-zinc-200 dark:border-zinc-800 rounded-xl max-h-[45vh] overflow-y-auto shadow-sm">
+                      <table className="w-full text-xs text-left border-collapse min-w-[850px]">
+                        <thead className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-[10px] uppercase font-bold text-zinc-500 tracking-wider">
+                          <tr>
+                            <th className="px-4 py-3">Data</th>
+                            <th className="px-4 py-3">Nº Venda/Agendamento</th>
+                            <th className="px-4 py-3 font-medium">Cliente</th>
+                            <th className="px-4 py-3 font-medium">Profissional</th>
+                            {detailType === 'produto' && <th className="px-4 py-3 text-center">Qtd</th>}
+                            <th className="px-4 py-3 text-right">Faturamento</th>
+                            <th className="px-4 py-3 text-right">{detailType === 'servico' ? 'Insumos' : 'CMV'}</th>
+                            <th className="px-4 py-3 text-right">Comissão</th>
+                            <th className="px-4 py-3 text-right">Taxas</th>
+                            <th className="px-4 py-3 text-right">Resultado</th>
+                            <th className="px-4 py-3 text-center">Margem</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-medium">
+                          {detailLaunches.map((launch, idx) => {
+                            const l_margem = launch.faturamento > 0 ? ((launch.resultado_operacional / launch.faturamento) * 100) : 0;
+                            return (
+                              <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
+                                <td className="px-4 py-3 whitespace-nowrap text-zinc-500 font-mono">
+                                  {launch.data ? new Date(launch.data).toLocaleDateString('pt-BR') : '-'}
+                                </td>
+                                <td className="px-4 py-3 font-semibold text-zinc-800 dark:text-zinc-150">
+                                  {launch.numero || '-'}
+                                </td>
+                                <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300 truncate max-w-[120px]" title={launch.cliente}>
+                                  {launch.cliente}
+                                </td>
+                                <td className="px-4 py-3 text-zinc-650 dark:text-zinc-350 truncate max-w-[120px]" title={launch.profissional}>
+                                  {launch.profissional}
+                                </td>
+                                {detailType === 'produto' && (
+                                  <td className="px-4 py-3 text-center font-mono font-semibold text-zinc-700 dark:text-zinc-300">
+                                    {(launch.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}
+                                  </td>
+                                )}
+                                <td className="px-4 py-3 text-right font-mono font-semibold text-zinc-800 dark:text-zinc-100">
+                                  {fmtBRL(launch.faturamento)}
+                                </td>
+                                <td className="px-4 py-3 text-right font-mono text-rose-500">
+                                  {fmtBRL(detailType === 'servico' ? launch.insumos : launch.cmv)}
+                                </td>
+                                <td className="px-4 py-3 text-right font-mono text-amber-600">
+                                  {fmtBRL(launch.comissao)}
+                                </td>
+                                <td className="px-4 py-3 text-right font-mono text-amber-700">
+                                  {fmtBRL(launch.taxas)}
+                                </td>
+                                <td className={`px-4 py-3 text-right font-mono font-bold ${launch.resultado_operacional >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                  {fmtBRL(launch.resultado_operacional)}
+                                </td>
+                                <td className="px-4 py-3 text-center font-mono">
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                    l_margem >= (detailType === 'servico' ? 50 : 40)
+                                      ? 'bg-emerald-50 text-emerald-600'
+                                      : l_margem >= (detailType === 'servico' ? 20 : 15)
+                                      ? 'bg-amber-50 text-amber-600'
+                                      : 'bg-rose-50 text-rose-600'
+                                  }`}>
+                                    {l_margem.toFixed(1)}%
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
