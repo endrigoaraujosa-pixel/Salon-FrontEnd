@@ -40,6 +40,8 @@ export default function ConfiguracoesAgendamentoOnline() {
   const [ocultarValoresOnline, setOcultarValoresOnline] = useState(false);
   const [maxServicosOnline, setMaxServicosOnline] = useState("");
   const [savingMaxServicos, setSavingMaxServicos] = useState(false);
+  const [maxAgendamentosFuturos, setMaxAgendamentosFuturos] = useState("");
+  const [savingMaxAgendamentosFuturos, setSavingMaxAgendamentosFuturos] = useState(false);
   const [aceitarAgendamentoAutomatico, setAceitarAgendamentoAutomatico] = useState(false);
   const [activeTab, setActiveTab] = useState("horarios"); // 'horarios' | 'colaboradores'
   const [disponibilidades, setDisponibilidades] = useState([]);
@@ -138,6 +140,26 @@ export default function ConfiguracoesAgendamentoOnline() {
     }
   };
 
+  const handleSaveMaxAgendamentosFuturos = async () => {
+    setSavingMaxAgendamentosFuturos(true);
+    try {
+      const val = maxAgendamentosFuturos === "" || maxAgendamentosFuturos === null ? null : parseInt(maxAgendamentosFuturos, 10);
+      const parsedVal = (val === null || isNaN(val) || val <= 0) ? null : val;
+      await http.post("/configuracoes/sistema", { max_agendamentos_online_futuros: parsedVal });
+      if (parsedVal) {
+        setMaxAgendamentosFuturos(String(parsedVal));
+        toast.success(`Limite de agendamentos futuros em aberto salvo: ${parsedVal}`);
+      } else {
+        setMaxAgendamentosFuturos("");
+        toast.success("Limite de agendamentos futuros removido (Sem limite).");
+      }
+    } catch (e) {
+      toast.error("Erro ao salvar limite de agendamentos futuros.");
+    } finally {
+      setSavingMaxAgendamentosFuturos(false);
+    }
+  };
+
   // =================== HORÁRIOS DO SALÃO ===================
   const loadData = async () => {
     setLoading(true);
@@ -175,6 +197,11 @@ export default function ConfiguracoesAgendamentoOnline() {
           setMaxServicosOnline(String(sysRes.data.max_servicos_agendamento_online));
         } else {
           setMaxServicosOnline("");
+        }
+        if (sysRes.data.max_agendamentos_online_futuros !== undefined && sysRes.data.max_agendamentos_online_futuros !== null) {
+          setMaxAgendamentosFuturos(String(sysRes.data.max_agendamentos_online_futuros));
+        } else {
+          setMaxAgendamentosFuturos("");
         }
         if (sysRes.data.aceitar_agendamento_online_automatico !== undefined) {
           setAceitarAgendamentoAutomatico(Boolean(sysRes.data.aceitar_agendamento_online_automatico));
@@ -476,6 +503,40 @@ export default function ConfiguracoesAgendamentoOnline() {
                 className="bg-[#84A59D] hover:bg-[#6F9189] dark:bg-[#84A59D] dark:hover:bg-[#6F9189] text-white h-10 font-bold px-4 rounded-lg text-xs"
               >
                 {savingMaxServicos ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        {/* Quantidade Máxima de Agendamentos Online Futuros em Aberto */}
+        <Card className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Clock className="w-5 h-5 text-[#84A59D]" />
+                <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                  Quantidade máxima de agendamentos online futuros em aberto
+                </h3>
+              </div>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                Informe quantos agendamentos online futuros em aberto cada cliente pode ter simultaneamente (ex.: 1, 2, etc.). Deixe em branco para sem limite.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Input
+                type="number"
+                min="1"
+                placeholder="Sem limite"
+                value={maxAgendamentosFuturos}
+                onChange={(e) => setMaxAgendamentosFuturos(e.target.value)}
+                className="w-32 h-10 text-center font-medium bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800"
+              />
+              <Button
+                onClick={handleSaveMaxAgendamentosFuturos}
+                disabled={savingMaxAgendamentosFuturos}
+                className="bg-[#84A59D] hover:bg-[#6F9189] dark:bg-[#84A59D] dark:hover:bg-[#6F9189] text-white h-10 font-bold px-4 rounded-lg text-xs"
+              >
+                {savingMaxAgendamentosFuturos ? "Salvando..." : "Salvar"}
               </Button>
             </div>
           </div>
