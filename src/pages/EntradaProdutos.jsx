@@ -33,6 +33,14 @@ export default function EntradaProdutos() {
   const [serieNota, setSerieNota] = useState("");
   const [observacoes, setObservacoes] = useState("");
   
+  // Natureza da Operação & Integração Financeira States
+  const [naturezaOperacao, setNaturezaOperacao] = useState("compra_prazo");
+  const [gerarFinanceiro, setGerarFinanceiro] = useState(true);
+  const [condicaoPagamento, setCondicaoPagamento] = useState("avista");
+  const [qtdParcelas, setQtdParcelas] = useState("1");
+  const [vencimentoPrimeiraParcela, setVencimentoPrimeiraParcela] = useState(getTodayDateString());
+  const [categoriaDespesa, setCategoriaDespesa] = useState("Suprimentos");
+
   // Items List
   const [itens, setItens] = useState([]);
   
@@ -40,26 +48,6 @@ export default function EntradaProdutos() {
   const [selectedProdutoId, setSelectedProdutoId] = useState("");
   const [itemQuantidade, setItemQuantidade] = useState("");
   const [itemValorCusto, setItemValorCusto] = useState("");
-
-  // Post-entry Contas a Pagar Prompt Dialog
-  const [promptOpen, setPromptOpen] = useState(false);
-  const [savedEntrada, setSavedEntrada] = useState(null);
-
-  // Contas a Pagar (Despesa) Modal Form
-  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
-  const [expenseForm, setExpenseForm] = useState({
-    descricao: "",
-    valor: "",
-    tipo: "variavel",
-    categoria: "Estoque",
-    data_documento: "",
-    data_vencimento: "",
-    pago: false,
-    status: "Aberto",
-    numero_documento: "",
-    fornecedor: "",
-    observacoes: ""
-  });
 
   useEffect(() => {
     loadData();
@@ -85,6 +73,16 @@ export default function EntradaProdutos() {
     } else {
       const f = fornecedores.find(x => x.id === value);
       setFornecedorNome(f ? f.nome_razosocial : "");
+    }
+  };
+
+  const handleNaturezaChange = (val) => {
+    setNaturezaOperacao(val);
+    const nonFinancialOps = ["bonificacao", "garantia", "troca", "transferencia"];
+    if (nonFinancialOps.includes(val)) {
+      setGerarFinanceiro(false);
+    } else {
+      setGerarFinanceiro(true);
     }
   };
 
@@ -148,6 +146,12 @@ export default function EntradaProdutos() {
     setNumeroNota("");
     setSerieNota("");
     setObservacoes("");
+    setNaturezaOperacao("compra_prazo");
+    setGerarFinanceiro(true);
+    setCondicaoPagamento("avista");
+    setQtdParcelas("1");
+    setVencimentoPrimeiraParcela(getTodayDateString());
+    setCategoriaDespesa("Suprimentos");
     setItens([]);
     setSelectedProdutoId("");
     setItemQuantidade("");
@@ -185,6 +189,12 @@ export default function EntradaProdutos() {
         numero_nota: numeroNota.trim(),
         serie_nota: serieNota.trim(),
         observacoes: observacoes,
+        natureza_operacao: naturezaOperacao,
+        gerar_financeiro: gerarFinanceiro,
+        condicao_pagamento: condicaoPagamento,
+        qtd_parcelas: parseInt(qtdParcelas) || 1,
+        vencimento_primeira_parcela: vencimentoPrimeiraParcela || dataEntrada,
+        categoria_despesa: categoriaDespesa || "Suprimentos",
         itens: itens.map(item => ({
           produto_id: item.produto_id,
           quantidade: item.quantidade,
@@ -192,79 +202,23 @@ export default function EntradaProdutos() {
         }))
       };
 
-      const res = await http.post("/estoque/entradas", payload);
-      toast.success("Entrada de estoque registrada com sucesso!");
-      
-      const saved = res.data.entrada;
-      setSavedEntrada(saved);
-      
-      // Open dialog asking if they want to generate an Accounts Payable (Contas a Pagar)
-      setPromptOpen(true);
-      setLoading(false);
-    } catch (error) {
-      setLoading(false);
-      const msg = error.response?.data?.detail || "Erro ao registrar a entrada de produtos.";
-      toast.error(msg);
-    }
-  };
+      await http.post("/estoque/entradas", payload);
 
-  // If user says "NO" on accounts payable generation
-  const handleCancelExpense = () => {
-    setPromptOpen(false);
-    resetAll();
-    loadData();
-    navigate("/estoque");
-  };
-
-  // If user says "YES" to generate expense
-  const handleProceedToExpense = () => {
-    setPromptOpen(false);
-    
-    // Auto-fill expense form fields
-    setExpenseForm({
-      descricao: `Entrada de Estoque - NF: ${savedEntrada.numero_nota || "S/N"} (Série: ${savedEntrada.serie_nota || "S/S"})`,
-      valor: savedEntrada.valor_total,
-      tipo: "variavel",
-      categoria: "Suprimentos", // standard category from existing list
-      data_documento: savedEntrada.data_entrada,
-      data_vencimento: savedEntrada.data_entrada, // defaults to same date
-      pago: false,
-      status: "Aberto",
-      numero_documento: `${savedEntrada.numero_nota} (Série: ${savedEntrada.serie_nota})`,
-      fornecedor: savedEntrada.fornecedor_nome,
-      observacoes: savedEntrada.observacoes || ""
-    });
-
-    setExpenseDialogOpen(true);
-  };
-
-  const handleSaveExpense = async () => {
-    try {
-      if (!expenseForm.descricao.trim()) {
-        toast.error("Descrição da despesa é obrigatória.");
-        return;
+      if (naturezaOperacao === "compra_prazo" && gerarFinanceiro) {
+        const nParc = parseInt(qtdParcelas) || 1;
+        toast.success(`Entrada registrada e ${nParc} parcela(s) em aberto gerada(s) no Contas a Pagar!`);
+      } else if (naturezaOperacao === "compra_vista" && gerarFinanceiro) {
+        toast.success("Entrada registrada e despesa quitada gerada no Contas a Pagar!");
+      } else {
+        toast.success("Entrada de estoque registrada com sucesso (sem lançamento financeiro)!");
       }
       
-      const valorStr = String(expenseForm.valor).replace(",", ".");
-      const valorNum = parseFloat(valorStr);
-      if (isNaN(valorNum) || valorNum <= 0) {
-        toast.error("O valor da despesa deve ser maior que zero.");
-        return;
-      }
-
-      const payload = {
-        ...expenseForm,
-        valor: valorNum,
-        pago: expenseForm.status === "Pago"
-      };
-
-      await http.post("/despesas", payload);
-      toast.success("Contas a Pagar gerado com sucesso!");
-      setExpenseDialogOpen(false);
+      setLoading(false);
       resetAll();
       navigate("/estoque");
     } catch (error) {
-      const msg = error.response?.data?.detail || "Erro ao salvar o Contas a Pagar.";
+      setLoading(false);
+      const msg = error.response?.data?.detail || "Erro ao registrar a entrada de produtos.";
       toast.error(msg);
     }
   };
@@ -294,13 +248,22 @@ export default function EntradaProdutos() {
         overline="Estoque" 
         title="Entrada de Produtos" 
         action={
-          <Button 
-            variant="outline" 
-            onClick={() => navigate("/estoque")} 
-            className="flex items-center gap-1.5 border-zinc-250 dark:border-zinc-850"
-          >
-            <ArrowLeft className="w-4 h-4" /> Voltar para Estoque
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/relatorios?tab=estoque_entradas")} 
+              className="flex items-center gap-1.5 border-zinc-250 dark:border-zinc-850 text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 hover:bg-emerald-100"
+            >
+              <FileText className="w-4 h-4 text-emerald-600" /> Relatório de Entradas
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/estoque")} 
+              className="flex items-center gap-1.5 border-zinc-250 dark:border-zinc-850"
+            >
+              <ArrowLeft className="w-4 h-4" /> Voltar para Estoque
+            </Button>
+          </div>
         } 
       />
 
@@ -338,6 +301,117 @@ export default function EntradaProdutos() {
                 />
               </div>
             )}
+
+            <div>
+              <Label className="text-xs font-semibold text-zinc-650 dark:text-zinc-400">Natureza da Operação / Tipo *</Label>
+              <div className="mt-1">
+                <Select value={naturezaOperacao} onValueChange={handleNaturezaChange}>
+                  <SelectTrigger className="w-full text-xs font-medium">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                    <SelectItem value="compra_prazo">Compra a Prazo (Gera Contas a Pagar)</SelectItem>
+                    <SelectItem value="compra_vista">Compra à Vista (Gera Lançamento Quitado)</SelectItem>
+                    <SelectItem value="bonificacao">Bonificação / Brinde (Sem Financeiro)</SelectItem>
+                    <SelectItem value="garantia">Reposição em Garantia (Sem Financeiro)</SelectItem>
+                    <SelectItem value="troca">Troca / Devolução (Sem Financeiro)</SelectItem>
+                    <SelectItem value="transferencia">Transferência entre Unidades (Sem Financeiro)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Integração Financeira Card */}
+            <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/40 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                  <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  Gerar no Contas a Pagar
+                </span>
+                <input
+                  type="checkbox"
+                  checked={gerarFinanceiro}
+                  onChange={(e) => setGerarFinanceiro(e.target.checked)}
+                  disabled={["bonificacao", "garantia", "troca", "transferencia"].includes(naturezaOperacao)}
+                  className="w-4 h-4 text-emerald-600 rounded border-zinc-300 focus:ring-emerald-500 cursor-pointer"
+                />
+              </div>
+
+              {gerarFinanceiro && naturezaOperacao === "compra_prazo" && (
+                <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800 animate-in fade-in duration-200">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">Parcelas</Label>
+                      <Select value={String(qtdParcelas)} onValueChange={setQtdParcelas}>
+                        <SelectTrigger className="h-9 text-xs mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                          <SelectItem value="1">1x (30 dias)</SelectItem>
+                          <SelectItem value="2">2x (30/60 dias)</SelectItem>
+                          <SelectItem value="3">3x (30/60/90 dias)</SelectItem>
+                          <SelectItem value="4">4x</SelectItem>
+                          <SelectItem value="5">5x</SelectItem>
+                          <SelectItem value="6">6x</SelectItem>
+                          <SelectItem value="10">10x</SelectItem>
+                          <SelectItem value="12">12x</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">Venc. 1ª Parcela</Label>
+                      <Input
+                        type="date"
+                        value={vencimentoPrimeiraParcela}
+                        onChange={(e) => setVencimentoPrimeiraParcela(e.target.value)}
+                        className="h-9 text-xs mt-1"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">Categoria Financeira</Label>
+                    <Input
+                      value={categoriaDespesa}
+                      onChange={(e) => setCategoriaDespesa(e.target.value)}
+                      placeholder="Ex: Suprimentos"
+                      className="h-9 text-xs mt-1"
+                    />
+                  </div>
+
+                  {valorTotalNota > 0 && (
+                    <div className="bg-emerald-50/50 dark:bg-emerald-950/20 p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-900/50 text-[11px] text-emerald-800 dark:text-emerald-300">
+                      <span className="font-bold">Previsão: </span>
+                      {parseInt(qtdParcelas) || 1} parcela(s) de {fmtBRL(valorTotalNota / (parseInt(qtdParcelas) || 1))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {gerarFinanceiro && naturezaOperacao === "compra_vista" && (
+                <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800 space-y-2 animate-in fade-in duration-200">
+                  <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                    ✓ Será gerada 1 despesa com status <span className="font-bold uppercase">Pago</span> na data da entrada ({dataEntrada}).
+                  </p>
+                  <div>
+                    <Label className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">Categoria Financeira</Label>
+                    <Input
+                      value={categoriaDespesa}
+                      onChange={(e) => setCategoriaDespesa(e.target.value)}
+                      placeholder="Ex: Suprimentos"
+                      className="h-9 text-xs mt-1"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {!gerarFinanceiro && (
+                <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium pt-1">
+                  ⓘ Entrada sem custo financeiro. Apenas o saldo em estoque e custo serão atualizados.
+                </p>
+              )}
+            </div>
 
             <div>
               <Label className="text-xs font-semibold text-zinc-650 dark:text-zinc-400">Data da Entrada *</Label>
@@ -530,144 +604,6 @@ export default function EntradaProdutos() {
           </div>
         </div>
       </div>
-
-      {/* Post Entry - Generation of Contas a Pagar Prompt */}
-      <Dialog open={promptOpen} onOpenChange={setPromptOpen}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-2xl p-5 sm:p-6">
-          <DialogHeader className="flex flex-col items-center text-center">
-            <div className="w-12 h-12 rounded-full bg-[#EAF0EE] dark:bg-[#1a2e2a] flex items-center justify-center mb-3">
-              <HelpCircle className="w-6 h-6 text-[#3A4F4A] dark:text-[#84A59D]" />
-            </div>
-            <DialogTitle className="font-display font-bold text-lg text-zinc-900 dark:text-zinc-50">
-              Entrada Registrada com Sucesso!
-            </DialogTitle>
-            <DialogDescription className="text-xs text-zinc-450 dark:text-zinc-500 mt-1 leading-relaxed">
-              O estoque e o custo unitário dos produtos foram atualizados.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="py-4 text-center text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-            Deseja gerar um Contas a Pagar para esta entrada?
-          </div>
-
-          <DialogFooter className="flex sm:flex-row gap-2 mt-2 w-full">
-            <Button 
-              variant="outline" 
-              onClick={handleCancelExpense} 
-              className="flex-1 border-zinc-250 dark:border-zinc-850 hover:bg-zinc-100"
-            >
-              Não
-            </Button>
-            <Button 
-              onClick={handleProceedToExpense} 
-              className="flex-1 bg-[#84A59D] hover:bg-[#6F9189] text-white font-semibold flex items-center justify-center gap-1"
-            >
-              Sim
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Accounts Payable (Contas a Pagar / Despesa) Prefilled Modal */}
-      <Dialog open={expenseDialogOpen} onOpenChange={setExpenseDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-0 overflow-hidden flex flex-col max-h-[90vh]">
-          {/* Header */}
-          <div className="px-6 pt-5 pb-4 border-b border-zinc-100 dark:border-zinc-800 shrink-0 bg-zinc-50/50 dark:bg-zinc-900/20">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2.5 text-base font-bold text-zinc-800 dark:text-zinc-100">
-                <div className="p-1.5 bg-[#EAF0EE] dark:bg-[#1a2e2a] text-[#3A4F4A] dark:text-[#84A59D] rounded-lg">
-                  <DollarSign className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="block font-display text-base font-bold text-zinc-950 dark:text-zinc-50">Gerar Contas a Pagar</span>
-                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium">Os campos foram preenchidos automaticamente. Revise antes de salvar.</span>
-                </div>
-              </DialogTitle>
-            </DialogHeader>
-          </div>
-
-          {/* Form Content */}
-          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-            <div>
-              <Label className="text-xs font-semibold text-zinc-650 dark:text-zinc-400">Fornecedor</Label>
-              <div className="mt-1 relative">
-                <Input value={expenseForm.fornecedor} readOnly className="bg-zinc-100/60 dark:bg-zinc-900/40 text-zinc-550 border-zinc-200" />
-                <User className="w-4 h-4 text-zinc-400 absolute right-3 top-3" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-xs font-semibold text-zinc-650 dark:text-zinc-400">Valor Total (R$)</Label>
-                <Input value={fmtBRL(expenseForm.valor)} readOnly className="mt-1 bg-zinc-100/60 dark:bg-zinc-900/40 text-zinc-550 font-mono font-bold" />
-              </div>
-              
-              <div>
-                <Label className="text-xs font-semibold text-zinc-650 dark:text-zinc-400">Data de Vencimento *</Label>
-                <Input 
-                  type="date" 
-                  value={expenseForm.data_vencimento} 
-                  onChange={(e) => setExpenseForm({ ...expenseForm, data_vencimento: e.target.value })} 
-                  className="mt-1" 
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-xs font-semibold text-zinc-650 dark:text-zinc-400">Descrição do Contas a Pagar *</Label>
-              <Input 
-                value={expenseForm.descricao} 
-                onChange={(e) => setExpenseForm({ ...expenseForm, descricao: e.target.value })} 
-                placeholder="Ex: Compra de Estoque" 
-                className="mt-1" 
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-xs font-semibold text-zinc-650 dark:text-zinc-400">Tipo de Despesa</Label>
-                <Input value="Variável" readOnly className="mt-1 bg-zinc-100/60 dark:bg-zinc-900/40 text-zinc-550" />
-              </div>
-              <div>
-                <Label className="text-xs font-semibold text-zinc-650 dark:text-zinc-400">Categoria Financeira</Label>
-                <Input value="Suprimentos (Estoque)" readOnly className="mt-1 bg-zinc-100/60 dark:bg-zinc-900/40 text-zinc-550" />
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-xs font-semibold text-zinc-650 dark:text-zinc-400 font-medium">Observações</Label>
-              <Textarea 
-                value={expenseForm.observacoes} 
-                onChange={(e) => setExpenseForm({ ...expenseForm, observacoes: e.target.value })} 
-                className="mt-1 h-16 resize-none" 
-              />
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20 shrink-0 flex gap-2 justify-end">
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="border-zinc-300 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900" 
-              onClick={() => {
-                setExpenseDialogOpen(false);
-                resetAll();
-                loadData();
-                navigate("/produtos");
-              }}
-            >
-              Cancelar Contas a Pagar
-            </Button>
-            <Button 
-              onClick={handleSaveExpense} 
-              className="bg-[#3A4F4A] hover:bg-[#2b3a37] text-white shadow-xs font-semibold px-6"
-            >
-              Salvar Contas a Pagar
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

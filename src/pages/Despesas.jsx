@@ -558,7 +558,14 @@ export default function Despesas() {
                     return (
                       <tr key={d.id} className={rowBg}>
                         <td className="px-4 py-3.5">
-                          <div className="font-semibold text-zinc-800 dark:text-zinc-200">{d.descricao}</div>
+                          <div className="font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+                            {d.descricao}
+                            {d.entrada_estoque_id && (
+                              <span className="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-[9px] font-bold rounded">
+                                NF Entrada
+                              </span>
+                            )}
+                          </div>
                           <div className="text-[10px] text-zinc-400 dark:text-zinc-500 flex items-center gap-2 mt-0.5">
                             {d.numero_documento && <span>Doc: #{d.numero_documento}</span>}
                             {d.data_documento && <span>Data Doc: {fmtDT(d.data_documento)}</span>}
