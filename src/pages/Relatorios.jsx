@@ -78,8 +78,12 @@ const PresetButtons = ({ onPick }) => {
     { l: "Últimos 30 dias", from: getDaysAgoStr(30), to: todayStr() },
   ];
   return (
-    <div className="flex flex-wrap gap-1">
-      {presets.map((p) => <Button key={p.l} size="sm" variant="outline" onClick={() => onPick(p.from, p.to)}>{p.l}</Button>)}
+    <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5 w-full">
+      {presets.map((p) => (
+        <Button key={p.l} size="sm" variant="outline" className="h-9 text-xs px-2 sm:px-3 whitespace-nowrap w-full sm:w-auto" onClick={() => onPick(p.from, p.to)}>
+          {p.l}
+        </Button>
+      ))}
     </div>
   );
 };
@@ -332,6 +336,7 @@ export default function Relatorios() {
   // New navigation and generation states
   const [selectedReport, setSelectedReport] = useState(null);
   const [isGenerated, setIsGenerated] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(true);
   const [loadingReport, setLoadingReport] = useState(false);
   const [searchReportQuery, setSearchReportQuery] = useState("");
   const [generatedFilters, setGeneratedFilters] = useState(null);
@@ -862,6 +867,7 @@ export default function Relatorios() {
     setSelectedReport(reportId);
     setTab(reportId);
     setIsGenerated(false);
+    setMobileFiltersOpen(true);
     setGeneratedFilters(null);
     setEstoqueReportData(null);
     setSearchEstoqueQuery("");
@@ -876,6 +882,7 @@ export default function Relatorios() {
       setProdutosPage(1);
     }
     setIsGenerated(true);
+    setMobileFiltersOpen(false);
     setEstoquePage(1);
     setGeneratedFilters({
       from, to, colaboradorId,
@@ -1691,7 +1698,7 @@ export default function Relatorios() {
             </div>
           )}
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
+            <table className="w-full text-left border-collapse text-xs min-w-[800px]">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950">
                   {headers.map((h, idx) => (
@@ -1955,7 +1962,7 @@ export default function Relatorios() {
         {/* Tabela de Resultados */}
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm print-full-width">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse text-xs min-w-[850px]">
               <thead>
                 <tr className="bg-zinc-50/50 dark:bg-zinc-800/40 text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
                   <th className="px-4 py-3">Data/Hora Agendado</th>
@@ -2098,12 +2105,12 @@ export default function Relatorios() {
       ) : (
         <div className="relative">
           {/* Sticky Header Container */}
-          <div className="sticky top-[-24px] pt-4 pb-2 z-30 bg-zinc-50/95 dark:bg-zinc-950/95 backdrop-blur-md border-b border-zinc-200/80 dark:border-zinc-800/80 mb-6 no-print -mx-6 px-6 max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-[-12px] sm:top-[-24px] pt-3 sm:pt-4 pb-2 z-30 bg-zinc-50/95 dark:bg-zinc-950/95 backdrop-blur-md border-b border-zinc-200/80 dark:border-zinc-800/80 mb-4 sm:mb-6 no-print -mx-3 sm:-mx-6 px-3 sm:px-6 max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
             {/* Back Navigation Bar */}
-          <div className="flex items-center justify-between mb-6 border-b border-zinc-200 dark:border-zinc-800 pb-4 no-print">
+          <div className="flex items-center justify-between mb-3 sm:mb-6 border-b border-zinc-200 dark:border-zinc-800 pb-3 sm:pb-4 no-print">
             <button
               onClick={() => { setSelectedReport(null); setIsGenerated(false); setGeneratedFilters(null); }}
-              className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-zinc-200 transition-colors font-semibold text-sm"
+              className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-850 dark:hover:text-zinc-200 transition-colors font-semibold text-xs sm:text-sm"
             >
               <ArrowLeft className="w-4 h-4" /> Voltar para Central de Relatórios
             </button>
@@ -2112,10 +2119,10 @@ export default function Relatorios() {
             </span>
           </div>
 
-          <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="mb-3 sm:mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-2 sm:gap-4">
             <div>
               <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl sm:text-3xl font-bold font-display text-zinc-850 dark:text-zinc-100">
+                <h1 className="text-xl sm:text-3xl font-bold font-display text-zinc-850 dark:text-zinc-100">
                   {REPORTS_LIST.find(r => r.id === selectedReport)?.title}
                 </h1>
                 <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
@@ -2125,12 +2132,12 @@ export default function Relatorios() {
                       title="Ajuda e Documentação do Relatório"
                       data-testid="btn-ajuda-relatorio"
                     >
-                      <HelpCircle className="w-5.5 h-5.5" />
+                      <HelpCircle className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
                     </button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl shadow-xl">
+                  <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 rounded-xl shadow-xl">
                     <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2 text-xl font-bold font-display text-zinc-850 dark:text-zinc-100">
+                      <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl font-bold font-display text-zinc-850 dark:text-zinc-100">
                         <HelpCircle className="w-5 h-5 text-[#84A59D]" />
                         Ajuda Contextual: {REPORTS_LIST.find(r => r.id === selectedReport)?.title}
                       </DialogTitle>
@@ -2148,26 +2155,43 @@ export default function Relatorios() {
           </div>
 
           {/* Filters Card */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-5 mb-6 shadow-sm no-print">
-            <div className="flex items-center gap-2 mb-4 text-[#3A4F4A] dark:text-[#A8C3BC] font-semibold text-xs">
-              <Filter className="w-4 h-4 text-[#84A59D]" />
-              <span>Filtros do Relatório</span>
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 sm:p-5 mb-4 sm:mb-6 shadow-sm no-print">
+            <div 
+              onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+              className="flex items-center justify-between cursor-pointer md:cursor-default"
+            >
+              <div className="flex items-center gap-2 text-[#3A4F4A] dark:text-[#A8C3BC] font-semibold text-xs">
+                <Filter className="w-4 h-4 text-[#84A59D]" />
+                <span>Filtros do Relatório</span>
+                {isGenerated && !mobileFiltersOpen && (
+                  <span className="text-[11px] font-normal text-zinc-500 dark:text-zinc-400 ml-1.5 truncate max-w-[160px] sm:max-w-none">
+                    ({from ? formatAgendaDate(from) : "-"} a {to ? formatAgendaDate(to) : "-"})
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 md:hidden">
+                <span className="text-[11px] font-semibold text-[#84A59D]">
+                  {mobileFiltersOpen ? "Ocultar" : "Editar Filtros"}
+                </span>
+                <ChevronRight className={`w-4 h-4 text-zinc-400 transition-transform duration-200 ${mobileFiltersOpen ? "rotate-90" : ""}`} />
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label className="text-xs uppercase font-bold text-zinc-450 tracking-wider">De</Label>
-                <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-full h-9 text-xs" data-testid="rep-from" />
+            <div className={`${mobileFiltersOpen ? "block" : "hidden md:block"} mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800`}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                <div>
+                  <Label className="text-[10px] sm:text-xs uppercase font-bold text-zinc-450 tracking-wider">De</Label>
+                  <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-full h-9 text-xs" data-testid="rep-from" />
+                </div>
+                <div>
+                  <Label className="text-[10px] sm:text-xs uppercase font-bold text-zinc-450 tracking-wider">Até</Label>
+                  <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-full h-9 text-xs" data-testid="rep-to" />
+                </div>
+                <div className="sm:col-span-2 md:col-span-1">
+                  <Label className="text-[10px] sm:text-xs uppercase font-bold text-zinc-450 tracking-wider">Atalhos de Período</Label>
+                  <PresetButtons onPick={(a, b) => { setFrom(a); setTo(b); }} />
+                </div>
               </div>
-              <div>
-                <Label className="text-xs uppercase font-bold text-zinc-450 tracking-wider">Até</Label>
-                <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-full h-9 text-xs" data-testid="rep-to" />
-              </div>
-              <div>
-                <Label className="text-xs uppercase font-bold text-zinc-450 tracking-wider">Atalhos de Período</Label>
-                <PresetButtons onPick={(a, b) => { setFrom(a); setTo(b); }} />
-              </div>
-            </div>
 
             {/* Specific Filters Row */}
             {tab === "caixa" && (
@@ -2630,6 +2654,7 @@ export default function Relatorios() {
                 )}
               </div>
             </div>
+            </div>
           </div>
           </div> {/* Fim do Sticky Header Container */}
 
@@ -2676,46 +2701,46 @@ export default function Relatorios() {
               </div>
 
               {/* Overview Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 no-print">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 no-print">
                 {/* Total Receitas */}
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-sm hover:shadow-md transition-all">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Total de Receitas</span>
-                    <TrendingUp className="w-5 h-5 text-emerald-500" />
+                    <span className="text-[10px] sm:text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Total de Receitas</span>
+                    <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
                   </div>
-                  <div className="font-display text-3xl font-bold mt-2 text-zinc-800 dark:text-zinc-100">{fmtBRL(dre.receita_bruta)}</div>
+                  <div className="font-display text-xl sm:text-2xl lg:text-3xl font-bold mt-1.5 text-zinc-800 dark:text-zinc-100">{fmtBRL(dre.receita_bruta)}</div>
                   <p className="text-[10px] text-zinc-500 mt-1">Serviços, vendas e outras receitas</p>
                 </div>
 
                 {/* Total Despesas */}
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-sm hover:shadow-md transition-all">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Total de Despesas</span>
-                    <TrendingDown className="w-5 h-5 text-rose-500" />
+                    <span className="text-[10px] sm:text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Total de Despesas</span>
+                    <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-rose-500" />
                   </div>
-                  <div className="font-display text-3xl font-bold mt-2 text-zinc-800 dark:text-zinc-100">
+                  <div className="font-display text-xl sm:text-2xl lg:text-3xl font-bold mt-1.5 text-zinc-800 dark:text-zinc-100">
                     {fmtBRL(dre.despesas_operacionais + (dre.custo_produtos || 0))}
                   </div>
                   <p className="text-[10px] text-zinc-500 mt-1">Operacionais, CMV e taxas de cartão</p>
                 </div>
 
                 {/* Resultado Líquido */}
-                <div className={`border rounded-2xl p-5 shadow-sm hover:shadow-md transition-all ${
+                <div className={`border rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-sm hover:shadow-md transition-all sm:col-span-2 lg:col-span-1 ${
                   dre.lucro_liquido >= 0 
                     ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-255 dark:border-emerald-800/40" 
                     : "bg-rose-50/50 dark:bg-rose-950/20 border-rose-255 dark:border-rose-800/40"
                 }`}>
                   <div className="flex items-center justify-between">
-                    <span className={`text-xs font-bold uppercase tracking-wider ${dre.lucro_liquido >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                    <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider ${dre.lucro_liquido >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
                       Resultado Líquido
                     </span>
                     {dre.lucro_liquido >= 0 ? (
-                      <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                      <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400" />
                     ) : (
-                      <TrendingDown className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                      <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-rose-600 dark:text-rose-400" />
                     )}
                   </div>
-                  <div className={`font-display text-3xl font-black mt-2 ${dre.lucro_liquido >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300"}`}>
+                  <div className={`font-display text-xl sm:text-2xl lg:text-3xl font-black mt-1.5 ${dre.lucro_liquido >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300"}`}>
                     {fmtBRL(dre.lucro_liquido)}
                   </div>
                   <p className="text-[10px] text-zinc-500 mt-1">
@@ -3102,53 +3127,53 @@ export default function Relatorios() {
 
         <TabsContent value="caixa">
           {!caixa ? <div className="text-zinc-400 p-8 text-center">Carregando...</div> : (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm flex items-center justify-between">
+            <div className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 sm:p-5 shadow-sm flex items-center justify-between">
                   <div>
-                    <div className="text-xs uppercase tracking-wider text-zinc-400 font-bold">Total Pago (Bruto)</div>
-                    <div className="font-display text-2xl sm:text-3xl font-black mt-1 text-zinc-800">{fmtBRL(caixa.totais.bruto || (caixa.totais.geral + (caixa.totais.troco || 0)))}</div>
-                    <div className="text-xs text-zinc-500 mt-1">{caixa.total_pagamentos} pagamentos registrados</div>
+                    <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 font-bold">Total Pago (Bruto)</div>
+                    <div className="font-display text-xl sm:text-2xl lg:text-3xl font-black mt-1 text-zinc-800 dark:text-zinc-100">{fmtBRL(caixa.totais.bruto || (caixa.totais.geral + (caixa.totais.troco || 0)))}</div>
+                    <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">{caixa.total_pagamentos} pagamentos registrados</div>
                   </div>
-                  <div className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-full">
-                    <TrendingUp className="w-6 h-6 text-zinc-500 dark:text-zinc-400" />
+                  <div className="bg-zinc-50 dark:bg-zinc-800 p-2.5 sm:p-3 rounded-full">
+                    <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-zinc-500 dark:text-zinc-400" />
                   </div>
                 </div>
                 
-                <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm flex items-center justify-between">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 sm:p-5 shadow-sm flex items-center justify-between">
                   <div>
-                    <div className="text-xs uppercase tracking-wider text-rose-500 font-bold">Total de Troco Concedido</div>
-                    <div className="font-display text-2xl sm:text-3xl font-black mt-1 text-rose-600 dark:text-rose-400">{fmtBRL(caixa.totais.troco || 0)}</div>
-                    <div className="text-xs text-zinc-500 mt-1">Devolvido ao cliente</div>
+                    <div className="text-[10px] sm:text-xs uppercase tracking-wider text-rose-500 font-bold">Total de Troco Concedido</div>
+                    <div className="font-display text-xl sm:text-2xl lg:text-3xl font-black mt-1 text-rose-600 dark:text-rose-400">{fmtBRL(caixa.totais.troco || 0)}</div>
+                    <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">Devolvido ao cliente</div>
                   </div>
-                  <div className="bg-rose-50 dark:bg-rose-950/20 p-3 rounded-full">
-                    <TrendingDown className="w-6 h-6 text-rose-500" />
+                  <div className="bg-rose-50 dark:bg-rose-950/20 p-2.5 sm:p-3 rounded-full">
+                    <TrendingDown className="w-5 h-5 sm:w-6 sm:h-6 text-rose-500" />
                   </div>
                 </div>
 
-                <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm flex items-center justify-between border-l-4 border-l-[#84A59D]">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 sm:p-5 shadow-sm flex items-center justify-between border-l-4 border-l-[#84A59D]">
                   <div>
-                    <div className="text-xs uppercase tracking-wider text-[#84A59D] font-bold">Total Líquido (No Caixa)</div>
-                    <div className="font-display text-2xl sm:text-3xl font-black mt-1 text-[#3A4F4A] dark:text-[#EAF0EE]">{fmtBRL(caixa.totais.geral)}</div>
-                    <div className="text-xs text-zinc-500 mt-1">Saldo real líquido</div>
+                    <div className="text-[10px] sm:text-xs uppercase tracking-wider text-[#84A59D] font-bold">Total Líquido (No Caixa)</div>
+                    <div className="font-display text-xl sm:text-2xl lg:text-3xl font-black mt-1 text-[#3A4F4A] dark:text-[#EAF0EE]">{fmtBRL(caixa.totais.geral)}</div>
+                    <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">Saldo real líquido</div>
                   </div>
-                  <div className="bg-[#84A59D]/10 p-3 rounded-full">
-                    <Coins className="w-6 h-6 text-[#84A59D]" />
+                  <div className="bg-[#84A59D]/10 p-2.5 sm:p-3 rounded-full">
+                    <Coins className="w-5 h-5 sm:w-6 sm:h-6 text-[#84A59D]" />
                   </div>
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4">
                 {["dinheiro", "pix", "cartao_credito", "cartao_debito", "vale", "credito_cliente"].map((k) => (
                   <div 
                     key={k} 
                     onClick={() => { setDetailsSearchQuery(""); setDetailsForma(k); }}
-                    className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm hover:shadow-md hover:border-[#84A59D] transition-all cursor-pointer group active:scale-[0.98]"
+                    className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-5 shadow-sm hover:shadow-md hover:border-[#84A59D] transition-all cursor-pointer group active:scale-[0.98]"
                   >
-                    <div className="text-xs uppercase tracking-wider text-zinc-400 font-bold group-hover:text-[#84A59D] transition-colors">{FORMA_LABELS[k]}</div>
-                    <div className="font-display text-2xl font-bold mt-1.5 text-zinc-700 group-hover:text-zinc-900 transition-colors">{fmtBRL(caixa.totais[k])}</div>
-                    <div className="text-[10px] text-zinc-400 font-normal mt-2 flex items-center gap-1 group-hover:text-[#84A59D] transition-colors">
-                      Clique para ver detalhes →
+                    <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 font-bold group-hover:text-[#84A59D] transition-colors truncate">{FORMA_LABELS[k]}</div>
+                    <div className="font-display text-lg sm:text-2xl font-bold mt-1 text-zinc-700 dark:text-zinc-200 group-hover:text-zinc-900 transition-colors">{fmtBRL(caixa.totais[k])}</div>
+                    <div className="text-[9px] sm:text-[10px] text-zinc-400 font-normal mt-1.5 flex items-center gap-1 group-hover:text-[#84A59D] transition-colors">
+                      Detalhes →
                     </div>
                   </div>
                 ))}
@@ -3355,59 +3380,59 @@ export default function Relatorios() {
           {!cartoes ? (
             <div className="text-zinc-400 p-8 text-center font-medium">Carregando...</div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Cards de Resumo */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div className="p-3.5 sm:p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-xs uppercase font-bold text-zinc-400 dark:text-zinc-500 block">Faturamento Bruto</span>
-                      <span className="text-2xl font-black font-display text-zinc-800 dark:text-zinc-100 mt-1 block">
+                      <span className="text-[10px] sm:text-xs uppercase font-bold text-zinc-400 dark:text-zinc-500 block">Faturamento Bruto</span>
+                      <span className="text-xl sm:text-2xl font-black font-display text-zinc-800 dark:text-zinc-100 mt-1 block">
                         {fmtBRL(cartoes.totais?.bruto || 0)}
                       </span>
                     </div>
-                    <div className="p-3 bg-zinc-50 dark:bg-zinc-850 rounded-xl text-zinc-500 dark:text-zinc-400">
-                      <Banknote className="w-5 h-5" />
+                    <div className="p-2.5 sm:p-3 bg-zinc-50 dark:bg-zinc-850 rounded-xl text-zinc-500 dark:text-zinc-400">
+                      <Banknote className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                   </div>
                 </div>
 
-                <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm border-l-4 border-l-rose-500">
+                <div className="p-3.5 sm:p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl shadow-sm border-l-4 border-l-rose-500">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-xs uppercase font-bold text-rose-500 block">Taxas Cobradas</span>
-                      <span className="text-2xl font-black font-display text-rose-600 dark:text-rose-400 mt-1 block">
+                      <span className="text-[10px] sm:text-xs uppercase font-bold text-rose-500 block">Taxas Cobradas</span>
+                      <span className="text-xl sm:text-2xl font-black font-display text-rose-600 dark:text-rose-400 mt-1 block">
                         - {fmtBRL(cartoes.totais?.taxa || 0)}
                       </span>
                     </div>
-                    <div className="p-3 bg-rose-50 dark:bg-rose-950/20 rounded-xl text-rose-500">
-                      <TrendingDown className="w-5 h-5" />
+                    <div className="p-2.5 sm:p-3 bg-rose-50 dark:bg-rose-950/20 rounded-xl text-rose-500">
+                      <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                   </div>
                 </div>
 
-                <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm border-l-4 border-l-[#84A59D]">
+                <div className="p-3.5 sm:p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl shadow-sm border-l-4 border-l-[#84A59D]">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-xs uppercase font-bold text-[#84A59D] block">Faturamento Líquido</span>
-                      <span className="text-2xl font-black font-display text-[#3A4F4A] dark:text-[#EAF0EE] mt-1 block">
+                      <span className="text-[10px] sm:text-xs uppercase font-bold text-[#84A59D] block">Faturamento Líquido</span>
+                      <span className="text-xl sm:text-2xl font-black font-display text-[#3A4F4A] dark:text-[#EAF0EE] mt-1 block">
                         {fmtBRL(cartoes.totais?.liquido || 0)}
                       </span>
                     </div>
-                    <div className="p-3 bg-[#EAF0EE] dark:bg-[#1E2D2A] rounded-xl text-[#84A59D]">
-                      <TrendingUp className="w-5 h-5" />
+                    <div className="p-2.5 sm:p-3 bg-[#EAF0EE] dark:bg-[#1E2D2A] rounded-xl text-[#84A59D]">
+                      <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Tabela de Custos Comparativos por Adquirente */}
-              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
-                <h4 className="font-display text-sm font-bold text-zinc-800 dark:text-zinc-100 mb-4 flex items-center gap-1.5">
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-4 sm:p-5 shadow-sm">
+                <h4 className="font-display text-xs sm:text-sm font-bold text-zinc-800 dark:text-zinc-100 mb-3 sm:mb-4 flex items-center gap-1.5">
                   📊 Comparativo de Custos por Adquirente (Maquineta)
                 </h4>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left">
+                  <table className="w-full text-xs text-left min-w-[550px]">
                     <thead>
                       <tr className="border-b border-zinc-100 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider">
                         <th className="pb-3 font-semibold">Adquirente</th>
@@ -3441,12 +3466,12 @@ export default function Relatorios() {
               </div>
 
               {/* Tabela de Transações Detalhadas */}
-              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
-                <h4 className="font-display text-sm font-bold text-zinc-800 dark:text-zinc-100 mb-4 flex items-center gap-1.5">
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-4 sm:p-5 shadow-sm">
+                <h4 className="font-display text-xs sm:text-sm font-bold text-zinc-800 dark:text-zinc-100 mb-3 sm:mb-4 flex items-center gap-1.5">
                   💳 Extrato Analítico de Transações
                 </h4>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left">
+                  <table className="w-full text-xs text-left min-w-[950px]">
                     <thead>
                       <tr className="border-b border-zinc-100 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider">
                         <th className="px-3 pb-3 font-semibold w-[140px]">Data / Hora</th>
@@ -4226,13 +4251,13 @@ export default function Relatorios() {
               </div>
 
               {/* Overview Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Faturamento Bruto</span>
-                    <TrendingUp className="w-5 h-5 text-[#84A59D]" />
+                    <span className="text-[10px] sm:text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Faturamento Bruto</span>
+                    <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-[#84A59D]" />
                   </div>
-                  <div className="font-display text-3xl font-bold mt-2 text-zinc-800 dark:text-zinc-100">
+                  <div className="font-display text-xl sm:text-2xl lg:text-3xl font-bold mt-1.5 text-zinc-800 dark:text-zinc-100">
                     {fmtBRL(resultadoOperacional.consolidado.receita_total)}
                   </div>
                   <p className="text-[10px] text-zinc-500 mt-1">
@@ -4240,12 +4265,12 @@ export default function Relatorios() {
                   </p>
                 </div>
 
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Custos & Deduções</span>
-                    <TrendingDown className="w-5 h-5 text-rose-500" />
+                    <span className="text-[10px] sm:text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Custos & Deduções</span>
+                    <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-rose-500" />
                   </div>
-                  <div className="font-display text-3xl font-bold mt-2 text-zinc-800 dark:text-zinc-100">
+                  <div className="font-display text-xl sm:text-2xl lg:text-3xl font-bold mt-1.5 text-zinc-800 dark:text-zinc-100">
                     {fmtBRL(resultadoOperacional.consolidado.cmv + resultadoOperacional.consolidado.comissoes + resultadoOperacional.consolidado.taxas)}
                   </div>
                   <p className="text-[10px] text-zinc-500 mt-1">
@@ -4253,24 +4278,24 @@ export default function Relatorios() {
                   </p>
                 </div>
 
-                <div className={`border rounded-2xl p-5 shadow-sm hover:shadow-md transition-all ${
+                <div className={`border rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-sm hover:shadow-md transition-all sm:col-span-2 lg:col-span-1 ${
                   resultadoOperacional.consolidado.resultado_operacional >= 0 
                     ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40" 
                     : "bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/40"
                 }`}>
                   <div className="flex items-center justify-between">
-                    <span className={`text-xs font-bold uppercase tracking-wider ${
+                    <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider ${
                       resultadoOperacional.consolidado.resultado_operacional >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                     }`}>
                       Resultado Operacional
                     </span>
                     {resultadoOperacional.consolidado.resultado_operacional >= 0 ? (
-                      <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                      <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400" />
                     ) : (
-                      <TrendingDown className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                      <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-rose-600 dark:text-rose-400" />
                     )}
                   </div>
-                  <div className={`font-display text-3xl font-black mt-2 ${
+                  <div className={`font-display text-xl sm:text-2xl lg:text-3xl font-black mt-1.5 ${
                     resultadoOperacional.consolidado.resultado_operacional >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300"
                   }`}>
                     {fmtBRL(resultadoOperacional.consolidado.resultado_operacional)}
@@ -4352,141 +4377,115 @@ export default function Relatorios() {
           ) : (
             <div className="space-y-6 print-full-width">
               {/* Cards de Totalizadores */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-3">
                 {/* Card Qtd */}
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm flex flex-col justify-between">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Qtd Serviços</span>
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Qtd Serviços</span>
                     <div className="p-1 rounded bg-sky-50 dark:bg-sky-950/30">
-                      <ClipboardList className="w-4 h-4 text-sky-500" />
+                      <ClipboardList className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-500" />
                     </div>
                   </div>
-                  <div className="font-display text-base font-bold mt-2 text-zinc-800 dark:text-zinc-100 font-mono">
+                  <div className="font-display text-sm sm:text-base font-bold mt-1.5 text-zinc-800 dark:text-zinc-100 font-mono">
                     {(totalsServicos.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}
                   </div>
                 </div>
 
                 {/* Card Faturamento */}
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm flex flex-col justify-between">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Faturamento</span>
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Faturamento</span>
                     <div className="p-1 rounded bg-indigo-50 dark:bg-indigo-950/30">
-                      <Scissors className="w-4 h-4 text-indigo-500" />
+                      <Scissors className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500" />
                     </div>
                   </div>
-                  <div className="font-display text-base font-bold mt-2 text-zinc-800 dark:text-zinc-100 font-mono">
+                  <div className="font-display text-sm sm:text-base font-bold mt-1.5 text-zinc-800 dark:text-zinc-100 font-mono">
                     {fmtBRL(totalsServicos.faturamento)}
                   </div>
                 </div>
 
                 {/* Card Insumos */}
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm flex flex-col justify-between">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Insumos</span>
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Insumos</span>
                     <div className="p-1 rounded bg-rose-50 dark:bg-rose-950/30">
-                      <TrendingDown className="w-4 h-4 text-rose-500" />
+                      <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-500" />
                     </div>
                   </div>
-                  <div className="font-display text-base font-bold mt-2 text-rose-500 font-mono">
+                  <div className="font-display text-sm sm:text-base font-bold mt-1.5 text-rose-500 font-mono">
                     {fmtBRL(totalsServicos.insumos)}
                   </div>
                 </div>
 
                 {/* Card Comissão */}
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm flex flex-col justify-between">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Comissão</span>
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Comissão</span>
                     <div className="p-1 rounded bg-amber-50 dark:bg-amber-950/30">
-                      <User className="w-4 h-4 text-amber-500" />
+                      <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500" />
                     </div>
                   </div>
-                  <div className="font-display text-base font-bold mt-2 text-amber-600 dark:text-amber-500 font-mono">
+                  <div className="font-display text-sm sm:text-base font-bold mt-1.5 text-amber-600 dark:text-amber-500 font-mono">
                     {fmtBRL(totalsServicos.comissao)}
                   </div>
                 </div>
 
                 {/* Card Taxas */}
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm flex flex-col justify-between">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Taxas</span>
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Taxas</span>
                     <div className="p-1 rounded bg-orange-50 dark:bg-orange-950/30">
-                      <CreditCard className="w-4 h-4 text-orange-500" />
+                      <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500" />
                     </div>
                   </div>
-                  <div className="font-display text-base font-bold mt-2 text-orange-600 dark:text-orange-500 font-mono">
+                  <div className="font-display text-sm sm:text-base font-bold mt-1.5 text-orange-600 dark:text-orange-500 font-mono">
                     {fmtBRL(totalsServicos.taxas)}
                   </div>
                 </div>
 
                 {/* Card Resultado */}
-                <div className={`border rounded-xl p-4 shadow-sm flex flex-col justify-between transition-all ${
+                <div className={`border rounded-xl p-3 sm:p-4 shadow-sm flex flex-col justify-between transition-all ${
                   totalsServicos.resultado >= 0 
                     ? "bg-emerald-50/20 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-800/40" 
                     : "bg-rose-50/20 dark:bg-rose-950/10 border-rose-200 dark:border-rose-800/40"
                 }`}>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${
                       totalsServicos.resultado >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                     }`}>
                       Resultado
                     </span>
-                    <div className={`p-1 rounded ${
-                      totalsServicos.resultado >= 0 ? "bg-emerald-50 dark:bg-emerald-950/30" : "bg-rose-50 dark:bg-rose-950/30"
-                    }`}>
+                    <div className={`p-1 rounded ${totalsServicos.resultado >= 0 ? "bg-emerald-50 dark:bg-emerald-950/30" : "bg-rose-50 dark:bg-rose-950/30"}`}>
                       {totalsServicos.resultado >= 0 ? (
-                        <TrendingUp className="w-4 h-4 text-emerald-500" />
+                        <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500" />
                       ) : (
-                        <TrendingDown className="w-4 h-4 text-rose-500" />
+                        <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-500" />
                       )}
                     </div>
                   </div>
-                  <div className={`font-display text-base font-bold mt-2 font-mono ${
+                  <div className={`font-display text-sm sm:text-base font-bold mt-1.5 font-mono ${
                     totalsServicos.resultado >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                   }`}>
                     {fmtBRL(totalsServicos.resultado)}
                   </div>
                 </div>
 
-                {/* Card Margem */}
-                <div className={`border rounded-xl p-4 shadow-sm flex flex-col justify-between transition-all ${
-                  totalMargemServicos >= 50 
+                {/* Card Margem (%) */}
+                <div className={`border rounded-xl p-3 sm:p-4 shadow-sm flex flex-col justify-between transition-all col-span-2 sm:col-span-1 ${
+                  totalMargemServicos >= 40 
                     ? "bg-emerald-50/20 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-800/40" 
                     : totalMargemServicos >= 20 
                     ? "bg-amber-50/20 dark:bg-amber-950/10 border-amber-200 dark:border-amber-800/40" 
                     : "bg-rose-50/20 dark:bg-rose-950/10 border-rose-200 dark:border-rose-800/40"
                 }`}>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                      totalMargemServicos >= 50 
-                        ? "text-emerald-600 dark:text-emerald-400" 
-                        : totalMargemServicos >= 20 
-                        ? "text-amber-600 dark:text-amber-400" 
-                        : "text-rose-600 dark:text-rose-400"
-                    }`}>
-                      Margem
-                    </span>
-                    <div className={`p-1 rounded ${
-                      totalMargemServicos >= 50 
-                        ? "bg-emerald-50 dark:bg-emerald-950/30" 
-                        : totalMargemServicos >= 20 
-                        ? "bg-amber-50 dark:bg-amber-950/30" 
-                        : "bg-rose-50 dark:bg-rose-950/30"
-                    }`}>
-                      <Percent className={`w-4 h-4 ${
-                        totalMargemServicos >= 50 
-                          ? "text-emerald-500" 
-                          : totalMargemServicos >= 20 
-                          ? "text-amber-500" 
-                          : "text-rose-500"
-                      }`} />
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Margem (%)</span>
+                    <div className="p-1 rounded bg-zinc-100 dark:bg-zinc-800">
+                      <Percent className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-zinc-500" />
                     </div>
                   </div>
-                  <div className={`font-display text-base font-bold mt-2 font-mono ${
-                    totalMargemServicos >= 50 
-                      ? "text-emerald-600 dark:text-emerald-400" 
-                      : totalMargemServicos >= 20 
-                      ? "text-amber-600 dark:text-amber-400" 
-                      : "text-rose-600 dark:text-rose-400"
+                  <div className={`font-display text-sm sm:text-base font-bold mt-1.5 font-mono ${
+                    totalMargemServicos >= 40 ? "text-emerald-600 dark:text-emerald-400" : totalMargemServicos >= 20 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400"
                   }`}>
                     {(totalMargemServicos || 0).toFixed(1)}%
                   </div>
@@ -4494,8 +4493,8 @@ export default function Relatorios() {
               </div>
 
               {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 pb-3 no-print">
-                <div className="relative flex-1 max-w-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-zinc-100 dark:border-zinc-800 pb-3 no-print">
+                <div className="relative flex-1 w-full sm:max-w-xs">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-400" />
                   <Input 
                     placeholder="Pesquisar serviço..." 
@@ -4504,8 +4503,8 @@ export default function Relatorios() {
                     className="pl-9 h-9 text-xs"
                   />
                 </div>
-                <div className="flex gap-2">
-                  <Button onClick={() => window.print()} variant="outline" size="sm" className="text-xs h-8">
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  <Button onClick={() => window.print()} variant="outline" size="sm" className="text-xs h-8 flex-1 sm:flex-initial">
                     <Printer className="w-4 h-4 mr-1.5" /> PDF
                   </Button>
                   <Button 
@@ -4518,7 +4517,7 @@ export default function Relatorios() {
                     )} 
                     variant="outline" 
                     size="sm" 
-                    className="text-xs h-8"
+                    className="text-xs h-8 flex-1 sm:flex-initial"
                   >
                     Excel
                   </Button>
@@ -4532,7 +4531,7 @@ export default function Relatorios() {
                     )} 
                     variant="outline" 
                     size="sm" 
-                    className="text-xs h-8"
+                    className="text-xs h-8 flex-1 sm:flex-initial"
                   >
                     CSV
                   </Button>
@@ -4542,7 +4541,7 @@ export default function Relatorios() {
               {/* Table */}
               <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left border-collapse">
+                  <table className="w-full text-xs text-left border-collapse min-w-[850px]">
                     <thead>
                       <tr className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">
                         <th className="px-4 py-3">
@@ -4687,7 +4686,7 @@ export default function Relatorios() {
               {/* Table */}
               <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left border-collapse">
+                  <table className="w-full text-xs text-left border-collapse min-w-[850px]">
                     <thead>
                       <tr className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-850 text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">
                         <th className="px-4 py-3">
@@ -5002,7 +5001,7 @@ export default function Relatorios() {
               {/* Table */}
               <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-[11px] text-left border-collapse">
+                  <table className="w-full text-[11px] text-left border-collapse min-w-[1000px]">
                     <thead>
                       <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-bold uppercase tracking-wider">
                         <th className="px-3 py-3">
@@ -5157,11 +5156,11 @@ export default function Relatorios() {
     )}
       {/* Rentabilidade Detail Dialog */}
       <Dialog open={rentabilidadeDetailOpen} onOpenChange={setRentabilidadeDetailOpen}>
-        <DialogContent className="sm:max-w-5xl md:max-w-6xl lg:max-w-7xl max-h-[90vh] overflow-y-auto w-[96vw] rounded-xl p-6 md:p-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100">
+        <DialogContent className="sm:max-w-5xl md:max-w-6xl lg:max-w-7xl max-h-[90vh] overflow-y-auto w-[96vw] rounded-xl p-3.5 sm:p-6 md:p-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl md:text-2xl font-semibold text-[#3A4F4A] dark:text-[#EAF0EE]">
-              <TrendingUp className="w-6 h-6 text-[#84A59D]" />
-              <span>Detalhamento de Rentabilidade: {detailType === 'servico' ? selectedDetailItem?.servico_nome : selectedDetailItem?.produto_nome}</span>
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-xl md:text-2xl font-semibold text-[#3A4F4A] dark:text-[#EAF0EE]">
+              <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-[#84A59D]" />
+              <span>Detalhamento: {detailType === 'servico' ? selectedDetailItem?.servico_nome : selectedDetailItem?.produto_nome}</span>
             </DialogTitle>
             <p className="text-xs sm:text-sm text-zinc-500 mt-1">
               Análise individual e composição dos lançamentos no período de {from ? new Date(from + 'T12:00:00').toLocaleDateString('pt-BR') : ''} a {to ? new Date(to + 'T12:00:00').toLocaleDateString('pt-BR') : ''}.
@@ -5169,29 +5168,29 @@ export default function Relatorios() {
           </DialogHeader>
 
           {selectedDetailItem && (
-            <div className="space-y-6 my-4">
+            <div className="space-y-4 sm:space-y-6 my-3 sm:my-4">
               {/* Summary Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <div className="bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Quantidade</span>
-                  <div className="text-2xl font-display font-bold text-zinc-800 dark:text-zinc-100 mt-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-3 sm:p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-zinc-400">Quantidade</span>
+                  <div className="text-lg sm:text-2xl font-display font-bold text-zinc-800 dark:text-zinc-100 mt-1">
                     {(selectedDetailItem.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}
                   </div>
                 </div>
-                <div className="bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Faturamento Bruto</span>
-                  <div className="text-2xl font-display font-bold text-zinc-800 dark:text-zinc-100 mt-1">{fmtBRL(selectedDetailItem.faturamento)}</div>
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-3 sm:p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-zinc-400">Faturamento Bruto</span>
+                  <div className="text-lg sm:text-2xl font-display font-bold text-zinc-800 dark:text-zinc-100 mt-1">{fmtBRL(selectedDetailItem.faturamento)}</div>
                 </div>
-                <div className="bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{detailType === 'servico' ? 'Insumos' : 'CMV'}</span>
-                  <div className="text-2xl font-display font-bold text-rose-500 mt-1">{fmtBRL(detailType === 'servico' ? selectedDetailItem.insumos : selectedDetailItem.cmv)}</div>
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-3 sm:p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-zinc-400">{detailType === 'servico' ? 'Insumos' : 'CMV'}</span>
+                  <div className="text-lg sm:text-2xl font-display font-bold text-rose-500 mt-1">{fmtBRL(detailType === 'servico' ? selectedDetailItem.insumos : selectedDetailItem.cmv)}</div>
                 </div>
-                <div className="bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Resultado Operacional</span>
-                  <div className={`text-2xl font-display font-bold mt-1 ${selectedDetailItem.resultado_operacional >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{fmtBRL(selectedDetailItem.resultado_operacional)}</div>
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-3 sm:p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-zinc-400">Resultado Operacional</span>
+                  <div className={`text-lg sm:text-2xl font-display font-bold mt-1 ${selectedDetailItem.resultado_operacional >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{fmtBRL(selectedDetailItem.resultado_operacional)}</div>
                 </div>
-                <div className="bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl col-span-2 md:col-span-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Margem Real</span>
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-3 sm:p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl col-span-2 sm:col-span-1">
+                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-zinc-400">Margem Real</span>
                   <div className="mt-1">
                     <span className={`px-2 py-0.5 rounded text-xs font-bold font-mono ${
                       selectedDetailItem.margem >= (detailType === 'servico' ? 50 : 40)
@@ -5208,14 +5207,14 @@ export default function Relatorios() {
 
               {/* Table of Launches */}
               <div className="space-y-2">
-                <h3 className="font-display text-sm font-bold uppercase tracking-wider text-zinc-400">Composição dos Lançamentos</h3>
+                <h3 className="font-display text-xs sm:text-sm font-bold uppercase tracking-wider text-zinc-400">Composição dos Lançamentos</h3>
                 {detailLaunches.length === 0 ? (
-                  <div className="py-12 text-center text-zinc-400 text-sm border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 shadow-sm">
+                  <div className="py-12 text-center text-zinc-400 text-xs sm:text-sm border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-zinc-900 shadow-sm">
                     Nenhum lançamento encontrado para este item no período.
                   </div>
                 ) : (
                   <div className="overflow-x-auto border border-zinc-200 dark:border-zinc-800 rounded-xl max-h-[45vh] overflow-y-auto shadow-sm">
-                    <table className="w-full text-xs text-left border-collapse">
+                    <table className="w-full text-xs text-left border-collapse min-w-[850px]">
                       <thead className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-[10px] uppercase font-bold text-zinc-500 tracking-wider">
                         <tr>
                           <th className="px-4 py-3">Data</th>
@@ -5338,7 +5337,7 @@ export default function Relatorios() {
                   </div>
                 ) : (
                   <div className="overflow-x-auto border border-zinc-200 dark:border-zinc-800 rounded-xl max-h-[45vh] overflow-y-auto shadow-sm">
-                    <table className="w-full text-xs text-left border-collapse">
+                    <table className="w-full text-xs text-left border-collapse min-w-[750px]">
                       <thead className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-[10px] uppercase font-bold text-zinc-500 tracking-wider">
                         <tr>
                           <th className="px-4 py-3">Data</th>
