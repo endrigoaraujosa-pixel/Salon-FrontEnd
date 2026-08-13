@@ -294,13 +294,22 @@ export default function EntradaProdutos() {
         overline="Estoque" 
         title="Entrada de Produtos" 
         action={
-          <Button 
-            variant="outline" 
-            onClick={() => navigate("/estoque")} 
-            className="flex items-center gap-1.5 border-zinc-250 dark:border-zinc-850"
-          >
-            <ArrowLeft className="w-4 h-4" /> Voltar para Estoque
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/relatorios?tab=estoque_entradas")} 
+              className="flex items-center gap-1.5 border-zinc-250 dark:border-zinc-850 text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 hover:bg-emerald-100"
+            >
+              <FileText className="w-4 h-4 text-emerald-600" /> Relatório de Entradas
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/estoque")} 
+              className="flex items-center gap-1.5 border-zinc-250 dark:border-zinc-850"
+            >
+              <ArrowLeft className="w-4 h-4" /> Voltar para Estoque
+            </Button>
+          </div>
         } 
       />
 

@@ -12,7 +12,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from ".
 import SearchableSelect from "../components/SearchableSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "../components/ui/tooltip";
-import { FileText, Banknote, Package, TrendingUp, TrendingDown, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle, Filter, ArrowLeft, AlertTriangle, AlertCircle, Coins, Flame, Zap, Calendar, Sliders, ClipboardList, Eye, CreditCard, ChevronLeft, ChevronRight, Percent } from "lucide-react";
+import { FileText, Banknote, Package, TrendingUp, TrendingDown, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle, Filter, ArrowLeft, AlertTriangle, AlertCircle, Coins, Flame, Zap, Calendar, Sliders, ClipboardList, Eye, CreditCard, ChevronLeft, ChevronRight, Percent, PackagePlus, ChevronDown } from "lucide-react";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtDT = (s) => s ? new Date(s).toLocaleString("pt-BR") : "—";
@@ -270,6 +270,15 @@ const REPORTS_LIST = [
     iconColor: "text-rose-500"
   },
   {
+    id: "estoque_entradas",
+    title: "Entradas de Produtos",
+    description: "Relação completa das entradas de mercadorias no estoque, com fornecedores, notas fiscais, usuário responsável, itens e valores.",
+    icon: PackagePlus,
+    category: "Estoque",
+    badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-455 dark:border-emerald-800/40",
+    iconColor: "text-emerald-500"
+  },
+  {
     id: "estoque_perdas_quebras",
     title: "Perdas e Quebras",
     description: "Consolidado de ajustes de estoque negativos decorrentes de desperdícios, quebras, validades expiradas ou roubos.",
@@ -449,6 +458,8 @@ export default function Relatorios() {
   const [estoqueReportData, setEstoqueReportData] = useState(null);
   const [filterEstoqueCategorias, setFilterEstoqueCategorias] = useState([]);
   const [filterEstoqueProduto, setFilterEstoqueProduto] = useState("todos");
+  const [fornecedoresList, setFornecedoresList] = useState([]);
+  const [filterFornecedorEntradas, setFilterFornecedorEntradas] = useState("todos");
   const [searchEstoqueQuery, setSearchEstoqueQuery] = useState("");
   const [sortEstoqueField, setSortEstoqueField] = useState("");
   const [sortEstoqueDirection, setSortEstoqueDirection] = useState("asc");
@@ -459,6 +470,7 @@ export default function Relatorios() {
     http.get("/produtos").then((r) => setProdutosList(r.data)).catch(() => {});
     http.get("/servicos").then((r) => setServicosList(r.data)).catch(() => {});
     http.get("/clientes").then((r) => setClientesList(r.data)).catch(() => {});
+    http.get("/fornecedores").then((r) => setFornecedoresList(r.data?.filter(f => f.deletado !== "S") || [])).catch(() => {});
     http.get("/categorias").then((r) => {
       const cats = r.data || [];
       setCategoriesList(cats);
@@ -686,12 +698,14 @@ export default function Relatorios() {
       else if (tab === "estoque_historico_ajustes") endpoint = "/relatorios/estoque/historico-ajustes";
       else if (tab === "estoque_inventario") endpoint = "/relatorios/estoque/inventario";
       else if (tab === "estoque_perdas_quebras") endpoint = "/relatorios/estoque/perdas-quebras";
+      else if (tab === "estoque_entradas") endpoint = "/relatorios/estoque/entradas";
 
       const queryParams = {
         data_inicio: from,
         data_fim: to,
         categorias: catsParam,
-        produto_id: prodId
+        produto_id: prodId,
+        fornecedor_id: filterFornecedorEntradas === "todos" ? undefined : filterFornecedorEntradas
       };
 
       promise = http.get(endpoint, { params: queryParams })
@@ -1555,6 +1569,85 @@ export default function Relatorios() {
         );
       };
     }
+    else if (tabName === "estoque_entradas") {
+      dataList = estoqueReportData.entradas || [];
+      exportTitle = "Entradas de Produtos";
+      exportHeaders = ["Data Entrada", "Data Registro", "NF / Série", "Fornecedor", "Responsável", "Qtd Itens", "Valor Total (R$)", "Observações"];
+      exportKeys = ["data_entrada", "criado_em", "numero_nota", "fornecedor_nome", "usuario_nome", "itens_count", "valor_total", "observacoes"];
+
+      const totalEntradas = estoqueReportData.totais?.total_entradas || 0;
+      const totalItens = estoqueReportData.totais?.total_itens || 0;
+      const totalQtd = estoqueReportData.totais?.total_quantidade || 0;
+      const totalValor = estoqueReportData.totais?.total_valor || 0;
+
+      kpis = [
+        { label: "Notas de Entrada", value: totalEntradas, icon: FileText, color: "text-emerald-600", bg: "bg-emerald-50" },
+        { label: "Itens Registrados", value: totalItens, icon: PackagePlus, color: "text-blue-500", bg: "bg-blue-50" },
+        { label: "Quantidade de Produtos", value: totalQtd, icon: Package, color: "text-amber-500", bg: "bg-amber-50" },
+        { label: "Valor Total das Entradas", value: fmtBRL(totalValor), icon: Coins, color: "text-emerald-700", bg: "bg-emerald-50" }
+      ];
+
+      headers = [
+        { label: "Data Entrada", key: "data_entrada" },
+        { label: "Nota / Série", key: "numero_nota" },
+        { label: "Fornecedor", key: "fornecedor_nome" },
+        { label: "Quem Realizou", key: "usuario_nome" },
+        { label: "Itens / Quantidades", key: "itens" },
+        { label: "Valor Total", key: "valor_total" },
+        { label: "Observações", key: "observacoes" }
+      ];
+
+      rowRenderer = (item) => {
+        const dateFormatted = item.data_entrada 
+          ? new Date(item.data_entrada + 'T12:00:00').toLocaleDateString('pt-BR') 
+          : '-';
+        const createdAtFormatted = item.criado_em 
+          ? new Date(item.criado_em).toLocaleString('pt-BR') 
+          : '-';
+
+        return (
+          <>
+            <td className="px-4 py-3 whitespace-nowrap text-zinc-700 dark:text-zinc-300">
+              <div className="font-semibold">{dateFormatted}</div>
+              <div className="text-[10px] text-zinc-400 font-mono">Reg: {createdAtFormatted}</div>
+            </td>
+            <td className="px-4 py-3 whitespace-nowrap font-mono">
+              <div className="font-bold text-zinc-800 dark:text-zinc-100">NF: {item.numero_nota || 'S/N'}</div>
+              <div className="text-[10px] text-zinc-400">Série: {item.serie_nota || 'S/S'}</div>
+            </td>
+            <td className="px-4 py-3 font-semibold text-zinc-800 dark:text-zinc-200">
+              {item.fornecedor_nome || 'Não informado'}
+            </td>
+            <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
+              <div className="flex items-center gap-1.5 font-medium">
+                <User className="w-3.5 h-3.5 text-[#84A59D]" />
+                <span>{item.usuario_nome || 'Sistema'}</span>
+              </div>
+            </td>
+            <td className="px-4 py-3 text-xs">
+              <div className="space-y-1 max-w-xs">
+                {(item.itens || []).map((it, i) => (
+                  <div key={i} className="flex justify-between items-center text-[11px] bg-zinc-50 dark:bg-zinc-950 p-1.5 rounded border border-zinc-200/60 dark:border-zinc-800">
+                    <span className="font-medium text-zinc-800 dark:text-zinc-200 truncate max-w-[140px]" title={it.produto_nome}>
+                      {it.produto_nome}
+                    </span>
+                    <span className="font-mono text-zinc-600 dark:text-zinc-400 font-semibold whitespace-nowrap ml-2">
+                      {(it.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })} {it.unidade_medida || 'un'} × {fmtBRL(it.valor_custo)} = {fmtBRL(it.subtotal)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </td>
+            <td className="px-4 py-3 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
+              {fmtBRL(item.valor_total)}
+            </td>
+            <td className="px-4 py-3 text-zinc-500 text-xs italic max-w-xs truncate" title={item.observacoes}>
+              {item.observacoes || '-'}
+            </td>
+          </>
+        );
+      };
+    }
 
     const filteredList = dataList.filter(item => {
       if (!searchEstoqueQuery) return true;
@@ -1563,9 +1656,12 @@ export default function Relatorios() {
       const prodName = (item.produto_nome || item.nome || "").toLowerCase();
       const catName = (item.categoria_nome || item.categoria || "").toLowerCase();
       const user = (item.usuario_nome || "").toLowerCase();
-      const mot = (item.motivo || "").toLowerCase();
+      const mot = (item.motivo || item.observacoes || "").toLowerCase();
+      const forn = (item.fornecedor_nome || "").toLowerCase();
+      const nf = (item.numero_nota || "").toLowerCase();
+      const itemProds = (item.itens || []).map(i => (i.produto_nome || "").toLowerCase()).join(" ");
 
-      return prodName.includes(query) || catName.includes(query) || user.includes(query) || mot.includes(query);
+      return prodName.includes(query) || catName.includes(query) || user.includes(query) || mot.includes(query) || forn.includes(query) || nf.includes(query) || itemProds.includes(query);
     });
 
     const sortedList = [...filteredList].sort((a, b) => {
@@ -2609,21 +2705,39 @@ export default function Relatorios() {
                   </div>
                 </div>
 
-                {["estoque_atual", "estoque_movimentacao", "estoque_consumo_insumos", "estoque_historico_ajustes", "estoque_perdas_quebras"].includes(tab) && (
-                  <div className="w-full md:max-w-xs">
-                    <Label className="text-[10px] uppercase font-bold text-zinc-550 tracking-wider">Produto Específico</Label>
-                    <SearchableSelect
-                      placeholder="Todos os produtos"
-                      searchPlaceholder="Pesquisar produto..."
-                      options={[
-                        { value: "todos", label: "Todos os produtos" },
-                        ...produtosList.map((p) => ({ value: p.id, label: p.nome }))
-                      ]}
-                      value={filterEstoqueProduto}
-                      onValueChange={setFilterEstoqueProduto}
-                    />
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-4">
+                  {["estoque_atual", "estoque_movimentacao", "estoque_consumo_insumos", "estoque_historico_ajustes", "estoque_perdas_quebras", "estoque_entradas"].includes(tab) && (
+                    <div className="w-full md:max-w-xs">
+                      <Label className="text-[10px] uppercase font-bold text-zinc-550 tracking-wider">Produto Específico</Label>
+                      <SearchableSelect
+                        placeholder="Todos os produtos"
+                        searchPlaceholder="Pesquisar produto..."
+                        options={[
+                          { value: "todos", label: "Todos os produtos" },
+                          ...produtosList.map((p) => ({ value: p.id, label: p.nome }))
+                        ]}
+                        value={filterEstoqueProduto}
+                        onValueChange={setFilterEstoqueProduto}
+                      />
+                    </div>
+                  )}
+
+                  {tab === "estoque_entradas" && (
+                    <div className="w-full md:max-w-xs">
+                      <Label className="text-[10px] uppercase font-bold text-zinc-550 tracking-wider">Fornecedor</Label>
+                      <SearchableSelect
+                        placeholder="Todos os fornecedores"
+                        searchPlaceholder="Pesquisar fornecedor..."
+                        options={[
+                          { value: "todos", label: "Todos os fornecedores" },
+                          ...fornecedoresList.map((f) => ({ value: f.id, label: f.nome_razosocial || f.nome }))
+                        ]}
+                        value={filterFornecedorEntradas}
+                        onValueChange={setFilterFornecedorEntradas}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -5281,6 +5395,9 @@ export default function Relatorios() {
         <TabsContent value="estoque_perdas_quebras">
           {renderEstoqueReport("estoque_perdas_quebras")}
         </TabsContent>
+        <TabsContent value="estoque_entradas">
+          {renderEstoqueReport("estoque_entradas")}
+        </TabsContent>
         <TabsContent value="agendamentos_cancelados">
           {renderCanceladosReport()}
         </TabsContent>
@@ -5955,6 +6072,23 @@ const renderHelpContent = (reportId) => {
         <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
           <HelpSection title="Objetivo do Relatório">
             <p>Consolidar e quantificar financeiramente as saídas de estoque justificadas como perdas, quebras, desperdício ou roubo no período.</p>
+          </HelpSection>
+        </div>
+      );
+    case "estoque_entradas":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Garantir a rastreabilidade completa das entradas de mercadorias no estoque, identificando quem realizou o lançamento (usuário responsável), quando ocorreu, fornecedores, notas fiscais, produtos registrados, quantidades e custos.</p>
+          </HelpSection>
+          <HelpSection title="Quando utilizar">
+            <p>Utilize para auditorias de recebimento de notas fiscais, conferência de custos de aquisição de mercadorias, conciliação com Contas a Pagar e auditoria de responsabilidade operacional por cada lançamento no sistema.</p>
+          </HelpSection>
+          <HelpSection title="Campos Exibidos">
+            <p><strong>Quem Realizou (Responsável):</strong> Nome do usuário autenticado no sistema no momento em que a entrada foi registrada.</p>
+            <p><strong>Data da Entrada / Registro:</strong> Data informada da nota e carimbo de data/hora do lançamento no sistema.</p>
+            <p><strong>Nota Fiscal / Série / Fornecedor:</strong> Identificação completa do documento fiscal e fornecedor emissor.</p>
+            <p><strong>Itens Registrados:</strong> Lista detalhada com produto, categoria, quantidade recebida, custo unitário e subtotal.</p>
           </HelpSection>
         </div>
       );

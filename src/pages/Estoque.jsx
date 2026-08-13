@@ -15,7 +15,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "../com
 import { 
   Package, PlusCircle, ClipboardCheck, ArrowUpRight, 
   AlertTriangle, DollarSign, TrendingUp, History, 
-  ArrowRight, Layers, CheckCircle2, Search, ArrowDownRight, RefreshCw, Eye, ArrowUp, ArrowDown, HelpCircle
+  ArrowRight, Layers, CheckCircle2, Search, ArrowDownRight, RefreshCw, Eye, ArrowUp, ArrowDown, HelpCircle, FileText
 } from "lucide-react";
 import { toast } from "sonner";
 
