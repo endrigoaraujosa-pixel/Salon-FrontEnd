@@ -3400,99 +3400,212 @@ export default function Agenda() {
       </Dialog>
 
       <Dialog open={utilizedProductsOpen} onOpenChange={setUtilizedProductsOpen}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-4xl p-5 sm:p-7 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800 max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="font-display text-xl font-bold flex items-center gap-2 text-zinc-800 dark:text-zinc-150">
-              <Package className="w-6 h-6 text-[#84A59D]" />
-              Produtos Utilizados no Serviço
-            </DialogTitle>
-          </DialogHeader>
-          {agForUtilized && selectedItemIndex !== null && (() => {
-            const item = agForUtilized.itens[selectedItemIndex];
-            const s = servicos.find(x => x.id === item.servico_id);
-            return (
-              <div className="py-4 space-y-5">
-                {/* Cabeçalho do Serviço */}
-                <div className="bg-[#F8FBFB] dark:bg-[#1a2322] p-4 rounded-xl border border-[#E8EFEF] dark:border-[#2e3e3b] flex justify-between items-center flex-wrap gap-3">
-                  <div>
-                    <div className="text-xs text-zinc-400 dark:text-zinc-500 uppercase font-bold tracking-wider">Serviço</div>
-                    <div className="font-semibold text-[#3A4F4A] dark:text-[#84A59D] text-base">{item.nome || s?.nome}</div>
-                    <div className="text-[11px] text-zinc-450 dark:text-zinc-500 mt-1">
-                      Cliente: <span className="font-semibold text-zinc-650 dark:text-zinc-400">{agForUtilized.cliente_nome}</span> · Atendimento: <span className="font-semibold text-zinc-650 dark:text-zinc-400">{String(agForUtilized.numero || 0).padStart(6, "0")} | S</span>
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-4xl p-4 sm:p-7 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800 max-h-[90vh] overflow-y-auto flex flex-col justify-between">
+          <div>
+            <DialogHeader className="pb-2 sm:pb-0">
+              <DialogTitle className="font-display text-lg sm:text-xl font-bold flex items-center gap-2 text-zinc-800 dark:text-zinc-150">
+                <Package className="w-5 h-5 sm:w-6 sm:h-6 text-[#84A59D] shrink-0" />
+                <span>Produtos Utilizados no Serviço</span>
+              </DialogTitle>
+            </DialogHeader>
+            {agForUtilized && selectedItemIndex !== null && (() => {
+              const item = agForUtilized.itens[selectedItemIndex];
+              const s = servicos.find(x => x.id === item.servico_id);
+              return (
+                <div className="py-3 sm:py-4 space-y-4 sm:space-y-5">
+                  {/* Cabeçalho do Serviço */}
+                  <div className="bg-[#F8FBFB] dark:bg-[#1a2322] p-3.5 sm:p-4 rounded-xl border border-[#E8EFEF] dark:border-[#2e3e3b] flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-3">
+                    <div>
+                      <div className="text-[10px] sm:text-xs text-zinc-400 dark:text-zinc-500 uppercase font-bold tracking-wider">Serviço</div>
+                      <div className="font-semibold text-[#3A4F4A] dark:text-[#84A59D] text-sm sm:text-base leading-snug">{item.nome || s?.nome}</div>
+                      <div className="text-[11px] text-zinc-450 dark:text-zinc-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                        <span>Cliente: <strong className="font-semibold text-zinc-650 dark:text-zinc-400">{agForUtilized.cliente_nome}</strong></span>
+                        <span className="hidden sm:inline">·</span>
+                        <span>Atendimento: <strong className="font-semibold text-zinc-650 dark:text-zinc-400">{String(agForUtilized.numero || 0).padStart(6, "0")} | S</strong></span>
+                      </div>
+                    </div>
+                    <div className="text-left sm:text-right pt-2 sm:pt-0 border-t sm:border-t-0 border-zinc-200/60 dark:border-zinc-800 flex justify-between sm:block items-center">
+                      <div className="text-[10px] sm:text-xs text-zinc-400 dark:text-zinc-500 uppercase font-bold tracking-wider">Valor do Serviço</div>
+                      <div className="font-extrabold text-zinc-800 dark:text-zinc-200 text-base sm:text-lg">{fmtBRL(item.valor)}</div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-xs text-zinc-400 dark:text-zinc-500 uppercase font-bold tracking-wider">Valor do Serviço</div>
-                    <div className="font-extrabold text-zinc-800 dark:text-zinc-200 text-lg">{fmtBRL(item.valor)}</div>
-                  </div>
-                </div>
 
-                {/* Planilha de Insumos */}
-                <div className="space-y-2">
-                  <div className="text-xs text-zinc-550 dark:text-zinc-400 font-bold uppercase tracking-wider">Planilha de Insumos</div>
-                  {tempUtilizedProducts.length === 0 ? (
-                    <div className="text-center py-10 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-450 dark:text-zinc-500 text-sm">
-                      Nenhum produto cadastrado para este serviço.
-                    </div>
-                  ) : (
-                    <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-x-auto bg-white dark:bg-zinc-950 w-full min-w-0 shadow-sm">
-                      <table className="w-full text-sm min-w-[650px]">
-                        <thead className="bg-zinc-50 dark:bg-zinc-900 text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-450 border-b border-zinc-200 dark:border-zinc-800">
-                          <tr>
-                            <th className="px-5 py-3.5 text-left font-semibold">Produto</th>
-                            <th className="px-5 py-3.5 text-center font-semibold w-32">Estoque Disponível</th>
-                            <th className="px-5 py-3.5 text-right font-semibold w-36">Custo Unitário</th>
-                            <th className="px-5 py-3.5 text-center font-semibold w-40">Qtd. Utilizada</th>
-                            <th className="px-5 py-3.5 text-right font-semibold w-36">Custo Total</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-150 dark:divide-zinc-800">
+                  {/* Planilha de Insumos */}
+                  <div className="space-y-2">
+                    <div className="text-xs text-zinc-550 dark:text-zinc-400 font-bold uppercase tracking-wider">Planilha de Insumos</div>
+                    {tempUtilizedProducts.length === 0 ? (
+                      <div className="text-center py-8 sm:py-10 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-450 dark:text-zinc-500 text-xs sm:text-sm">
+                        Nenhum produto cadastrado para este serviço.
+                      </div>
+                    ) : (
+                      <>
+                        {/* Visão Desktop (>= 640px) */}
+                        <div className="hidden sm:block border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-x-auto bg-white dark:bg-zinc-950 w-full min-w-0 shadow-sm">
+                          <table className="w-full text-sm min-w-[650px]">
+                            <thead className="bg-zinc-50 dark:bg-zinc-900 text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-450 border-b border-zinc-200 dark:border-zinc-800">
+                              <tr>
+                                <th className="px-5 py-3.5 text-left font-semibold">Produto</th>
+                                <th className="px-5 py-3.5 text-center font-semibold w-32">Estoque Disponível</th>
+                                <th className="px-5 py-3.5 text-right font-semibold w-36">Custo Unitário</th>
+                                <th className="px-5 py-3.5 text-center font-semibold w-40">Qtd. Utilizada</th>
+                                <th className="px-5 py-3.5 text-right font-semibold w-36">Custo Total</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-150 dark:divide-zinc-800">
+                              {tempUtilizedProducts.map((row, idx) => {
+                                const custoProp = Number(row.custo_proporcional || row.custo_unitario || 0);
+                                const totalCost = Number(row.quantidade || 0) * custoProp;
+                                return (
+                                  <tr key={row.produto_id} className="hover:bg-zinc-50/40 dark:hover:bg-zinc-900/40 transition-colors">
+                                    <td className="px-5 py-4">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-zinc-800 dark:text-zinc-200">{row.nome}</span>
+                                        {!row.isLinked && (
+                                          <span className="inline-flex px-1.5 py-0.5 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-250/20 rounded text-[9px] font-bold uppercase">Extra</span>
+                                        )}
+                                        {!row.isLinked && (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleRemoveTempProduct(idx)}
+                                            className="text-rose-500 hover:text-rose-600 p-1.5 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors ml-auto flex items-center justify-center"
+                                            title="Remover Produto Extra"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="px-5 py-4 text-center text-zinc-500 dark:text-zinc-400 font-mono text-xs">
+                                      {Number(row.quantidade_por_unidade) > 0 ? (
+                                        <span>
+                                          {Number((Number(row.quantidade_estoque || 0) / Number(row.quantidade_por_unidade)).toFixed(2))} {row.unidade || 'un'} ({Number(row.quantidade_estoque || 0).toFixed(3)} {row.unidade_medida_insumo || 'un'})
+                                        </span>
+                                      ) : (
+                                        <span>{Number(row.quantidade_estoque || 0).toFixed(3)} {row.unidade}</span>
+                                      )}
+                                    </td>
+                                    <td className="px-5 py-4 text-right text-zinc-600 dark:text-zinc-400 font-mono text-xs">
+                                      <div className="font-bold text-zinc-800 dark:text-zinc-200">
+                                        {Number(row.quantidade_por_unidade) > 0 ? (
+                                          <span>Embalagem: {fmtBRL(row.custo_unitario)}/{Number(row.quantidade_por_unidade).toFixed(3)}{row.unidade_medida_insumo || row.unidade}</span>
+                                        ) : (
+                                          <span>{fmtBRL(row.custo_unitario)}/{row.unidade}</span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="px-5 py-4 text-center">
+                                      <div className="flex items-center justify-center">
+                                        <div className="relative flex items-center w-28">
+                                          <Input 
+                                            type="text" 
+                                            inputMode="decimal"
+                                            placeholder="0.000"
+                                            value={row.quantidade} 
+                                            onChange={(e) => {
+                                              let val = e.target.value;
+                                              val = val.replace(/[^0-9.,]/g, "");
+                                              const parts = val.split(/[.,]/);
+                                              if (parts.length > 2) {
+                                                val = parts[0] + "." + parts.slice(1).join("");
+                                              } else if (val.includes(",")) {
+                                                val = val.replace(",", ".");
+                                              }
+                                              handleUpdateTempProductQty(idx, val);
+                                            }}
+                                            onBlur={(e) => {
+                                              const val = e.target.value;
+                                              if (val !== "" && !isNaN(val)) {
+                                                handleUpdateTempProductQty(idx, Number(val).toFixed(3));
+                                              }
+                                            }}
+                                            className="w-full h-9 text-center bg-zinc-50 dark:bg-zinc-900 font-semibold border-zinc-200 dark:border-zinc-800 font-mono text-xs pr-10"
+                                          />
+                                          <span className="absolute right-3 text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase pointer-events-none select-none">{row.unidade_medida_insumo || row.unidade}</span>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="px-5 py-4 text-right font-bold text-zinc-800 dark:text-zinc-350 font-mono text-xs">
+                                      {fmtBRL(totalCost)}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Visão Mobile (< 640px) em Cards */}
+                        <div className="block sm:hidden space-y-3">
                           {tempUtilizedProducts.map((row, idx) => {
-                            // Use custo_proporcional (cost per unit of measure) for calculation
-                            // Falls back to custo_unitario for legacy records without quantidade_por_unidade
                             const custoProp = Number(row.custo_proporcional || row.custo_unitario || 0);
                             const totalCost = Number(row.quantidade || 0) * custoProp;
                             return (
-                              <tr key={row.produto_id} className="hover:bg-zinc-50/40 dark:hover:bg-zinc-900/40 transition-colors">
-                                <td className="px-5 py-4">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-semibold text-zinc-800 dark:text-zinc-200">{row.nome}</span>
-                                    {!row.isLinked && (
-                                      <span className="inline-flex px-1.5 py-0.5 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-250/20 rounded text-[9px] font-bold uppercase">Extra</span>
-                                    )}
-                                    {!row.isLinked && (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleRemoveTempProduct(idx)}
-                                        className="text-rose-500 hover:text-rose-600 p-1.5 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors ml-auto flex items-center justify-center"
-                                        title="Remover Produto Extra"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </button>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="px-5 py-4 text-center text-zinc-500 dark:text-zinc-400 font-mono text-xs">
-                                  {Number(row.quantidade_por_unidade) > 0 ? (
-                                    <span>
-                                      {Number((Number(row.quantidade_estoque || 0) / Number(row.quantidade_por_unidade)).toFixed(2))} {row.unidade || 'un'} ({Number(row.quantidade_estoque || 0).toFixed(3)} {row.unidade_medida_insumo || 'un'})
+                              <div 
+                                key={row.produto_id}
+                                className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 space-y-3 shadow-xs transition-colors"
+                              >
+                                {/* Topo do Card: Nome + Badge Extra + Lixeira */}
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                    <span className="font-bold text-zinc-800 dark:text-zinc-150 text-sm leading-tight break-words">
+                                      {row.nome}
                                     </span>
-                                  ) : (
-                                    <span>{Number(row.quantidade_estoque || 0).toFixed(3)} {row.unidade}</span>
-                                  )}
-                                </td>
-                                <td className="px-5 py-4 text-right text-zinc-600 dark:text-zinc-400 font-mono text-xs">
-                                  <div className="font-bold text-zinc-800 dark:text-zinc-200">
-                                    {Number(row.quantidade_por_unidade) > 0 ? (
-                                      <span>Embalagem: {fmtBRL(row.custo_unitario)}/{Number(row.quantidade_por_unidade).toFixed(3)}{row.unidade_medida_insumo || row.unidade}</span>
-                                    ) : (
-                                      <span>{fmtBRL(row.custo_unitario)}/{row.unidade}</span>
+                                    {!row.isLinked && (
+                                      <span className="inline-flex px-1.5 py-0.5 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-250/20 rounded text-[9px] font-bold uppercase shrink-0">
+                                        Extra
+                                      </span>
                                     )}
                                   </div>
-                                </td>
-                                <td className="px-5 py-4 text-center">
-                                  <div className="flex items-center justify-center">
-                                    <div className="relative flex items-center w-28">
+                                  {!row.isLinked && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveTempProduct(idx)}
+                                      className="text-rose-500 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors shrink-0 -mr-1 -mt-1 active:scale-95"
+                                      title="Remover Produto Extra"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* Detalhes: Estoque & Custo Unitário */}
+                                <div className="grid grid-cols-2 gap-2 bg-zinc-50/80 dark:bg-zinc-900/60 p-2.5 rounded-lg text-[11px] text-zinc-600 dark:text-zinc-400 border border-zinc-150/60 dark:border-zinc-850">
+                                  <div>
+                                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider block mb-0.5">Estoque</span>
+                                    <span className="font-mono text-zinc-700 dark:text-zinc-300 font-semibold block leading-tight">
+                                      {Number(row.quantidade_por_unidade) > 0 ? (
+                                        <>
+                                          {Number((Number(row.quantidade_estoque || 0) / Number(row.quantidade_por_unidade)).toFixed(2))} {row.unidade || 'un'}
+                                          <span className="text-[10px] text-zinc-400 dark:text-zinc-500 block font-normal">({Number(row.quantidade_estoque || 0).toFixed(3)} {row.unidade_medida_insumo || 'un'})</span>
+                                        </>
+                                      ) : (
+                                        <>{Number(row.quantidade_estoque || 0).toFixed(3)} {row.unidade}</>
+                                      )}
+                                    </span>
+                                  </div>
+
+                                  <div>
+                                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider block mb-0.5">Custo Unit.</span>
+                                    <span className="font-mono text-zinc-700 dark:text-zinc-300 font-semibold block leading-tight">
+                                      {Number(row.quantidade_por_unidade) > 0 ? (
+                                        <>
+                                          {fmtBRL(row.custo_unitario)}
+                                          <span className="text-[10px] text-zinc-400 dark:text-zinc-500 block font-normal">/{Number(row.quantidade_por_unidade).toFixed(3)}{row.unidade_medida_insumo || row.unidade}</span>
+                                        </>
+                                      ) : (
+                                        <>{fmtBRL(row.custo_unitario)}/{row.unidade}</>
+                                      )}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Lançamento de Quantidade e Subtotal */}
+                                <div className="flex items-center justify-between gap-3 pt-1">
+                                  <div className="flex-1 min-w-0">
+                                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider block mb-1">
+                                      Qtd. Utilizada ({row.unidade_medida_insumo || row.unidade})
+                                    </span>
+                                    <div className="relative flex items-center">
                                       <Input 
                                         type="text" 
                                         inputMode="decimal"
@@ -3500,7 +3613,6 @@ export default function Agenda() {
                                         value={row.quantidade} 
                                         onChange={(e) => {
                                           let val = e.target.value;
-                                          // Permitir apenas dígitos e um separador decimal
                                           val = val.replace(/[^0-9.,]/g, "");
                                           const parts = val.split(/[.,]/);
                                           if (parts.length > 2) {
@@ -3516,81 +3628,90 @@ export default function Agenda() {
                                             handleUpdateTempProductQty(idx, Number(val).toFixed(3));
                                           }
                                         }}
-                                        className="w-full h-9 text-center bg-zinc-50 dark:bg-zinc-900 font-semibold border-zinc-200 dark:border-zinc-800 font-mono text-xs pr-10"
+                                        className="w-full h-10 text-left pl-3 pr-12 bg-zinc-50 dark:bg-zinc-900 font-bold border-zinc-200 dark:border-zinc-800 font-mono text-xs focus:ring-2 focus:ring-[#84A59D]/30"
                                       />
-                                      <span className="absolute right-3 text-[10px] font-bold text-zinc-400 dark:text-zinc-550 uppercase pointer-events-none select-none">{row.unidade_medida_insumo || row.unidade}</span>
+                                      <span className="absolute right-3 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase pointer-events-none select-none">
+                                        {row.unidade_medida_insumo || row.unidade}
+                                      </span>
                                     </div>
                                   </div>
-                                </td>
-                                <td className="px-5 py-4 text-right font-bold text-zinc-800 dark:text-zinc-350 font-mono text-xs">
-                                  {fmtBRL(totalCost)}
-                                </td>
-                              </tr>
+
+                                  <div className="text-right shrink-0">
+                                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider block mb-1">
+                                      Custo Total
+                                    </span>
+                                    <span className="font-mono text-sm font-extrabold text-[#3A4F4A] dark:text-[#84A59D] block py-2">
+                                      {fmtBRL(totalCost)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
                             );
                           })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
 
-                {/* Adição de Outros Produtos */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-3 pb-1 border-t border-zinc-150 dark:border-zinc-800">
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider whitespace-nowrap">Adicionar Insumo Extra:</span>
-                  <div className="w-full sm:w-80">
-                    <SearchableSelect
-                      placeholder="Selecione um produto extra..."
-                      searchPlaceholder="Pesquisar produto pelo nome..."
-                      className="w-full h-10 text-xs"
-                      options={produtos
-                        .filter(p => !p.ocultar_insumos && !tempUtilizedProducts.some(row => row.produto_id === p.id))
-                        .map(p => {
-                          const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
-                          const qtyStr = qtyPerUnit > 0 
-                            ? `${Number((p.quantidade_estoque / qtyPerUnit).toFixed(2))} ${p.unidade_medida || 'un'} (${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida_insumo || 'un'})`
-                            : `${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida || 'un'}`;
-                          return {
-                            value: p.id,
-                            label: `${p.nome} (${qtyStr})`
-                          };
-                        })
-                      }
-                      value={selectedProdToAdd}
-                      onValueChange={(val) => {
-                        if (val) {
-                          handleAddExtraProduct(val);
+                  {/* Adição de Outros Produtos */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 pt-3 pb-1 border-t border-zinc-150 dark:border-zinc-800">
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider whitespace-nowrap">Adicionar Insumo Extra:</span>
+                    <div className="w-full sm:w-80">
+                      <SearchableSelect
+                        placeholder="Selecione um produto extra..."
+                        searchPlaceholder="Pesquisar produto pelo nome..."
+                        className="w-full h-10 text-xs"
+                        options={produtos
+                          .filter(p => !p.ocultar_insumos && !tempUtilizedProducts.some(row => row.produto_id === p.id))
+                          .map(p => {
+                            const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
+                            const qtyStr = qtyPerUnit > 0 
+                              ? `${Number((p.quantidade_estoque / qtyPerUnit).toFixed(2))} ${p.unidade_medida || 'un'} (${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida_insumo || 'un'})`
+                              : `${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida || 'un'}`;
+                            return {
+                              value: p.id,
+                              label: `${p.nome} (${qtyStr})`
+                            };
+                          })
                         }
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Totalizador de Custo */}
-                <div className="bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] p-4 rounded-xl flex items-center justify-between shadow-xs">
-                  <div className="flex items-center gap-2">
-                    <Package className="w-5 h-5 text-[#84A59D]" />
-                    <div>
-                      <span className="text-xs text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider block">Custo Total do Consumo</span>
-                      <span className="text-[10px] text-zinc-400 dark:text-zinc-550">Calculado automaticamente com base no consumo</span>
+                        value={selectedProdToAdd}
+                        onValueChange={(val) => {
+                          if (val) {
+                            handleAddExtraProduct(val);
+                          }
+                        }}
+                      />
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span className="font-mono text-xl font-extrabold text-[#3A4F4A] dark:text-[#84A59D]">
-                      {fmtBRL(
-                        tempUtilizedProducts.reduce(
-                          (sum, row) => sum + Number(row.quantidade || 0) * Number(row.custo_proporcional || row.custo_unitario || 0),
-                          0
-                        )
-                      )}
-                    </span>
+
+                  {/* Totalizador de Custo */}
+                  <div className="bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] p-3.5 sm:p-4 rounded-xl flex items-center justify-between shadow-xs">
+                    <div className="flex items-center gap-2">
+                      <Package className="w-5 h-5 text-[#84A59D] shrink-0" />
+                      <div>
+                        <span className="text-[10px] sm:text-xs text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider block">Custo Total do Consumo</span>
+                        <span className="text-[9px] sm:text-[10px] text-zinc-400 dark:text-zinc-550 hidden sm:block">Calculado automaticamente com base no consumo</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-mono text-lg sm:text-xl font-extrabold text-[#3A4F4A] dark:text-[#84A59D]">
+                        {fmtBRL(
+                          tempUtilizedProducts.reduce(
+                            (sum, row) => sum + Number(row.quantidade || 0) * Number(row.custo_proporcional || row.custo_unitario || 0),
+                            0
+                          )
+                        )}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })()}
-          <DialogFooter className="gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-            <Button variant="outline" onClick={() => setUtilizedProductsOpen(false)} className="w-full sm:w-auto">Cancelar</Button>
-            <Button onClick={saveUtilizedProducts} className="bg-[#84A59D] hover:bg-[#6F9189] w-full sm:w-auto font-bold text-white">
+              );
+            })()}
+          </div>
+
+          <DialogFooter className="gap-2 pt-3 mt-2 border-t border-zinc-100 dark:border-zinc-800 sticky bottom-0 bg-white dark:bg-zinc-900 z-10">
+            <Button variant="outline" onClick={() => setUtilizedProductsOpen(false)} className="w-full sm:w-auto h-10 text-xs sm:text-sm font-semibold">Cancelar</Button>
+            <Button onClick={saveUtilizedProducts} className="bg-[#84A59D] hover:bg-[#6F9189] w-full sm:w-auto h-10 text-xs sm:text-sm font-bold text-white">
               Salvar Consumo
             </Button>
           </DialogFooter>
