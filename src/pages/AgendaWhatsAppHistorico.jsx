@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { PageHeader } from "../components/Page";
 import http from "../api";
 import { useAuth } from "../auth";
-import { formatAgendaDateTime } from "../lib/date";
+import { formatAgendaDateTime, getAgendaTodayDate } from "../lib/date";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -17,23 +17,12 @@ import {
   PaginationItem,
 } from "../components/ui/pagination";
 
-const getTodayDateString = () => {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Recife',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).formatToParts(new Date());
-  const value = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
-  return `${value.year}-${value.month}-${value.day}`;
-};
-
 export default function AgendaWhatsAppHistorico() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const hasConfigPerm = isAdmin || user?.perfil?.permissoes?.["configuracoes.whatsapp"] === true || !!(user?.perfil?.permissoes?.menus?.configuracoes);
 
-  const todayStr = getTodayDateString();
+  const todayStr = getAgendaTodayDate();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [resendingId, setResendingId] = useState(null);
@@ -119,7 +108,7 @@ export default function AgendaWhatsAppHistorico() {
     setCliente("");
     setNumero("");
     setStatus("");
-    const today = getTodayDateString();
+    const today = getAgendaTodayDate();
     setStartDate(today);
     setEndDate(today);
     // Execute search with cleared filters
