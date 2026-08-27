@@ -363,7 +363,6 @@ export default function Relatorios() {
   const [helpOpen, setHelpOpen] = useState(false);
 
   const [resultadoOperacional, setResultadoOperacional] = useState(null);
-  const [filterUnidade, setFilterUnidade] = useState("todas");
   const [filterOperacionalColab, setFilterOperacionalColab] = useState("todos");
   const [filterOperacionalCatServico, setFilterOperacionalCatServico] = useState("todos");
   const [filterOperacionalCatProduto, setFilterOperacionalCatProduto] = useState("todos");
@@ -901,6 +900,18 @@ export default function Relatorios() {
 
   const totalMargemServicos = totalsServicos.faturamento > 0 ? (totalsServicos.resultado / totalsServicos.faturamento) * 100 : 0;
 
+  const totalsProdutos = sortedAndFilteredProdutos.reduce((acc, p) => {
+    acc.quantidade += p.quantidade || 0;
+    acc.faturamento += p.faturamento || 0;
+    acc.cmv += p.cmv || 0;
+    acc.comissao += p.comissao || 0;
+    acc.taxas += p.taxas || 0;
+    acc.resultado += p.resultado_operacional || 0;
+    return acc;
+  }, { quantidade: 0, faturamento: 0, cmv: 0, comissao: 0, taxas: 0, resultado: 0 });
+
+  const totalMargemProdutos = totalsProdutos.faturamento > 0 ? (totalsProdutos.resultado / totalsProdutos.faturamento) * 100 : 0;
+
 
   const handleSelectReport = (reportId) => {
     setSelectedReport(reportId);
@@ -928,7 +939,7 @@ export default function Relatorios() {
       filterColaborador, filterProduto, filterCategoria, filterFormaPagamento, filterCliente, filterStatus,
       filterColaboradorServico, filterServico, filterFormaPagamentoServico, filterClienteServico, filterStatusServico,
       filterDreCategory, filterDreStatus,
-      filterOperacionalColab, filterOperacionalCatServico, filterOperacionalCatProduto, filterUnidade,
+      filterOperacionalColab, filterOperacionalCatServico, filterOperacionalCatProduto,
       filterEstoqueCategorias, filterEstoqueProduto,
       filterClienteCancelados
     });
@@ -963,8 +974,7 @@ export default function Relatorios() {
     (["resultado_consolidado", "rentabilidade_servicos", "rentabilidade_produtos", "analitico_vendas"].includes(tab) && (
       generatedFilters.filterOperacionalColab !== filterOperacionalColab ||
       generatedFilters.filterOperacionalCatServico !== filterOperacionalCatServico ||
-      generatedFilters.filterOperacionalCatProduto !== filterOperacionalCatProduto ||
-      generatedFilters.filterUnidade !== filterUnidade
+      generatedFilters.filterOperacionalCatProduto !== filterOperacionalCatProduto
     )) ||
     (tab === "agendamentos_cancelados" && (
       generatedFilters.filterClienteCancelados !== filterClienteCancelados
@@ -2688,19 +2698,7 @@ export default function Relatorios() {
             )}
 
             {["resultado_consolidado", "rentabilidade_servicos", "rentabilidade_produtos", "analitico_vendas"].includes(tab) && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-4 border-t border-zinc-100 pt-3">
-                {/* Unidade */}
-                <div>
-                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Unidade</Label>
-                  <Select value={filterUnidade} onValueChange={setFilterUnidade}>
-                    <SelectTrigger className="bg-white h-9 text-xs">
-                      <SelectValue placeholder="Matriz (Todas)" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border border-zinc-200">
-                      <SelectItem value="todas">Matriz (Todas)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mt-4 border-t border-zinc-100 pt-3">
                 {/* Profissional */}
                 <div>
                   <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Profissional</Label>
@@ -4933,6 +4931,63 @@ export default function Relatorios() {
             <div className="text-zinc-400 p-8 text-center bg-white border border-zinc-200 rounded-xl">Carregando dados...</div>
           ) : (
             <div className="space-y-6 print-full-width">
+              {/* Totalizadores */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-3">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Qtd</span>
+                    <div className="p-1 rounded bg-sky-50 dark:bg-sky-950/30"><ClipboardList className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-500" /></div>
+                  </div>
+                  <div className="font-display text-sm sm:text-base font-bold mt-1.5 text-zinc-800 dark:text-zinc-100 font-mono">
+                    {(totalsProdutos.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}
+                  </div>
+                </div>
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Faturamento</span>
+                    <div className="p-1 rounded bg-indigo-50 dark:bg-indigo-950/30"><Package className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500" /></div>
+                  </div>
+                  <div className="font-display text-sm sm:text-base font-bold mt-1.5 text-zinc-800 dark:text-zinc-100 font-mono">{fmtBRL(totalsProdutos.faturamento)}</div>
+                </div>
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">CMV</span>
+                    <div className="p-1 rounded bg-rose-50 dark:bg-rose-950/30"><TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-500" /></div>
+                  </div>
+                  <div className="font-display text-sm sm:text-base font-bold mt-1.5 text-rose-500 font-mono">{fmtBRL(totalsProdutos.cmv)}</div>
+                </div>
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Comissão</span>
+                    <div className="p-1 rounded bg-amber-50 dark:bg-amber-950/30"><User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500" /></div>
+                  </div>
+                  <div className="font-display text-sm sm:text-base font-bold mt-1.5 text-amber-600 dark:text-amber-500 font-mono">{fmtBRL(totalsProdutos.comissao)}</div>
+                </div>
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 sm:p-4 shadow-sm flex flex-col justify-between">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Taxas</span>
+                    <div className="p-1 rounded bg-orange-50 dark:bg-orange-950/30"><CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-orange-500" /></div>
+                  </div>
+                  <div className="font-display text-sm sm:text-base font-bold mt-1.5 text-orange-600 dark:text-orange-500 font-mono">{fmtBRL(totalsProdutos.taxas)}</div>
+                </div>
+                <div className={`border rounded-xl p-3 sm:p-4 shadow-sm flex flex-col justify-between ${totalsProdutos.resultado >= 0 ? "bg-emerald-50/20 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-800/40" : "bg-rose-50/20 dark:bg-rose-950/10 border-rose-200 dark:border-rose-800/40"}`}>
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${totalsProdutos.resultado >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>Resultado</span>
+                    <div className={`p-1 rounded ${totalsProdutos.resultado >= 0 ? "bg-emerald-50 dark:bg-emerald-950/30" : "bg-rose-50 dark:bg-rose-950/30"}`}>
+                      {totalsProdutos.resultado >= 0 ? <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500" /> : <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-500" />}
+                    </div>
+                  </div>
+                  <div className={`font-display text-sm sm:text-base font-bold mt-1.5 font-mono ${totalsProdutos.resultado >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>{fmtBRL(totalsProdutos.resultado)}</div>
+                </div>
+                <div className={`border rounded-xl p-3 sm:p-4 shadow-sm flex flex-col justify-between col-span-2 sm:col-span-1 ${totalMargemProdutos >= 40 ? "bg-emerald-50/20 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-800/40" : totalMargemProdutos >= 15 ? "bg-amber-50/20 dark:bg-amber-950/10 border-amber-200 dark:border-amber-800/40" : "bg-rose-50/20 dark:bg-rose-950/10 border-rose-200 dark:border-rose-800/40"}`}>
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Margem (%)</span>
+                    <div className="p-1 rounded bg-zinc-100 dark:bg-zinc-800"><Percent className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-zinc-500" /></div>
+                  </div>
+                  <div className={`font-display text-sm sm:text-base font-bold mt-1.5 font-mono ${totalMargemProdutos >= 40 ? "text-emerald-600 dark:text-emerald-400" : totalMargemProdutos >= 15 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400"}`}>{(totalMargemProdutos || 0).toFixed(1)}%</div>
+                </div>
+              </div>
+
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 pb-3 no-print">
                 <div className="relative flex-1 max-w-xs">
