@@ -142,9 +142,29 @@ export default function AgendaWhatsAppHistorico() {
     return formatAgendaDateTime(dateStr);
   };
 
-  const getStatusBadge = (statusVal) => {
+  /**
+   * Retorna true se o lembrete deve mostrar o botão Reenviar:
+   * — Falhou (após 5 tentativas automáticas OU reenvio manual com falha)
+   * — Pendente com ao menos 1 tentativa realizada (retry em andamento, mas já liberado)
+   */
+  const canResend = (log) => {
+    if (log.status === "Falhou") return true;
+    if (log.status === "Pendente" && (log.tentativas || 0) > 0) return true;
+    return false;
+  };
+
+  const getStatusBadge = (statusVal, tentativas = 0) => {
     const s = String(statusVal);
     if (s.startsWith("Pendente")) {
+      if (tentativas > 0) {
+        // Pendente com falha anterior: retry automático em andamento
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-900/50">
+            <RotateCcw className="w-3 h-3 animate-spin" />
+            Retry {tentativas}/5
+          </span>
+        );
+      }
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
@@ -382,7 +402,7 @@ export default function AgendaWhatsAppHistorico() {
                         {formatDateTime(log.data_envio)}
                       </td>
                       <td className="p-4">
-                        {getStatusBadge(log.status)}
+                        {getStatusBadge(log.status, log.tentativas)}
                       </td>
                       <td className="p-4 pr-6 text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -398,8 +418,8 @@ export default function AgendaWhatsAppHistorico() {
                             <Eye className="w-4 h-4" />
                           </Button>
 
-                          {/* Action: Resend */}
-                          {log.status === "Falhou" && (
+                          {/* Action: Resend — disponível desde a 1ª falha (Falhou ou Pendente c/ tentativas > 0) */}
+                          {canResend(log) && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -428,7 +448,7 @@ export default function AgendaWhatsAppHistorico() {
                     <span className="font-mono text-xs font-bold text-zinc-500 dark:text-zinc-400">
                       {log.agendamento_numero ? `#${String(log.agendamento_numero).padStart(6, '0')}` : '—'}
                     </span>
-                    {getStatusBadge(log.status)}
+                    {getStatusBadge(log.status, log.tentativas)}
                   </div>
 
                   <div className="space-y-1">
@@ -480,7 +500,7 @@ export default function AgendaWhatsAppHistorico() {
                       <span>Detalhes</span>
                     </Button>
 
-                    {log.status === "Falhou" && (
+                    {canResend(log) && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -598,7 +618,7 @@ export default function AgendaWhatsAppHistorico() {
                 </div>
                 <div>
                   <span className="text-zinc-500 block mb-1">Status:</span>
-                  {getStatusBadge(selectedLog.status)}
+                  {getStatusBadge(selectedLog.status, selectedLog.tentativas)}
                 </div>
                 <div>
                   <span className="text-zinc-500 block">Cliente:</span>
@@ -632,12 +652,12 @@ export default function AgendaWhatsAppHistorico() {
                 )}
               </div>
 
-              {/* Error Block */}
-              {selectedLog.status === "Falhou" && selectedLog.erro && (
+              {/* Error Block — exibe erro para Falhou ou Pendente com tentativas (retry em andamento) */}
+              {(selectedLog.status === "Falhou" || (selectedLog.status === "Pendente" && (selectedLog.tentativas || 0) > 0)) && selectedLog.erro && (
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-red-500 flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5" />
-                    <span>Log de Erro da Falha</span>
+                    <span>{selectedLog.status === "Pendente" ? "Erro da Última Tentativa" : "Log de Erro da Falha"}</span>
                   </label>
                   <div className="p-4 rounded-xl bg-red-50/50 dark:bg-red-950/10 border border-red-100 dark:border-red-900/30 text-xs font-mono text-red-700 dark:text-red-400 whitespace-pre-wrap leading-relaxed">
                     {selectedLog.erro}
@@ -663,7 +683,7 @@ export default function AgendaWhatsAppHistorico() {
               >
                 Fechar
               </Button>
-              {selectedLog.status === "Falhou" && (
+              {canResend(selectedLog) && (
                 <Button 
                   onClick={() => {
                     handleResend(selectedLog.id);
