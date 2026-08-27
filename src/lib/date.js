@@ -1,5 +1,17 @@
 export const AGENDA_TIME_ZONE = 'America/Recife';
 
+/** Retorna a data corrente no fuso da agenda, no formato aceito por inputs date. */
+export function getAgendaTodayDate() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: AGENDA_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
 /**
  * Formata uma data/hora UTC do banco para a data local brasileira (America/Recife) no formato "DD/MM/YYYY".
  * @param {string|Date} dateInput 
