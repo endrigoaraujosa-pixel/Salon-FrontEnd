@@ -79,9 +79,15 @@ const PresetButtons = ({ onPick }) => {
     { l: "Últimos 30 dias", from: getDaysAgoStr(30), to: todayStr() },
   ];
   return (
-    <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5 w-full">
+    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 w-full">
       {presets.map((p) => (
-        <Button key={p.l} size="sm" variant="outline" className="h-9 text-xs px-2 sm:px-3 whitespace-nowrap w-full sm:w-auto" onClick={() => onPick(p.from, p.to)}>
+        <Button 
+          key={p.l} 
+          size="sm" 
+          variant="outline" 
+          className="h-8 text-[11px] sm:text-xs px-2.5 whitespace-nowrap shrink-0 border-zinc-200 dark:border-zinc-800 hover:bg-[#84A59D]/10 hover:text-[#3A4F4A] dark:hover:text-[#A8C3BC] transition-colors rounded-lg" 
+          onClick={() => onPick(p.from, p.to)}
+        >
           {p.l}
         </Button>
       ))}
@@ -812,7 +818,6 @@ export default function Relatorios() {
         html += `</tr>`;
       });
       html += `</tbody></table></body></html>`;
-
       const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -869,49 +874,41 @@ export default function Relatorios() {
     });
 
   const totalsVendas = sortedAndFilteredVendas.reduce((acc, v) => {
-    acc.produtos += v.valor_produtos || 0;
-    acc.servicos += v.valor_servicos || 0;
-    acc.faturamento += v.faturamento_total || 0;
-    acc.cmv += v.cmv || 0;
-    acc.comissao += v.comissao || 0;
-    acc.taxas += v.taxas || 0;
-    acc.resultado += v.resultado_operacional || 0;
+    acc.produtos = Number((acc.produtos + (v.valor_produtos || 0)).toFixed(2));
+    acc.servicos = Number((acc.servicos + (v.valor_servicos || 0)).toFixed(2));
+    acc.faturamento = Number((acc.faturamento + (v.faturamento_total || 0)).toFixed(2));
+    acc.cmv = Number((acc.cmv + (v.cmv || 0)).toFixed(2));
+    acc.comissao = Number((acc.comissao + (v.comissao || 0)).toFixed(2));
+    acc.taxas = Number((acc.taxas + (v.taxas || 0)).toFixed(2));
+    acc.resultado = Number((acc.resultado + (v.resultado_operacional || 0)).toFixed(2));
     return acc;
   }, { produtos: 0, servicos: 0, faturamento: 0, cmv: 0, comissao: 0, taxas: 0, resultado: 0 });
 
   const totalMargemVendas = totalsVendas.faturamento > 0 ? (totalsVendas.resultado / totalsVendas.faturamento) * 100 : 0;
 
-  const isTaxaHabilitada = !!resultadoOperacional?.descontar_taxa_cartao_comissao;
-
   const totalsServicos = sortedAndFilteredServicos.reduce((acc, s) => {
-    acc.quantidade += s.quantidade || 0;
-    acc.faturamento += s.faturamento || 0;
-    acc.insumos += s.insumos || 0;
-    acc.comissao += s.comissao || 0;
-    if (isTaxaHabilitada) {
-      acc.taxas += s.taxas || 0;
-      acc.resultado += s.resultado_operacional || 0;
-    } else {
-      acc.taxas += 0;
-      acc.resultado += (s.resultado_operacional || 0) + (s.taxas || 0);
-    }
+    acc.quantidade = Number((acc.quantidade + (s.quantidade || 0)).toFixed(3));
+    acc.faturamento = Number((acc.faturamento + (s.faturamento || 0)).toFixed(2));
+    acc.insumos = Number((acc.insumos + (s.insumos || 0)).toFixed(2));
+    acc.comissao = Number((acc.comissao + (s.comissao || 0)).toFixed(2));
+    acc.taxas = Number((acc.taxas + (s.taxas || 0)).toFixed(2));
+    acc.resultado = Number((acc.resultado + (s.resultado_operacional || 0)).toFixed(2));
     return acc;
   }, { quantidade: 0, faturamento: 0, insumos: 0, comissao: 0, taxas: 0, resultado: 0 });
 
   const totalMargemServicos = totalsServicos.faturamento > 0 ? (totalsServicos.resultado / totalsServicos.faturamento) * 100 : 0;
 
   const totalsProdutos = sortedAndFilteredProdutos.reduce((acc, p) => {
-    acc.quantidade += p.quantidade || 0;
-    acc.faturamento += p.faturamento || 0;
-    acc.cmv += p.cmv || 0;
-    acc.comissao += p.comissao || 0;
-    acc.taxas += p.taxas || 0;
-    acc.resultado += p.resultado_operacional || 0;
+    acc.quantidade = Number((acc.quantidade + (p.quantidade || 0)).toFixed(3));
+    acc.faturamento = Number((acc.faturamento + (p.faturamento || 0)).toFixed(2));
+    acc.cmv = Number((acc.cmv + (p.cmv || 0)).toFixed(2));
+    acc.comissao = Number((acc.comissao + (p.comissao || 0)).toFixed(2));
+    acc.taxas = Number((acc.taxas + (p.taxas || 0)).toFixed(2));
+    acc.resultado = Number((acc.resultado + (p.resultado_operacional || 0)).toFixed(2));
     return acc;
   }, { quantidade: 0, faturamento: 0, cmv: 0, comissao: 0, taxas: 0, resultado: 0 });
 
   const totalMargemProdutos = totalsProdutos.faturamento > 0 ? (totalsProdutos.resultado / totalsProdutos.faturamento) * 100 : 0;
-
 
   const handleSelectReport = (reportId) => {
     setSelectedReport(reportId);
@@ -2316,7 +2313,7 @@ export default function Relatorios() {
       ) : (
         <div className="relative">
           {/* Sticky Header Container */}
-          <div className="sticky top-[-12px] sm:top-[-24px] pt-3 sm:pt-4 pb-2 z-30 bg-zinc-50/95 dark:bg-zinc-950/95 backdrop-blur-md border-b border-zinc-200/80 dark:border-zinc-800/80 mb-4 sm:mb-6 no-print -mx-3 sm:-mx-6 px-3 sm:px-6 max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 pt-3 sm:pt-4 pb-2 z-30 bg-zinc-50/95 dark:bg-zinc-950/95 backdrop-blur-md border-b border-zinc-200/80 dark:border-zinc-800/80 mb-4 sm:mb-6 no-print -mx-3 sm:-mx-6 px-3 sm:px-6">
             {/* Back Navigation Bar */}
           <div className="flex items-center justify-between mb-3 sm:mb-6 border-b border-zinc-200 dark:border-zinc-800 pb-3 sm:pb-4 no-print">
             <button
@@ -5418,12 +5415,80 @@ export default function Relatorios() {
                 </div>
               </div>
 
-              {/* Table */}
-              <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm">
+              {/* Mobile View: Cards */}
+              <div className="md:hidden space-y-3">
+                {sortedAndFilteredVendas.length === 0 ? (
+                  <div className="text-center py-8 text-zinc-400 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs">
+                    Nenhuma venda encontrada.
+                  </div>
+                ) : (
+                  sortedAndFilteredVendas.map((v, idx) => (
+                    <div 
+                      key={idx} 
+                      className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 shadow-sm space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm text-zinc-800 dark:text-zinc-100">{v.numero}</span>
+                          <span className="text-[11px] text-zinc-400 font-mono">
+                            {new Date(v.data).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded text-[11px] font-bold border whitespace-nowrap font-mono ${
+                          v.margem >= 35 
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/50' 
+                            : v.margem >= 15 
+                            ? 'bg-amber-50 text-amber-650 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/50' 
+                            : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800/50'
+                        }`}>
+                          {(v.margem || 0).toFixed(1)}%
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block uppercase font-medium">Cliente</span>
+                          <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate block">{v.cliente}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block uppercase font-medium">Profissional</span>
+                          <span className="text-zinc-600 dark:text-zinc-400 truncate block">{v.profissional}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block uppercase font-medium">Prod / Serv</span>
+                          <span className="font-mono text-zinc-700 dark:text-zinc-300">{fmtBRL(v.valor_produtos)} / {fmtBRL(v.valor_servicos)}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block uppercase font-medium">Faturamento Total</span>
+                          <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">{fmtBRL(v.faturamento_total)}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block uppercase font-medium">CMV & Insumos</span>
+                          <span className="font-mono text-rose-500 font-medium">{fmtBRL(v.cmv)}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-400 block uppercase font-medium">Comissão & Taxas</span>
+                          <span className="font-mono text-amber-600 font-medium">{fmtBRL(v.comissao)} / {fmtBRL(v.taxas)}</span>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between">
+                        <span className="text-[10px] text-zinc-400 uppercase font-bold">Resultado Operacional:</span>
+                        <span className={`font-mono font-bold text-xs ${v.resultado_operacional >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                          {fmtBRL(v.resultado_operacional)}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Desktop View: Table */}
+              <div className="hidden md:block bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full text-[11px] text-left border-collapse min-w-[1000px]">
                     <thead>
-                      <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-bold uppercase tracking-wider">
+                      <tr className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 font-bold uppercase tracking-wider">
                         <th className="px-3 py-3">
                           <SortHeader label="Venda" field="numero" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
                             if (sortVendaField === f) setSortVendaDirection(d => d === 'asc' ? 'desc' : 'asc');
@@ -5498,31 +5563,31 @@ export default function Relatorios() {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-200">
+                    <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                       {sortedAndFilteredVendas.length === 0 ? (
                         <tr>
                           <td colSpan={12} className="text-center py-8 text-zinc-400">Nenhuma venda encontrada.</td>
                         </tr>
                       ) : sortedAndFilteredVendas.map((v, idx) => (
-                        <tr key={idx} className="hover:bg-zinc-50 transition-colors">
-                          <td className="px-3 py-2.5 font-semibold text-zinc-700">{v.numero}</td>
-                          <td className="px-3 py-2.5 text-zinc-500">{new Date(v.data).toLocaleDateString('pt-BR')}</td>
-                          <td className="px-3 py-2.5 font-medium text-zinc-800 truncate max-w-[120px]" title={v.cliente}>{v.cliente}</td>
-                          <td className="px-3 py-2.5 text-zinc-600 truncate max-w-[100px]" title={v.profissional}>{v.profissional}</td>
-                          <td className="px-3 py-2.5 text-right font-mono text-zinc-700">{fmtBRL(v.valor_produtos)}</td>
-                          <td className="px-3 py-2.5 text-right font-mono text-zinc-700">{fmtBRL(v.valor_servicos)}</td>
-                          <td className="px-3 py-2.5 text-right font-mono text-zinc-800 font-semibold">{fmtBRL(v.faturamento_total)}</td>
+                        <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                          <td className="px-3 py-2.5 font-semibold text-zinc-700 dark:text-zinc-300">{v.numero}</td>
+                          <td className="px-3 py-2.5 text-zinc-500 dark:text-zinc-400 font-mono">{new Date(v.data).toLocaleDateString('pt-BR')}</td>
+                          <td className="px-3 py-2.5 font-medium text-zinc-800 dark:text-zinc-200 truncate max-w-[120px]" title={v.cliente}>{v.cliente}</td>
+                          <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-400 truncate max-w-[100px]" title={v.profissional}>{v.profissional}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-zinc-700 dark:text-zinc-300">{fmtBRL(v.valor_produtos)}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-zinc-700 dark:text-zinc-300">{fmtBRL(v.valor_servicos)}</td>
+                          <td className="px-3 py-2.5 text-right font-mono text-zinc-800 dark:text-zinc-100 font-semibold">{fmtBRL(v.faturamento_total)}</td>
                           <td className="px-3 py-2.5 text-right font-mono text-rose-500">{fmtBRL(v.cmv)}</td>
                           <td className="px-3 py-2.5 text-right font-mono text-amber-600">{fmtBRL(v.comissao)}</td>
                           <td className="px-3 py-2.5 text-right font-mono text-amber-700">{fmtBRL(v.taxas)}</td>
-                          <td className={`px-3 py-2.5 text-right font-mono font-bold ${v.resultado_operacional >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{fmtBRL(v.resultado_operacional)}</td>
+                          <td className={`px-3 py-2.5 text-right font-mono font-bold ${v.resultado_operacional >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>{fmtBRL(v.resultado_operacional)}</td>
                           <td className="px-3 py-2.5 text-center font-mono">
                             <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
                               v.margem >= 35 
-                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
+                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/40' 
                                 : v.margem >= 15 
-                                ? 'bg-amber-50 text-amber-600 border border-amber-200' 
-                                : 'bg-rose-50 text-rose-600 border border-rose-200'
+                                ? 'bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/40' 
+                                : 'bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800/40'
                             }`}>
                               {(v.margem || 0).toFixed(1)}%
                             </span>
