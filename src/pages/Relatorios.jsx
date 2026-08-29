@@ -3313,7 +3313,7 @@ export default function Relatorios() {
                         <div className="text-xs font-bold text-zinc-500">
                           Total Acumulado:{" "}
                           <span className="font-mono text-sm text-[#3A4F4A] dark:text-[#EAF0EE]">
-                            {fmtBRL(drilldownData.reduce((acc, x) => acc + x.valor, 0))}
+                            {fmtBRL(Number(drilldownData.reduce((acc, x) => acc + (Number(x.valor) || 0), 0).toFixed(2)))}
                           </span>
                         </div>
                         <Button onClick={() => setDrilldownOpen(false)} className="bg-[#84A59D] hover:bg-[#6F9189] text-white text-xs px-4 h-9 rounded-lg">
@@ -3464,7 +3464,7 @@ export default function Relatorios() {
                           <>
                             <span>Total: <b>{filtered.length}</b> pagamentos</span>
                             <span className="w-px h-3 bg-[#84A59D]/30" />
-                            <span>Soma: <b>{fmtBRL(filtered.reduce((acc, p) => acc + p.valor, 0))}</b></span>
+                            <span>Soma: <b>{fmtBRL(Number(filtered.reduce((acc, p) => acc + (Number(p.valor) || 0), 0).toFixed(2)))}</b></span>
                           </>
                         );
                       })()}
@@ -4149,10 +4149,10 @@ export default function Relatorios() {
                 });
 
               // 2. Calcular totais dinâmicos baseados na lista filtrada
-              const totalFaturamento = filteredServicos.filter(s => s.status === "concluido").reduce((acc, s) => acc + s.valor, 0);
+              const totalFaturamento = Number(filteredServicos.filter(s => s.status === "concluido").reduce((acc, s) => acc + (Number(s.valor) || 0), 0).toFixed(2));
               const totalQuantidade = filteredServicos.filter(s => s.status === "concluido").length;
               const totalDuracao = filteredServicos.filter(s => s.status === "concluido").reduce((acc, s) => acc + (s.duracao || 0), 0);
-              const ticketMedio = totalQuantidade > 0 ? (totalFaturamento / totalQuantidade) : 0;
+              const ticketMedio = totalQuantidade > 0 ? Number((totalFaturamento / totalQuantidade).toFixed(2)) : 0;
 
               // 3. Agrupamentos para o painel lateral de desempenho (breakdowns)
               const porColab = {};
