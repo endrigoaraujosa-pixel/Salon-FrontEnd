@@ -15,7 +15,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "../com
 import { 
   Package, PlusCircle, ClipboardCheck, ArrowUpRight, 
   AlertTriangle, DollarSign, TrendingUp, History, 
-  ArrowRight, Layers, CheckCircle2, Search, ArrowDownRight, RefreshCw, Eye, ArrowUp, ArrowDown, HelpCircle, FileText
+  ArrowRight, Layers, CheckCircle2, Search, ArrowDownRight, RefreshCw, Eye, ArrowUp, ArrowDown, HelpCircle, FileText, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -43,8 +43,11 @@ export default function Estoque() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [produtos, setProdutos] = useState([]);
+  const [produtosMovimentacao, setProdutosMovimentacao] = useState([]);
   const [movimentacoes, setMovimentacoes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0, totalPages: 1 });
+  const [stockSummary, setStockSummary] = useState({ totalProdutos: 0, totalItens: 0, totalValor: 0, alertaBaixoEstoque: 0 });
 
   // Filtros na listagem
   const [productSearch, setProductSearch] = useState("");
@@ -64,17 +67,20 @@ export default function Estoque() {
   const [loadingKardex, setLoadingKardex] = useState(false);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    const timer = setTimeout(() => loadData(1), productSearch ? 300 : 0);
+    return () => clearTimeout(timer);
+  }, [productSearch, onlyLowStock]);
 
-  const loadData = async () => {
+  const loadData = async (page = 1) => {
     setLoading(true);
     try {
       const [prodRes, movRes] = await Promise.all([
-        http.get("/produtos"),
+        http.get("/produtos", { params: { paginate: true, page, limit: 25, search: productSearch, only_low_stock: onlyLowStock } }),
         http.get("/estoque/movimentacoes")
       ]);
-      setProdutos(prodRes.data.filter(p => p.deletado !== "S"));
+      setProdutos(prodRes.data.data || []);
+      setPagination(prodRes.data.pagination || { page: 1, limit: 25, total: 0, totalPages: 1 });
+      setStockSummary(prodRes.data.summary || { totalProdutos: 0, totalItens: 0, totalValor: 0, alertaBaixoEstoque: 0 });
       setMovimentacoes(movRes.data.slice(0, 10)); // pega as 10 mais recentes para um histórico mais rico
     } catch (error) {
       toast.error("Erro ao carregar dados do painel de estoque.");
@@ -102,12 +108,20 @@ export default function Estoque() {
     }
   }, [formMov.tipo, movimentacaoOpen]);
 
-  const handleOpenMov = (prod = null) => {
+  const handleOpenMov = async (prod = null) => {
     setFormMov({
       ...defaultMovForm,
       produto_id: prod ? prod.id : ""
     });
     setMovimentacaoOpen(true);
+    if (produtosMovimentacao.length === 0) {
+      try {
+        const res = await http.get("/produtos");
+        setProdutosMovimentacao(res.data.filter(p => p.deletado !== "S"));
+      } catch (error) {
+        toast.error("Erro ao carregar produtos para a movimentação.");
+      }
+    }
   };
 
   const openKardex = async (p) => {
@@ -159,36 +173,13 @@ export default function Estoque() {
   };
 
   // Cálculos do painel
-  const totalItens = produtos.reduce((sum, p) => {
-    const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
-    const equivalentQty = qtyPerUnit > 0 ? (Number(p.quantidade_estoque || 0) / qtyPerUnit) : Number(p.quantidade_estoque || 0);
-    return sum + equivalentQty;
-  }, 0);
-
-  const totalValor = produtos.reduce((sum, p) => {
-    const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
-    const cost = qtyPerUnit > 0 ? (Number(p.custo_unitario || 0) / qtyPerUnit) : Number(p.custo_unitario || 0);
-    return sum + ((p.quantidade_estoque || 0) * cost);
-  }, 0);
-
-  const alertaBaixoEstoque = produtos.filter(p => p.quantidade_estoque <= p.estoque_minimo).length;
-
-  // Filtragem dos produtos para o painel de status
-  const filteredProducts = produtos.filter(p => {
-    const matchesSearch = p.nome.toLowerCase().includes(productSearch.toLowerCase()) || 
-                          (p.fornecedor && p.fornecedor.toLowerCase().includes(productSearch.toLowerCase()));
-    
-    if (onlyLowStock) {
-      return matchesSearch && (p.quantidade_estoque <= p.estoque_minimo);
-    }
-    return matchesSearch;
-  });
+  const { totalItens, totalValor, alertaBaixoEstoque, totalProdutos } = stockSummary;
+  const selectedProduct = [...produtosMovimentacao, ...produtos].find(p => p.id === formMov.produto_id);
 
   const canMovimentar = user?.role === 'admin' || user?.perfil?.permissoes?.['estoque.movimentar'] === true || user?.perfil?.permissoes?.acoes?.['estoque.movimentar'];
   const canInventariar = user?.role === 'admin' || user?.perfil?.permissoes?.['estoque.inventariar'] === true || user?.perfil?.permissoes?.acoes?.['estoque.inventariar'];
   const canEntrada = user?.role === 'admin' || user?.perfil?.permissoes?.['estoque.entrada'] === true || user?.perfil?.permissoes?.acoes?.['estoque.entrada'];
   const canAjustar = user?.role === 'admin' || user?.perfil?.permissoes?.['estoque.ajustar'] === true;
-  const selectedProduct = produtos.find(p => p.id === formMov.produto_id);
 
   return (
     <TooltipProvider delayDuration={150}>
@@ -220,7 +211,7 @@ export default function Estoque() {
                 <div className="font-display text-2xl sm:text-3xl font-extrabold mt-1 text-zinc-900 dark:text-zinc-50 tracking-tight">
                   {(totalItens || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })} <span className="text-sm font-normal text-zinc-400">itens</span>
                 </div>
-                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1.5 font-medium">{produtos.length} produtos catalogados</p>
+                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1.5 font-medium">{totalProdutos} produtos catalogados</p>
               </div>
               <div className="p-2.5 sm:p-3 bg-[#EAF0EE] dark:bg-[#1a2e2a] text-[#3A4F4A] dark:text-[#84A59D] rounded-2xl">
                 <Layers className="w-6 h-6" />
@@ -330,14 +321,14 @@ export default function Estoque() {
                         Carregando produtos...
                       </TableCell>
                     </TableRow>
-                  ) : filteredProducts.length === 0 ? (
+                  ) : produtos.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-16 text-zinc-400 dark:text-zinc-500 font-semibold">
                         Nenhum produto encontrado.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredProducts.map((p) => {
+                    produtos.map((p) => {
                       const baixo = p.quantidade_estoque < p.estoque_minimo;
                       const proximo = p.quantidade_estoque >= p.estoque_minimo && p.quantidade_estoque <= p.estoque_minimo * 1.2;
                       const pct = p.estoque_minimo > 0 ? (p.quantidade_estoque / p.estoque_minimo) * 100 : 100;
@@ -441,6 +432,22 @@ export default function Estoque() {
                 </TableBody>
               </Table>
             </div>
+            {pagination.totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-900/20">
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Exibindo <strong>{Math.min(pagination.total, (pagination.page - 1) * pagination.limit + 1)}</strong>–<strong>{Math.min(pagination.total, pagination.page * pagination.limit)}</strong> de <strong>{pagination.total}</strong>
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => loadData(pagination.page - 1)} disabled={pagination.page === 1 || loading} className="h-9 px-3 text-xs">
+                    <ChevronLeft className="w-4 h-4" /> Anterior
+                  </Button>
+                  <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300 px-1">{pagination.page} / {pagination.totalPages}</span>
+                  <Button variant="outline" size="sm" onClick={() => loadData(pagination.page + 1)} disabled={pagination.page === pagination.totalPages || loading} className="h-9 px-3 text-xs">
+                    Próxima <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </Card>
         </div>
 
@@ -671,7 +678,7 @@ export default function Estoque() {
             <div className="space-y-1.5">
               <Label className="font-bold text-xs text-zinc-500 uppercase tracking-wider">Produto *</Label>
               <SearchableSelect
-                options={produtos.map(p => ({
+                options={(produtosMovimentacao.length > 0 ? produtosMovimentacao : produtos).map(p => ({
                   value: p.id,
                   label: `${p.nome} (Saldo: ${p.quantidade_estoque} ${p.unidade_medida_insumo || p.unidade_medida || 'un'})`
                 }))}
