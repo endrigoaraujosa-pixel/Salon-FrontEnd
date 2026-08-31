@@ -1240,9 +1240,9 @@ export default function Produtos() {
 
       {/* Dialog Kardex (Histórico do Produto) */}
       <Dialog open={kardexOpen} onOpenChange={setKardexOpen}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-4xl p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-950 shadow-2xl rounded-2xl border-0" style={{ maxHeight: "90vh" }}>
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] sm:w-[calc(100vw-4rem)] sm:max-w-[90rem] p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-950 shadow-2xl rounded-2xl border-0" style={{ maxHeight: "90vh" }}>
           {/* Header */}
-          <div className="px-6 py-5 border-b border-zinc-150 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20 shrink-0">
+          <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-zinc-150 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20 shrink-0">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-3 text-lg font-bold text-zinc-850 dark:text-zinc-100">
                 <div className="p-2 bg-zinc-100 dark:bg-zinc-900 text-[#3A4F4A] dark:text-[#84A59D] rounded-xl">
@@ -1258,10 +1258,10 @@ export default function Produtos() {
 
           {/* Product Overview Card in Kardex */}
           {kardexProduct && (
-            <div className="px-6 py-4 bg-zinc-50/30 dark:bg-zinc-900/10 border-b border-zinc-150 dark:border-zinc-850 grid grid-cols-1 sm:grid-cols-3 gap-4 shrink-0">
-              <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Estoque Atual</span>
-                <div className="font-mono text-base font-bold mt-0.5 text-zinc-800 dark:text-zinc-200">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 bg-zinc-50/30 dark:bg-zinc-900/10 border-b border-zinc-150 dark:border-zinc-850 grid grid-cols-3 gap-2 sm:gap-4 shrink-0">
+              <div className="bg-white dark:bg-zinc-900 p-2.5 sm:p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 min-w-0">
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Estoque Atual</span>
+                <div className="font-mono text-xs sm:text-base font-bold mt-0.5 text-zinc-800 dark:text-zinc-200 break-words">
                   {(() => {
                     const qty = Number((kardexProduct.quantidade_estoque || 0).toFixed(3));
                     const qtyPerUnit = Number(kardexProduct.quantidade_por_unidade || 0);
@@ -1274,16 +1274,16 @@ export default function Produtos() {
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Custo Unitário</span>
-                <div className="font-mono text-base font-bold mt-0.5 text-zinc-800 dark:text-zinc-200">
+              <div className="bg-white dark:bg-zinc-900 p-2.5 sm:p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 min-w-0">
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Custo Unitário</span>
+                <div className="font-mono text-xs sm:text-base font-bold mt-0.5 text-zinc-800 dark:text-zinc-200 break-words">
                   {fmtBRL(kardexProduct.custo_unitario)}
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Valor em Estoque</span>
-                <div className="font-mono text-base font-bold mt-0.5 text-emerald-600 dark:text-emerald-500">
+              <div className="bg-white dark:bg-zinc-900 p-2.5 sm:p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 min-w-0">
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Valor em Estoque</span>
+                <div className="font-mono text-xs sm:text-base font-bold mt-0.5 text-emerald-600 dark:text-emerald-500 break-words">
                   {fmtBRL((kardexProduct.quantidade_estoque || 0) * (kardexProduct.custo_unitario || 0))}
                 </div>
               </div>
@@ -1291,7 +1291,7 @@ export default function Produtos() {
           )}
 
           {/* Movements list inside Kardex */}
-          <div className="flex-1 overflow-y-auto p-6 min-h-60 bg-zinc-50/10 dark:bg-zinc-950">
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-zinc-50/10 dark:bg-zinc-950">
             {loadingKardex ? (
               <div className="flex flex-col items-center justify-center py-20 text-zinc-450 dark:text-zinc-500 gap-3">
                 <RefreshCw className="w-8 h-8 animate-spin text-[#84A59D]" />
@@ -1304,17 +1304,17 @@ export default function Produtos() {
                 <p className="text-xs mt-1">Este produto ainda não registrou entradas, saídas ou ajustes no estoque.</p>
               </div>
             ) : (
-              <div className="border border-zinc-250 dark:border-zinc-850 rounded-xl overflow-hidden bg-white dark:bg-zinc-900">
-                <Table>
+              <div className="border border-zinc-250 dark:border-zinc-850 rounded-xl overflow-x-auto bg-white dark:bg-zinc-900">
+                <Table className="w-full min-w-0 md:min-w-[820px] table-fixed">
                   <TableHeader className="bg-zinc-50 dark:bg-zinc-900/50">
                     <TableRow>
-                      <TableHead className="font-semibold">Data / Hora</TableHead>
-                      <TableHead className="text-center font-semibold">Tipo</TableHead>
-                      <TableHead className="text-right font-semibold">Qtd Movimentada</TableHead>
-                      <TableHead className="text-right font-semibold">Estoque Anterior</TableHead>
-                      <TableHead className="text-right font-semibold">Estoque Atual</TableHead>
-                      <TableHead className="font-semibold">Motivo / Documento</TableHead>
-                      <TableHead className="font-semibold">Responsável</TableHead>
+                      <TableHead className="w-[30%] md:w-36 px-2 md:px-4 font-semibold whitespace-nowrap"><span className="md:hidden">Data</span><span className="hidden md:inline">Data / Hora</span></TableHead>
+                      <TableHead className="w-[20%] md:w-24 px-1 md:px-4 text-center font-semibold">Tipo</TableHead>
+                      <TableHead className="w-[25%] md:w-36 px-2 md:px-4 text-right font-semibold whitespace-nowrap"><span className="md:hidden">Qtd.</span><span className="hidden md:inline">Qtd. Movimentada</span></TableHead>
+                      <TableHead className="hidden md:table-cell md:w-32 text-right font-semibold whitespace-nowrap">Estoque Ant.</TableHead>
+                      <TableHead className="w-[25%] md:w-32 px-2 md:px-4 text-right font-semibold whitespace-nowrap"><span className="md:hidden">Saldo</span><span className="hidden md:inline">Estoque Atual</span></TableHead>
+                      <TableHead className="hidden md:table-cell font-semibold">Motivo / Documento</TableHead>
+                      <TableHead className="hidden md:table-cell md:w-32 font-semibold">Responsável</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1338,15 +1338,16 @@ export default function Produtos() {
 
                       return (
                         <TableRow key={m.id} className="hover:bg-zinc-50/50 transition-colors">
-                          <TableCell className="font-mono text-xs whitespace-nowrap text-zinc-500">
+                          <TableCell className="px-2 md:px-4 font-mono text-xs text-zinc-500">
                             {new Date(m.createdAt).toLocaleString("pt-BR")}
+                            {m.motivo && <div className="md:hidden mt-1 truncate font-sans text-[10px] text-zinc-400" title={m.motivo}>{m.motivo}</div>}
                           </TableCell>
-                          <TableCell className="text-center">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${typeBadge}`}>
+                          <TableCell className="px-1 md:px-4 text-center">
+                            <span className={`inline-block max-w-full truncate px-1.5 md:px-2 py-0.5 rounded-full text-[9px] md:text-xs font-semibold ${typeBadge}`} title={typeText}>
                               {typeText}
                             </span>
                           </TableCell>
-                          <TableCell className={`text-right font-mono font-bold whitespace-nowrap ${
+                          <TableCell className={`px-2 md:px-4 text-right font-mono text-xs md:text-sm font-bold whitespace-normal md:whitespace-nowrap ${
                             m.quantidade > 0 
                               ? "text-emerald-600 dark:text-emerald-500" 
                               : m.quantidade < 0 
@@ -1355,16 +1356,16 @@ export default function Produtos() {
                           }`}>
                             {m.quantidade > 0 ? "+" : ""}{Number(m.quantidade.toFixed(3))} {unitLabel}
                           </TableCell>
-                          <TableCell className="text-right font-mono text-zinc-500 whitespace-nowrap">
+                          <TableCell className="hidden md:table-cell text-right font-mono text-zinc-500 whitespace-nowrap">
                             {Number(m.quantidade_anterior.toFixed(3))} {unitLabel}
                           </TableCell>
-                          <TableCell className="text-right font-mono font-bold text-zinc-800 dark:text-zinc-200 whitespace-nowrap">
+                          <TableCell className="px-2 md:px-4 text-right font-mono text-xs md:text-sm font-bold text-zinc-800 dark:text-zinc-200 whitespace-normal md:whitespace-nowrap">
                             {Number(m.quantidade_atual.toFixed(3))} {unitLabel}
                           </TableCell>
-                          <TableCell className="text-xs text-zinc-600 dark:text-zinc-350 max-w-xs truncate" title={m.motivo}>
+                          <TableCell className="hidden md:table-cell text-xs text-zinc-600 dark:text-zinc-350 truncate" title={m.motivo}>
                             {m.motivo || "-"}
                           </TableCell>
-                          <TableCell className="text-xs text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
+                          <TableCell className="hidden md:table-cell text-xs text-zinc-700 dark:text-zinc-300 truncate" title={m.usuario_nome || "Sistema"}>
                             {m.usuario_nome || "Sistema"}
                           </TableCell>
                         </TableRow>
@@ -1377,7 +1378,7 @@ export default function Produtos() {
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-zinc-150 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20 shrink-0 flex justify-end">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-zinc-150 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20 shrink-0 flex justify-end">
             <Button variant="outline" className="h-10 font-bold" onClick={() => setKardexOpen(false)}>
               Fechar
             </Button>

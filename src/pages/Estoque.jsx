@@ -192,7 +192,7 @@ export default function Estoque() {
 
   return (
     <TooltipProvider delayDuration={150}>
-      <div className="p-4 sm:p-6 lg:p-8 fade-in min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 max-w-7xl mx-auto">
+      <div className="p-3 sm:p-6 lg:p-8 fade-in min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 max-w-7xl mx-auto">
       
       {/* Header */}
       <PageHeader 
@@ -203,53 +203,53 @@ export default function Estoque() {
             onClick={loadData} 
             disabled={loading}
             variant="outline" 
-            className="flex items-center gap-1.5 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 h-10"
+            className="flex items-center gap-1.5 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 h-10 px-3"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Atualizar
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> <span className="hidden sm:inline">Atualizar</span>
           </Button>
         } 
       />
 
       {/* Indicadores KPI */}
-      <div className={`grid grid-cols-1 ${canAjustar ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-1"} gap-6 mb-8 mt-4`}>
+        <div className={`grid grid-cols-1 ${canAjustar ? "min-[420px]:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-1"} gap-3 sm:gap-6 mb-5 sm:mb-8 mt-4`}>
         {canAjustar && (
           <>
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs flex items-center justify-between hover:shadow-md transition-shadow">
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-6 shadow-xs flex items-center justify-between hover:shadow-md transition-shadow">
               <div>
                 <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Saldo Total de Itens</span>
-                <div className="font-display text-3xl font-extrabold mt-1 text-zinc-900 dark:text-zinc-50 tracking-tight">
+                <div className="font-display text-2xl sm:text-3xl font-extrabold mt-1 text-zinc-900 dark:text-zinc-50 tracking-tight">
                   {(totalItens || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })} <span className="text-sm font-normal text-zinc-400">itens</span>
                 </div>
                 <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1.5 font-medium">{produtos.length} produtos catalogados</p>
               </div>
-              <div className="p-3 bg-[#EAF0EE] dark:bg-[#1a2e2a] text-[#3A4F4A] dark:text-[#84A59D] rounded-2xl">
+              <div className="p-2.5 sm:p-3 bg-[#EAF0EE] dark:bg-[#1a2e2a] text-[#3A4F4A] dark:text-[#84A59D] rounded-2xl">
                 <Layers className="w-6 h-6" />
               </div>
             </div>
 
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-xs flex items-center justify-between hover:shadow-md transition-shadow">
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-6 shadow-xs flex items-center justify-between hover:shadow-md transition-shadow">
               <div>
                 <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Valor Ativo em Estoque</span>
-                <div className="font-display text-3xl font-extrabold mt-1 text-[#3A4F4A] dark:text-[#EAF0EE] tracking-tight">
+                <div className="font-display text-2xl sm:text-3xl font-extrabold mt-1 text-[#3A4F4A] dark:text-[#EAF0EE] tracking-tight">
                   {fmtBRL(totalValor)}
                 </div>
                 <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1.5 font-medium">Preço de custo ponderado</p>
               </div>
-              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-500 rounded-2xl">
+              <div className="p-2.5 sm:p-3 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-500 rounded-2xl">
                 <DollarSign className="w-6 h-6" />
               </div>
             </div>
           </>
         )}
 
-        <div className={`border rounded-2xl p-6 shadow-xs flex items-center justify-between hover:shadow-md transition-all ${
+        <div className={`border rounded-2xl p-4 sm:p-6 shadow-xs flex items-center justify-between hover:shadow-md transition-all ${
           alertaBaixoEstoque > 0 
             ? "bg-rose-50/20 dark:bg-rose-950/5 border-rose-200 dark:border-rose-900/50" 
             : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
         }`}>
           <div>
             <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Alertas de Baixo Estoque</span>
-            <div className={`font-display text-3xl font-extrabold mt-1 tracking-tight ${
+            <div className={`font-display text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight ${
               alertaBaixoEstoque > 0 ? "text-rose-600 dark:text-rose-400" : "text-zinc-900 dark:text-zinc-50"
             }`}>
               {alertaBaixoEstoque}
@@ -260,7 +260,7 @@ export default function Estoque() {
                 : "Todos os níveis estão seguros"}
             </p>
           </div>
-          <div className={`p-3 rounded-2xl ${
+          <div className={`p-2.5 sm:p-3 rounded-2xl ${
             alertaBaixoEstoque > 0 
               ? "bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400" 
               : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
@@ -271,12 +271,12 @@ export default function Estoque() {
       </div>
 
       {/* Grid de dois painéis de controle principais */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-8">
         
         {/* Painel Esquerdo: Situação de Estoque de Produtos */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6 order-2 lg:order-1">
           <Card className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">
-            <div className="px-6 py-5 border-b border-zinc-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-zinc-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
               <div>
                 <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-base flex items-center gap-2">
                   <Package className="w-5 h-5 text-[#84A59D]" />
@@ -287,7 +287,7 @@ export default function Estoque() {
             </div>
 
             {/* Barra de Busca e Filtros */}
-            <div className="p-6 bg-zinc-50/50 dark:bg-zinc-900/20 border-b border-zinc-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="p-4 sm:p-6 bg-zinc-50/50 dark:bg-zinc-900/20 border-b border-zinc-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
                 <Input 
@@ -298,7 +298,7 @@ export default function Estoque() {
                 />
               </div>
 
-              <div className="flex items-center gap-3 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 px-4 py-2 rounded-xl shrink-0">
+              <div className="flex items-center gap-3 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 px-4 py-2 rounded-xl shrink-0 w-full sm:w-auto">
                 <Switch 
                   id="only-low-stock"
                   checked={onlyLowStock}
@@ -312,14 +312,14 @@ export default function Estoque() {
 
             {/* Lista de Produtos */}
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="w-full min-w-0 md:min-w-[680px] table-fixed">
                 <TableHeader className="bg-zinc-50/50 dark:bg-zinc-900/40">
                   <TableRow>
-                    <TableHead className="font-bold">Produto</TableHead>
-                    <TableHead className="font-bold text-center">Nível / Status</TableHead>
-                    <TableHead className="font-bold text-right">Saldo Atual</TableHead>
-                    <TableHead className="font-bold text-right">Preço</TableHead>
-                    <TableHead className="w-[120px]"></TableHead>
+                      <TableHead className="w-[47%] md:w-auto px-3 sm:px-4 font-bold">Produto</TableHead>
+                      <TableHead className="hidden md:table-cell font-bold text-center">Nível / Status</TableHead>
+                      <TableHead className="w-[33%] md:w-auto px-2 sm:px-4 font-bold text-right">Saldo Atual</TableHead>
+                      <TableHead className="hidden sm:table-cell font-bold text-right">Preço</TableHead>
+                      <TableHead className="w-[20%] md:w-[120px] px-2 sm:px-4"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -358,11 +358,12 @@ export default function Estoque() {
                       
                       return (
                         <TableRow key={p.id} className="hover:bg-zinc-50/30 transition-colors">
-                          <TableCell className="py-4.5">
-                            <div className="font-bold text-zinc-900 dark:text-zinc-50">{p.nome}</div>
+                          <TableCell className="px-3 sm:px-4 py-3 sm:py-4.5">
+                            <div className="font-bold text-sm sm:text-base text-zinc-900 dark:text-zinc-50 truncate" title={p.nome}>{p.nome}</div>
                             {p.fornecedor && <div className="text-[10px] text-zinc-400 font-medium mt-0.5">{p.fornecedor}</div>}
+                            <div className={`md:hidden text-[9px] font-bold mt-1 ${statusTextColor}`}>{statusText}</div>
                           </TableCell>
-                          <TableCell className="align-middle">
+                          <TableCell className="hidden md:table-cell align-middle">
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <button 
@@ -389,7 +390,7 @@ export default function Estoque() {
                               </TooltipContent>
                             </Tooltip>
                           </TableCell>
-                          <TableCell className="text-right font-mono font-bold align-middle">
+                          <TableCell className="px-2 sm:px-4 text-right font-mono text-xs sm:text-sm font-bold align-middle">
                             <span className={
                               p.quantidade_estoque < 0
                                 ? "inline-block px-2 py-1 rounded bg-rose-50 text-rose-650 dark:bg-rose-950/40 dark:text-rose-400 font-extrabold border border-rose-250 text-xs"
@@ -408,11 +409,11 @@ export default function Estoque() {
                               })()}
                             </span>
                           </TableCell>
-                          <TableCell className="text-right font-mono font-semibold text-zinc-800 dark:text-zinc-200 align-middle">
+                          <TableCell className="hidden sm:table-cell text-right font-mono font-semibold text-zinc-800 dark:text-zinc-200 align-middle">
                             {fmtBRL(p.preco_venda)}
                           </TableCell>
-                          <TableCell className="align-middle">
-                            <div className="flex justify-end gap-1">
+                          <TableCell className="px-2 sm:px-4 align-middle">
+                            <div className="flex justify-end gap-0.5 sm:gap-1">
                               <Button 
                                 size="sm" 
                                 variant="ghost" 
@@ -444,20 +445,20 @@ export default function Estoque() {
         </div>
 
         {/* Painel Direito: Ações Rápidas & Histórico */}
-        <div className="space-y-6">
+        <div className="space-y-5 sm:space-y-6 order-1 lg:order-2">
           
           {/* Card de Ações Rápidas */}
           <Card className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">
-            <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800">
+            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-zinc-200 dark:border-zinc-800">
               <h3 className="font-bold text-zinc-800 dark:text-zinc-200 text-sm">Ações Operacionais</h3>
             </div>
-            <CardContent className="p-6 space-y-4">
+            <CardContent className="p-3 sm:p-6 space-y-2 sm:space-y-4">
                 
                 {/* Lançar Movimentação */}
                 {canMovimentar && (
                   <div 
                     onClick={() => handleOpenMov()}
-                    className="group border border-zinc-200 dark:border-zinc-800 hover:border-[#84A59D]/40 rounded-xl p-4 flex items-center justify-between cursor-pointer hover:bg-zinc-50/30 dark:hover:bg-zinc-950/20 transition-all duration-200"
+                    className="group border border-zinc-200 dark:border-zinc-800 hover:border-[#84A59D]/40 rounded-xl p-3 sm:p-4 flex items-center justify-between cursor-pointer hover:bg-zinc-50/30 dark:hover:bg-zinc-950/20 transition-all duration-200"
                   >
                     <div className="flex items-center gap-3">
                       <div className="p-2.5 bg-[#EAF0EE] dark:bg-[#1a2e2a] text-[#3A4F4A] dark:text-[#84A59D] rounded-xl group-hover:scale-105 transition-transform">
@@ -482,7 +483,7 @@ export default function Estoque() {
                             </TooltipContent>
                           </Tooltip>
                         </div>
-                        <p className="text-[10px] text-zinc-400 dark:text-zinc-400 font-semibold mt-0.5 uppercase tracking-wider">Saída, Ajuste, Perda ou Consumo</p>
+                        <p className="hidden sm:block text-[10px] text-zinc-400 dark:text-zinc-400 font-semibold mt-0.5 uppercase tracking-wider">Saída, Ajuste, Perda ou Consumo</p>
                       </div>
                     </div>
                     <ArrowRight className="w-4 h-4 text-zinc-400 group-hover:text-[#84A59D] transition-colors" />
@@ -498,7 +499,7 @@ export default function Estoque() {
                       toast.error("Acesso negado: Permissão insuficiente para registrar entradas de produtos.");
                     }
                   }}
-                  className={`group border rounded-xl p-4 flex items-center justify-between transition-all duration-200 ${
+                  className={`group border rounded-xl p-3 sm:p-4 flex items-center justify-between transition-all duration-200 ${
                     canEntrada
                       ? "border-zinc-200 dark:border-zinc-800 hover:border-[#3A4F4A]/40 hover:bg-zinc-50/30 dark:hover:bg-zinc-950/20 cursor-pointer"
                       : "border-zinc-150 dark:border-zinc-900 opacity-60 bg-zinc-50/10 cursor-not-allowed"
@@ -527,7 +528,7 @@ export default function Estoque() {
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      <p className="text-[10px] text-zinc-400 dark:text-zinc-400 font-semibold mt-0.5 uppercase tracking-wider">Compras & Fornecedores</p>
+                      <p className="hidden sm:block text-[10px] text-zinc-400 dark:text-zinc-400 font-semibold mt-0.5 uppercase tracking-wider">Compras & Fornecedores</p>
                     </div>
                   </div>
                   <ArrowRight className={`w-4 h-4 transition-colors ${canEntrada ? "text-zinc-400 group-hover:text-[#3A4F4A]" : "text-zinc-300 dark:text-zinc-700"}`} />
@@ -542,7 +543,7 @@ export default function Estoque() {
                       toast.error("Acesso negado: Permissão insuficiente para realizar inventário.");
                     }
                   }}
-                  className={`group border rounded-xl p-4 flex items-center justify-between cursor-pointer transition-all duration-200 ${
+                  className={`group border rounded-xl p-3 sm:p-4 flex items-center justify-between cursor-pointer transition-all duration-200 ${
                     canInventariar 
                       ? "border-zinc-200 dark:border-zinc-800 hover:border-[#3A4F4A]/40 hover:bg-zinc-50/30 dark:hover:bg-zinc-950/20" 
                       : "border-zinc-150 dark:border-zinc-900 opacity-60 bg-zinc-50/10 cursor-not-allowed"
@@ -574,7 +575,7 @@ export default function Estoque() {
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      <p className="text-[10px] text-zinc-400 dark:text-zinc-400 font-semibold mt-0.5 uppercase tracking-wider">Lote & Auditoria</p>
+                      <p className="hidden sm:block text-[10px] text-zinc-400 dark:text-zinc-400 font-semibold mt-0.5 uppercase tracking-wider">Lote & Auditoria</p>
                     </div>
                   </div>
                   <ArrowRight className="w-4 h-4 text-zinc-400 group-hover:text-[#3A4F4A] transition-colors" />
@@ -584,7 +585,7 @@ export default function Estoque() {
 
           {/* Histórico Recente de Movimentações */}
           <Card className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">
-            <div className="px-6 py-5 border-b border-zinc-150 dark:border-zinc-850 flex items-center justify-between">
+            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-zinc-150 dark:border-zinc-850 flex items-center justify-between">
               <h3 className="font-bold text-zinc-800 dark:text-zinc-200 text-sm flex items-center gap-1.5">
                 <History className="w-4 h-4 text-[#84A59D]" />
                 Histórico Recente
@@ -599,7 +600,7 @@ export default function Estoque() {
               </Button>
             </div>
             
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-800 max-h-[380px] overflow-y-auto">
+            <div className="divide-y divide-zinc-100 dark:divide-zinc-800 max-h-[280px] sm:max-h-[380px] overflow-y-auto">
               {movimentacoes.length === 0 ? (
                 <div className="p-8 text-center text-xs text-zinc-400 font-semibold">
                   Nenhuma movimentação no período.
@@ -777,10 +778,10 @@ export default function Estoque() {
 
       {/* Dialog Kardex (Histórico do Produto) */}
       <Dialog open={kardexOpen} onOpenChange={setKardexOpen}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-4xl p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-950 shadow-2xl rounded-2xl border-0" style={{ maxHeight: "90vh" }}>
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] sm:w-[calc(100vw-4rem)] sm:max-w-[90rem] p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-950 shadow-2xl rounded-2xl border-0" style={{ maxHeight: "90vh" }}>
           
           {/* Header */}
-          <div className="px-6 py-5 border-b border-zinc-150 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20 shrink-0">
+          <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-zinc-150 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20 shrink-0">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-3 text-lg font-bold text-zinc-850 dark:text-zinc-100">
                 <div className="p-2 bg-zinc-100 dark:bg-zinc-900 text-[#3A4F4A] dark:text-[#84A59D] rounded-xl animate-pulse-subtle">
@@ -796,10 +797,10 @@ export default function Estoque() {
 
           {/* KPIs Consolidados do Kardex */}
           {kardexProduct && (
-            <div className="px-6 py-4 bg-zinc-50/30 dark:bg-zinc-900/10 border-b border-zinc-150 dark:border-zinc-850 grid grid-cols-1 sm:grid-cols-3 gap-4 shrink-0">
-              <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-550 tracking-wider">Estoque Atual</span>
-                <div className="font-mono text-base font-bold mt-0.5 text-zinc-800 dark:text-zinc-250">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 bg-zinc-50/30 dark:bg-zinc-900/10 border-b border-zinc-150 dark:border-zinc-850 grid grid-cols-3 gap-2 sm:gap-4 shrink-0">
+              <div className="bg-white dark:bg-zinc-900 p-2.5 sm:p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 min-w-0">
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-550 tracking-wider">Estoque Atual</span>
+                <div className="font-mono text-xs sm:text-base font-bold mt-0.5 text-zinc-800 dark:text-zinc-250 break-words">
                   {(() => {
                     const qty = Number((kardexProduct.quantidade_estoque || 0).toFixed(3));
                     const formattedQty = qty.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 });
@@ -814,16 +815,16 @@ export default function Estoque() {
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-550 tracking-wider">Custo Unitário</span>
-                <div className="font-mono text-base font-bold mt-0.5 text-zinc-800 dark:text-zinc-250">
+              <div className="bg-white dark:bg-zinc-900 p-2.5 sm:p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 min-w-0">
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-550 tracking-wider">Custo Unitário</span>
+                <div className="font-mono text-xs sm:text-base font-bold mt-0.5 text-zinc-800 dark:text-zinc-250 break-words">
                   {fmtBRL(kardexProduct.custo_unitario)}
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-550 tracking-wider">Valor em Estoque</span>
-                <div className="font-mono text-base font-bold mt-0.5 text-emerald-600 dark:text-emerald-500">
+              <div className="bg-white dark:bg-zinc-900 p-2.5 sm:p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 min-w-0">
+                <span className="text-[9px] sm:text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-550 tracking-wider">Valor em Estoque</span>
+                <div className="font-mono text-xs sm:text-base font-bold mt-0.5 text-emerald-600 dark:text-emerald-500 break-words">
                   {fmtBRL((kardexProduct.quantidade_estoque || 0) * (kardexProduct.custo_unitario || 0))}
                 </div>
               </div>
@@ -831,7 +832,7 @@ export default function Estoque() {
           )}
 
           {/* Listagem de movimentações do Kardex */}
-          <div className="flex-1 overflow-y-auto p-6 min-h-60 bg-zinc-50/10 dark:bg-zinc-950">
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-zinc-50/10 dark:bg-zinc-950">
             {loadingKardex ? (
               <div className="flex flex-col items-center justify-center py-20 text-zinc-400 gap-3">
                 <RefreshCw className="w-8 h-8 animate-spin text-[#84A59D]" />
@@ -844,17 +845,17 @@ export default function Estoque() {
                 <p className="text-xs mt-1">Este produto ainda não registrou entradas, saídas ou ajustes.</p>
               </div>
             ) : (
-              <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-900 shadow-xs">
-                <Table>
+              <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-x-auto bg-white dark:bg-zinc-900 shadow-xs">
+                <Table className="w-full min-w-0 md:min-w-[820px] table-fixed">
                   <TableHeader className="bg-zinc-50 dark:bg-zinc-900/50">
                     <TableRow>
-                      <TableHead className="font-semibold">Data / Hora</TableHead>
-                      <TableHead className="text-center font-semibold">Tipo</TableHead>
-                      <TableHead className="text-right font-semibold">Quantidade</TableHead>
-                      <TableHead className="text-right font-semibold">Saldo Ant.</TableHead>
-                      <TableHead className="text-right font-semibold">Saldo Atual</TableHead>
-                      <TableHead className="font-semibold">Motivo</TableHead>
-                      <TableHead className="font-semibold">Responsável</TableHead>
+                      <TableHead className="w-[30%] md:w-36 px-2 md:px-4 font-semibold whitespace-nowrap"><span className="md:hidden">Data</span><span className="hidden md:inline">Data / Hora</span></TableHead>
+                      <TableHead className="w-[20%] md:w-24 px-1 md:px-4 text-center font-semibold">Tipo</TableHead>
+                      <TableHead className="w-[25%] md:w-36 px-2 md:px-4 text-right font-semibold whitespace-nowrap"><span className="md:hidden">Qtd.</span><span className="hidden md:inline">Quantidade</span></TableHead>
+                      <TableHead className="hidden md:table-cell md:w-32 text-right font-semibold whitespace-nowrap">Saldo Ant.</TableHead>
+                      <TableHead className="w-[25%] md:w-32 px-2 md:px-4 text-right font-semibold whitespace-nowrap"><span className="md:hidden">Saldo</span><span className="hidden md:inline">Saldo Atual</span></TableHead>
+                      <TableHead className="hidden md:table-cell font-semibold">Motivo</TableHead>
+                      <TableHead className="hidden md:table-cell md:w-32 font-semibold">Responsável</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -878,15 +879,16 @@ export default function Estoque() {
 
                       return (
                         <TableRow key={m.id} className="hover:bg-zinc-50/50 transition-colors">
-                          <TableCell className="font-mono text-xs whitespace-nowrap text-zinc-500">
+                          <TableCell className="px-2 md:px-4 font-mono text-xs text-zinc-500">
                             {new Date(m.createdAt).toLocaleString("pt-BR")}
+                            {m.motivo && <div className="md:hidden mt-1 truncate font-sans text-[10px] text-zinc-400" title={m.motivo}>{m.motivo}</div>}
                           </TableCell>
-                          <TableCell className="text-center">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${typeBadge}`}>
+                          <TableCell className="px-1 md:px-4 text-center">
+                            <span className={`inline-block max-w-full truncate px-1.5 md:px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold uppercase tracking-wider ${typeBadge}`} title={typeText}>
                               {typeText}
                             </span>
                           </TableCell>
-                          <TableCell className={`text-right font-mono font-bold whitespace-nowrap ${
+                          <TableCell className={`px-2 md:px-4 text-right font-mono text-xs md:text-sm font-bold whitespace-normal md:whitespace-nowrap ${
                             m.quantidade > 0 
                               ? "text-emerald-600" 
                               : m.quantidade < 0 
@@ -895,16 +897,16 @@ export default function Estoque() {
                           }`}>
                             {m.quantidade > 0 ? "+" : ""}{(m.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })} {unitLabel}
                           </TableCell>
-                          <TableCell className="text-right font-mono text-zinc-500 whitespace-nowrap">
+                          <TableCell className="hidden md:table-cell text-right font-mono text-zinc-500 whitespace-nowrap">
                             {(m.quantidade_anterior || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })} {unitLabel}
                           </TableCell>
-                          <TableCell className="text-right font-mono font-bold text-zinc-800 dark:text-zinc-200 whitespace-nowrap">
+                          <TableCell className="px-2 md:px-4 text-right font-mono text-xs md:text-sm font-bold text-zinc-800 dark:text-zinc-200 whitespace-normal md:whitespace-nowrap">
                             {(m.quantidade_atual || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })} {unitLabel}
                           </TableCell>
-                          <TableCell className="text-xs text-zinc-650 dark:text-zinc-350 max-w-xs truncate" title={m.motivo}>
+                          <TableCell className="hidden md:table-cell text-xs text-zinc-650 dark:text-zinc-350 truncate" title={m.motivo}>
                             {m.motivo || "-"}
                           </TableCell>
-                          <TableCell className="text-xs text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
+                          <TableCell className="hidden md:table-cell text-xs text-zinc-700 dark:text-zinc-300 truncate" title={m.usuario_nome || "Sistema"}>
                             {m.usuario_nome || "Sistema"}
                           </TableCell>
                         </TableRow>
@@ -917,7 +919,7 @@ export default function Estoque() {
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-zinc-150 dark:border-zinc-850 bg-zinc-50/50 dark:bg-zinc-900/20 shrink-0 flex justify-end">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-zinc-150 dark:border-zinc-850 bg-zinc-50/50 dark:bg-zinc-900/20 shrink-0 flex justify-end">
             <Button variant="outline" className="h-10 font-bold border-zinc-250" onClick={() => setKardexOpen(false)}>
               Fechar
             </Button>
