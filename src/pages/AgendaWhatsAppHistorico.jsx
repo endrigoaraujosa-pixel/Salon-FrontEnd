@@ -4,6 +4,7 @@ import http from "../api";
 import { useAuth } from "../auth";
 import { formatAgendaDateTime, getAgendaTodayDate } from "../lib/date";
 import { Button } from "../components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
 import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { 
@@ -26,6 +27,8 @@ export default function AgendaWhatsAppHistorico() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [resendingId, setResendingId] = useState(null);
+  const [cancellationLog, setCancellationLog] = useState(null);
+  const [changingCancellation, setChangingCancellation] = useState(false);
   const [whatsappAtivo, setWhatsappAtivo] = useState(true);
   const [checkingActive, setCheckingActive] = useState(true);
 
@@ -130,6 +133,37 @@ export default function AgendaWhatsAppHistorico() {
     }
   };
 
+  const confirmCancellation = async () => {
+    if (!cancellationLog || changingCancellation) return;
+    setChangingCancellation(true);
+    const undo = ['Cancelado', 'CANC MANUAL'].includes(cancellationLog.status);
+    try {
+      await http.post(`/configuracoes/whatsapp/${undo ? 'desfazer-cancelamento' : 'cancelar'}/${cancellationLog.id}`);
+      toast.success(undo ? 'Cancelamento desfeito. Mensagem devolvida à fila de envio.' : 'Envio da mensagem cancelado.');
+      setCancellationLog(null);
+      setSelectedLog(null);
+      await fetchHistory(page);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Não foi possível alterar o envio.');
+    } finally {
+      setChangingCancellation(false);
+    }
+  };
+
+  const cancellationAction = (log) => {
+    if (!['Pendente', 'Falhou', 'Cancelado', 'CANC MANUAL'].includes(log.status)) return null;
+    const undo = ['Cancelado', 'CANC MANUAL'].includes(log.status);
+    return (
+      <Button variant="ghost" size="sm" disabled={resendingId === log.id || changingCancellation}
+        onClick={() => setCancellationLog(log)}
+        title={undo ? 'Desfazer cancelamento' : 'Cancelar Envio'}
+        className="h-8 px-2 text-xs text-zinc-600 dark:text-zinc-300 flex items-center gap-1">
+        {undo ? <RotateCcw className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+        {undo ? 'Desfazer cancelamento' : 'Cancelar Envio'}
+      </Button>
+    );
+  };
+
   const formatDateTime = (dateStr) => {
     return formatAgendaDateTime(dateStr);
   };
@@ -180,11 +214,11 @@ export default function AgendaWhatsAppHistorico() {
         </span>
       );
     }
-    if (s.startsWith("Cancelado")) {
+    if (s.startsWith("Cancelado") || s === "CANC MANUAL") {
       return (
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full bg-zinc-100 text-zinc-600 border border-zinc-250 dark:bg-zinc-900 dark:text-zinc-400 dark:border-zinc-800">
           <X className="w-3.5 h-3.5" />
-          Cancelado
+          {s === "CANC MANUAL" ? "CANC MANUAL" : "Cancelado"}
         </span>
       );
     }
@@ -292,6 +326,7 @@ export default function AgendaWhatsAppHistorico() {
                 <option value="Enviado">Enviado</option>
                 <option value="Falhou">Falhou</option>
                 <option value="Cancelado">Cancelado</option>
+                <option value="CANC MANUAL">CANC MANUAL</option>
               </select>
             </div>
 
@@ -399,6 +434,7 @@ export default function AgendaWhatsAppHistorico() {
                       <td className="p-4 pr-6 text-right">
                         <div className="flex items-center justify-end gap-1">
                           
+                          {['Cancelado', 'CANC MANUAL'].includes(log.status) && cancellationAction(log)}
                           {/* Action: Details */}
                           <Button
                             variant="ghost"
@@ -481,7 +517,8 @@ export default function AgendaWhatsAppHistorico() {
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                  <div className="flex flex-wrap justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                    {['Cancelado', 'CANC MANUAL'].includes(log.status) && cancellationAction(log)}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -668,7 +705,8 @@ export default function AgendaWhatsAppHistorico() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 flex justify-end gap-2">
+            <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800 flex flex-wrap justify-end gap-2">
+              {cancellationAction(selectedLog)}
               <Button 
                 onClick={() => setSelectedLog(null)}
                 className="h-9 text-xs rounded-lg px-4"
@@ -693,6 +731,26 @@ export default function AgendaWhatsAppHistorico() {
         </div>
       )}
 
+      <Dialog open={!!cancellationLog} onOpenChange={(open) => { if (!open && !changingCancellation) setCancellationLog(null); }}>
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
+          <DialogHeader>
+            <DialogTitle className="text-zinc-900 dark:text-zinc-50">
+              {['Cancelado', 'CANC MANUAL'].includes(cancellationLog?.status) ? 'Desfazer cancelamento' : 'Cancelar envio da mensagem'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-zinc-650 dark:text-zinc-400 leading-relaxed">
+            {['Cancelado', 'CANC MANUAL'].includes(cancellationLog?.status) ? (
+              <p>Deseja desfazer o cancelamento? A mensagem voltará à fila automática e poderá ser enviada na próxima execução se o horário programado já tiver passado.</p>
+            ) : (
+              <p>Deseja cancelar o envio desta mensagem WhatsApp? O atendimento será mantido e você poderá desfazer o cancelamento em Ações.</p>
+            )}
+          </div>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2.5 mt-2 pt-2 border-t border-zinc-150 dark:border-zinc-850">
+            <Button variant="outline" disabled={changingCancellation} onClick={() => setCancellationLog(null)}>Não</Button>
+            <Button disabled={changingCancellation} onClick={confirmCancellation} className="bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold">{changingCancellation ? 'Aguarde...' : 'Sim'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
