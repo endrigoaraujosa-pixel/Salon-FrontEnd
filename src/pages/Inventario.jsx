@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import http from "../api";
+import { formatAgendaDateTime } from "../lib/date";
 import { stockUnits, internalStock, stockUnitLabel } from "../lib/inventoryUnits.mjs";
 import { PageHeader } from "../components/Page";
 import { Button } from "../components/ui/button";
@@ -28,7 +29,7 @@ import {
 } from "../components/ui/alert-dialog";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const fmtDT = (s) => s ? new Date(s).toLocaleString("pt-BR") : "-";
+const fmtDT = formatAgendaDateTime;
 
 export default function Inventario() {
   const { user } = useAuth();

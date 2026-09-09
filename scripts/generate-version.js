@@ -16,39 +16,51 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { pathToFileURL } = require('url');
 
 const rootDir = path.resolve(__dirname, '..');
 
-// Lê a versão do package.json
-const pkg = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf-8'));
-const version = pkg.version || '0.0.0';
+async function main() {
+  const { AGENDA_TIME_ZONE } = await import(pathToFileURL(path.join(rootDir, 'src/lib/date.js')).href);
 
-// Obtém o hash curto do commit git
-let commit = 'unknown';
-try {
-  commit = execSync('git rev-parse --short HEAD', { cwd: rootDir, encoding: 'utf-8' }).trim();
-} catch {
-  console.warn('[generate-version] Aviso: não foi possível obter o commit git. Usando "unknown".');
+  // Lê a versão do package.json
+  const pkg = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf-8'));
+  const version = pkg.version || '0.0.0';
+
+  // Obtém o hash curto do commit git
+  let commit = 'unknown';
+  try {
+    commit = execSync('git rev-parse --short HEAD', { cwd: rootDir, encoding: 'utf-8' }).trim();
+  } catch {
+    console.warn('[generate-version] Aviso: não foi possível obter o commit git. Usando "unknown".');
+  }
+
+  // Gera o timestamp do build (YYYYMMDD-HHmm)
+  const now = new Date();
+  const timezone = AGENDA_TIME_ZONE;
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
+    timeZone: timezone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).formatToParts(now).map(({ type, value }) => [type, value]));
+  const build = `${parts.year}${parts.month}${parts.day}-${parts.hour}${parts.minute}`;
+
+  // Data ISO UTC
+  const date = now.toISOString();
+
+  const versionInfo = {
+    version,
+    build,
+    commit,
+    date,
+    timezone,
+  };
+
+  // Salva em public/version.json
+  const outputPath = path.join(rootDir, 'public', 'version.json');
+  fs.writeFileSync(outputPath, JSON.stringify(versionInfo, null, 2) + '\n', 'utf-8');
+
+  console.log(`[generate-version] Versão gerada: v${version} | build ${build} | commit ${commit}`);
+  console.log(`[generate-version] Salvo em: ${outputPath}`);
 }
-
-// Gera o timestamp do build (YYYYMMDD-HHmm)
-const now = new Date();
-const pad = (n) => String(n).padStart(2, '0');
-const build = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
-
-// Data ISO UTC
-const date = now.toISOString();
-
-const versionInfo = {
-  version,
-  build,
-  commit,
-  date,
-};
-
-// Salva em public/version.json
-const outputPath = path.join(rootDir, 'public', 'version.json');
-fs.writeFileSync(outputPath, JSON.stringify(versionInfo, null, 2) + '\n', 'utf-8');
-
-console.log(`[generate-version] Versão gerada: v${version} | build ${build} | commit ${commit}`);
-console.log(`[generate-version] Salvo em: ${outputPath}`);
+main().catch(error => { console.error(error); process.exitCode = 1; });
