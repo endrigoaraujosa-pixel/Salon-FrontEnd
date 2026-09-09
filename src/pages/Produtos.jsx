@@ -1,3 +1,5 @@
+import usePageLoad from "../hooks/usePageLoad";
+import PageLoadState from "../components/PageLoadState";
 import React, { useEffect, useState } from "react";
 import http from "../api";
 import { PageHeader, EmptyState } from "../components/Page";
@@ -20,6 +22,7 @@ const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", curr
 const normalizeText = (str) => !str ? "" : str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 export default function Produtos() {
+  const { pageLoading, pageError, pageInitialized, runPageLoad } = usePageLoad();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const canCreate = isAdmin || user?.perfil?.permissoes?.["produtos.criar"] === true;
@@ -397,7 +400,7 @@ export default function Produtos() {
   };
 
   const load = () => {
-    http.get("/produtos").then((r) => setList(r.data));
+    runPageLoad(() => http.get("/produtos").then((r) => setList(r.data)));
     http.get("/categorias").then((r) => setCategorias(r.data));
     http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data)).catch(() => {});
   };
@@ -525,6 +528,8 @@ export default function Produtos() {
       products: uncategorized
     });
   }
+
+  if (!pageInitialized || pageError) return <div className="p-6"><PageLoadState loading={pageLoading} error={pageError} onRetry={() => load()} /></div>;
 
   return (
     <div className="p-6 lg:p-8 fade-in">
@@ -876,7 +881,7 @@ export default function Produtos() {
         </Button>
       </div>
 
-      {groupedProducts.length === 0 ? (
+      {pageLoading || pageError ? <PageLoadState loading={pageLoading} error={pageError} onRetry={() => load()} /> : groupedProducts.length === 0 ? (
         <EmptyState
           icon={Package}
           title={searchQuery || selectedCategoryFilter !== "all" ? "Nenhum produto encontrado" : "Nenhum produto"}

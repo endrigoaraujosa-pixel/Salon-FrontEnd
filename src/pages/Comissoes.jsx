@@ -1,3 +1,5 @@
+import usePageLoad from "../hooks/usePageLoad";
+import PageLoadState from "../components/PageLoadState";
 import React, { useEffect, useState } from "react";
 import http from "../api";
 import { useAuth } from "../auth";
@@ -41,6 +43,7 @@ const fmtDateTime = (s) => s ? formatAgendaDateTime(s) : "—";
 
 
 export default function Comissoes() {
+  const { pageLoading, pageError, pageInitialized, runPageLoad } = usePageLoad();
   const { user } = useAuth();
   const isFunc = user?.role === "funcionario";
   const canVisualizarTodos = user?.role === "admin" || user?.perfil?.permissoes?.["comissoes.visualizar_todos"] === true || user?.perfil?.permissoes?.acoes?.["comissoes.visualizar_todos"];
@@ -122,7 +125,7 @@ export default function Comissoes() {
   };
 
   const load = () => {
-    http.get("/comissoes", { 
+    runPageLoad(() => http.get("/comissoes", {
       params: { 
         data_inicio: dataInicio, 
         data_fim: dataFim,
@@ -130,8 +133,7 @@ export default function Comissoes() {
         colaborador_id: colaboradorFilter
       } 
     })
-    .then((r) => setData(r.data))
-    .catch((err) => toast.error("Erro ao carregar comissões"));
+    .then((r) => setData(r.data)));
   };
 
   useEffect(() => {
@@ -1188,6 +1190,8 @@ export default function Comissoes() {
     : (data?.faturamento_bruto_total || 0);
   const totalComissoesProdutos = data?.comissoes?.reduce((sum, c) => sum + (c.comissao_produtos || 0), 0) || 0;
 
+  if (!pageInitialized || pageError) return <div className="p-6"><PageLoadState loading={pageLoading} error={pageError} onRetry={() => load()} /></div>;
+
   return (
     <div className="p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">
       {/* Cabeçalho */}
@@ -1398,7 +1402,7 @@ export default function Comissoes() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                  {data.comissoes.length === 0 ? (
+                  {pageLoading || pageError ? <tr><td colSpan={12}><PageLoadState loading={pageLoading} error={pageError} onRetry={() => load()} /></td></tr> : data.comissoes.length === 0 ? (
                     <tr>
                       <td colSpan={data?.descontar_taxa_cartao_comissao ? "7" : "6"} className="px-6 py-16 text-center text-zinc-400 dark:text-zinc-500">
                         Nenhuma comissão correspondente aos filtros selecionados.
@@ -1530,7 +1534,7 @@ export default function Comissoes() {
 
             {/* Cards - Visível em Mobile */}
             <div className="block lg:hidden divide-y divide-zinc-150 dark:divide-zinc-800">
-              {data.comissoes.length === 0 ? (
+              {pageLoading || pageError ? <PageLoadState loading={pageLoading} error={pageError} onRetry={() => load()} /> : data.comissoes.length === 0 ? (
                 <div className="px-6 py-16 text-center text-zinc-400 dark:text-zinc-500">
                   Nenhuma comissão correspondente aos filtros selecionados.
                 </div>

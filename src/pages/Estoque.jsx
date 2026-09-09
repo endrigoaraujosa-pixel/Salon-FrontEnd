@@ -1,3 +1,4 @@
+import PageLoadState from "../components/PageLoadState";
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import http from "../api";
@@ -46,6 +47,7 @@ export default function Estoque() {
   const [produtosMovimentacao, setProdutosMovimentacao] = useState([]);
   const [movimentacoes, setMovimentacoes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [stockError, setStockError] = useState("");
   const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0, totalPages: 1 });
   const [stockSummary, setStockSummary] = useState({ totalProdutos: 0, totalItens: 0, totalValor: 0, alertaBaixoEstoque: 0 });
 
@@ -73,6 +75,7 @@ export default function Estoque() {
 
   const loadData = async (page = 1) => {
     setLoading(true);
+    setStockError("");
     try {
       const [prodRes, movRes] = await Promise.all([
         http.get("/produtos", { params: { paginate: true, page, limit: 25, search: productSearch, only_low_stock: onlyLowStock } }),
@@ -83,6 +86,7 @@ export default function Estoque() {
       setStockSummary(prodRes.data.summary || { totalProdutos: 0, totalItens: 0, totalValor: 0, alertaBaixoEstoque: 0 });
       setMovimentacoes(movRes.data.slice(0, 10)); // pega as 10 mais recentes para um histórico mais rico
     } catch (error) {
+      setStockError("Não foi possível carregar os dados do estoque.");
       toast.error("Erro ao carregar dados do painel de estoque.");
     } finally {
       setLoading(false);
@@ -314,11 +318,10 @@ export default function Estoque() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {loading ? (
+                  {loading || stockError ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-12 text-zinc-400 dark:text-zinc-500 font-semibold">
-                        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#84A59D]" />
-                        Carregando produtos...
+                        <PageLoadState loading={loading} error={stockError} onRetry={() => loadData(pagination.page)} />
                       </TableCell>
                     </TableRow>
                   ) : produtos.length === 0 ? (
@@ -608,7 +611,7 @@ export default function Estoque() {
             </div>
             
             <div className="divide-y divide-zinc-100 dark:divide-zinc-800 max-h-[280px] sm:max-h-[380px] overflow-y-auto">
-              {movimentacoes.length === 0 ? (
+              {loading || stockError ? <PageLoadState loading={loading} error={stockError} onRetry={() => loadData(pagination.page)} /> : movimentacoes.length === 0 ? (
                 <div className="p-8 text-center text-xs text-zinc-400 font-semibold">
                   Nenhuma movimentação no período.
                 </div>

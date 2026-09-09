@@ -1,3 +1,5 @@
+import usePageLoad from "../hooks/usePageLoad";
+import PageLoadState from "../components/PageLoadState";
 import React, { useEffect, useState, useRef } from "react";
 import http from "../api";
 import { PageHeader, EmptyState } from "../components/Page";
@@ -30,6 +32,7 @@ const STATUS_COLORS = {
 };
 
 export default function VendasDiretas() {
+  const { pageLoading, pageError, pageInitialized, runPageLoad } = usePageLoad();
   const { user } = useAuth();
   const canCriarVenda = user?.role === 'admin' || user?.perfil?.permissoes?.['vendas.criar'] === true || user?.perfil?.permissoes?.acoes?.['vendas.criar'];
   const canLancarPagamento = user?.role === 'admin' || user?.perfil?.permissoes?.['vendas.pagamento'] === true || user?.perfil?.permissoes?.acoes?.['vendas.pagamento'];
@@ -101,7 +104,7 @@ export default function VendasDiretas() {
   const [totalRecords, setTotalRecords] = useState(0);
 
   const load = (pageNum = page) => {
-    http.get("/vendas-diretas", {
+    runPageLoad(() => http.get("/vendas-diretas", {
       params: {
         page: pageNum,
         limit: 50,
@@ -117,7 +120,7 @@ export default function VendasDiretas() {
       setPage(r.data.page || 1);
       setTotalPages(r.data.pages || 1);
       setTotalRecords(r.data.total || 0);
-    });
+    }));
   };
 
   const prevFilters = useRef({ startDate, endDate, filterProdutoId, filterColaboradorId, filterClienteId, searchQuery });
@@ -568,6 +571,8 @@ export default function VendasDiretas() {
   };
 
   const filteredList = list;
+
+  if (!pageInitialized || pageError) return <div className="p-6"><PageLoadState loading={pageLoading} error={pageError} onRetry={() => load()} /></div>;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 fade-in w-full overflow-x-hidden">
@@ -1303,7 +1308,7 @@ export default function VendasDiretas() {
         </div>
       </div>
 
-      {filteredList.length === 0 ? (
+      {pageLoading || pageError ? <PageLoadState loading={pageLoading} error={pageError} onRetry={() => load()} /> : filteredList.length === 0 ? (
         <EmptyState icon={ShoppingBag} title="Nenhuma venda encontrada" hint="Não há registros de vendas no período selecionado." />
       ) : (
         <div className="space-y-4">

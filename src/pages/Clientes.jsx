@@ -1,3 +1,5 @@
+import usePageLoad from "../hooks/usePageLoad";
+import PageLoadState from "../components/PageLoadState";
 import React, { useEffect, useState, useRef } from "react";
 import http from "../api";
 import { PageHeader, EmptyState } from "../components/Page";
@@ -33,6 +35,7 @@ const formatPhone = (val) => {
 };
 
 export default function Clientes() {
+  const { pageLoading, pageError, pageInitialized, runPageLoad } = usePageLoad();
   const [list, setList] = useState([]);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
@@ -167,7 +170,7 @@ export default function Clientes() {
   const [empresa, setEmpresa] = useState(null);
 
   const load = () => {
-    http.get("/clientes").then((r) => setList(r.data));
+    runPageLoad(() => http.get("/clientes").then((r) => setList(r.data)));
     http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data)).catch(() => { });
     http.get("/configuracoes/sistema").then((r) => {
       if (r.data) {
@@ -589,6 +592,8 @@ export default function Clientes() {
   const activePage = Math.min(Math.max(1, currentPage), Math.max(1, totalPages));
   const paginatedItems = filtered.slice((activePage - 1) * itemsPerPage, activePage * itemsPerPage);
 
+  if (!pageInitialized || pageError) return <div className="p-6"><PageLoadState loading={pageLoading} error={pageError} onRetry={() => load()} /></div>;
+
   return (
     <TooltipProvider>
       <div className="p-6 lg:p-8 fade-in">
@@ -750,7 +755,7 @@ export default function Clientes() {
         </Button>
       </div>
 
-      {filtered.length === 0 ? (
+      {pageLoading || pageError ? <PageLoadState loading={pageLoading} error={pageError} onRetry={() => load()} /> : filtered.length === 0 ? (
         <EmptyState icon={Users} title="Nenhum cliente" hint="Cadastre seu primeiro cliente para começar." />
       ) : (
         <>
