@@ -42,6 +42,8 @@ export default function Inventario() {
   const [movimentacoes, setMovimentacoes] = useState([]);
   const [protocolos, setProtocolos] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [productPage, setProductPage] = useState(1);
+  useEffect(() => { setProductPage(1); }, [searchQuery, activeTab]);
   const [loading, setLoading] = useState(false);
 
   // Assisted Inventory state
@@ -86,6 +88,7 @@ export default function Inventario() {
     });
     setContagens(initialContagens);
     setObsGeral("");
+    setProductPage(1);
     setInventarioIniciado(true);
     toast.success("Inventário Assistido iniciado! Digite as contagens em unidades de estoque (UN).");
   };
@@ -258,6 +261,24 @@ export default function Inventario() {
     (p.categoria && p.categoria.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const pageSize = 50;
+  const productPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
+  const currentProductPage = Math.min(productPage, productPages);
+  const firstProductIndex = (currentProductPage - 1) * pageSize;
+  const visibleProducts = filteredProducts.slice(firstProductIndex, firstProductIndex + pageSize);
+  const productPagination = (
+    <nav aria-label="Paginação de produtos" className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 dark:border-zinc-800 px-4 py-3">
+      <span className="text-xs text-zinc-500 dark:text-zinc-400">
+        {filteredProducts.length ? firstProductIndex + 1 : 0}–{Math.min(firstProductIndex + pageSize, filteredProducts.length)} de {filteredProducts.length} produtos
+      </span>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" disabled={currentProductPage === 1} onClick={() => setProductPage(currentProductPage - 1)}>Anterior</Button>
+        <span className="text-xs text-zinc-600 dark:text-zinc-300" aria-live="polite">Página {currentProductPage} de {productPages}</span>
+        <Button variant="outline" size="sm" disabled={currentProductPage === productPages} onClick={() => setProductPage(currentProductPage + 1)}>Próxima</Button>
+      </div>
+    </nav>
+  );
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 fade-in min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200">
       <PageHeader 
@@ -422,7 +443,7 @@ export default function Inventario() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredProducts.map((p) => {
+                    {visibleProducts.map((p) => {
                       const val = contagens[p.id] || "";
                       const currentStock = stockUnits(p);
                       const numVal = parseFloat(val);
@@ -484,6 +505,7 @@ export default function Inventario() {
                     })}
                   </TableBody>
                 </Table>
+                {productPagination}
               </div>
             </div>
           )}
@@ -586,7 +608,7 @@ export default function Inventario() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredProducts.map((p) => {
+                      visibleProducts.map((p) => {
                         const isSelected = selectedProductId === p.id;
                         return (
                           <TableRow 
@@ -632,6 +654,7 @@ export default function Inventario() {
                     )}
                   </TableBody>
                 </Table>
+                {productPagination}
               </div>
             </div>
 
