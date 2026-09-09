@@ -1,3 +1,4 @@
+import PageLoadState from "../components/PageLoadState";
 import React, { useEffect, useState } from "react";
 import { PageHeader } from "../components/Page";
 import http from "../api";
@@ -26,6 +27,7 @@ export default function AgendaWhatsAppHistorico() {
   const todayStr = getAgendaTodayDate();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [historyError, setHistoryError] = useState("");
   const [resendingId, setResendingId] = useState(null);
   const [cancellationLog, setCancellationLog] = useState(null);
   const [changingCancellation, setChangingCancellation] = useState(false);
@@ -62,6 +64,7 @@ export default function AgendaWhatsAppHistorico() {
 
   const fetchHistory = async (pageNumber = 1, currentStartDate = startDate, currentEndDate = endDate) => {
     setLoading(true);
+    setHistoryError("");
     try {
       const params = {
         page: pageNumber,
@@ -86,6 +89,7 @@ export default function AgendaWhatsAppHistorico() {
         setTotalRecords(0);
       }
     } catch (e) {
+      setHistoryError("Não foi possível carregar o histórico de mensagens.");
       toast.error("Erro ao carregar histórico de mensagens.");
     } finally {
       setLoading(false);
@@ -380,8 +384,8 @@ export default function AgendaWhatsAppHistorico() {
 
       {/* History table */}
       <Card className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="p-12 text-zinc-400 text-center font-semibold animate-pulse">Carregando histórico...</div>
+        {loading || historyError ? (
+          <PageLoadState loading={loading} error={historyError} onRetry={() => fetchHistory(page)} />
         ) : history.length === 0 ? (
           <div className="p-12 text-zinc-400 dark:text-zinc-500 text-center font-semibold">
             Nenhum registro de lembrete WhatsApp encontrado.

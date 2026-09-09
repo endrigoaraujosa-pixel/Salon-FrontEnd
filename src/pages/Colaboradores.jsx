@@ -1,3 +1,5 @@
+import usePageLoad from "../hooks/usePageLoad";
+import PageLoadState from "../components/PageLoadState";
 import React, { useEffect, useState, useRef } from "react";
 import http from "../api";
 import { PageHeader, EmptyState } from "../components/Page";
@@ -16,6 +18,7 @@ import { useAuth } from "../auth";
 const blank = { nome: "", cargo: "", telefone: "", comissao_sozinho: 40, comissao_ajuda: 30, comissao_auxiliar: 20, usar_comissao_avancada: false, ativo: true, foto: null };
 
 export default function Colaboradores() {
+  const { pageLoading, pageError, pageInitialized, runPageLoad } = usePageLoad();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const canCreate = isAdmin || user?.perfil?.permissoes?.["colaboradores.criar"] === true;
@@ -77,7 +80,7 @@ export default function Colaboradores() {
     reader.readAsDataURL(file);
   };
 
-  const load = () => http.get("/colaboradores").then((r) => setList(r.data));
+  const load = () => runPageLoad(() => http.get("/colaboradores").then((r) => setList(r.data)));
   useEffect(() => { load(); }, []);
 
   const handleFormComissaoChange = (field, value) => {
@@ -156,6 +159,8 @@ export default function Colaboradores() {
     }); 
     setOpen(true); 
   };
+
+  if (!pageInitialized || pageError) return <div className="p-6"><PageLoadState loading={pageLoading} error={pageError} onRetry={() => load()} /></div>;
 
   return (
     <div className="p-6 lg:p-8 fade-in">
@@ -260,7 +265,7 @@ export default function Colaboradores() {
         </Button>
       </div>
 
-      {list.length === 0 ? <EmptyState icon={UserCog} title="Nenhum colaborador" hint="Cadastre profissionais para começar a agendar." /> : (
+      {pageLoading || pageError ? <PageLoadState loading={pageLoading} error={pageError} onRetry={() => load()} /> : list.length === 0 ? <EmptyState icon={UserCog} title="Nenhum colaborador" hint="Cadastre profissionais para começar a agendar." /> : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {list.map((c) => (
             <div key={c.id} className="bg-white border border-zinc-200 rounded-xl p-5" data-testid={`colab-card-${c.id}`}>

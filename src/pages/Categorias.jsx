@@ -1,3 +1,5 @@
+import usePageLoad from "../hooks/usePageLoad";
+import PageLoadState from "../components/PageLoadState";
 import React, { useEffect, useState } from "react";
 import http from "../api";
 import { PageHeader, EmptyState } from "../components/Page";
@@ -15,6 +17,7 @@ import { useAuth } from "../auth";
 const blank = { nome: "", tipo: "ambos", ativo: true };
 
 export default function Categorias() {
+  const { pageLoading, pageError, pageInitialized, runPageLoad } = usePageLoad();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const canManage = isAdmin || user?.perfil?.permissoes?.["cadastros.categorias"] === true;
@@ -28,7 +31,7 @@ export default function Categorias() {
   const [auditOpen, setAuditOpen] = useState(false);
 
   const load = () => {
-    http.get("/categorias").then((r) => setList(r.data));
+    runPageLoad(() => http.get("/categorias").then((r) => setList(r.data)));
   };
 
   useEffect(() => {
@@ -78,6 +81,8 @@ export default function Categorias() {
   const filteredList = list.filter((cat) =>
     cat.nome.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (!pageInitialized || pageError) return <div className="p-6"><PageLoadState loading={pageLoading} error={pageError} onRetry={() => load()} /></div>;
 
   return (
     <div className="p-6 lg:p-8 fade-in">
@@ -167,7 +172,7 @@ export default function Categorias() {
         </DialogContent>
       </Dialog>
 
-      {filteredList.length === 0 ? (
+      {pageLoading || pageError ? <PageLoadState loading={pageLoading} error={pageError} onRetry={() => load()} /> : filteredList.length === 0 ? (
         <EmptyState
           icon={Tags}
           title="Nenhuma categoria encontrada"

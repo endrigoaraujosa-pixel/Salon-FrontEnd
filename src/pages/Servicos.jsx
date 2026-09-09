@@ -1,3 +1,5 @@
+import usePageLoad from "../hooks/usePageLoad";
+import PageLoadState from "../components/PageLoadState";
 import React, { useEffect, useState } from "react";
 import http from "../api";
 import { PageHeader, EmptyState } from "../components/Page";
@@ -20,6 +22,7 @@ const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", curr
 const normalizeText = (str) => !str ? "" : str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 export default function Servicos() {
+  const { pageLoading, pageError, pageInitialized, runPageLoad } = usePageLoad();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const canCreate = isAdmin || user?.perfil?.permissoes?.["servicos.criar"] === true;
@@ -45,7 +48,7 @@ export default function Servicos() {
   const [empresa, setEmpresa] = useState(null);
 
   const load = () => {
-    http.get("/servicos").then((r) => setList(r.data));
+    runPageLoad(() => http.get("/servicos").then((r) => setList(r.data)));
     http.get("/produtos").then((r) => setProdutos(r.data));
     http.get("/categorias").then((r) => setCategorias(r.data));
     http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data)).catch(() => {});
@@ -561,6 +564,8 @@ export default function Servicos() {
     });
   }
 
+  if (!pageInitialized || pageError) return <div className="p-6"><PageLoadState loading={pageLoading} error={pageError} onRetry={() => load()} /></div>;
+
   return (
     <div className="p-6 lg:p-8 fade-in">
       <PageHeader 
@@ -726,7 +731,7 @@ export default function Servicos() {
         </Button>
       </div>
 
-      {groupedServices.length === 0 ? (
+      {pageLoading || pageError ? <PageLoadState loading={pageLoading} error={pageError} onRetry={() => load()} /> : groupedServices.length === 0 ? (
         <EmptyState
           icon={Scissors}
           title={searchQuery || selectedCategoryFilter !== "all" ? "Nenhum serviço encontrado" : "Nenhum serviço"}

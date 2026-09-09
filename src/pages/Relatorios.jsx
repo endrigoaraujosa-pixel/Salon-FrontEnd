@@ -1,3 +1,4 @@
+import PageLoadState from "../components/PageLoadState";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import http from "../api";
@@ -364,6 +365,8 @@ export default function Relatorios() {
   const [isGenerated, setIsGenerated] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(true);
   const [loadingReport, setLoadingReport] = useState(false);
+  const [reportError, setReportError] = useState("");
+  const [loadingFilters, setLoadingFilters] = useState(true);
   const [searchReportQuery, setSearchReportQuery] = useState("");
   const [generatedFilters, setGeneratedFilters] = useState(null);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -494,19 +497,21 @@ export default function Relatorios() {
   }, [searchParams]);
 
   useEffect(() => {
-    http.get("/colaboradores").then((r) => setColaboradores(r.data)).catch(() => {});
-    http.get("/produtos").then((r) => setProdutosList(r.data)).catch(() => {});
-    http.get("/servicos").then((r) => setServicosList(r.data)).catch(() => {});
-    http.get("/clientes").then((r) => setClientesList(r.data)).catch(() => {});
-    http.get("/fornecedores").then((r) => setFornecedoresList(r.data?.filter(f => f.deletado !== "S") || [])).catch(() => {});
+    Promise.allSettled([
+    http.get("/colaboradores").then((r) => setColaboradores(r.data)).catch(() => {}),
+    http.get("/produtos").then((r) => setProdutosList(r.data)).catch(() => {}),
+    http.get("/servicos").then((r) => setServicosList(r.data)).catch(() => {}),
+    http.get("/clientes").then((r) => setClientesList(r.data)).catch(() => {}),
+    http.get("/fornecedores").then((r) => setFornecedoresList(r.data?.filter(f => f.deletado !== "S") || [])).catch(() => {}),
     http.get("/categorias").then((r) => {
       const cats = r.data || [];
       setCategoriesList(cats);
       setFilterEstoqueCategorias(cats.map(c => c.id));
-    }).catch(() => {});
-    http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data)).catch(() => {});
-    http.get("/adquirentes").then((r) => setAdquirentesList(r.data || [])).catch(() => {});
-    http.get("/configuracoes/taxas-cartao").then((r) => setFormasCartaoList(r.data || [])).catch(() => {});
+    }).catch(() => {}),
+    http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data)).catch(() => {}),
+    http.get("/adquirentes").then((r) => setAdquirentesList(r.data || [])).catch(() => {}),
+    http.get("/configuracoes/taxas-cartao").then((r) => setFormasCartaoList(r.data || [])).catch(() => {})
+    ]).finally(() => setLoadingFilters(false));
   }, []);
 
   useEffect(() => {
@@ -530,6 +535,7 @@ export default function Relatorios() {
     }
     // -----------------------------------------------------------
     setLoadingReport(true);
+    setReportError("");
     const params = { data_inicio: from, data_fim: to };
     const nextProdutosPage = options.produtosPage || produtosPage;
     const nextProdutoSearch = options.produtoSearch ?? searchQuery;
@@ -547,6 +553,7 @@ export default function Relatorios() {
       promise = http.get("/relatorios/dre", { params: dreParams })
         .then((r) => setDre(r.data))
         .catch((err) => {
+          setReportError("Não foi possível carregar o relatório. Tente novamente.");
           console.error("DRE error:", err);
           if (err.response?.status === 403) {
             toast.error("Acesso negado: Você não tem permissão para visualizar o relatório DRE.");
@@ -575,6 +582,7 @@ export default function Relatorios() {
       promise = http.get("/relatorios/caixa", { params: caixaParams })
         .then((r) => setCaixa(r.data))
         .catch((err) => {
+          setReportError("Não foi possível carregar o relatório. Tente novamente.");
           console.error("Caixa error:", err);
           if (err.response?.status === 403) {
             toast.error("Acesso negado: Você não tem permissão para visualizar o relatório de caixa.");
@@ -610,6 +618,7 @@ export default function Relatorios() {
       promise = http.get("/relatorios/cartoes", { params: cartoesParams })
         .then((r) => setCartoes(r.data))
         .catch((err) => {
+          setReportError("Não foi possível carregar o relatório. Tente novamente.");
           console.error("Cartoes error:", err);
           if (err.response?.status === 403) {
             toast.error("Acesso negado: Você não tem permissão para visualizar o relatório de cartões.");
@@ -637,6 +646,7 @@ export default function Relatorios() {
       promise = http.get("/relatorios/produtos", { params: prodParams })
         .then((r) => setProdutos(r.data))
         .catch((err) => {
+          setReportError("Não foi possível carregar o relatório. Tente novamente.");
           console.error("Produtos error:", err);
           if (err.response?.status === 403) {
             toast.error("Acesso negado: Você não tem permissão para visualizar o relatório de produtos.");
@@ -658,6 +668,7 @@ export default function Relatorios() {
       promise = http.get("/relatorios/servicos", { params: servParams })
         .then((r) => setServicos(r.data))
         .catch((err) => {
+          setReportError("Não foi possível carregar o relatório. Tente novamente.");
           console.error("Servicos error:", err);
           if (err.response?.status === 403) {
             toast.error("Acesso negado: Você não tem permissão para visualizar o relatório de serviços.");
@@ -676,6 +687,7 @@ export default function Relatorios() {
       promise = http.get("/relatorios/agendamentos-cancelados", { params: cancelParams })
         .then((r) => setCancelados(r.data))
         .catch((err) => {
+          setReportError("Não foi possível carregar o relatório. Tente novamente.");
           console.error("Cancelados error:", err);
           if (err.response?.status === 403) {
             toast.error("Acesso negado: Você não tem permissão para visualizar o relatório de agendamentos cancelados.");
@@ -696,6 +708,7 @@ export default function Relatorios() {
       promise = http.get("/relatorios/resultado-operacional", { params: operParams })
         .then((r) => setResultadoOperacional(r.data))
         .catch((err) => {
+          setReportError("Não foi possível carregar o relatório. Tente novamente.");
           console.error("Resultado Operacional error:", err);
           if (err.response?.status === 403) {
             toast.error("Acesso negado: Você não tem permissão para visualizar este relatório operacional.");
@@ -741,6 +754,7 @@ export default function Relatorios() {
       promise = http.get(endpoint, { params: queryParams })
         .then((r) => setEstoqueReportData(r.data))
         .catch((err) => {
+          setReportError("Não foi possível carregar o relatório. Tente novamente.");
           console.error(`Error loading ${tab}:`, err);
           if (err.response?.status === 403) {
             toast.error("Acesso negado: Você não tem permissão para visualizar este relatório de estoque.");
@@ -2222,6 +2236,8 @@ export default function Relatorios() {
     );
   };
 
+  if (loadingFilters) return <div className="p-6"><PageLoadState loading /></div>;
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 fade-in max-w-[1600px] mx-auto w-full overflow-x-hidden">
       <PageHeader overline="Análise" title="Relatórios" />
@@ -2901,7 +2917,7 @@ export default function Relatorios() {
                 Gerar Consulta
               </Button>
             </div>
-          ) : loadingReport ? (
+          ) : reportError ? <PageLoadState error={reportError} onRetry={() => reload()} /> : loadingReport ? (
             <div className="text-zinc-400 p-12 text-center bg-white border border-zinc-200 rounded-xl shadow-sm no-print">
               <div className="flex justify-center mb-3">
                 <span className="w-8 h-8 border-4 border-[#84A59D] border-t-transparent rounded-full animate-spin"></span>

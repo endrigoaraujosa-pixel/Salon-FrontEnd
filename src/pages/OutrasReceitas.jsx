@@ -1,3 +1,5 @@
+import usePageLoad from "../hooks/usePageLoad";
+import PageLoadState from "../components/PageLoadState";
 import React, { useEffect, useState } from "react";
 import http from "../api";
 import { PageHeader } from "../components/Page";
@@ -51,6 +53,7 @@ const getFirstDayOfMonthString = () => {
 };
 
 export default function OutrasReceitas() {
+  const { pageLoading, pageError, pageInitialized, runPageLoad } = usePageLoad();
   const [receitas, setReceitas] = useState([]);
   const [clientesList, setClientesList] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -114,9 +117,8 @@ export default function OutrasReceitas() {
   });
 
   const load = () => {
-    http.get("/outras-receitas")
-      .then((r) => setReceitas(r.data))
-      .catch(() => setReceitas([]));
+    runPageLoad(() => http.get("/outras-receitas")
+      .then((r) => setReceitas(r.data)));
   };
 
   const loadClientes = () => {
@@ -355,6 +357,8 @@ export default function OutrasReceitas() {
 
   const totalPeriodRevenue = repFiltered.reduce((sum, r) => sum + (r.valor || 0), 0);
 
+  if (!pageInitialized || pageError) return <div className="p-6"><PageLoadState loading={pageLoading} error={pageError} onRetry={() => load()} /></div>;
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 fade-in min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200">
       <PageHeader 
@@ -484,7 +488,7 @@ export default function OutrasReceitas() {
 
           {/* Table list representation */}
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm overflow-x-auto">
-            {((tab === "a_receber" ? aReceberList : recebidasList).length === 0) ? (
+            {pageLoading || pageError ? <PageLoadState loading={pageLoading} error={pageError} onRetry={() => load()} /> : ((tab === "a_receber" ? aReceberList : recebidasList).length === 0) ? (
               <div className="p-16 text-center text-zinc-400 dark:text-zinc-500">
                 <AlertCircle className="w-10 h-10 mx-auto mb-3 opacity-40 text-zinc-400" />
                 <p className="text-sm font-semibold">Nenhuma receita encontrada</p>
