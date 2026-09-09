@@ -38,6 +38,22 @@ export default function Clientes() {
   const [open, setOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [deleteHistory, setDeleteHistory] = useState({ status: 'loading', hasAppointments: false });
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteStep, setDeleteStep] = useState('confirm');
+  const [deleteCheckAttempt, setDeleteCheckAttempt] = useState(0);
+
+  useEffect(() => {
+    if (!deleteConfirmOpen || !deletingId) return;
+    let active = true;
+    setDeleteHistory({ status: 'loading', hasAppointments: false });
+    http.get(`/clientes/${deletingId}/historico`).then(({ data }) => {
+      if (active) setDeleteHistory({ status: 'ready', hasAppointments: data.agendamentos.some(a => a.deletado === 'N') });
+    }).catch(() => {
+      if (active) setDeleteHistory({ status: 'error', hasAppointments: false });
+    });
+    return () => { active = false; };
+  }, [deleteConfirmOpen, deletingId, deleteCheckAttempt]);
   const [form, setForm] = useState(blank);
   const [auditOpen, setAuditOpen] = useState(false);
   const [permitirClienteDuplicado, setPermitirClienteDuplicado] = useState(false);
@@ -237,12 +253,19 @@ export default function Clientes() {
   };
 
   const del = (id) => {
+    setDeleteStep('confirm');
+    setDeleteHistory({ status: 'loading', hasAppointments: false });
     setDeletingId(id);
     setDeleteConfirmOpen(true);
   };
 
   const confirmDelete = async () => {
-    if (!deletingId) return;
+    if (!deletingId || deleteHistory.status !== 'ready' || deleteSubmitting) return;
+    if (deleteStep === 'confirm' && deleteHistory.hasAppointments) {
+      setDeleteStep('history');
+      return;
+    }
+    setDeleteSubmitting(true);
     try {
       await http.delete(`/clientes/${deletingId}`);
       toast.success("Cliente removido");
@@ -251,6 +274,8 @@ export default function Clientes() {
       load();
     } catch (e) {
       toast.error(e.response?.data?.detail || "Erro ao remover");
+    } finally {
+      setDeleteSubmitting(false);
     }
   };
 
@@ -1107,18 +1132,39 @@ export default function Clientes() {
         </>
       )}
 
-      {/* Dialog de confirmação de exclusão */}
-      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      {/* Confirmações de exclusão em duas etapas */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={(value) => { if (!deleteSubmitting) setDeleteConfirmOpen(value); }}>
         <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
           <DialogHeader>
-            <DialogTitle className="text-zinc-900 dark:text-zinc-50">Confirmar exclusão</DialogTitle>
+            <DialogTitle className="text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
+              {deleteStep === 'history' && <AlertCircle className="w-5 h-5 text-amber-500" aria-hidden="true" />}
+              {deleteStep === 'history' ? 'Cliente com agendamentos' : 'Confirmar exclusão'}
+            </DialogTitle>
           </DialogHeader>
-          <div className="py-4 text-sm text-zinc-650 dark:text-zinc-400">
-            Tem certeza que deseja excluir este cliente? Esta ação pode ser desfeita a qualquer momento a partir da tela de "Excluídos".
+          <div className="py-4 text-sm text-zinc-650 dark:text-zinc-400 leading-relaxed" aria-live="polite">
+            {deleteStep === 'confirm' ? (
+              <p>Tem certeza que deseja excluir este cliente?</p>
+            ) : (
+              <>
+                <p>Este cliente já possui agendamentos registrados. Ao excluir o cadastro, não será possível visualizar seu histórico de atendimentos pela lista de clientes.</p>
+                <p className="mt-3">Deseja continuar com a exclusão?</p>
+              </>
+            )}
           </div>
+          {deleteHistory.status === 'loading' && (
+            <p role="status" className="flex items-center gap-2 text-sm text-zinc-500">
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Verificando agendamentos do cliente...
+            </p>
+          )}
+          {deleteHistory.status === 'error' && (
+            <div role="alert" className="text-sm text-rose-600 dark:text-rose-400">
+              <p>Não foi possível verificar os agendamentos. Tente novamente antes de excluir.</p>
+              <Button variant="outline" onClick={() => setDeleteCheckAttempt(n => n + 1)} className="mt-2">Tentar novamente</Button>
+            </div>
+          )}
           <DialogFooter className="flex flex-col sm:flex-row gap-2.5 mt-2 pt-2 border-t border-zinc-150 dark:border-zinc-850">
-            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)} className="w-full sm:w-auto border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-350">Cancelar</Button>
-            <Button onClick={confirmDelete} className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white font-bold">Excluir</Button>
+            <Button variant="outline" disabled={deleteSubmitting} onClick={() => setDeleteConfirmOpen(false)} className="w-full sm:w-auto border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-350 font-semibold">Não</Button>
+            <Button onClick={confirmDelete} disabled={deleteHistory.status !== 'ready' || deleteSubmitting} className="w-full sm:w-auto bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold">{deleteSubmitting ? 'Excluindo...' : 'Sim'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

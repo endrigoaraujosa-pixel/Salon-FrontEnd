@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import http from "../api";
+import { stockUnits, internalStock, stockUnitLabel } from "../lib/inventoryUnits.mjs";
 import { PageHeader } from "../components/Page";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -86,7 +87,7 @@ export default function Inventario() {
     setContagens(initialContagens);
     setObsGeral("");
     setInventarioIniciado(true);
-    toast.success("Inventário Assistido iniciado! Digite as contagens físicas dos produtos.");
+    toast.success("Inventário Assistido iniciado! Digite as contagens em unidades de estoque (UN).");
   };
 
   const handleCancelInventario = () => {
@@ -111,18 +112,18 @@ export default function Inventario() {
     Object.entries(contagens).forEach(([prodId, val]) => {
       if (val === "" || val === undefined) return; // skip uncounted
       const num = parseFloat(val);
-      if (isNaN(num) || num < 0) {
+      if (!Number.isFinite(num) || num < 0) {
         hasInvalid = true;
         return;
       }
       items.push({
         produto_id: prodId,
-        quantidade_contada: num
+        quantidade_contada: internalStock(produtos.find(p => p.id === prodId), num)
       });
     });
 
     if (hasInvalid) {
-      return toast.error("Por favor, verifique as contagens informadas. Valores não podem ser negativos.");
+      return toast.error("Por favor, verifique as contagens informadas. Informe números finitos e não negativos.");
     }
 
     if (items.length === 0) {
@@ -183,7 +184,7 @@ export default function Inventario() {
   // 2. Unit adjustment functions
   const handleSelectProduct = (prod) => {
     setSelectedProductId(prod.id);
-    setQuantidadeContada(Number(prod.quantidade_estoque.toFixed(3)));
+    setQuantidadeContada(Number(stockUnits(prod).toFixed(3)));
     setObservacoes("");
   };
 
@@ -192,7 +193,7 @@ export default function Inventario() {
     if (!prod) return;
 
     const counted = parseFloat(countedVal);
-    if (isNaN(counted) || counted < 0) {
+    if (!Number.isFinite(counted) || counted < 0) {
       toast.error("A quantidade contada deve ser um número não negativo.");
       return;
     }
@@ -200,16 +201,14 @@ export default function Inventario() {
     try {
       const payload = {
         produto_id: prodId,
-        quantidade_contada: counted,
+        quantidade_contada: internalStock(prod, counted),
         observacoes: obs
       };
 
       const res = await http.post("/estoque/inventario/ajuste", payload);
-      const diff = res.data.diferenca;
+      const diff = stockUnits(prod, res.data.diferenca);
       
-      const unitLabel = Number(prod.quantidade_por_unidade || 0) > 0 
-        ? (prod.unidade_medida_insumo || 'un') 
-        : (prod.unidade_medida || 'un');
+      const unitLabel = stockUnitLabel(prod);
       toast.success(
         `Ajuste registrado! Novo estoque: ${counted.toFixed(3)} ${unitLabel} (${diff > 0 ? '+' : ''}${diff.toFixed(3)} ${unitLabel})`
       );
@@ -241,7 +240,7 @@ export default function Inventario() {
       if (!p) return;
 
       conferidos++;
-      const diff = Number((num - p.quantidade_estoque).toFixed(3));
+      const diff = Number((num - stockUnits(p)).toFixed(3));
       if (diff !== 0) {
         divergentes++;
         difFinanceira += Math.abs(diff * (p.custo_unitario || 0));
@@ -416,8 +415,8 @@ export default function Inventario() {
                   <TableHeader className="bg-zinc-50 dark:bg-zinc-900/50">
                     <TableRow>
                       <TableHead className="font-semibold">Produto</TableHead>
-                      <TableHead className="text-right font-semibold">Estoque Sistema</TableHead>
-                      <TableHead className="w-36 text-center font-semibold">Físico Contado</TableHead>
+                      <TableHead className="text-right font-semibold">Quantidade em Estoque</TableHead>
+                      <TableHead className="w-36 text-center font-semibold">Contagem (UN)</TableHead>
                       <TableHead className="text-right font-semibold">Divergência</TableHead>
                       <TableHead className="text-right font-semibold">Val. Divergente</TableHead>
                     </TableRow>
@@ -425,7 +424,7 @@ export default function Inventario() {
                   <TableBody>
                     {filteredProducts.map((p) => {
                       const val = contagens[p.id] || "";
-                      const currentStock = p.quantidade_estoque;
+                      const currentStock = stockUnits(p);
                       const numVal = parseFloat(val);
                       
                       let diff = null;
@@ -436,9 +435,7 @@ export default function Inventario() {
                         finDiff = diff * (p.custo_unitario || 0);
                       }
 
-                      const unitLabel = Number(p.quantidade_por_unidade || 0) > 0 
-                        ? (p.unidade_medida_insumo || 'un') 
-                        : (p.unidade_medida || 'un');
+                      const unitLabel = stockUnitLabel(p);
 
                       return (
                         <TableRow key={p.id} className="hover:bg-zinc-50/50 transition-colors">
@@ -610,15 +607,7 @@ export default function Inventario() {
                               </span>
                             </TableCell>
                             <TableCell className="text-right font-mono font-bold text-zinc-700 dark:text-zinc-300">
-                              {(() => {
-                                const qty = Number(p.quantidade_estoque.toFixed(3));
-                                const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
-                                if (qtyPerUnit > 0) {
-                                  const eq = Number((qty / qtyPerUnit).toFixed(2));
-                                  return `${qty} ${p.unidade_medida_insumo || 'un'} (${eq} ${p.unidade_medida || 'un'})`;
-                                }
-                                return `${qty} ${p.unidade_medida || 'un'}`;
-                              })()}
+                              {Number(stockUnits(p).toFixed(3))} {stockUnitLabel(p)}
                             </TableCell>
                             <TableCell className="text-right font-mono text-zinc-550 dark:text-zinc-450">
                               {fmtBRL(p.custo_unitario)}
@@ -651,7 +640,7 @@ export default function Inventario() {
               {selectedProductId ? (
                 (() => {
                   const prod = produtos.find(p => p.id === selectedProductId);
-                  const currentStock = prod.quantidade_estoque;
+                  const currentStock = stockUnits(prod);
                   const countedStock = parseFloat(quantidadeContada);
                   const difference = !isNaN(countedStock) ? Number((countedStock - currentStock).toFixed(3)) : 0;
                   
@@ -672,15 +661,7 @@ export default function Inventario() {
                         <div className="bg-zinc-50 dark:bg-zinc-950/20 p-3 rounded-lg border">
                           <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider">Estoque Atual</span>
                           <div className="font-mono text-base font-bold mt-1 text-zinc-700 dark:text-zinc-300">
-                            {(() => {
-                              const qty = Number(currentStock.toFixed(3));
-                              const qtyPerUnit = Number(prod.quantidade_por_unidade || 0);
-                              if (qtyPerUnit > 0) {
-                                const eq = Number((qty / qtyPerUnit).toFixed(2));
-                                  return `${qty} ${prod.unidade_medida_insumo || 'un'} (${eq} ${prod.unidade_medida || 'un'})`;
-                              }
-                              return `${qty} ${prod.unidade_medida || 'un'}`;
-                            })()}
+                            {Number(currentStock.toFixed(3))} {stockUnitLabel(prod)}
                           </div>
                         </div>
 
@@ -701,17 +682,7 @@ export default function Inventario() {
                           }`}>
                             {difference > 0 && <ArrowUpRight className="w-4 h-4 shrink-0" />}
                             {difference < 0 && <ArrowDownRight className="w-4 h-4 shrink-0" />}
-                            {(() => {
-                              const qty = difference;
-                              const qtyPerUnit = Number(prod.quantidade_por_unidade || 0);
-                              const prefix = qty > 0 ? "+" : "";
-                              if (qtyPerUnit > 0) {
-                                const eq = Number((qty / qtyPerUnit).toFixed(2));
-                                const eqPrefix = eq > 0 ? "+" : "";
-                                return `${prefix}${qty.toFixed(3)} ${prod.unidade_medida_insumo || 'un'} (${eqPrefix}${eq.toFixed(2)} ${prod.unidade_medida || 'un'})`;
-                              }
-                              return `${prefix}${qty.toFixed(3)} ${prod.unidade_medida || 'un'}`;
-                            })()}
+                            {difference > 0 ? "+" : ""}{difference.toFixed(3)} {stockUnitLabel(prod)}
                           </div>
                         </div>
                       </div>
@@ -719,7 +690,7 @@ export default function Inventario() {
                       {/* Adjustment Fields */}
                       <div className="space-y-4">
                         <div>
-                          <Label className="text-xs font-semibold text-zinc-650 dark:text-zinc-400">Estoque Contado (Físico) *</Label>
+                          <Label className="text-xs font-semibold text-zinc-650 dark:text-zinc-400">Quantidade em Estoque ({stockUnitLabel(prod)}) *</Label>
                           <Input 
                             type="number" 
                             step="0.001"
@@ -728,7 +699,7 @@ export default function Inventario() {
                             className="mt-1 font-mono font-bold text-lg"
                             placeholder="0.000"
                           />
-                          <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Informe a quantidade física real contada no armário/prateleira.</p>
+                          <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Informe a quantidade em unidades de estoque, como no cadastro do produto. Não informe o conteúdo em gramas ou mililitros.</p>
                         </div>
 
                         <div>
@@ -826,11 +797,7 @@ export default function Inventario() {
                       }
 
                       const prod = produtos.find(p => p.id === m.produto_id);
-                      const unitLabel = prod
-                        ? (Number(prod.quantidade_por_unidade || 0) > 0
-                          ? (prod.unidade_medida_insumo || 'un')
-                          : (prod.unidade_medida || 'un'))
-                        : 'un';
+                      const unitLabel = stockUnitLabel(prod);
 
                       return (
                         <TableRow key={m.id} className="hover:bg-zinc-50/50 transition-colors">
@@ -852,13 +819,13 @@ export default function Inventario() {
                                 ? "text-rose-600 dark:text-rose-500" 
                                 : "text-zinc-500"
                           }`}>
-                            {m.quantidade > 0 ? "+" : ""}{Number(m.quantidade.toFixed(3))} {unitLabel}
+                            {m.quantidade > 0 ? "+" : ""}{Number(stockUnits(prod, m.quantidade).toFixed(3))} {unitLabel}
                           </TableCell>
                           <TableCell className="text-right font-mono text-zinc-500 dark:text-zinc-400">
-                            {Number(m.quantidade_anterior.toFixed(3))} {unitLabel}
+                            {Number(stockUnits(prod, m.quantidade_anterior).toFixed(3))} {unitLabel}
                           </TableCell>
                           <TableCell className="text-right font-mono font-bold text-zinc-800 dark:text-zinc-200">
-                            {Number(m.quantidade_atual.toFixed(3))} {unitLabel}
+                            {Number(stockUnits(prod, m.quantidade_atual).toFixed(3))} {unitLabel}
                           </TableCell>
                           <TableCell className="text-sm font-semibold">{m.usuario_nome || "-"}</TableCell>
                           <TableCell className="text-zinc-600 dark:text-zinc-350 max-w-xs truncate" title={m.motivo}>
