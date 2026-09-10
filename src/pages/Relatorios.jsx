@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import http from "../api";
 import { useAuth } from "../auth";
 import { toast } from "../components/ui/sonner";
-import { formatAgendaDate, formatAgendaDateTime } from "../lib/date.js";
+import { formatAgendaDate, formatAgendaDateTime, getAgendaTodayDate, getAgendaMonthStart, getAgendaDaysAgo, getAgendaWeekStart } from "../lib/date.js";
 import { PageHeader } from "../components/Page";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -17,7 +17,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "../com
 import { FileText, Banknote, Package, TrendingUp, TrendingDown, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle, Filter, ArrowLeft, AlertTriangle, AlertCircle, Coins, Flame, Zap, Calendar, Sliders, ClipboardList, Eye, CreditCard, ChevronLeft, ChevronRight, Percent, PackagePlus, ChevronDown } from "lucide-react";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const fmtDT = (s) => s ? new Date(s).toLocaleString("pt-BR") : "—";
+const fmtDT = (s) => s ? formatAgendaDateTime(s) : "—";
 
 const REPORT_PAGE_SIZE = 50;
 
@@ -33,38 +33,10 @@ const formatReportQuantidade = (qtd, item) => {
   return `${formattedQty} ${item?.unidade_medida || "un"}`;
 };
 
-const todayStr = () => {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-const firstDayMonth = () => {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  return `${year}-${month}-01`;
-};
-
-const getDaysAgoStr = (days) => {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-const getStartOfWeekStr = () => {
-  const d = new Date();
-  d.setDate(d.getDate() - d.getDay());
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+const todayStr = getAgendaTodayDate;
+const firstDayMonth = getAgendaMonthStart;
+const getDaysAgoStr = getAgendaDaysAgo;
+const getStartOfWeekStr = getAgendaWeekStart;
 
 const FORMA_LABELS = {
   dinheiro: "Dinheiro", pix: "PIX",
@@ -1168,7 +1140,7 @@ export default function Relatorios() {
         }
         return (
           <>
-            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{new Date(item.criado_em).toLocaleString("pt-BR")}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{formatAgendaDateTime(item.criado_em)}</td>
             <td className="px-4 py-2.5 font-medium text-zinc-850 dark:text-zinc-100">{item.produto_nome}</td>
             <td className="px-4 py-2.5 text-zinc-550">{item.categoria_nome || "-"}</td>
             <td className="px-4 py-2.5">
@@ -1495,7 +1467,7 @@ export default function Relatorios() {
             <td className="px-4 py-2.5 text-zinc-500">{item.categoria_nome || "-"}</td>
             <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{formatReportQuantidade(item.quantidade_estoque, item)}</td>
             <td className="px-4 py-2.5 text-rose-600 font-bold bg-rose-50/20">{item.dias_sem_movimentacao} dias</td>
-            <td className="px-4 py-2.5 text-zinc-500">{item.data_ultima_movimentacao ? new Date(item.data_ultima_movimentacao).toLocaleDateString("pt-BR") : "Nunca"}</td>
+            <td className="px-4 py-2.5 text-zinc-500">{item.data_ultima_movimentacao ? formatAgendaDate(item.data_ultima_movimentacao) : "Nunca"}</td>
           </>
         );
       };
@@ -1527,7 +1499,7 @@ export default function Relatorios() {
         const isPositivo = item.quantidade_ajustada > 0;
         return (
           <>
-            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{new Date(item.criado_em).toLocaleString("pt-BR")}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{formatAgendaDateTime(item.criado_em)}</td>
             <td className="px-4 py-2.5 font-medium text-zinc-850 dark:text-zinc-100">{item.produto_nome}</td>
             <td className="px-4 py-2.5 text-zinc-550">{item.categoria_nome || "-"}</td>
             <td className="px-4 py-2.5 text-zinc-500">{formatReportQuantidade(item.quantidade_anterior, item)}</td>
@@ -1603,7 +1575,7 @@ export default function Relatorios() {
       rowRenderer = (item) => {
         return (
           <>
-            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{new Date(item.criado_em).toLocaleString("pt-BR")}</td>
+            <td className="px-4 py-2.5 text-zinc-700 dark:text-zinc-350">{formatAgendaDateTime(item.criado_em)}</td>
             <td className="px-4 py-2.5 font-medium text-zinc-850 dark:text-zinc-100">{item.produto_nome}</td>
             <td className="px-4 py-2.5 text-zinc-555">{item.categoria_nome || "-"}</td>
             <td className="px-4 py-2.5 text-rose-600 font-semibold">{formatReportQuantidade(item.quantidade, item)}</td>
@@ -1645,10 +1617,10 @@ export default function Relatorios() {
 
       rowRenderer = (item) => {
         const dateFormatted = item.data_entrada 
-          ? new Date(item.data_entrada + 'T12:00:00').toLocaleDateString('pt-BR') 
+          ? formatAgendaDate(item.data_entrada)
           : '-';
         const createdAtFormatted = item.criado_em 
-          ? new Date(item.criado_em).toLocaleString('pt-BR') 
+          ? formatAgendaDateTime(item.criado_em)
           : '-';
 
         return (
@@ -2938,8 +2910,8 @@ export default function Relatorios() {
                     <p className="text-xs text-zinc-500">Demonstrativo de Resultado do Exercício (DRE)</p>
                   </div>
                   <div className="text-right text-xs text-zinc-500">
-                    <div><strong>Período:</strong> {from ? new Date(from + 'T12:00:00').toLocaleDateString('pt-BR') : '-'} a {to ? new Date(to + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}</div>
-                    <div><strong>Gerado em:</strong> {new Date().toLocaleString('pt-BR')}</div>
+                    <div><strong>Período:</strong> {from ? formatAgendaDate(from) : '-'} a {to ? formatAgendaDate(to) : '-'}</div>
+                    <div><strong>Gerado em:</strong> {formatAgendaDateTime(new Date())}</div>
                   </div>
                 </div>
               </div>
@@ -3258,7 +3230,7 @@ export default function Relatorios() {
                                 {drilldownData.map((item, idx) => (
                                   <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
                                     <td className="px-5 py-4 whitespace-nowrap text-zinc-500 font-mono">
-                                      {item.data ? new Date(item.data + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}
+                                      {item.data ? formatAgendaDate(item.data) : '-'}
                                     </td>
                                     <td className="px-5 py-4 font-semibold text-zinc-800 dark:text-zinc-100">{item.descricao}</td>
                                     <td className="px-5 py-4">
@@ -3292,7 +3264,7 @@ export default function Relatorios() {
                               <div key={idx} className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 space-y-2.5 shadow-sm">
                                 <div className="flex items-center justify-between">
                                   <span className="text-[10px] font-mono font-bold text-zinc-400 dark:text-zinc-500">
-                                    {item.data ? new Date(item.data + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}
+                                    {item.data ? formatAgendaDate(item.data) : '-'}
                                   </span>
                                   <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
                                     item.status === 'Pago' || item.status === 'pago' || item.status === 'Recebido' || item.status === 'concluido'
@@ -3432,7 +3404,7 @@ export default function Relatorios() {
                       <span>Detalhamento de Caixa - {FORMA_LABELS[detailsForma]}</span>
                     </DialogTitle>
                     <div className="text-xs text-zinc-400 dark:text-zinc-500 mt-1 font-medium flex flex-wrap gap-x-4 gap-y-1">
-                      <span>Período: <b className="text-zinc-750 dark:text-zinc-300">{new Date(from + 'T12:00:00').toLocaleDateString('pt-BR')}</b> a <b className="text-zinc-750 dark:text-zinc-300">{new Date(to + 'T12:00:00').toLocaleDateString('pt-BR')}</b></span>
+                      <span>Período: <b className="text-zinc-750 dark:text-zinc-300">{formatAgendaDate(from)}</b> a <b className="text-zinc-750 dark:text-zinc-300">{formatAgendaDate(to)}</b></span>
                       <span>Profissional: <b className="text-zinc-750 dark:text-zinc-300">{colaboradorId === 'todos' ? 'Todos os usuários' : colaboradores.find(c => c.id === colaboradorId)?.nome}</b></span>
                     </div>
                   </DialogHeader>
@@ -3547,7 +3519,7 @@ export default function Relatorios() {
                             {filtered.map((p) => (
                               <tr key={p.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors">
                                 <td className="px-4 py-3 whitespace-nowrap text-zinc-500 dark:text-zinc-450">
-                                  {new Date(p.data_hora).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                                  {formatAgendaDateTime(p.data_hora)}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap">
                                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
@@ -3734,7 +3706,7 @@ export default function Relatorios() {
                     </thead>
                     <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-650 dark:text-zinc-350">
                       {(cartoes.transacoes || []).map((t, idx) => {
-                        const dataPrev = t.data_recebimento_prevista ? new Date(t.data_recebimento_prevista).toLocaleDateString("pt-BR") : "-";
+                        const dataPrev = t.data_recebimento_prevista ? formatAgendaDate(t.data_recebimento_prevista) : "-";
                         return (
                           <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20 transition-colors">
                             <td className="px-3 py-4 text-zinc-500 dark:text-zinc-400 font-mono whitespace-nowrap">{fmtDT(t.data_venda)}</td>
@@ -3896,11 +3868,11 @@ export default function Relatorios() {
                         )}
                         <h1 className="text-xl font-bold text-zinc-800">Relatório Executivo de Venda de Produtos</h1>
                         <p className="text-xs text-zinc-500 mt-1">
-                          Período selecionado: <b>{new Date(from + 'T12:00:00').toLocaleDateString('pt-BR')}</b> até <b>{new Date(to + 'T12:00:00').toLocaleDateString('pt-BR')}</b>
+                          Período selecionado: <b>{formatAgendaDate(from)}</b> até <b>{formatAgendaDate(to)}</b>
                         </p>
                       </div>
                       <div className="text-right text-[10px] text-zinc-400 pb-1">
-                        Gerado em: {new Date().toLocaleString('pt-BR')} | Perfil: Administrador
+                        Gerado em: {formatAgendaDateTime(new Date())} | Perfil: Administrador
                       </div>
                     </div>
                   </div>
@@ -4021,7 +3993,7 @@ export default function Relatorios() {
                               {filteredVendas.map((v) => (
                                 <tr key={v.id} className="hover:bg-zinc-50/50 transition-colors">
                                   <td className="px-4 py-3 whitespace-nowrap">
-                                    {new Date(v.data_venda).toLocaleDateString("pt-BR")}
+                                    {formatAgendaDate(v.data_venda)}
                                   </td>
                                   <td className="px-4 py-3">
                                     <div className="font-semibold text-zinc-800">{v.produto_nome}</div>
@@ -4241,11 +4213,11 @@ export default function Relatorios() {
                         )}
                         <h1 className="text-xl font-bold text-zinc-800">Relatório Executivo de Prestação de Serviços</h1>
                         <p className="text-xs text-zinc-500 mt-1">
-                          Período selecionado: <b>{new Date(from + 'T12:00:00').toLocaleDateString('pt-BR')}</b> até <b>{new Date(to + 'T12:00:00').toLocaleDateString('pt-BR')}</b>
+                          Período selecionado: <b>{formatAgendaDate(from)}</b> até <b>{formatAgendaDate(to)}</b>
                         </p>
                       </div>
                       <div className="text-right text-[10px] text-zinc-400 pb-1">
-                        Gerado em: {new Date().toLocaleString('pt-BR')} | Perfil: Administrador
+                        Gerado em: {formatAgendaDateTime(new Date())} | Perfil: Administrador
                       </div>
                     </div>
                   </div>
@@ -4363,7 +4335,7 @@ export default function Relatorios() {
                               {filteredServicos.map((s) => (
                                 <tr key={s.id} className="hover:bg-zinc-50/50 transition-colors">
                                   <td className="px-3 py-3 whitespace-nowrap">
-                                    {new Date(s.data_hora).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                                    {formatAgendaDateTime(s.data_hora)}
                                   </td>
                                   <td className="px-3 py-3">
                                     <div className="font-semibold text-zinc-800">{s.servico_nome}</div>
@@ -4488,8 +4460,8 @@ export default function Relatorios() {
                     <p className="text-xs text-zinc-500">Resultado Operacional Consolidado</p>
                   </div>
                   <div className="text-right text-xs text-zinc-500">
-                    <div><strong>Período:</strong> {from ? new Date(from + 'T12:00:00').toLocaleDateString('pt-BR') : '-'} a {to ? new Date(to + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}</div>
-                    <div><strong>Gerado em:</strong> {new Date().toLocaleString('pt-BR')}</div>
+                    <div><strong>Período:</strong> {from ? formatAgendaDate(from) : '-'} a {to ? formatAgendaDate(to) : '-'}</div>
+                    <div><strong>Gerado em:</strong> {formatAgendaDateTime(new Date())}</div>
                   </div>
                 </div>
               </div>
@@ -5406,7 +5378,7 @@ export default function Relatorios() {
                       'Analitico_Venda', 
                       ['Venda', 'Data', 'Cliente', 'Profissional', 'Valor Prod.', 'Valor Serv.', 'Faturamento Total', 'CMV', 'Comissão', 'Taxas', 'Resultado', 'Margem (%)'], 
                       ['numero', 'data', 'cliente', 'profissional', 'valor_produtos', 'valor_servicos', 'faturamento_total', 'cmv', 'comissao', 'taxas', 'resultado_operacional', 'margem'], 
-                      sortedAndFilteredVendas.map(v => ({ ...v, data: new Date(v.data).toLocaleDateString('pt-BR') }))
+                      sortedAndFilteredVendas.map(v => ({ ...v, data: formatAgendaDate(v.data) }))
                     )} 
                     variant="outline" 
                     size="sm" 
@@ -5420,7 +5392,7 @@ export default function Relatorios() {
                       'Analitico_Venda', 
                       ['Venda', 'Data', 'Cliente', 'Profissional', 'Valor Prod.', 'Valor Serv.', 'Faturamento Total', 'CMV', 'Comissão', 'Taxas', 'Resultado', 'Margem (%)'], 
                       ['numero', 'data', 'cliente', 'profissional', 'valor_produtos', 'valor_servicos', 'faturamento_total', 'cmv', 'comissao', 'taxas', 'resultado_operacional', 'margem'], 
-                      sortedAndFilteredVendas.map(v => ({ ...v, data: new Date(v.data).toLocaleDateString('pt-BR') }))
+                      sortedAndFilteredVendas.map(v => ({ ...v, data: formatAgendaDate(v.data) }))
                     )} 
                     variant="outline" 
                     size="sm" 
@@ -5447,7 +5419,7 @@ export default function Relatorios() {
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-sm text-zinc-800 dark:text-zinc-100">{v.numero}</span>
                           <span className="text-[11px] text-zinc-400 font-mono">
-                            {new Date(v.data).toLocaleDateString('pt-BR')}
+                            {formatAgendaDate(v.data)}
                           </span>
                         </div>
                         <span className={`px-2 py-0.5 rounded text-[11px] font-bold border whitespace-nowrap font-mono ${
@@ -5587,7 +5559,7 @@ export default function Relatorios() {
                       ) : sortedAndFilteredVendas.map((v, idx) => (
                         <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
                           <td className="px-3 py-2.5 font-semibold text-zinc-700 dark:text-zinc-300">{v.numero}</td>
-                          <td className="px-3 py-2.5 text-zinc-500 dark:text-zinc-400 font-mono">{new Date(v.data).toLocaleDateString('pt-BR')}</td>
+                          <td className="px-3 py-2.5 text-zinc-500 dark:text-zinc-400 font-mono">{formatAgendaDate(v.data)}</td>
                           <td className="px-3 py-2.5 font-medium text-zinc-800 dark:text-zinc-200 truncate max-w-[120px]" title={v.cliente}>{v.cliente}</td>
                           <td className="px-3 py-2.5 text-zinc-600 dark:text-zinc-400 truncate max-w-[100px]" title={v.profissional}>{v.profissional}</td>
                           <td className="px-3 py-2.5 text-right font-mono text-zinc-700 dark:text-zinc-300">{fmtBRL(v.valor_produtos)}</td>
@@ -5670,7 +5642,7 @@ export default function Relatorios() {
               <span>Detalhamento: {detailType === 'servico' ? selectedDetailItem?.servico_nome : selectedDetailItem?.produto_nome}</span>
             </DialogTitle>
             <p className="text-xs sm:text-sm text-zinc-500 mt-1">
-              Análise individual e composição dos lançamentos no período de {from ? new Date(from + 'T12:00:00').toLocaleDateString('pt-BR') : ''} a {to ? new Date(to + 'T12:00:00').toLocaleDateString('pt-BR') : ''}.
+              Análise individual e composição dos lançamentos no período de {from ? formatAgendaDate(from) : ''} a {to ? formatAgendaDate(to) : ''}.
             </p>
           </DialogHeader>
 
@@ -5730,7 +5702,7 @@ export default function Relatorios() {
                             <div className="flex items-center justify-between border-b border-zinc-200/60 dark:border-zinc-800 pb-2">
                               <div className="flex items-center gap-2">
                                 <span className="font-mono text-zinc-500 text-[11px]">
-                                  {launch.data ? new Date(launch.data).toLocaleDateString('pt-BR') : '-'}
+                                  {launch.data ? formatAgendaDate(launch.data) : '-'}
                                 </span>
                                 <span className="font-semibold text-zinc-800 dark:text-zinc-150">
                                   #{launch.numero || '-'}
@@ -5807,7 +5779,7 @@ export default function Relatorios() {
                             return (
                               <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
                                 <td className="px-4 py-3 whitespace-nowrap text-zinc-500 font-mono">
-                                  {launch.data ? new Date(launch.data).toLocaleDateString('pt-BR') : '-'}
+                                  {launch.data ? formatAgendaDate(launch.data) : '-'}
                                 </td>
                                 <td className="px-4 py-3 font-semibold text-zinc-800 dark:text-zinc-150">
                                   {launch.numero || '-'}
@@ -5924,7 +5896,7 @@ export default function Relatorios() {
                         {(selectedConsumoItem.launches || []).map((launch, idx) => (
                           <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
                             <td className="px-4 py-3 whitespace-nowrap text-zinc-500 font-mono">
-                              {launch.data ? new Date(launch.data).toLocaleString('pt-BR') : '-'}
+                              {launch.data ? formatAgendaDateTime(launch.data) : '-'}
                             </td>
                             <td className="px-4 py-3 text-zinc-800 dark:text-zinc-150 font-mono">
                               {launch.agendamento_numero ? String(launch.agendamento_numero).padStart(6, '0') + ' | S' : '-'}
