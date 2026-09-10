@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import http from "../api";
 import { formatAgendaDateTime } from "../lib/date";
 import { stockUnits, internalStock, stockUnitLabel } from "../lib/inventoryUnits.mjs";
@@ -28,12 +28,28 @@ import {
   AlertDialogCancel 
 } from "../components/ui/alert-dialog";
 
+// As tabelas viram cartões apenas no mobile, usando as mesmas classes Tailwind da tela.
+const mobileTableClasses = `
+  max-md:block max-md:w-full max-md:[&_tbody]:block max-md:[&_tbody]:w-full max-md:[&_thead]:hidden
+  max-md:[&_tbody>tr]:grid max-md:[&_tbody>tr]:grid-cols-2 max-md:[&_tbody>tr]:gap-3 max-md:[&_tbody>tr]:p-4 max-md:[&_tbody>tr]:border-b
+  max-md:[&_td]:block max-md:[&_td]:min-w-0 max-md:[&_td]:w-auto max-md:[&_td]:max-w-none
+  max-md:[&_td]:p-0 max-md:[&_td]:text-left max-md:[&_td]:whitespace-normal max-md:[&_td]:overflow-visible max-md:[&_td]:text-clip
+  max-md:[&_td]:before:content-[attr(data-label)] max-md:[&_td]:before:block max-md:[&_td]:before:mb-[5px]
+  max-md:[&_td]:before:text-[11px] max-md:[&_td]:before:font-medium max-md:[&_td]:before:font-sans
+  max-md:[&_td]:before:text-zinc-500 dark:max-md:[&_td]:before:text-zinc-400
+  max-md:[&_td:first-child]:col-span-full max-md:[&_td:first-child]:text-[15px]
+  max-md:[&_td[colspan]]:col-span-full max-md:[&_td[colspan]]:before:hidden
+  max-md:[&_td[data-count]]:col-span-full max-md:[&_td[data-count]]:p-3 max-md:[&_td[data-count]]:bg-[#84a59d14] max-md:[&_td[data-count]]:rounded-lg
+  max-md:[&_td[data-count]_input]:w-full max-md:[&_td[data-count]_input]:max-w-none max-md:[&_td[data-count]_input]:m-0 max-md:[&_td[data-count]_input]:text-left
+`;
+
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtDT = formatAgendaDateTime;
 
 export default function Inventario() {
   const { user } = useAuth();
   const canInventariar = user?.role === 'admin' || user?.perfil?.permissoes?.['estoque.inventariar'] === true || user?.perfil?.permissoes?.acoes?.['estoque.inventariar'];
+  const adjustmentRef = useRef(null);
   const [activeTab, setActiveTab] = useState("assistido");
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [zerarConfirmOpen, setZerarConfirmOpen] = useState(false);
@@ -44,7 +60,9 @@ export default function Inventario() {
   const [protocolos, setProtocolos] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [productPage, setProductPage] = useState(1);
-  useEffect(() => { setProductPage(1); }, [searchQuery, activeTab]);
+  const [inventoryCategory, setInventoryCategory] = useState("all");
+  const [zeroProductIds, setZeroProductIds] = useState([]);
+  useEffect(() => { setProductPage(1); }, [searchQuery, activeTab, inventoryCategory]);
   const [loading, setLoading] = useState(false);
 
   // Assisted Inventory state
@@ -57,6 +75,9 @@ export default function Inventario() {
   const [selectedProductId, setSelectedProductId] = useState("");
   const [quantidadeContada, setQuantidadeContada] = useState("");
   const [observacoes, setObservacoes] = useState("");
+  useEffect(() => {
+    if (selectedProductId && window.matchMedia("(max-width: 767px)").matches) adjustmentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [selectedProductId]);
 
   useEffect(() => {
     loadData();
@@ -159,6 +180,9 @@ export default function Inventario() {
   };
 
   const handleZerarTudoLote = () => {
+    const ids = filteredProducts.filter(p => contagens[p.id] === '' || contagens[p.id] == null).map(p => p.id);
+    if (!ids.length) return toast.info('Não há produtos sem contagem no filtro selecionado.');
+    setZeroProductIds(ids);
     setZerarConfirmOpen(true);
   };
 
@@ -172,10 +196,10 @@ export default function Inventario() {
       await http.post("/estoque/inventario/autorizar-zeragem", { email, password });
       
       const novasContagens = { ...contagens };
-      produtos.forEach(p => {
-        const valorAtual = contagens[p.id];
+      zeroProductIds.forEach(id => {
+        const valorAtual = contagens[id];
         if (valorAtual === "" || valorAtual === undefined || valorAtual === null) {
-          novasContagens[p.id] = "0";
+          novasContagens[id] = "0";
         }
       });
       setContagens(novasContagens);
@@ -256,10 +280,13 @@ export default function Inventario() {
 
   const activeStats = calcActiveStats();
 
-  // Filter products based on search
-  const filteredProducts = produtos.filter(p => 
-    p.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (p.categoria && p.categoria.toLowerCase().includes(searchQuery.toLowerCase()))
+  const categoryKey = (p) => p.categoria_id ? `id:${p.categoria_id}` : p.categoria?.trim() ? `name:${p.categoria.trim()}` : 'uncategorized';
+  const inventoryCategories = Array.from(new Map(produtos.map(p => [categoryKey(p), p.categoria?.trim() || 'Sem categoria'])).entries())
+    .sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'));
+  const filteredProducts = produtos.filter(p =>
+    (activeTab !== 'assistido' || inventoryCategory === 'all' || categoryKey(p) === inventoryCategory) &&
+    (p.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.categoria && p.categoria.toLowerCase().includes(searchQuery.toLowerCase())))
   );
 
   const pageSize = 50;
@@ -268,7 +295,7 @@ export default function Inventario() {
   const firstProductIndex = (currentProductPage - 1) * pageSize;
   const visibleProducts = filteredProducts.slice(firstProductIndex, firstProductIndex + pageSize);
   const productPagination = (
-    <nav aria-label="Paginação de produtos" className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 dark:border-zinc-800 px-4 py-3">
+    <nav aria-label="Paginação de produtos" className="max-md:flex-col max-md:items-stretch max-md:[&>div]:justify-between max-md:[&_button]:flex-1 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 dark:border-zinc-800 px-4 py-3">
       <span className="text-xs text-zinc-500 dark:text-zinc-400">
         {filteredProducts.length ? firstProductIndex + 1 : 0}–{Math.min(firstProductIndex + pageSize, filteredProducts.length)} de {filteredProducts.length} produtos
       </span>
@@ -281,7 +308,7 @@ export default function Inventario() {
   );
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 fade-in min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200">
+    <div className="max-md:[overflow-wrap:anywhere] max-md:[&_input]:text-base max-md:[&_input]:min-h-11 max-md:[&_select]:text-base max-md:[&_select]:min-h-11 max-md:[&_button]:min-h-11 min-w-0 p-3 sm:p-6 lg:p-8 fade-in min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200">
       <PageHeader 
         overline="Estoque" 
         title="Inventário físico & Rastreabilidade" 
@@ -298,23 +325,34 @@ export default function Inventario() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-        <TabsList className="bg-zinc-200 dark:bg-zinc-900 p-1 rounded-lg mb-6 flex flex-wrap gap-1">
-          <TabsTrigger value="assistido" className="rounded-md font-medium text-xs px-5 py-2 flex items-center gap-1.5">
+        <TabsList className="max-md:[&>button]:min-w-0 max-md:[&_svg]:shrink-0 bg-zinc-200 dark:bg-zinc-900 p-1 rounded-lg mb-6 grid grid-cols-2 md:flex md:flex-wrap h-auto gap-1">
+          <TabsTrigger value="assistido" className="rounded-md font-medium text-xs px-2 md:px-5 py-3 flex items-center justify-start md:justify-center whitespace-normal text-left min-h-12 gap-1.5">
             <ClipboardCheck className="w-4 h-4" /> Inventário Assistido (Lote)
           </TabsTrigger>
-          <TabsTrigger value="protocolos" className="rounded-md font-medium text-xs px-5 py-2 flex items-center gap-1.5">
+          <TabsTrigger value="protocolos" className="rounded-md font-medium text-xs px-2 md:px-5 py-3 flex items-center justify-start md:justify-center whitespace-normal text-left min-h-12 gap-1.5">
             <Layers className="w-4 h-4" /> Protocolos Concluídos
           </TabsTrigger>
-          <TabsTrigger value="unitario" className="rounded-md font-medium text-xs px-5 py-2 flex items-center gap-1.5">
+          <TabsTrigger value="unitario" className="rounded-md font-medium text-xs px-2 md:px-5 py-3 flex items-center justify-start md:justify-center whitespace-normal text-left min-h-12 gap-1.5">
             <Package className="w-4 h-4" /> Ajuste Unitário Rápido
           </TabsTrigger>
-          <TabsTrigger value="historico" className="rounded-md font-medium text-xs px-5 py-2 flex items-center gap-1.5">
+          <TabsTrigger value="historico" className="rounded-md font-medium text-xs px-2 md:px-5 py-3 flex items-center justify-start md:justify-center whitespace-normal text-left min-h-12 gap-1.5">
             <History className="w-4 h-4" /> Histórico de Movimentações
           </TabsTrigger>
         </TabsList>
 
         {/* TAB 1: INVENTÁRIO ASSISTIDO (LOTE) */}
         <TabsContent value="assistido" className="space-y-6">
+          {canInventariar && (
+            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 space-y-2">
+              <Label htmlFor="inventory-category">Categoria do inventário</Label>
+              <select id="inventory-category" value={inventoryCategory} onChange={e => setInventoryCategory(e.target.value)}
+                className="block w-full sm:max-w-sm rounded-lg border border-zinc-250 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm">
+                <option value="all">Todas as categorias</option>
+                {inventoryCategories.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+              </select>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">{filteredProducts.length} produtos no filtro. As contagens são mantidas ao trocar de categoria. Ao concluir, todos os produtos contados serão salvos, inclusive de outras categorias.</p>
+            </div>
+          )}
           {!canInventariar ? (
             <Card className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-850 p-8 text-center max-w-xl mx-auto shadow-md rounded-2xl">
               <AlertTriangle className="w-14 h-14 mx-auto mb-4 text-rose-500 animate-pulse" />
@@ -333,6 +371,7 @@ export default function Inventario() {
               </p>
               <Button 
                 onClick={handleStartInventario}
+                disabled={loading || filteredProducts.length === 0}
                 className="mt-6 bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold h-11 px-6 shadow-sm rounded-lg flex items-center gap-2 mx-auto"
               >
                 <Play className="w-4 h-4" /> Iniciar Contagem em Lote
@@ -341,7 +380,7 @@ export default function Inventario() {
           ) : (
             <div className="space-y-6">
               {/* Stats & Header for active count */}
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+              <div className="max-md:[&>:nth-child(n+3)]:col-span-full max-md:[&>:nth-child(-n+2)]:flex-wrap grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <Card className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-850 p-4 shadow-sm flex items-center gap-3">
                   <div className="p-2.5 bg-blue-50 dark:bg-blue-950/20 text-blue-600 rounded-xl">
                     <Package className="w-5 h-5" />
@@ -427,13 +466,13 @@ export default function Inventario() {
                   variant="outline"
                   className="w-full sm:w-auto h-12 text-xs border-rose-200 dark:border-rose-800 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 font-bold px-4 rounded-xl flex items-center gap-2"
                 >
-                  <AlertTriangle className="w-4 h-4 text-rose-500" /> Zerar Tudo (Lote)
+                  <AlertTriangle className="w-4 h-4 text-rose-500" /> Zerar não contados do filtro
                 </Button>
               </div>
 
               {/* Inventory count table */}
               <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-850 rounded-xl shadow-sm overflow-hidden">
-                <Table>
+                <Table className={mobileTableClasses}>
                   <TableHeader className="bg-zinc-50 dark:bg-zinc-900/50">
                     <TableRow>
                       <TableHead className="font-semibold">Produto</TableHead>
@@ -461,17 +500,24 @@ export default function Inventario() {
 
                       return (
                         <TableRow key={p.id} className="hover:bg-zinc-50/50 transition-colors">
-                          <TableCell className="font-medium">
+                          <TableCell data-label="Produto" className="font-medium">
                             <div>{p.nome}</div>
                             <span className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase font-semibold">{p.categoria || "Geral"}</span>
                           </TableCell>
-                          <TableCell className="text-right font-mono font-bold text-zinc-650 dark:text-zinc-400">
-                            {Number(currentStock.toFixed(3))} {unitLabel}
+                          <TableCell data-label="Quantidade em Estoque" className="text-right font-mono font-bold text-zinc-650 dark:text-zinc-400">
+                            <div>{currentStock.toLocaleString('pt-BR', { maximumFractionDigits: 3 })} {unitLabel}</div>
+                            {Number(p.quantidade_por_unidade) > 0 && (
+                              <div className="mt-1 text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                                Total: {Number(p.quantidade_estoque || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} {p.unidade_medida_insumo || 'un'}
+                              </div>
+                            )}
                           </TableCell>
-                          <TableCell className="text-center py-2">
+                          <TableCell data-label="Contagem (UN)" data-count="true" className="text-center py-2">
                             <Input 
                               type="number"
                               step="0.001"
+                              inputMode="decimal"
+                              aria-label={`Contagem de ${p.nome} em ${unitLabel}`}
                               min="0"
                               placeholder="-"
                               value={val}
@@ -479,7 +525,7 @@ export default function Inventario() {
                               className="w-28 text-center mx-auto font-mono font-semibold h-9 rounded-lg border-zinc-250 dark:border-zinc-800"
                             />
                           </TableCell>
-                          <TableCell className={`text-right font-mono font-bold whitespace-nowrap ${
+                          <TableCell data-label="Divergência" className={`text-right font-mono font-bold whitespace-nowrap ${
                             diff === null 
                               ? "text-zinc-400" 
                               : diff > 0 
@@ -490,7 +536,7 @@ export default function Inventario() {
                           }`}>
                             {diff === null ? "-" : `${diff > 0 ? '+' : ''}${diff.toFixed(3)} ${unitLabel}`}
                           </TableCell>
-                          <TableCell className={`text-right font-mono font-bold whitespace-nowrap ${
+                          <TableCell data-label="Val. Divergente" className={`text-right font-mono font-bold whitespace-nowrap ${
                             finDiff === null 
                               ? "text-zinc-400" 
                               : finDiff > 0 
@@ -521,7 +567,7 @@ export default function Inventario() {
             </div>
 
             <div className="overflow-x-auto min-h-60">
-              <Table>
+              <Table className={mobileTableClasses}>
                 <TableHeader className="bg-zinc-50 dark:bg-zinc-900/50">
                   <TableRow>
                     <TableHead className="font-semibold">Protocolo</TableHead>
@@ -543,17 +589,17 @@ export default function Inventario() {
                   ) : (
                     protocolos.map((p) => (
                       <TableRow key={p.id} className="hover:bg-zinc-50/50 transition-colors">
-                        <TableCell className="font-mono text-xs font-bold text-zinc-900 dark:text-zinc-50">
+                        <TableCell data-label="Protocolo" className="font-mono text-xs font-bold text-zinc-900 dark:text-zinc-50">
                           {p.numero_protocolo}
                         </TableCell>
-                        <TableCell className="font-mono text-xs text-zinc-500 whitespace-nowrap">
+                        <TableCell data-label="Data / Hora" className="font-mono text-xs text-zinc-500 whitespace-nowrap">
                           {fmtDT(p.data_conferenca || p.createdAt)}
                         </TableCell>
-                        <TableCell className="text-sm font-semibold">{p.usuario_nome}</TableCell>
-                        <TableCell className="text-right font-mono text-zinc-750 dark:text-zinc-400">{p.qtd_conferida}</TableCell>
-                        <TableCell className="text-right font-mono font-bold text-amber-600 dark:text-amber-500">{p.qtd_divergencias}</TableCell>
-                        <TableCell className="text-right font-mono font-black text-rose-600 dark:text-rose-500">{fmtBRL(p.valor_divergencia)}</TableCell>
-                        <TableCell className="text-zinc-500 max-w-xs truncate" title={p.observacao}>
+                        <TableCell data-label="Responsável" className="text-sm font-semibold">{p.usuario_nome}</TableCell>
+                        <TableCell data-label="Itens Conferidos" className="text-right font-mono text-zinc-750 dark:text-zinc-400">{p.qtd_conferida}</TableCell>
+                        <TableCell data-label="Com Divergência" className="text-right font-mono font-bold text-amber-600 dark:text-amber-500">{p.qtd_divergencias}</TableCell>
+                        <TableCell data-label="Divergência Financeira" className="text-right font-mono font-black text-rose-600 dark:text-rose-500">{fmtBRL(p.valor_divergencia)}</TableCell>
+                        <TableCell data-label="Justificativa / Obs" className="max-md:col-span-full text-zinc-500 max-w-xs truncate" title={p.observacao}>
                           {p.observacao || "-"}
                         </TableCell>
                       </TableRow>
@@ -591,7 +637,7 @@ export default function Inventario() {
               </div>
 
               <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden">
-                <Table>
+                <Table className={mobileTableClasses}>
                   <TableHeader className="bg-zinc-50 dark:bg-zinc-900/50">
                     <TableRow>
                       <TableHead className="font-semibold">Produto</TableHead>
@@ -620,22 +666,22 @@ export default function Inventario() {
                                 : "hover:bg-zinc-50/50"
                             }`}
                           >
-                            <TableCell className="font-medium">
+                            <TableCell data-label="Produto" className="font-medium">
                               <div>{p.nome}</div>
                               {p.fornecedor && <span className="text-[10px] text-zinc-400 dark:text-zinc-500">Fornecedor: {p.fornecedor}</span>}
                             </TableCell>
-                            <TableCell>
+                            <TableCell data-label="Categoria">
                               <span className="text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-400 px-2 py-0.5 rounded-md font-semibold">
                                 {p.categoria || "Geral"}
                               </span>
                             </TableCell>
-                            <TableCell className="text-right font-mono font-bold text-zinc-700 dark:text-zinc-300">
+                            <TableCell data-label="Estoque Atual" className="text-right font-mono font-bold text-zinc-700 dark:text-zinc-300">
                               {Number(stockUnits(p).toFixed(3))} {stockUnitLabel(p)}
                             </TableCell>
-                            <TableCell className="text-right font-mono text-zinc-550 dark:text-zinc-450">
+                            <TableCell data-label="Custo Unitário" className="text-right font-mono text-zinc-550 dark:text-zinc-450">
                               {fmtBRL(p.custo_unitario)}
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell data-label="Ações" className="max-md:[&_button]:w-full text-right">
                               <Button 
                                 size="sm" 
                                 variant={isSelected ? "secondary" : "outline"} 
@@ -660,7 +706,7 @@ export default function Inventario() {
             </div>
 
             {/* Right: Selected Product Adjustment Pane */}
-            <div className="xl:col-span-1">
+            <div ref={adjustmentRef} className="xl:col-span-1 min-w-0 scroll-mt-4">
               {selectedProductId ? (
                 (() => {
                   const prod = produtos.find(p => p.id === selectedProductId);
@@ -718,6 +764,7 @@ export default function Inventario() {
                           <Input 
                             type="number" 
                             step="0.001"
+                            inputMode="decimal"
                             value={quantidadeContada}
                             onChange={(e) => setQuantidadeContada(e.target.value)}
                             className="mt-1 font-mono font-bold text-lg"
@@ -787,7 +834,7 @@ export default function Inventario() {
             </div>
 
             <div className="overflow-x-auto min-h-60">
-              <Table>
+              <Table className={mobileTableClasses}>
                 <TableHeader className="bg-zinc-50 dark:bg-zinc-900/50">
                   <TableRow>
                     <TableHead className="font-semibold">Data / Hora</TableHead>
@@ -825,18 +872,18 @@ export default function Inventario() {
 
                       return (
                         <TableRow key={m.id} className="hover:bg-zinc-50/50 transition-colors">
-                          <TableCell className="font-mono text-xs whitespace-nowrap text-zinc-500 dark:text-zinc-450">
+                          <TableCell data-label="Data / Hora" className="font-mono text-xs whitespace-nowrap text-zinc-500 dark:text-zinc-450">
                             {fmtDT(m.createdAt)}
                           </TableCell>
-                          <TableCell className="font-semibold">
+                          <TableCell data-label="Produto" className="font-semibold">
                             {m.produto_nome}
                           </TableCell>
-                          <TableCell className="text-center">
+                          <TableCell data-label="Tipo" className="text-center">
                             <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${typeBadge}`}>
                               {typeText}
                             </span>
                           </TableCell>
-                          <TableCell className={`text-right font-mono font-bold ${
+                          <TableCell data-label="Quantidade" className={`text-right font-mono font-bold ${
                             m.quantidade > 0 
                               ? "text-emerald-600 dark:text-emerald-500" 
                               : m.quantidade < 0 
@@ -845,14 +892,14 @@ export default function Inventario() {
                           }`}>
                             {m.quantidade > 0 ? "+" : ""}{Number(stockUnits(prod, m.quantidade).toFixed(3))} {unitLabel}
                           </TableCell>
-                          <TableCell className="text-right font-mono text-zinc-500 dark:text-zinc-400">
+                          <TableCell data-label="Estoque Anterior" className="text-right font-mono text-zinc-500 dark:text-zinc-400">
                             {Number(stockUnits(prod, m.quantidade_anterior).toFixed(3))} {unitLabel}
                           </TableCell>
-                          <TableCell className="text-right font-mono font-bold text-zinc-800 dark:text-zinc-200">
+                          <TableCell data-label="Estoque Atual" className="text-right font-mono font-bold text-zinc-800 dark:text-zinc-200">
                             {Number(stockUnits(prod, m.quantidade_atual).toFixed(3))} {unitLabel}
                           </TableCell>
-                          <TableCell className="text-sm font-semibold">{m.usuario_nome || "-"}</TableCell>
-                          <TableCell className="text-zinc-600 dark:text-zinc-350 max-w-xs truncate" title={m.motivo}>
+                          <TableCell data-label="Responsável" className="text-sm font-semibold">{m.usuario_nome || "-"}</TableCell>
+                          <TableCell data-label="Motivo / Origem" className="max-md:col-span-full text-zinc-600 dark:text-zinc-350 max-w-xs truncate" title={m.motivo}>
                             {m.motivo || "-"}
                           </TableCell>
                         </TableRow>
@@ -871,12 +918,12 @@ export default function Inventario() {
         onOpenChange={setPasswordDialogOpen}
         onConfirm={handleConfirmZeragem}
         title="Autorizar Zeragem em Lote"
-        description="Esta operação definirá a contagem física de TODOS os produtos ativos como 0. Informe usuário e senha de um supervisor/administrador com permissão para zerar estoque para autorizar."
+        description={`Esta operação definirá como 0 a contagem de ${zeroProductIds.length} produtos não contados do filtro selecionado, incluindo todas as páginas. Informe as credenciais de um supervisor com permissão para zerar estoque.`}
         requireCredentials={true}
       />
 
       <AlertDialog open={zerarConfirmOpen} onOpenChange={setZerarConfirmOpen}>
-        <AlertDialogContent className="max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-6">
+        <AlertDialogContent className="w-[calc(100%-1.5rem)] max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-6">
           <AlertDialogHeader className="space-y-3">
             <div className="mx-auto sm:mx-0 w-12 h-12 rounded-full bg-rose-50 dark:bg-rose-950/30 flex items-center justify-center border border-rose-100 dark:border-rose-900/50">
               <AlertTriangle className="w-6 h-6 text-rose-600 dark:text-rose-500" />
@@ -885,7 +932,7 @@ export default function Inventario() {
               Deseja zerar o inventário em lote?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
-              Esta operação definirá a contagem física de <strong>todos os produtos ativos</strong> como 0.00. 
+              Esta operação definirá como 0 a contagem de <strong>{zeroProductIds.length} produtos não contados do filtro selecionado</strong>, incluindo todas as páginas. Produtos fora do filtro não serão zerados.
               <br /><br />
               Isso poderá gerar grandes divergências e afetar o saldo de estoque caso você conclua o lote. Deseja continuar?
             </AlertDialogDescription>
@@ -905,7 +952,7 @@ export default function Inventario() {
       </AlertDialog>
 
       <AlertDialog open={concluirConfirmOpen} onOpenChange={setConcluirConfirmOpen}>
-        <AlertDialogContent className="max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-6">
+        <AlertDialogContent className="w-[calc(100%-1.5rem)] max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl p-6">
           <AlertDialogHeader className="space-y-3">
             <div className="mx-auto sm:mx-0 w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center border border-emerald-100 dark:border-emerald-900/50">
               <ClipboardCheck className="w-6 h-6 text-emerald-600 dark:text-emerald-500" />
@@ -916,7 +963,7 @@ export default function Inventario() {
             <AlertDialogDescription className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
               Deseja realmente finalizar este inventário? 
               <br /><br />
-              As contagens físicas de <strong>{itemsParaSalvar.length} produtos</strong> serão processadas e aplicadas imediatamente ao saldo de estoque do sistema.
+              As contagens físicas de <strong>{itemsParaSalvar.length} produtos</strong> serão processadas e aplicadas imediatamente ao saldo de estoque do sistema, incluindo as contagens de outras categorias e páginas.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-6 flex flex-col-reverse sm:flex-row gap-2">
