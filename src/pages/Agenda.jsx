@@ -17,7 +17,7 @@ import { useAuth } from "../auth";
 import SearchableSelect from "../components/SearchableSelect";
 import AuditModal from "../components/AuditModal";
 import PasswordConfirmDialog from "../components/PasswordConfirmDialog";
-import { formatAgendaDateTime as libFormatAgendaDateTime } from "../lib/date";
+import { formatAgendaDate, formatAgendaTime, formatAgendaDateTime as libFormatAgendaDateTime } from "../lib/date";
 import "./Agenda.css";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -216,6 +216,15 @@ export default function Agenda() {
   const [serviceSearch, setServiceSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(null);
+  const [initialAppointmentForm, setInitialAppointmentForm] = useState("");
+  const appointmentSnapshotTaken = useRef(false);
+  useEffect(() => {
+    if (!open) appointmentSnapshotTaken.current = false;
+    if (open && form && !appointmentSnapshotTaken.current) {
+      setInitialAppointmentForm(JSON.stringify(form));
+      appointmentSnapshotTaken.current = true;
+    }
+  }, [open, form]);
   const [openSenha, setOpenSenha] = useState(false);
   const [senhaData, setSenhaData] = useState({ agendamento_id: null, novo_status: null, email: "", senha: "", motivo: "" });
   const [carregandoSenha, setCarregandoSenha] = useState(false);
@@ -1895,6 +1904,7 @@ export default function Agenda() {
   const openEdit = (a) => {
     setForm({
       id: a.id,
+      numero: a.numero,
       cliente_id: a.cliente_id,
       data_hora: toDatetimeLocalInput(a.data_hora),
       itens_selecionados: a.itens || [],
@@ -2295,22 +2305,28 @@ export default function Agenda() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="dialog-content w-[95vw] max-w-[95vw] sm:max-w-3xl rounded-2xl dark:bg-zinc-900 dark:border-zinc-800 p-5 sm:p-6" aria-describedby="dialog-agendamento">
-          <DialogHeader className="dialog-header">
-            <DialogTitle className="dialog-title">{form?.id ? "Editar Agendamento" : "Novo Agendamento"}</DialogTitle>
+        <DialogContent className="w-[calc(100%-1rem)] max-w-[1100px] max-h-[94dvh] sm:max-h-[90dvh] flex flex-col gap-0 p-0 overflow-hidden rounded-2xl bg-white text-zinc-800 dark:text-zinc-100 dark:[color-scheme:dark] dark:[&_label]:text-zinc-200 dark:[&_input]:border-zinc-600 dark:[&_textarea]:border-zinc-600 dark:[&_button[role=combobox]]:border-zinc-600 dark:bg-zinc-900 dark:border-zinc-800 [&_input]:min-w-0 [&_input]:max-w-full [&_input]:min-h-11 max-sm:[&_input]:text-base [&_button]:min-h-11" aria-describedby="dialog-agendamento">
+          <DialogHeader className="shrink-0 border-b border-zinc-100 dark:border-zinc-800 px-5 sm:px-8 py-5 text-left pr-10">
+            <span className="text-[10px] uppercase tracking-[0.18em] font-semibold text-[#648775] dark:text-[#B8D6C7]">Agenda • Atendimento</span>
+            <DialogTitle className="flex flex-wrap items-center justify-between gap-3 text-xl sm:text-2xl font-semibold text-zinc-800 dark:text-zinc-100">
+              <span>{form?.id ? "Editar Agendamento" : "Novo Agendamento"}</span>
+              {form?.id && form?.numero != null && <span className="text-xs sm:text-sm font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] dark:bg-zinc-800 dark:text-zinc-200 px-3 py-1 rounded-full shrink-0">{String(form.numero).padStart(6, "0")} | S</span>}
+            </DialogTitle>
+            <DialogDescription id="dialog-agendamento" className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-300">{form?.id ? "Ajuste o atendimento e confira o resumo antes de salvar." : "Organize os serviços e confira tudo antes de agendar."}</DialogDescription>
           </DialogHeader>
-          <div id="dialog-agendamento" className="sr-only">Formulario para criar ou editar agendamento</div>
           {form && (
-            <div className="dialog-body">
-              <div className="grid-2 mb-4">
-                <div className="form-group">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px]">
+                <div className="min-w-0 px-5 sm:px-8">
+                  <section className="py-5 border-b border-zinc-100 dark:border-zinc-800">
+<h3 className="flex items-center gap-3 font-semibold text-zinc-800 dark:text-zinc-100 mb-4"><span className="grid place-items-center w-7 h-7 shrink-0 rounded-full border border-[#DCE5DF] text-[#648775] dark:text-[#B8D6C7] text-xs">1</span>Cliente e data do atendimento</h3>                <div className="form-group">
                   <Label className="form-label">Cliente *</Label>
                   <div className="flex gap-2">
                     <SearchableSelect
                       placeholder="Selecione um cliente"
                       searchPlaceholder="Pesquisar cliente pelo nome..."
                       triggerTestId="ag-cliente"
-                      className="flex-1"
+                      className="min-w-0 flex-1"
                       options={clientes
                         .filter(c => c.id && c.id.trim())
                         .map(c => ({
@@ -2321,20 +2337,21 @@ export default function Agenda() {
                       value={form.cliente_id}
                       onValueChange={(v) => setForm({ ...form, cliente_id: v })}
                     />
-                    <Button type="button" size="icon" variant="outline" className="h-10 w-10 border-[#84A59D] text-[#3A4F4A] hover:bg-[#EAF0EE] shrink-0" onClick={() => { setClientForm({ nome: "", telefone: "", email: "" }); setOpenNewClient(true); }} title="Cadastrar Novo Cliente">
-                      <Plus className="w-4 h-4" />
+                    <Button type="button" variant="outline" className="h-11 px-3 border-[#84A59D] text-[#3A4F4A] dark:text-[#C6E0D4] hover:bg-[#EAF0EE] dark:hover:bg-zinc-700 shrink-0" onClick={() => { setClientForm({ nome: "", telefone: "", email: "" }); setOpenNewClient(true); }} title="Cadastrar Novo Cliente">
+                      <Plus className="w-4 h-4" /><span className="ml-1">Cliente</span>
                     </Button>
                   </div>
                 </div>
-                <div className="form-group">
-                  <Label className="form-label">Data e hora *</Label>
-                  <Input type="datetime-local" value={form.data_hora} onChange={(e) => setForm({ ...form, data_hora: e.target.value })} className="form-input" />
-                </div>
-              </div>
 
-              <div className="space-y-3 mb-4">
+                  <div className="form-group mt-4">
+                    <Label className="form-label">Data e horário de início *</Label>
+                    <Input type="datetime-local" aria-label="Data e horário de início" value={form.data_hora} onChange={(e) => setForm({ ...form, data_hora: e.target.value })} className="h-11 w-full" />
+                  </div>
+                  </section>
+                  <section className="py-5 border-b border-zinc-100 dark:border-zinc-800">
+<h3 className="flex items-center gap-3 font-semibold text-zinc-800 dark:text-zinc-100 mb-4"><span className="grid place-items-center w-7 h-7 shrink-0 rounded-full border border-[#DCE5DF] text-[#648775] dark:text-[#B8D6C7] text-xs">2</span>Serviços e profissionais</h3>              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                 <div>
-                  <Label className="text-xs text-zinc-500 mb-1 block">1. Selecionar Categoria do Serviço</Label>
+                  <Label className="text-xs text-zinc-500 dark:text-zinc-300 mb-1 block">Categoria</Label>
                   <SearchableSelect
                     placeholder="Todas as categorias"
                     searchPlaceholder="Pesquisar categoria..."
@@ -2351,7 +2368,7 @@ export default function Agenda() {
                 </div>
 
                 <div>
-                  <Label className="text-xs text-zinc-500 mb-1 block">2. Escolher o Serviço</Label>
+                  <Label className="text-xs text-zinc-500 dark:text-zinc-300 mb-1 block">Adicionar serviço</Label>
                   <SearchableSelect
                     placeholder="Escolha um serviço para adicionar..."
                     searchPlaceholder="Pesquisar serviço pelo nome..."
@@ -2375,21 +2392,21 @@ export default function Agenda() {
                 </div>
               </div>
 
-              <div className="services-list mb-4">
+              <div className="space-y-3">
                 {form.itens_selecionados.map((item, index) => {
                   const s = servicos.find(x => x.id === item.servico_id);
                   return (
-                    <div key={index} className="service-item-card">
+                    <div key={index} className="rounded-xl border border-zinc-200 dark:border-zinc-600 bg-[#FCFDFB] dark:bg-zinc-800 p-4">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold service-item-card-name">{s?.nome}</span>
-                        <Button size="sm" variant="ghost" onClick={() => removeServico(index)}><X className="w-4 h-4 text-rose-500" /></Button>
+                        <span className="font-semibold text-zinc-800 dark:text-zinc-100">{s?.nome}</span>
+                        <Button size="sm" variant="ghost" aria-label={`Remover ${s?.nome || "serviço"}`} onClick={() => removeServico(index)}><X className="w-4 h-4 text-rose-500" /></Button>
                       </div>
-                      <div className="text-xs service-item-card-info">Duração: {s?.duracao_minutos}min • Valor Base: {fmtBRL(s?.valor)}</div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div className="text-xs text-zinc-500 dark:text-zinc-300 mb-3">Duração: {s?.duracao_minutos}min • Valor Base: {fmtBRL(s?.valor)}</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                         <div className="form-group">
                           <Label className="form-label flex items-center gap-1"><User className="w-3 h-3" /> Profissional Principal</Label>
                           <Select value={item.colaborador_id || "none"} onValueChange={(v) => updateItemColab(index, v === "none" ? "" : v)}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                            <SelectTrigger className="h-11 text-sm"><SelectValue placeholder="Selecione" /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="none">Selecione um profissional</SelectItem>
                               {colaboradores.filter(c => c.id && c.id.trim()).map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
@@ -2399,7 +2416,7 @@ export default function Agenda() {
                         <div className="form-group">
                           <Label className="form-label flex items-center gap-1"><Users className="w-3 h-3" /> Auxiliar (Opcional)</Label>
                           <Select value={item.auxiliar_id || "none"} onValueChange={(v) => updateItemAux(index, v === "none" ? "" : v)}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                            <SelectTrigger className="h-11 text-sm"><SelectValue placeholder="Nenhum" /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="none">Nenhum</SelectItem>
                               {colaboradores.filter(c => c.id && c.id.trim()).map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
@@ -2415,16 +2432,23 @@ export default function Agenda() {
                             value={item.valor !== undefined ? item.valor : (s?.valor || "")}
                             onChange={(e) => updateItemValor(index, e.target.value)}
                             disabled={Number(form.valor_pago || 0) > 0 || form.status === 'concluido'}
-                            className="h-8 text-xs bg-white border border-zinc-200 rounded px-2 disabled:opacity-70 disabled:bg-zinc-50"
+                            className="h-11 text-base sm:text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded px-3 disabled:opacity-70 disabled:bg-zinc-100"
                           />
                         </div>
+
                       </div>
                     </div>
                   );
                 })}
               </div>
 
-              <div className="form-group mb-4">
+
+                    {form.itens_selecionados.length === 0 && <p className="rounded-xl border border-dashed border-zinc-250 dark:border-zinc-700 p-5 text-sm text-zinc-500 dark:text-zinc-300 text-center">Escolha um serviço acima para começar.</p>}
+                  </section>
+                  <section className="py-5">
+<h3 className="flex items-center gap-3 font-semibold text-zinc-800 dark:text-zinc-100 mb-4"><span className="grid place-items-center w-7 h-7 shrink-0 rounded-full border border-[#DCE5DF] text-[#648775] dark:text-[#B8D6C7] text-xs">3</span>Observações</h3>
+
+              <div className="form-group">
                 <Label className="form-label">Observações</Label>
                 <Textarea
                   rows={2}
@@ -2434,14 +2458,30 @@ export default function Agenda() {
                   style={{ resize: "none" }}
                 />
               </div>
-
-              <div className="total-box">
-                <div className="total-label">Total: {duracaoTotal}min</div>
-                <div className="total-value">{fmtBRL(valorTotal)}</div>
+                  </section>
+                </div>
+                <aside className="min-w-0 border-t lg:border-t-0 lg:border-l border-zinc-200 dark:border-zinc-800 bg-[#F7F9F5] dark:bg-zinc-950 px-5 sm:px-6 py-6">
+                  <div className="lg:sticky lg:top-6 space-y-4">
+                    <div><p className="text-[10px] uppercase tracking-[0.18em] text-[#648775] dark:text-[#B8D6C7] font-semibold">Tudo em um lugar</p><h3 className="font-semibold text-zinc-800 dark:text-zinc-100 mt-2">Resumo do atendimento</h3></div>
+                    <p className="font-semibold text-zinc-750 dark:text-zinc-200 break-words">{clientes.find(c => c.id === form.cliente_id)?.nome || "Selecione a cliente"}</p>
+                    <dl className="text-sm divide-y divide-zinc-200 dark:divide-zinc-800">
+                      <div className="flex justify-between gap-3 py-3"><dt className="text-zinc-500 dark:text-zinc-300">Data</dt><dd className="font-medium">{formatAgendaDate(form.data_hora?.split("T")[0])}</dd></div>
+                      <div className="flex justify-between gap-3 py-3"><dt className="text-zinc-500 dark:text-zinc-300">Início</dt><dd className="font-medium">{form.data_hora?.split("T")[1]?.slice(0, 5) || "—"}</dd></div>
+                      <div className="flex justify-between gap-3 py-3"><dt className="text-zinc-500 dark:text-zinc-300">Duração prevista</dt><dd className="font-medium">{duracaoTotal} min</dd></div>
+                    </dl>
+                    <div className="space-y-3">{form.itens_selecionados.map((item, index) => { const service = servicos.find(s => s.id === item.servico_id); return <div key={index} className="flex justify-between gap-3 text-xs"><div className="min-w-0"><p className="break-words">{service?.nome || "Serviço"}</p><p className="text-zinc-500 dark:text-zinc-300 mt-1">{colaboradores.find(c => c.id === item.colaborador_id)?.nome || "Profissional não informado"}</p></div><span className="shrink-0">{fmtBRL(item.valor !== undefined && item.valor !== null && item.valor !== "" ? Number(item.valor) : Number(service?.valor || 0))}</span></div>; })}</div>
+                    {form.id && <p className="rounded-lg border border-[#E5D8B3] dark:border-amber-900 bg-[#FAF6E9] dark:bg-amber-950/20 p-3 text-xs text-[#806B39] dark:text-amber-200">{initialAppointmentForm === JSON.stringify(form) ? "Nenhuma alteração neste atendimento." : "Você tem alterações para salvar. Confira o resumo antes de confirmar."}</p>}
+                    <div className="border-t border-zinc-200 dark:border-zinc-800 pt-4"><p className="text-xs text-zinc-500 dark:text-zinc-300">Valor total</p><p className="text-3xl font-semibold tracking-tight text-[#3A4F4A] dark:text-[#A8C3BC] mt-1">{fmtBRL(valorTotal)}</p></div>
+                    {(Number(form.valor_pago || 0) > 0 || form.status === 'concluido') && <p className="rounded-lg bg-amber-50 dark:bg-amber-950/30 p-3 text-xs text-amber-800 dark:text-amber-200">Os valores estão bloqueados porque este atendimento já possui pagamento ou está concluído.</p>}
+                  </div>
+                </aside>
               </div>
             </div>
           )}
-          <DialogFooter><Button data-testid="save-ag-btn" onClick={save} className="btn-primary w-full">Salvar Agendamento</Button></DialogFooter>
+          <div className="shrink-0 grid grid-cols-2 sm:flex sm:justify-end items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 sm:px-8 py-3 sm:py-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <Button variant="outline" onClick={() => setOpen(false)} className="px-3">Voltar</Button>
+            <Button data-testid="save-ag-btn" onClick={save} className="bg-[#456957] hover:bg-[#365443] text-white px-4 sm:px-6">{form?.id ? "Salvar alterações" : "Criar agendamento"}</Button>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -2798,17 +2838,18 @@ export default function Agenda() {
       </Dialog>
 
       <Dialog open={openResumo} onOpenChange={setOpenResumo}>
-        <DialogContent className="dialog-content w-[95vw] max-w-[95vw] sm:max-w-3xl md:max-w-4xl lg:max-w-5xl rounded-2xl p-5 sm:p-8 overflow-y-auto max-h-[90vh] dark:bg-zinc-900 dark:border-zinc-800" aria-describedby="dialog-resumo">
-          <DialogHeader className="dialog-header border-b border-zinc-150 dark:border-zinc-800 pb-4">
-            <DialogTitle className="dialog-title w-full">
+        <DialogContent className="w-[calc(100%-1rem)] max-w-[1100px] h-[94dvh] sm:h-[90dvh] max-h-[94dvh] sm:max-h-[90dvh] flex flex-col gap-0 p-0 overflow-hidden rounded-2xl bg-white text-zinc-800 dark:text-zinc-100 dark:[color-scheme:dark] dark:[&_label]:text-zinc-200 dark:[&_input]:border-zinc-600 dark:[&_textarea]:border-zinc-600 dark:[&_button[role=combobox]]:border-zinc-600 dark:bg-zinc-900 dark:border-zinc-800 [&_button]:min-h-11 [&_textarea]:text-base sm:[&_textarea]:text-sm" aria-describedby="dialog-resumo">
+          <DialogHeader className="shrink-0 border-b border-zinc-100 dark:border-zinc-800 px-5 sm:px-8 py-5 text-left pr-10">
+            <span className="text-[10px] uppercase tracking-[0.18em] font-semibold text-[#648775] dark:text-[#B8D6C7]">Agenda • Visão geral</span>
+            <DialogTitle className="w-full">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-8">
-                <span className="flex items-center gap-2.5 text-xl sm:text-2xl font-extrabold text-zinc-800 dark:text-zinc-100">
-                  <CalendarDays className="w-6.5 h-6.5 text-[#84A59D] shrink-0" />
+                <span className="flex items-center gap-2.5 text-xl sm:text-2xl font-semibold text-zinc-800 dark:text-zinc-100">
+                  <CalendarDays className="w-5 h-5 text-[#84A59D] shrink-0" />
                   Resumo do Atendimento
                 </span>
                 {resumoAgendamento?.numero && (
                   <span className="self-start sm:self-center text-xs sm:text-sm font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] dark:bg-zinc-800 dark:text-zinc-200 px-3 py-1 rounded-full shrink-0">
-                    Atendimento {String(resumoAgendamento.numero).padStart(6, "0")}
+                    {String(resumoAgendamento.numero).padStart(6, "0")} | S
                   </span>
                 )}
               </div>
@@ -2816,87 +2857,88 @@ export default function Agenda() {
           </DialogHeader>
           <div id="dialog-resumo" className="sr-only">Resumo detalhado do agendamento selecionado</div>
           {resumoAgendamento && (
-            <div className="dialog-body grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
-              
-              {/* Coluna Esquerda: Informações Gerais, Status Interativo e Notas */}
-              <div className="space-y-6">
+            <div className="min-h-0 flex-1 flex flex-col overflow-hidden">
+
+              <div className="min-h-0 flex-1 grid grid-cols-1 grid-rows-[auto_minmax(0,1fr)] lg:grid-rows-1 lg:grid-cols-[320px_minmax(0,1fr)]">
+              {/* Informações do atendimento */}
+              <div className="min-w-0 min-h-0 max-h-[34dvh] lg:max-h-none overflow-y-auto overscroll-contain space-y-4 px-5 sm:px-6 py-4 bg-[#F7F9F5] dark:bg-zinc-950 border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800">
                 {/* Cliente e Status */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-[#F8FBFB] dark:bg-[#1a2322] p-5 rounded-2xl border border-[#E8EFEF] dark:border-[#2e3e3b] shadow-xs gap-4">
+                <div className="flex flex-col items-start gap-4">
                   <div className="flex items-center gap-4 min-w-0">
                     {(() => {
                       const client = clientes.find(c => c.id === resumoAgendamento.cliente_id);
                       if (client?.foto) {
                         return (
-                          <img 
-                            src={client.foto} 
-                            alt={resumoAgendamento.cliente_nome} 
+                          <img
+                            src={client.foto}
+                            alt={resumoAgendamento.cliente_nome}
                             onClick={() => setPreviewPhoto(client.foto)}
-                            className="w-20 h-20 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-800 shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                            className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-800 shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
                             title="Clique para ampliar"
                           />
                         );
                       }
                       return (
-                        <div className="w-20 h-20 rounded-full bg-[#EAF0EE] dark:bg-zinc-800 flex items-center justify-center text-[#3A4F4A] dark:text-[#EAF0EE] font-semibold text-3xl shrink-0 border border-zinc-100 dark:border-zinc-800">
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[#EAF0EE] dark:bg-zinc-800 flex items-center justify-center text-[#3A4F4A] dark:text-[#EAF0EE] font-semibold text-3xl shrink-0 border border-zinc-100 dark:border-zinc-800">
                           {resumoAgendamento.cliente_nome?.charAt(0).toUpperCase()}
                         </div>
                       );
                     })()}
                     <div className="min-w-0">
-                      <h3 className="font-display font-bold text-zinc-800 dark:text-zinc-100 text-lg sm:text-xl truncate leading-tight">{resumoAgendamento.cliente_nome}</h3>
-                      <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium mt-0.5">Cliente cadastrado(a)</p>
+                      <h3 className="font-display font-bold text-zinc-800 dark:text-zinc-100 text-lg break-words leading-snug">{resumoAgendamento.cliente_nome}</h3>
+                      <p className="text-xs text-zinc-400 dark:text-zinc-300 font-medium mt-0.5">Cliente cadastrado(a)</p>
                     </div>
                   </div>
-                  <div className="shrink-0 self-start sm:self-center">
+                  <div className="shrink-0 self-start">
                     <StatusBadge status={resumoAgendamento.status} />
                   </div>
                 </div>
- 
+
                 {/* Data e Hora */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="bg-zinc-50 dark:bg-zinc-950 p-4 sm:p-5 rounded-xl border border-zinc-150 dark:border-zinc-800/80 flex items-center gap-3.5 shadow-xs">
+                <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
+                  <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-150 dark:border-zinc-800/80 flex items-center gap-2 flex-wrap">
                     <div className="p-2.5 bg-[#EAF0EE] dark:bg-zinc-800 text-[#84A59D] rounded-xl shrink-0 flex items-center justify-center">
                       <CalIcon className="w-5.5 h-5.5" />
                     </div>
                     <div>
-                      <p className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Data</p>
+                      <p className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-300 font-bold">Data</p>
                       <p className="text-sm sm:text-base font-bold text-zinc-700 dark:text-zinc-200 mt-0.5">
-                        {new Date(resumoAgendamento.data_hora).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
+                        {formatAgendaDate(resumoAgendamento.data_hora)}
                       </p>
                     </div>
                   </div>
-                  <div className="bg-zinc-50 dark:bg-zinc-950 p-4 sm:p-5 rounded-xl border border-zinc-150 dark:border-zinc-800/80 flex items-center gap-3.5 shadow-xs">
+                  <div className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-150 dark:border-zinc-800/80 flex items-center gap-2 flex-wrap">
                     <div className="p-2.5 bg-[#EAF0EE] dark:bg-zinc-800 text-[#84A59D] rounded-xl shrink-0 flex items-center justify-center">
                       <Clock className="w-5.5 h-5.5" />
                     </div>
                     <div>
-                      <p className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">Horário</p>
+                      <p className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-300 font-bold">Horário</p>
                       <p className="text-sm sm:text-base font-bold text-zinc-700 dark:text-zinc-200 mt-0.5">
-                        {fmtHour(resumoAgendamento.data_hora)}
+                        {formatAgendaTime(resumoAgendamento.data_hora)}
                       </p>
                     </div>
                   </div>
                 </div>
- 
+
                 {/* Agendado por — info discreta */}
                 {(resumoAgendamento.criado_por_nome || resumoAgendamento.criado_em) && (
-                  <div className="flex items-center gap-2 text-xs text-zinc-400 dark:text-zinc-500 italic select-none pt-1">
+                  <div className="flex items-center gap-2 text-xs text-zinc-400 dark:text-zinc-300 italic select-none pt-1">
                     <User className="w-4 h-4 text-[#84A59D] shrink-0" />
-                    <span className="leading-none">
+                    <span className="leading-relaxed">
                       Agendado
                       {resumoAgendamento.criado_por_nome && (
-                        <> por <strong className="font-semibold not-italic text-zinc-650 dark:text-zinc-400">{resumoAgendamento.criado_por_nome}</strong></>
+                        <> por <strong className="font-semibold not-italic text-zinc-650 dark:text-zinc-300">{resumoAgendamento.criado_por_nome}</strong></>
                       )}
                       {resumoAgendamento.criado_em && (
-                        <> em {new Date(resumoAgendamento.criado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</>
+                        <> em {libFormatAgendaDateTime(resumoAgendamento.criado_em)}</>
                       )}
                     </span>
                   </div>
                 )}
- 
+
                 {/* Observações */}
-                <div className="space-y-3 pt-4 border-t border-zinc-150 dark:border-zinc-800">
-                  <h4 className="text-xs sm:text-sm uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-bold flex items-center gap-2">
+                <details className="pt-4 border-t border-zinc-200 dark:border-zinc-800" key={resumoAgendamento.id} open={resumoAgendamento.observacoes ? true : undefined}><summary className="cursor-pointer text-sm font-semibold text-zinc-650 dark:text-zinc-300 py-2">Observações do atendimento</summary><div className="space-y-3 pt-3">
+                  <h4 className="text-xs sm:text-sm uppercase tracking-wider text-zinc-500 dark:text-zinc-300 dark:text-zinc-300 font-bold flex items-center gap-2">
                     <FileText className="w-4.5 h-4.5 text-[#84A59D]" /> Observações do Atendimento
                   </h4>
                   <div className="flex flex-col gap-3">
@@ -2904,55 +2946,57 @@ export default function Agenda() {
                       placeholder="Digite observações importantes sobre este atendimento..."
                       value={observacoesResumo}
                       onChange={(e) => setObservacoesResumo(e.target.value)}
-                      className="w-full h-36 text-sm sm:text-base bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 leading-relaxed rounded-xl shadow-inner p-3.5"
+                      className="w-full min-h-24 text-sm sm:text-base bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 leading-relaxed rounded-xl shadow-inner p-3.5"
                     />
-                    <Button 
+                    <Button
                       onClick={handleSaveResumoObs}
-                      disabled={savingResumoObs}
-                      size="default" 
+                      disabled={savingResumoObs || observacoesResumo === (resumoAgendamento.observacoes || "")}
+                      size="default"
                       className="self-end bg-[#84A59D] hover:bg-[#6F9189] text-xs sm:text-sm h-10 px-5 flex items-center gap-1 text-white font-bold rounded-lg shadow-sm"
                     >
                       {savingResumoObs ? "Salvando..." : "Salvar Observação"}
                     </Button>
                   </div>
-                </div>
+                </div></details>
               </div>
-  
+
               {/* Coluna Direita: Serviços, Produtos e Valores */}
-              <div className="space-y-6 flex flex-col justify-between">
+              <div className="min-w-0 min-h-0 overflow-y-auto overscroll-contain space-y-5 px-5 sm:px-8 py-6">
                 {/* Serviços e Profissionais */}
                 <div className="space-y-3">
                   <h4 className="text-xs sm:text-sm uppercase tracking-wider text-zinc-400 font-bold flex items-center gap-2">
-                    <Scissors className="w-4.5 h-4.5 text-[#84A59D]" /> 
+                    <Scissors className="w-4.5 h-4.5 text-[#84A59D]" />
                     Serviços Agendados
                     <span className="px-1.5 py-0.5 text-[10px] font-bold bg-[#EAF0EE] text-[#3A4F4A] dark:bg-zinc-800 dark:text-zinc-300 rounded-full select-none">
                       {resumoAgendamento.itens?.length || 0}
                     </span>
                   </h4>
-                  <div className="space-y-4 max-h-[440px] overflow-y-auto pr-1">
+                  <div className="space-y-3">
                     {resumoAgendamento.itens?.map((item, idx) => {
                       const s = servicos.find(x => x.id === item.servico_id);
+                      const valorTabela = s?.valor !== undefined && s?.valor !== null && s?.valor !== '' && Number.isFinite(Number(s.valor)) ? Number(s.valor) : null;
                       const mainColab = colaboradores.find(c => c.id === item.colaborador_id)?.nome;
                       const auxColab = colaboradores.find(c => c.id === item.auxiliar_id)?.nome;
                       return (
-                        <div key={idx} className="bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] p-5 rounded-xl flex flex-col gap-3 shadow-xs">
+                        <div key={idx} className="bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] p-4 rounded-xl flex flex-col gap-3">
                           <div className="flex items-start justify-between gap-3">
-                            <span className="font-bold text-base sm:text-lg text-zinc-800 dark:text-zinc-150 leading-tight min-w-0 break-words">{item.nome || s?.nome || "Serviço"}</span>
+                            <span className="font-bold text-base sm:text-lg text-zinc-800 dark:text-zinc-100 leading-tight min-w-0 break-words">{item.nome || s?.nome || "Serviço"}</span>
                             <span className="text-base sm:text-lg font-extrabold text-[#3A4F4A] dark:text-[#EAF0EE] shrink-0">{fmtBRL(item.valor)}</span>
                           </div>
- 
+
                           {/* Box de detalhamento de negociação do valor */}
-                          <div className="bg-white/80 dark:bg-zinc-900/50 p-3.5 rounded-lg border border-zinc-200/50 dark:border-zinc-800/80 text-xs sm:text-sm space-y-1.5 mt-0.5">
-                            <div className="flex justify-between items-center text-zinc-500 dark:text-zinc-400">
-                              <span>Valor de Tabela (Base):</span>
-                              <span className="font-mono">{fmtBRL(item.valor_original !== undefined && item.valor_original !== null ? item.valor_original : item.valor)}</span>
+                          <details open className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-300"><summary className="cursor-pointer py-2">Detalhes do valor e negociação</summary><div className="bg-white/80 dark:bg-zinc-900/50 p-3.5 rounded-lg border border-zinc-200/50 dark:border-zinc-800/80 text-xs sm:text-sm space-y-1.5 mt-0.5">
+                            <div className="flex justify-between items-start gap-3 text-zinc-500 dark:text-zinc-300 dark:text-zinc-300">
+                              <span title="Valor atual no cadastro do serviço">Valor de Tabela (Base):</span>
+                              <span className="font-mono shrink-0">{valorTabela !== null ? fmtBRL(valorTabela) : "Não disponível"}</span>
                             </div>
-                            <div className="flex justify-between items-center text-[#3A4F4A] dark:text-[#84A59D] font-semibold">
+                            <div className="flex justify-between items-start gap-3 text-[#3A4F4A] dark:text-[#84A59D] font-semibold">
                               <span>Valor Acordado/Negociado:</span>
-                              <span className="font-mono">{fmtBRL(item.valor)}</span>
+                              <span className="font-mono shrink-0">{fmtBRL(item.valor)}</span>
                             </div>
                             {(() => {
-                              const valBase = Number(item.valor_original !== undefined && item.valor_original !== null ? item.valor_original : item.valor);
+                              if (valorTabela === null) return null;
+                              const valBase = valorTabela;
                               const valCobrado = Number(item.valor);
                               const diferenca = valCobrado - valBase;
                               if (Math.abs(diferenca) > 0.01) {
@@ -2971,35 +3015,36 @@ export default function Agenda() {
                               return null;
                             })()}
                           </div>
- 
+
+                          </details>
                           <div className="flex flex-wrap items-center gap-2 mt-1">
-                            <span className="inline-flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-350 px-2.5 py-1 rounded-md text-xs font-semibold">
+                            <span className="inline-flex flex-wrap items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 px-2.5 py-1 rounded-md text-xs font-semibold">
                               <Clock className="w-4 h-4 text-[#84A59D]" /> {s?.duracao_minutos} min
                             </span>
                             {mainColab && (
-                              <span className="inline-flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-350 px-2.5 py-1 rounded-md text-xs font-semibold">
+                              <span className="inline-flex flex-wrap items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-300 px-2.5 py-1 rounded-md text-xs font-semibold">
                                 <User className="w-4 h-4 text-[#84A59D]" /> Profissional: <strong className="font-bold text-zinc-800 dark:text-zinc-200">{mainColab}</strong>
                               </span>
                             )}
                             {auxColab && (
-                              <span className="inline-flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-350 px-2.5 py-1 rounded-md text-xs font-semibold">
+                              <span className="inline-flex flex-wrap items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-300 px-2.5 py-1 rounded-md text-xs font-semibold">
                                 <Users className="w-4 h-4 text-[#84A59D]" /> Auxiliar: <strong className="font-bold text-zinc-800 dark:text-zinc-200">{auxColab}</strong>
                               </span>
                             )}
                           </div>
- 
+
                           {/* Utilized Products Section */}
                           <div className="mt-3 pt-3 border-t border-dashed border-[#E8EFEF] dark:border-[#2e3e3b]">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                              <span className="text-xs sm:text-sm font-semibold text-zinc-500 flex items-center gap-2">
+                              <span className="text-xs sm:text-sm font-semibold text-zinc-500 dark:text-zinc-300 flex items-center gap-2">
                                 <Package className="w-4.5 h-4.5 text-[#84A59D]" /> Consumo de Produtos
                               </span>
                               {canEdit && (
-                                <Button 
+                                <Button
                                   onClick={() => {
                                     openUtilizedProducts(resumoAgendamento, idx);
                                   }}
-                                  variant="ghost" 
+                                  variant="ghost"
                                   className="h-8 px-3 text-xs text-[#3A4F4A] dark:text-zinc-300 hover:bg-[#EAF0EE] dark:hover:bg-zinc-850 flex items-center gap-1.5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 w-full sm:w-auto justify-center font-semibold"
                                 >
                                   <PlusCircle className="w-4 h-4" /> Informar Consumo
@@ -3011,8 +3056,8 @@ export default function Agenda() {
                                 {item.produtos_utilizados.map((pu, pidx) => {
                                   const prod = produtos.find(p => p.id === pu.produto_id);
                                   return (
-                                    <div key={pidx} className="flex justify-between items-center text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-850 px-3 py-1.5 rounded-lg border border-zinc-150/40 dark:border-zinc-800/30">
-                                      <span className="font-medium text-zinc-700 dark:text-zinc-300">{prod?.nome || "Carregando..."}</span>
+                                    <div key={pidx} className="flex flex-wrap justify-between items-start gap-2 text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-150/40 dark:border-zinc-800/30">
+                                      <span className="font-medium min-w-0 break-words text-zinc-700 dark:text-zinc-300">{prod?.nome || "Carregando..."}</span>
                                       <span className="font-mono font-bold text-zinc-800 dark:text-zinc-200">{Number(pu.quantidade || 0).toFixed(3)} {pu.unidade_medida_insumo || "un"}</span>
                                     </div>
                                   );
@@ -3027,45 +3072,47 @@ export default function Agenda() {
                     })}
                   </div>
                 </div>
- 
+
                 {/* Valores Totais */}
-                <div className="total-box mt-auto p-4 sm:p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="total-label flex items-center gap-2 text-zinc-600 dark:text-zinc-400 font-semibold text-xs sm:text-sm">
+                <div className="total-box mt-auto p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-300 font-semibold text-xs sm:text-sm">
                     <Clock className="w-4.5 h-4.5 text-[#84A59D]" />
                     Duração Total: {resumoAgendamento.itens?.reduce((sum, item) => sum + (servicos.find(x => x.id === item.servico_id)?.duracao_minutos || 0), 0)} min
                   </div>
-                  <div className="total-value text-xl sm:text-2xl font-extrabold text-[#3A4F4A] dark:text-[#EAF0EE]">{fmtBRL(resumoAgendamento.valor_total)}</div>
+                  <div className="text-xl sm:text-2xl font-semibold text-[#3A4F4A] dark:text-[#EAF0EE]">{fmtBRL(resumoAgendamento.valor_total)}</div>
                 </div>
               </div>
- 
+
+              </div>
             </div>
           )}
-          <DialogFooter className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-4 border-t border-zinc-150 dark:border-zinc-800 w-full mt-5">
-            <Button 
-              variant="outline" 
-              onClick={() => setOpenResumo(false)} 
-              className="flex-1 sm:flex-initial h-11 px-6 text-sm font-medium border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+          <div className="shrink-0 grid grid-cols-2 sm:flex sm:justify-end items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 px-4 sm:px-8 py-3 bg-white dark:bg-zinc-900 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            {resumoAgendamento && <div className="col-span-2 flex justify-between items-center sm:mr-auto gap-3"><span className="text-xs text-zinc-500 dark:text-zinc-300">Total do atendimento</span><strong className="text-sm text-[#3A4F4A] dark:text-[#A8C3BC]">{fmtBRL(resumoAgendamento.valor_total)}</strong></div>}
+            <Button
+              variant="outline"
+              onClick={() => setOpenResumo(false)}
+              className="flex-1 sm:flex-initial min-h-11 px-3 text-sm font-medium border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
             >
               Fechar
             </Button>
             {canEdit && resumoAgendamento && resumoAgendamento.status !== "concluido" && (
-              <Button 
-                variant="outline" 
-                onClick={() => { setOpenResumo(false); openEdit(resumoAgendamento); }} 
-                className="flex-1 sm:flex-initial h-11 px-6 border-[#84A59D] text-[#3A4F4A] dark:text-[#EAF0EE] hover:bg-[#EAF0EE] dark:hover:bg-[#3A4F4A]/20 font-semibold text-sm flex items-center justify-center gap-2"
+              <Button
+                variant="outline"
+                onClick={() => { setOpenResumo(false); openEdit(resumoAgendamento); }}
+                className="flex-1 sm:flex-initial min-h-11 px-3 border-[#84A59D] text-[#3A4F4A] dark:text-[#EAF0EE] hover:bg-[#EAF0EE] dark:hover:bg-[#3A4F4A]/20 font-semibold text-sm flex items-center justify-center gap-2"
               >
-                <Edit2 className="w-4 h-4" /> Editar Atendimento
+                <Edit2 className="w-4 h-4" /> Editar
               </Button>
             )}
             {canRegisterPayment && resumoAgendamento && resumoAgendamento.status !== "concluido" && (
-              <Button 
-                onClick={() => { setOpenResumo(false); nav(`/agendamentos/${resumoAgendamento.id}/pagamento`); }} 
-                className="flex-1 sm:flex-initial h-11 px-6 bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm"
+              <Button
+                onClick={() => { setOpenResumo(false); nav(`/agendamentos/${resumoAgendamento.id}/pagamento`); }}
+                className="col-span-2 sm:col-auto flex-1 sm:flex-initial min-h-11 px-3 bg-[#456957] hover:bg-[#365443] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm"
               >
-                <CreditCard className="w-4 h-4" /> Registrar Pagamento
+                <CreditCard className="w-4 h-4" /> Pagamento
               </Button>
             )}
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
       {/* Dialog para informar profissionais ausentes ao concluir status */}
