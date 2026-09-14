@@ -6,13 +6,14 @@ import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
-import { ArrowLeft, Save, Sliders, AlertCircle, ShieldAlert, Package, Users } from "lucide-react";
+import { ArrowLeft, Save, Sliders, AlertCircle, ShieldAlert, Package, Users, Camera } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ConfiguracoesGerais() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [permitirFotos, setPermitirFotos] = useState(false);
   const [bloquearValorMenor, setBloquearValorMenor] = useState(false);
   const [permitirEstoqueNegativo, setPermitirEstoqueNegativo] = useState(false);
   const [permitirClienteDuplicado, setPermitirClienteDuplicado] = useState(false);
@@ -25,6 +26,7 @@ export default function ConfiguracoesGerais() {
     try {
       const response = await http.get("/configuracoes/sistema");
       if (response.data) {
+        setPermitirFotos(!!response.data.permitir_fotos_atendimentos);
         setBloquearValorMenor(!!response.data.bloquear_valor_agendamento_menor);
         setPermitirEstoqueNegativo(!!response.data.permitir_estoque_negativo);
         setPermitirClienteDuplicado(!!response.data.permitir_cliente_duplicado);
@@ -47,6 +49,7 @@ export default function ConfiguracoesGerais() {
     setSaving(true);
     try {
       await http.post("/configuracoes/sistema", {
+        permitir_fotos_atendimentos: permitirFotos,
         bloquear_valor_agendamento_menor: bloquearValorMenor,
         permitir_estoque_negativo: permitirEstoqueNegativo,
         permitir_cliente_duplicado: permitirClienteDuplicado,
@@ -122,6 +125,27 @@ export default function ConfiguracoesGerais() {
                 checked={bloquearValorMenor}
                 onCheckedChange={setBloquearValorMenor}
               />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
+          <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-5">
+            <Camera className="w-5 h-5 text-[#84A59D]" />
+            <span>Registro Fotográfico dos Atendimentos</span>
+          </h3>
+
+          <div className="flex items-start justify-between gap-4 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850">
+            <div className="space-y-1 flex-1">
+              <Label htmlFor="permitir-fotos" className="text-sm font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer">
+                Permitir fotos nos atendimentos
+              </Label>
+              <p className="text-xs text-zinc-550 dark:text-zinc-400 leading-relaxed max-w-xl">
+                Até 5 fotos por agendamento, com álbum do cliente e zoom. Desativar mantém as fotos armazenadas.
+              </p>
+            </div>
+            <div className="pt-1">
+              <Switch id="permitir-fotos" checked={permitirFotos} onCheckedChange={setPermitirFotos} />
             </div>
           </div>
         </Card>

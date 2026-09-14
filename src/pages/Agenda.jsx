@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { FotosEditor, FotosAtendimento } from '../components/AtendimentoFotos';
 import http from "../api";
 import { PageHeader, EmptyState } from "../components/Page";
 import { Button } from "../components/ui/button";
@@ -210,6 +211,11 @@ export default function Agenda() {
   const [clientes, setClientes] = useState([]);
   const [servicos, setServicos] = useState([]);
   const [configSistema, setConfigSistema] = useState(null);
+  const fotosEditor = useRef(null);
+  const saveLock = useRef(false);
+  const [savingAppointment, setSavingAppointment] = useState(false);
+  const [photosBusy, setPhotosBusy] = useState(false);
+  const [photoCount, setPhotoCount] = useState(0);
   const [colaboradores, setColaboradores] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [selectedAddCategory, setSelectedAddCategory] = useState("all");
@@ -1375,8 +1381,16 @@ export default function Agenda() {
 
 
   const doSave = async (ignorarConflito = false) => {
+    if (saveLock.current || photosBusy) return;
+    if (fotosEditor.current && !fotosEditor.current.isReady()) {
+      toast.error('Aguarde o carregamento das fotos ou tente carregá-las novamente.');
+      return;
+    }
+    saveLock.current = true;
+    setSavingAppointment(true);
     try {
       const payload = ignorarConflito ? { ...form, ignorar_conflito: true } : form;
+      let appointmentId = form.id;
       if (form.id) {
         const res = await http.put(`/agendamentos/${form.id}`, payload);
         if (res.data?.warning) {
@@ -1385,8 +1399,16 @@ export default function Agenda() {
           toast.success("Agendamento atualizado");
         }
       } else {
-        await http.post("/agendamentos", payload);
+        const created = await http.post("/agendamentos", payload);
+        appointmentId = created.data.id;
+        // Preserve the created ID before uploading: retries must not create another appointment.
+        setForm(current => ({ ...current, id: appointmentId, numero: created.data.numero }));
         toast.success("Agendamento criado");
+      }
+      if (fotosEditor.current && !(await fotosEditor.current.upload(appointmentId, form.cliente_id))) {
+        loadDay(data);
+        loadMonth(monthCursor.y, monthCursor.m);
+        return;
       }
       setOpen(false);
       setForm(null);
@@ -1400,6 +1422,9 @@ export default function Agenda() {
       } else {
         toast.error(errorMsg);
       }
+    } finally {
+      saveLock.current = false;
+      setSavingAppointment(false);
     }
   };
 
@@ -1570,6 +1595,7 @@ export default function Agenda() {
   };
 
   const save = async () => {
+    if (saveLock.current || photosBusy) return;
     if (!form.cliente_id) {
       toast.error("Selecione um cliente");
       return;
@@ -1888,6 +1914,8 @@ export default function Agenda() {
   };
 
   const openNew = () => {
+    setPhotoCount(0);
+    setPhotosBusy(false);
     setForm({
       cliente_id: "",
       data_hora: toDateInput(new Date()) + 'T' + new Date().toLocaleTimeString().substring(0, 5),
@@ -1902,6 +1930,8 @@ export default function Agenda() {
   };
 
   const openEdit = (a) => {
+    setPhotoCount(0);
+    setPhotosBusy(false);
     setForm({
       id: a.id,
       numero: a.numero,
@@ -2304,7 +2334,7 @@ export default function Agenda() {
         </>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={value => { if (!saveLock.current && !photosBusy) setOpen(value); }}>
         <DialogContent className="w-[calc(100%-1rem)] max-w-[1100px] max-h-[94dvh] sm:max-h-[90dvh] flex flex-col gap-0 p-0 overflow-hidden rounded-2xl bg-white text-zinc-800 dark:text-zinc-100 dark:[color-scheme:dark] dark:[&_label]:text-zinc-200 dark:[&_input]:border-zinc-600 dark:[&_textarea]:border-zinc-600 dark:[&_button[role=combobox]]:border-zinc-600 dark:bg-zinc-900 dark:border-zinc-800 [&_input]:min-w-0 [&_input]:max-w-full [&_input]:min-h-11 max-sm:[&_input]:text-base [&_button]:min-h-11" aria-describedby="dialog-agendamento">
           <DialogHeader className="shrink-0 border-b border-zinc-100 dark:border-zinc-800 px-5 sm:px-8 py-5 text-left pr-10">
             <span className="text-[10px] uppercase tracking-[0.18em] font-semibold text-[#648775] dark:text-[#B8D6C7]">Agenda • Atendimento</span>
@@ -2315,7 +2345,8 @@ export default function Agenda() {
             <DialogDescription id="dialog-agendamento" className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-300">{form?.id ? "Ajuste o atendimento e confira o resumo antes de salvar." : "Organize os serviços e confira tudo antes de agendar."}</DialogDescription>
           </DialogHeader>
           {form && (
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain" data-testid="appointment-scroll-area">
+              <fieldset disabled={savingAppointment || photosBusy} className="m-0 min-w-0 border-0 p-0">
               <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px]">
                 <div className="min-w-0 px-5 sm:px-8">
                   <section className="py-5 border-b border-zinc-100 dark:border-zinc-800">
@@ -2335,7 +2366,13 @@ export default function Agenda() {
                         }))
                       }
                       value={form.cliente_id}
-                      onValueChange={(v) => setForm({ ...form, cliente_id: v })}
+                      onValueChange={(v) => {
+                        if (photoCount || photosBusy || savingAppointment) {
+                          toast.error('Remova as fotos antes de trocar o cliente.');
+                          return;
+                        }
+                        setForm({ ...form, cliente_id: v });
+                      }}
                     />
                     <Button type="button" variant="outline" className="h-11 px-3 border-[#84A59D] text-[#3A4F4A] dark:text-[#C6E0D4] hover:bg-[#EAF0EE] dark:hover:bg-zinc-700 shrink-0" onClick={() => { setClientForm({ nome: "", telefone: "", email: "" }); setOpenNewClient(true); }} title="Cadastrar Novo Cliente">
                       <Plus className="w-4 h-4" /><span className="ml-1">Cliente</span>
@@ -2446,7 +2483,8 @@ export default function Agenda() {
                     {form.itens_selecionados.length === 0 && <p className="rounded-xl border border-dashed border-zinc-250 dark:border-zinc-700 p-5 text-sm text-zinc-500 dark:text-zinc-300 text-center">Escolha um serviço acima para começar.</p>}
                   </section>
                   <section className="py-5">
-<h3 className="flex items-center gap-3 font-semibold text-zinc-800 dark:text-zinc-100 mb-4"><span className="grid place-items-center w-7 h-7 shrink-0 rounded-full border border-[#DCE5DF] text-[#648775] dark:text-[#B8D6C7] text-xs">3</span>Observações</h3>
+{open && configSistema?.permitir_fotos_atendimentos && canEdit && <FotosEditor ref={fotosEditor} clienteId={form.cliente_id} agendamentoId={form.id} onBusyChange={setPhotosBusy} onCountChange={setPhotoCount} disabled={savingAppointment || (form.status === 'concluido' && !me?.pode_alterar_concluido)} />}
+<h3 className="flex items-center gap-3 font-semibold text-zinc-800 dark:text-zinc-100 mb-4 mt-4"><span className="grid place-items-center w-7 h-7 shrink-0 rounded-full border border-[#DCE5DF] text-[#648775] dark:text-[#B8D6C7] text-xs">3</span>Observações</h3>
 
               <div className="form-group">
                 <Label className="form-label">Observações</Label>
@@ -2476,11 +2514,12 @@ export default function Agenda() {
                   </div>
                 </aside>
               </div>
+              </fieldset>
             </div>
           )}
           <div className="shrink-0 grid grid-cols-2 sm:flex sm:justify-end items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 sm:px-8 py-3 sm:py-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            <Button variant="outline" onClick={() => setOpen(false)} className="px-3">Voltar</Button>
-            <Button data-testid="save-ag-btn" onClick={save} className="bg-[#456957] hover:bg-[#365443] text-white px-4 sm:px-6">{form?.id ? "Salvar alterações" : "Criar agendamento"}</Button>
+            <Button variant="outline" disabled={savingAppointment || photosBusy} onClick={() => setOpen(false)} className="px-3">Voltar</Button>
+            <Button data-testid="save-ag-btn" disabled={savingAppointment || photosBusy} onClick={save} className="bg-[#456957] hover:bg-[#365443] text-white px-4 sm:px-6">{savingAppointment ? 'Salvando…' : form?.id ? "Salvar alterações" : "Criar agendamento"}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -2936,6 +2975,7 @@ export default function Agenda() {
                   </div>
                 )}
 
+                {configSistema?.permitir_fotos_atendimentos && <FotosAtendimento clienteId={resumoAgendamento.cliente_id} agendamentoId={resumoAgendamento.id} />}
                 {/* Observações */}
                 <details className="pt-4 border-t border-zinc-200 dark:border-zinc-800" key={resumoAgendamento.id} open={resumoAgendamento.observacoes ? true : undefined}><summary className="cursor-pointer text-sm font-semibold text-zinc-650 dark:text-zinc-300 py-2">Observações do atendimento</summary><div className="space-y-3 pt-3">
                   <h4 className="text-xs sm:text-sm uppercase tracking-wider text-zinc-500 dark:text-zinc-300 dark:text-zinc-300 font-bold flex items-center gap-2">
