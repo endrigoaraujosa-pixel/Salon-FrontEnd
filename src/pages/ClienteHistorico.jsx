@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { FotosAtendimento, AlbumCliente } from '../components/AtendimentoFotos';
 import { useParams, useNavigate } from "react-router-dom";
 import http from "../api";
 import { Button } from "../components/ui/button";
@@ -107,8 +108,13 @@ export default function ClienteHistorico() {
   const [selectedAgendamento, setSelectedAgendamento] = useState(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState(null);
+  const [fotosAtivas, setFotosAtivas] = useState(false);
+  const [albumOpen, setAlbumOpen] = useState(false);
 
   useEffect(() => { 
+    setFotosAtivas(false);
+    setAlbumOpen(false);
+    http.get('/configuracoes/sistema').then(r => setFotosAtivas(!!r.data.permitir_fotos_atendimentos)).catch(() => {});
     http.get(`/clientes/${id}/historico`).then((r) => {
       setData(r.data);
     }); 
@@ -218,6 +224,11 @@ export default function ClienteHistorico() {
       </Button>
 
       {/* Header com Informações do Cliente */}
+      {fotosAtivas && <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-[#DCE5DF] dark:border-zinc-800 bg-[#F7F9F5] dark:bg-zinc-900 p-4 sm:p-5 shadow-sm">
+        <div className="min-w-0"><p className="text-[10px] uppercase tracking-[0.18em] font-semibold text-[#648775] dark:text-[#B8D6C7]">Evolução dos tratamentos</p><h2 className="mt-1 font-display font-semibold text-zinc-800 dark:text-zinc-100">Álbum de fotos do cliente</h2><p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">Acompanhe os resultados e reveja cada atendimento em imagens.</p></div>
+        <Button className="shrink-0 rounded-xl bg-[#456957] hover:bg-[#365443] text-white px-5" onClick={() => setAlbumOpen(true)}>Ver álbum de fotos</Button>
+        <AlbumCliente clienteId={id} open={albumOpen} onOpenChange={setAlbumOpen} />
+      </div>}
       <div className="bg-gradient-to-r from-zinc-50 to-zinc-100/50 dark:from-zinc-900 dark:to-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-6 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-sm w-full">
         <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center gap-5">
           {cliente.foto ? (
@@ -474,6 +485,7 @@ export default function ClienteHistorico() {
                                           }
                                           return null;
                                         })()}
+                                        {fotosAtivas && <FotosAtendimento clienteId={id} agendamentoId={a.id} onAlbum={() => setAlbumOpen(true)} />}
                                         {a.observacoes && (
                                           <div className="mt-1.5 text-[11px] font-normal text-amber-800 dark:text-zinc-300 bg-amber-50/70 dark:bg-zinc-900/60 border border-amber-200/50 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 max-w-lg shadow-sm flex items-start gap-1.5 leading-relaxed">
                                             <span className="shrink-0 mt-0.5">📝</span>
@@ -571,6 +583,7 @@ export default function ClienteHistorico() {
                                   return null;
                                 })()}
 
+                                {fotosAtivas && <FotosAtendimento clienteId={id} agendamentoId={a.id} onAlbum={() => setAlbumOpen(true)} />}
                                 {a.observacoes && (
                                   <div className="text-[11px] text-amber-800 dark:text-zinc-300 bg-amber-50/70 dark:bg-zinc-900/60 border border-amber-200/50 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 leading-relaxed flex items-start gap-1.5">
                                     <span className="shrink-0 mt-0.5">📝</span>
@@ -850,6 +863,7 @@ export default function ClienteHistorico() {
                 </div>
 
  
+                {fotosAtivas && <FotosAtendimento clienteId={id} agendamentoId={selectedAgendamento.id} onAlbum={() => { setDetailModalOpen(false); setAlbumOpen(true); }} />}
                 {/* Observações */}
                 <div className="space-y-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
                   <h4 className="text-xs uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-bold flex items-center gap-1.5">
