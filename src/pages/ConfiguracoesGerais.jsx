@@ -20,19 +20,34 @@ export default function ConfiguracoesGerais() {
   const [trabalharCreditoCliente, setTrabalharCreditoCliente] = useState(false);
   const [descontarTaxaCartaoComissao, setDescontarTaxaCartaoComissao] = useState(false);
   const [permitirAlterarPrecoProdutoVenda, setPermitirAlterarPrecoProdutoVenda] = useState(false);
+  // B2 credentials
+  const [b2KeyId, setB2KeyId] = useState("");
+  const [b2AppKey, setB2AppKey] = useState("");
+  const [b2Configurado, setB2Configurado] = useState(false);
+  const [b2Origem, setB2Origem] = useState("nenhuma");
+  const [b2Salvando, setB2Salvando] = useState(false);
+  const [showAppKey, setShowAppKey] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const response = await http.get("/configuracoes/sistema");
-      if (response.data) {
-        setPermitirFotos(!!response.data.permitir_fotos_atendimentos);
-        setBloquearValorMenor(!!response.data.bloquear_valor_agendamento_menor);
-        setPermitirEstoqueNegativo(!!response.data.permitir_estoque_negativo);
-        setPermitirClienteDuplicado(!!response.data.permitir_cliente_duplicado);
-        setTrabalharCreditoCliente(!!response.data.trabalhar_credito_cliente);
-        setDescontarTaxaCartaoComissao(!!response.data.descontar_taxa_cartao_comissao);
-        setPermitirAlterarPrecoProdutoVenda(!!response.data.permitir_alterar_preco_produto_venda);
+      const [sysRes, b2Res] = await Promise.all([
+        http.get("/configuracoes/sistema"),
+        http.get("/configuracoes/b2").catch(() => ({ data: {} }))
+      ]);
+      if (sysRes.data) {
+        setPermitirFotos(!!sysRes.data.permitir_fotos_atendimentos);
+        setBloquearValorMenor(!!sysRes.data.bloquear_valor_agendamento_menor);
+        setPermitirEstoqueNegativo(!!sysRes.data.permitir_estoque_negativo);
+        setPermitirClienteDuplicado(!!sysRes.data.permitir_cliente_duplicado);
+        setTrabalharCreditoCliente(!!sysRes.data.trabalhar_credito_cliente);
+        setDescontarTaxaCartaoComissao(!!sysRes.data.descontar_taxa_cartao_comissao);
+        setPermitirAlterarPrecoProdutoVenda(!!sysRes.data.permitir_alterar_preco_produto_venda);
+      }
+      if (b2Res.data) {
+        setB2KeyId(b2Res.data.b2_key_id || "");
+        setB2Configurado(!!b2Res.data.b2_configurado);
+        setB2Origem(b2Res.data.b2_origem || "nenhuma");
       }
     } catch (e) {
       toast.error("Erro ao carregar configurações do sistema");
@@ -62,6 +77,28 @@ export default function ConfiguracoesGerais() {
       toast.error(e.response?.data?.detail || "Erro ao salvar configurações");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveB2 = async () => {
+    if (!b2KeyId.trim()) { toast.error("O keyID é obrigatório."); return; }
+    if (!b2Configurado && !b2AppKey.trim()) {
+      toast.error("A Application Key é obrigatória para configurar o B2 pela primeira vez.");
+      return;
+    }
+    setB2Salvando(true);
+    try {
+      const payload = { b2_key_id: b2KeyId };
+      if (b2AppKey.trim()) payload.b2_application_key = b2AppKey;
+      const res = await http.post("/configuracoes/b2", payload);
+      setB2Configurado(!!res.data.b2_configurado);
+      setB2Origem(res.data.b2_origem || "banco");
+      setB2AppKey(""); // Limpa o campo após salvar
+      toast.success("Credenciais do Backblaze B2 salvas com sucesso!");
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Erro ao salvar credenciais do B2");
+    } finally {
+      setB2Salvando(false);
     }
   };
 
@@ -135,6 +172,7 @@ export default function ConfiguracoesGerais() {
             <span>Registro Fotográfico dos Atendimentos</span>
           </h3>
 
+          {/* Toggle permitir fotos */}
           <div className="flex items-start justify-between gap-4 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850">
             <div className="space-y-1 flex-1">
               <Label htmlFor="permitir-fotos" className="text-sm font-bold text-zinc-900 dark:text-zinc-100 cursor-pointer">
@@ -146,6 +184,99 @@ export default function ConfiguracoesGerais() {
             </div>
             <div className="pt-1">
               <Switch id="permitir-fotos" checked={permitirFotos} onCheckedChange={setPermitirFotos} />
+            </div>
+          </div>
+
+          {/* Credenciais Backblaze B2 */}
+          <div className="mt-5 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800">
+              <div className="flex items-center gap-2">
+                <Cloud className="w-4 h-4 text-[#84A59D]" />
+                <span className="text-sm font-bold text-zinc-800 dark:text-zinc-100">Armazenamento Backblaze B2</span>
+              </div>
+              {/* Badge de status */}
+              {b2Configurado ? (
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 px-2.5 py-1 rounded-full">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {b2Origem === "env" ? "Configurado via servidor" : "Configurado"}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 px-2.5 py-1 rounded-full">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Não configurado
+                </span>
+              )}
+            </div>
+
+            <div className="p-4 space-y-4">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                As fotos são enviadas para o bucket privado <span className="font-mono font-semibold text-zinc-700 dark:text-zinc-300">salon-fotos-api</span> no Backblaze B2.
+                O sistema gera URLs temporárias (1h) para visualização — as credenciais nunca chegam ao navegador.
+              </p>
+
+              {b2Origem === "env" && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 text-xs text-blue-700 dark:text-blue-300">
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                  <span>Credenciais detectadas nas variáveis de ambiente do servidor. Para gerenciar pelo painel, preencha os campos abaixo — o banco tem prioridade sobre o <span className="font-mono">.env</span>.</span>
+                </div>
+              )}
+
+              {/* Key ID */}
+              <div className="space-y-1.5">
+                <Label htmlFor="b2-key-id" className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  Key ID <span className="text-zinc-400 font-normal">(keyID da Application Key)</span>
+                </Label>
+                <Input
+                  id="b2-key-id"
+                  value={b2KeyId}
+                  onChange={e => setB2KeyId(e.target.value)}
+                  placeholder="005e36284e2d7530000000002"
+                  className="font-mono text-xs h-9 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700"
+                />
+              </div>
+
+              {/* Application Key */}
+              <div className="space-y-1.5">
+                <Label htmlFor="b2-app-key" className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  Application Key
+                  {b2Configurado && (
+                    <span className="ml-2 text-zinc-400 font-normal">(deixe em branco para manter a chave atual)</span>
+                  )}
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="b2-app-key"
+                    type={showAppKey ? "text" : "password"}
+                    value={b2AppKey}
+                    onChange={e => setB2AppKey(e.target.value)}
+                    placeholder={b2Configurado ? "••••••••••••••••••••" : "K005PS38kTAn7ybuky8YX4YhzcqzcbY"}
+                    autoComplete="new-password"
+                    className="font-mono text-xs h-9 pr-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAppKey(v => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                    tabIndex={-1}
+                    aria-label={showAppKey ? "Ocultar chave" : "Mostrar chave"}
+                  >
+                    {showAppKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <Button
+                  id="btn-salvar-b2"
+                  onClick={handleSaveB2}
+                  disabled={b2Salvando}
+                  size="sm"
+                  className="bg-[#84A59D] hover:bg-[#6F9189] dark:bg-[#84A59D] dark:hover:bg-[#6F9189] text-white text-xs font-bold px-4 h-8 rounded-lg shadow-sm"
+                >
+                  <Save className="w-3.5 h-3.5 mr-1.5" />
+                  {b2Salvando ? "Salvando..." : "Salvar credenciais B2"}
+                </Button>
+              </div>
             </div>
           </div>
         </Card>
