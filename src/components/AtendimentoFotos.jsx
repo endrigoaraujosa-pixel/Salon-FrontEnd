@@ -3,7 +3,8 @@ import http from '../api';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import { Camera, ImagePlus, Loader2, CalendarDays, User, Images, ArrowDown } from 'lucide-react';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from './ui/alert-dialog';
+import { Camera, ImagePlus, Loader2, CalendarDays, User, Images, ArrowDown, Trash2 } from 'lucide-react';
 
 const base = (cid, aid) => `/clientes/${encodeURIComponent(cid)}/atendimentos/${encodeURIComponent(aid)}/fotos`;
 const errorText = e => e.response?.data?.detail || e.message || 'Erro ao enviar. Tente novamente.';
@@ -71,6 +72,7 @@ export function FotosGaleria({ fotos = [], clienteId, agendamentoId, spacious = 
 
 export const FotosEditor = forwardRef(function FotosEditor({ clienteId, agendamentoId, onBusyChange, onCountChange, disabled }, ref) {
   const fileInput = useRef(null);
+  const [photoToRemove, setPhotoToRemove] = useState(null);
   const initialId = useRef(agendamentoId);
   const initialClient = useRef(clienteId);
   const savedId = useRef(agendamentoId);
@@ -142,13 +144,14 @@ export const FotosEditor = forwardRef(function FotosEditor({ clienteId, agendame
     } finally { markBusy(false); }
   };
   const remove = async foto => {
-    if (busyRef.current || disabled || !window.confirm('Deseja realmente remover esta foto? Essa ação não poderá ser desfeita.')) return;
+    if (busyRef.current || disabled || !foto) return;
     markBusy(true);
     try {
       if (foto.status === 'saved' || foto.attempted) await http.delete(`${base(clienteId, savedId.current)}/${foto.id}`);
       update(rows.current.filter(f => f.id !== foto.id));
       if (foto.preview) { URL.revokeObjectURL(foto.preview); previews.current.delete(foto.preview); }
       toast.success('Foto removida.');
+      setPhotoToRemove(null);
     } catch (e) { toast.error(errorText(e)); } finally { markBusy(false); }
   };
   return <section className="min-w-0 rounded-2xl border border-[#DCE5DF] bg-[#F7F9F5] p-4 sm:p-5 dark:border-zinc-700 dark:bg-zinc-950 space-y-4">
@@ -177,9 +180,24 @@ export const FotosEditor = forwardRef(function FotosEditor({ clienteId, agendame
     <div className="space-y-2" aria-live="polite">
       {fotos.map((f, i) => <div key={f.id} className="flex items-center justify-between gap-2 text-xs">
         <span>Foto {i + 1}: {f.status === 'saved' ? 'Foto enviada' : f.status === 'uploading' ? `Enviando ${f.progress || 0}% — aguarde a confirmação` : f.status === 'error' ? `Erro ao enviar: ${f.error}` : 'Prévia pronta para enviar ao salvar'}</span>
-        <Button type="button" variant="outline" size="sm" disabled={busy || disabled} onClick={() => remove(f)}>Remover</Button>
+        <Button type="button" variant="outline" size="sm" disabled={busy || disabled} onClick={() => setPhotoToRemove(f)}>Remover</Button>
       </div>)}
     </div>
+    <AlertDialog open={!!photoToRemove} onOpenChange={open => { if (!open && !busyRef.current) setPhotoToRemove(null); }}>
+      <AlertDialogContent className="w-[calc(100%-2rem)] max-w-md rounded-2xl p-5 sm:p-6 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-xl" onEscapeKeyDown={event => { if (busyRef.current) event.preventDefault(); }}>
+        <AlertDialogHeader className="text-left">
+          <span className="mb-2 grid h-11 w-11 place-items-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400"><Trash2 className="h-5 w-5" /></span>
+          <AlertDialogTitle className="font-display text-lg font-semibold text-zinc-800 dark:text-zinc-100">Remover foto do atendimento?</AlertDialogTitle>
+          <AlertDialogDescription className="text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">Deseja realmente remover esta foto? Essa ação não poderá ser desfeita.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="mt-2 gap-2 sm:gap-0">
+          <AlertDialogCancel disabled={busy} className="rounded-xl">Cancelar</AlertDialogCancel>
+          <AlertDialogAction disabled={busy || disabled} onClick={event => { event.preventDefault(); remove(photoToRemove); }} className="gap-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}{busy ? 'Removendo…' : 'Remover foto'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </section>;
 });
 
