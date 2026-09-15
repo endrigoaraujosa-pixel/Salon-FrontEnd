@@ -6,7 +6,8 @@ import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Label } from "../components/ui/label";
 import { Switch } from "../components/ui/switch";
-import { ArrowLeft, Save, Sliders, AlertCircle, ShieldAlert, Package, Users, Camera } from "lucide-react";
+import { Input } from "../components/ui/input";
+import { ArrowLeft, Save, Sliders, AlertCircle, ShieldAlert, Package, Users, Camera, Cloud, CheckCircle2, AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ConfiguracoesGerais() {
@@ -22,6 +23,8 @@ export default function ConfiguracoesGerais() {
   const [permitirAlterarPrecoProdutoVenda, setPermitirAlterarPrecoProdutoVenda] = useState(false);
   // B2 credentials
   const [b2KeyId, setB2KeyId] = useState("");
+  const [b2KeyName, setB2KeyName] = useState("");
+  const [b2Destino, setB2Destino] = useState(null);
   const [b2AppKey, setB2AppKey] = useState("");
   const [b2Configurado, setB2Configurado] = useState(false);
   const [b2Origem, setB2Origem] = useState("nenhuma");
@@ -46,6 +49,8 @@ export default function ConfiguracoesGerais() {
       }
       if (b2Res.data) {
         setB2KeyId(b2Res.data.b2_key_id || "");
+        setB2KeyName(b2Res.data.b2_key_name || "");
+        setB2Destino(b2Res.data.destino || null);
         setB2Configurado(!!b2Res.data.b2_configurado);
         setB2Origem(b2Res.data.b2_origem || "nenhuma");
       }
@@ -88,11 +93,12 @@ export default function ConfiguracoesGerais() {
     }
     setB2Salvando(true);
     try {
-      const payload = { b2_key_id: b2KeyId };
+      const payload = { b2_key_id: b2KeyId, b2_key_name: b2KeyName };
       if (b2AppKey.trim()) payload.b2_application_key = b2AppKey;
       const res = await http.post("/configuracoes/b2", payload);
       setB2Configurado(!!res.data.b2_configurado);
       setB2Origem(res.data.b2_origem || "banco");
+      setShowAppKey(false);
       setB2AppKey(""); // Limpa o campo após salvar
       toast.success("Credenciais do Backblaze B2 salvas com sucesso!");
     } catch (e) {
@@ -210,8 +216,8 @@ export default function ConfiguracoesGerais() {
 
             <div className="p-4 space-y-4">
               <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                As fotos são enviadas para o bucket privado <span className="font-mono font-semibold text-zinc-700 dark:text-zinc-300">salon-fotos-api</span> no Backblaze B2.
-                O sistema gera URLs temporárias (1h) para visualização — as credenciais nunca chegam ao navegador.
+                As fotos são enviadas para o bucket privado <span className="font-mono font-semibold text-zinc-700 dark:text-zinc-300">{b2Destino?.bucket || "salon-fotos-api"}</span> no Backblaze B2.
+                As fotos ficam fora do banco e são visualizadas com acesso temporário privado. Esta configuração é salva para a empresa neste ambiente.
               </p>
 
               {b2Origem === "env" && (
@@ -221,16 +227,22 @@ export default function ConfiguracoesGerais() {
                 </div>
               )}
 
+              <div className="space-y-1.5">
+                <Label htmlFor="b2-key-name" className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Nome da chave (keyName)</Label>
+                <Input id="b2-key-name" value={b2KeyName} onChange={e => setB2KeyName(e.target.value)} maxLength={100}
+                  placeholder="Ex.: salon-fotos-app" className="text-xs h-9 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700" />
+                <p className="text-xs text-zinc-500">Nome para identificar a chave. Para autenticar, preencha o keyID e a Application Key.</p>
+              </div>
               {/* Key ID */}
               <div className="space-y-1.5">
                 <Label htmlFor="b2-key-id" className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                   Key ID <span className="text-zinc-400 font-normal">(keyID da Application Key)</span>
                 </Label>
                 <Input
-                  id="b2-key-id"
+                  id="b2-key-id" maxLength={100} autoComplete="off"
                   value={b2KeyId}
                   onChange={e => setB2KeyId(e.target.value)}
-                  placeholder="005e36284e2d7530000000002"
+                  placeholder="Informe o keyID"
                   className="font-mono text-xs h-9 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700"
                 />
               </div>
@@ -245,11 +257,11 @@ export default function ConfiguracoesGerais() {
                 </Label>
                 <div className="relative">
                   <Input
-                    id="b2-app-key"
+                    id="b2-app-key" maxLength={255}
                     type={showAppKey ? "text" : "password"}
                     value={b2AppKey}
                     onChange={e => setB2AppKey(e.target.value)}
-                    placeholder={b2Configurado ? "••••••••••••••••••••" : "K005PS38kTAn7ybuky8YX4YhzcqzcbY"}
+                    placeholder={b2Configurado ? "Chave salva — preencha para substituir" : "Cole a Application Key"}
                     autoComplete="new-password"
                     className="font-mono text-xs h-9 pr-10 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700"
                   />
