@@ -2719,7 +2719,7 @@ export default function Agenda() {
 
       {/* Modal de confirmação de duplicidade de cliente */}
       <Dialog open={duplicateConfirm.open} onOpenChange={(v) => { if (!v) handleDuplicateConfirmResponse(false); }}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle className="text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-amber-500" />
@@ -3157,7 +3157,7 @@ export default function Agenda() {
       </Dialog>
       {/* Dialog para informar profissionais ausentes ao concluir status */}
       <Dialog open={profsDialogOpen} onOpenChange={setProfsDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-lg p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle className="font-display text-xl font-bold flex items-center gap-2 text-zinc-800">
               <CheckCircle2 className="w-6 h-6 text-[#84A59D]" />
@@ -3231,7 +3231,7 @@ export default function Agenda() {
 
       {/* Dialog de confirmação de exclusão */}
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Confirmar exclusão de agendamento</DialogTitle>
           </DialogHeader>
@@ -3269,7 +3269,7 @@ export default function Agenda() {
       />
 
       <Dialog open={conflictConfirmOpen} onOpenChange={setConflictConfirmOpen}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>
               {conflictMessage.includes("indisponibilidade") ? "Conflito de Indisponibilidade" : "Conflito de Horário"}
@@ -3289,7 +3289,7 @@ export default function Agenda() {
 
       {/* Dialog para Cadastrar/Editar Indisponibilidade */}
       <Dialog open={openIndisponibilidade} onOpenChange={setOpenIndisponibilidade}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle className="font-display font-bold text-zinc-800 dark:text-zinc-150">
               {formIndisponibilidade.id ? "Editar Indisponibilidade" : "Registrar Indisponibilidade"}
@@ -3377,7 +3377,7 @@ export default function Agenda() {
 
       {/* Dialog de Detalhes da Indisponibilidade */}
       <Dialog open={openIndispDetails} onOpenChange={setOpenIndispDetails}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle className="font-display font-bold text-zinc-800 dark:text-zinc-150 flex items-center gap-2">
               <CalendarOff className="w-5 h-5 text-sky-600 dark:text-sky-400" />
@@ -3461,7 +3461,7 @@ export default function Agenda() {
 
       {/* Dialog de Confirmação para Excluir Indisponibilidade */}
       <Dialog open={deleteConfirmOpenIndisp} onOpenChange={setDeleteConfirmOpenIndisp}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle>Confirmar Exclusão</DialogTitle>
             <DialogDescription className="text-xs text-zinc-500">
@@ -3487,7 +3487,7 @@ export default function Agenda() {
       </Dialog>
 
       <Dialog open={utilizedProductsOpen} onOpenChange={setUtilizedProductsOpen}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-4xl p-4 sm:p-7 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800 max-h-[90vh] overflow-y-auto flex flex-col justify-between">
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-4xl p-4 sm:p-7 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800 max-h-[90vh] overflow-y-auto flex flex-col justify-between" aria-describedby={undefined}>
           <div>
             <DialogHeader className="pb-2 sm:pb-0">
               <DialogTitle className="font-display text-lg sm:text-xl font-bold flex items-center gap-2 text-zinc-800 dark:text-zinc-150">
@@ -3828,7 +3828,7 @@ export default function Agenda() {
 
       {/* Lightbox para visualização de foto ampliada */}
       <Dialog open={!!previewPhoto} onOpenChange={() => setPreviewPhoto(null)}>
-        <DialogContent className="sm:max-w-md p-6 bg-zinc-900 dark:bg-zinc-950 border border-zinc-800 dark:border-zinc-900 shadow-2xl flex flex-col items-center justify-center rounded-2xl [&>button]:text-zinc-400 [&>button]:hover:text-zinc-150">
+        <DialogContent className="sm:max-w-md p-6 bg-zinc-900 dark:bg-zinc-950 border border-zinc-800 dark:border-zinc-900 shadow-2xl flex flex-col items-center justify-center rounded-2xl [&>button]:text-zinc-400 [&>button]:hover:text-zinc-150" aria-describedby={undefined}>
           {previewPhoto && (
             <img 
               src={previewPhoto} 
@@ -3841,7 +3841,7 @@ export default function Agenda() {
 
       {/* Dialog: Relatório de Agendamentos */}
       <Dialog open={openRelatorioDialog} onOpenChange={setOpenRelatorioDialog}>
-        <DialogContent className="w-full max-w-full sm:max-w-4xl h-full sm:h-auto max-h-screen sm:max-h-[90vh] p-4 sm:p-7 rounded-none sm:rounded-2xl dark:bg-zinc-900 dark:border-zinc-800 flex flex-col gap-4 overflow-y-auto [&>button]:text-zinc-400 [&>button]:hover:text-zinc-150">
+        <DialogContent className="w-full max-w-full sm:max-w-4xl h-full sm:h-auto max-h-screen sm:max-h-[90vh] p-4 sm:p-7 rounded-none sm:rounded-2xl dark:bg-zinc-900 dark:border-zinc-800 flex flex-col gap-4 overflow-y-auto [&>button]:text-zinc-400 [&>button]:hover:text-zinc-150" aria-describedby={undefined}>
           <DialogHeader className="pb-2 border-b border-zinc-100 dark:border-zinc-850">
             <DialogTitle className="font-display text-xl font-bold flex items-center gap-2 text-zinc-800 dark:text-zinc-150">
               <FileText className="w-6 h-6 text-[#84A59D]" />
