@@ -19,17 +19,22 @@ function FotoImagem({ foto, clienteId, agendamentoId, miniatura = false, classNa
     const controller = new AbortController();
     let objectUrl;
     http.get(`${base(clienteId, agendamentoId)}/${foto.id}/imagem`, {
-      params: { miniatura: miniatura ? '1' : '0' }, responseType: 'blob', signal: controller.signal
-    }).then(r => {
+      params: { miniatura: miniatura ? '1' : '0', referencia: '1' }, responseType: 'blob', signal: controller.signal
+    }).then(async r => {
       if (controller.signal.aborted) return;
-      objectUrl = URL.createObjectURL(r.data); setUrl(objectUrl);
+      if (r.data.type.includes('application/json')) {
+        const payload = JSON.parse(await r.data.text());
+        if (!controller.signal.aborted) setUrl(payload.url);
+      } else {
+        objectUrl = URL.createObjectURL(r.data); setUrl(objectUrl);
+      }
     }).catch(() => { if (!controller.signal.aborted) setError(true); });
     return () => { controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [foto.id, foto.preview, clienteId, agendamentoId, miniatura, attempt]);
   if (error && miniatura) return <span className="text-xs p-2">Erro ao carregar. Clique para abrir.</span>;
   if (error) return <button type="button" className="text-xs p-2 text-white" onClick={() => setAttempt(a => a + 1)}>Erro ao carregar. Tentar novamente</button>;
   if (!foto.preview && !url) return <span role="status" className="text-xs p-2">Carregando a foto…</span>;
-  return <img src={foto.preview || url} alt="Registro fotográfico do atendimento" className={className} style={style} />;
+  return <img onError={() => setError(true)} referrerPolicy="no-referrer" src={foto.preview || url} alt="Registro fotográfico do atendimento" className={className} style={style} />;
 }
 
 export function FotosGaleria({ fotos = [], clienteId, agendamentoId, spacious = false }) {
