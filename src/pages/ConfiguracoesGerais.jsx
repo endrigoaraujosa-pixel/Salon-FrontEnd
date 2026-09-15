@@ -24,7 +24,7 @@ export default function ConfiguracoesGerais() {
   // B2 credentials
   const [b2KeyId, setB2KeyId] = useState("");
   const [b2KeyName, setB2KeyName] = useState("");
-  const [b2Destino, setB2Destino] = useState(null);
+  const [b2Destino, setB2Destino] = useState({ bucket: "", endpoint: "", region: "" });
   const [b2AppKey, setB2AppKey] = useState("");
   const [b2Configurado, setB2Configurado] = useState(false);
   const [b2Origem, setB2Origem] = useState("nenhuma");
@@ -50,7 +50,7 @@ export default function ConfiguracoesGerais() {
       if (b2Res.data) {
         setB2KeyId(b2Res.data.b2_key_id || "");
         setB2KeyName(b2Res.data.b2_key_name || "");
-        setB2Destino(b2Res.data.destino || null);
+        setB2Destino(b2Res.data.destino || { bucket: "", endpoint: "", region: "" });
         setB2Configurado(!!b2Res.data.b2_configurado);
         setB2Origem(b2Res.data.b2_origem || "nenhuma");
       }
@@ -86,6 +86,7 @@ export default function ConfiguracoesGerais() {
   };
 
   const handleSaveB2 = async () => {
+    if (!b2Destino?.bucket?.trim() || !b2Destino?.endpoint?.trim()) { toast.error("Informe o bucket e o endpoint S3 da Backblaze."); return; }
     if (!b2KeyId.trim()) { toast.error("O keyID é obrigatório."); return; }
     if (!b2Configurado && !b2AppKey.trim()) {
       toast.error("A Application Key é obrigatória para configurar o B2 pela primeira vez.");
@@ -93,9 +94,10 @@ export default function ConfiguracoesGerais() {
     }
     setB2Salvando(true);
     try {
-      const payload = { b2_key_id: b2KeyId, b2_key_name: b2KeyName };
+      const payload = { b2_key_id: b2KeyId, b2_key_name: b2KeyName, destino: b2Destino };
       if (b2AppKey.trim()) payload.b2_application_key = b2AppKey;
       const res = await http.post("/configuracoes/b2", payload);
+      setB2Destino(res.data.destino);
       setB2Configurado(!!res.data.b2_configurado);
       setB2Origem(res.data.b2_origem || "banco");
       setShowAppKey(false);
@@ -216,7 +218,7 @@ export default function ConfiguracoesGerais() {
 
             <div className="p-4 space-y-4">
               <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                As fotos são enviadas para o bucket privado <span className="font-mono font-semibold text-zinc-700 dark:text-zinc-300">{b2Destino?.bucket || "salon-fotos-api"}</span> no Backblaze B2.
+                As fotos são enviadas para o bucket privado <span className="font-mono font-semibold text-zinc-700 dark:text-zinc-300">{b2Destino?.bucket || "a configurar"}</span> no Backblaze B2.
                 As fotos ficam fora do banco e são visualizadas com acesso temporário privado. Esta configuração é salva para a empresa neste ambiente.
               </p>
 
@@ -227,6 +229,26 @@ export default function ConfiguracoesGerais() {
                 </div>
               )}
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="b2-bucket">Nome do bucket</Label>
+                  <Input id="b2-bucket" value={b2Destino?.bucket || ""} maxLength={63}
+                    onChange={e => setB2Destino(d => ({ ...d, bucket: e.target.value }))} placeholder="Nome exato do seu bucket" />
+                  <p className="text-xs text-zinc-500">Copie o nome em Buckets, no painel da sua conta Backblaze.</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="b2-endpoint">Endpoint S3</Label>
+                  <Input id="b2-endpoint" value={b2Destino?.endpoint || ""} maxLength={255}
+                    onChange={e => { const endpoint = e.target.value; const region = /s3\.([a-z]{2}-[a-z]+-\d{3})\.backblazeb2\.com/.exec(endpoint)?.[1] || ""; setB2Destino(d => ({ ...d, endpoint, region })); }}
+                    placeholder="s3.us-east-005.backblazeb2.com" />
+                  <p className="text-xs text-zinc-500">Copie o endpoint S3 exibido nos detalhes do bucket.</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="b2-region">Região</Label>
+                  <Input id="b2-region" value={b2Destino?.region || ""} readOnly placeholder="Preenchida pelo endpoint" />
+                </div>
+              </div>
+              <p className="text-xs text-zinc-500">Use uma chave com acesso a este bucket. Trocar a conta não transfere as fotos antigas: elas continuam no destino original e precisam de uma chave que permita acessá-las.</p>
               <div className="space-y-1.5">
                 <Label htmlFor="b2-key-name" className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Nome da chave (keyName)</Label>
                 <Input id="b2-key-name" value={b2KeyName} onChange={e => setB2KeyName(e.target.value)} maxLength={100}
