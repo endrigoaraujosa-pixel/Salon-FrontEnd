@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../auth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -11,6 +11,7 @@ import http from "../api";
 export default function Login() {
   const { login } = useAuth();
   const nav = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [nomeFantasia, setNomeFantasia] = useState("");
@@ -94,6 +95,12 @@ export default function Login() {
 
       <div className="flex items-center justify-center p-8">
         <form onSubmit={submit} className="w-full max-w-sm space-y-6" data-testid="login-form">
+          {location.state?.passwordChanged && (
+            <div role="status" className="rounded-xl border border-[#D4E3DF] bg-[#F8FBFB] p-4 text-sm text-[#3A4F4A] dark:border-[#2e3e3b] dark:bg-[#1a2322] dark:text-emerald-100">
+              <p className="font-semibold">Senha alterada com sucesso.</p>
+              <p className="mt-1">Sua sessão foi encerrada. Entre novamente usando a nova senha.</p>
+            </div>
+          )}
           {logomarca && (
             <div className="flex justify-center mb-4 animate-in fade-in slide-in-from-top-4 duration-500">
               <img 
