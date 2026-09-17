@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import http from "../api";
 import { PageHeader, EmptyState } from "../components/Page";
 import { Button } from "../components/ui/button";
@@ -15,7 +16,9 @@ import AuditModal from "../components/AuditModal";
 const blank = { name: "", email: "", senha: "", role: "funcionario", perfil_acesso_id: "func-profile-uuid-000000000000000000", colaborador_id: "", ativo: true, pode_alterar_concluido: false, pode_excluir_agendamento: false, pode_excluir_pagamento: false };
 
 export default function Usuarios() {
-  const { user: me } = useAuth();
+  const { user: me, logout } = useAuth();
+  const navigate = useNavigate();
+  const [saving, setSaving] = useState(false);
   const [list, setList] = useState([]);
   const [perfis, setPerfis] = useState([]);
   const [colaboradores, setColaboradores] = useState([]);
@@ -26,6 +29,7 @@ export default function Usuarios() {
   const [form, setForm] = useState(blank);
   const [confirmarSenha, setConfirmarSenha] = useState("");
   const [auditOpen, setAuditOpen] = useState(false);
+  const changingOwnPassword = Boolean(form.id && form.id === me?.id && form.senha?.trim());
 
   const load = () => http.get("/users").then((r) => setList(r.data)).catch((e) => toast.error(e.response?.data?.detail || "Erro ao carregar"));
   useEffect(() => { 
@@ -35,6 +39,7 @@ export default function Usuarios() {
   }, []);
 
   const save = async () => {
+    if (saving) return;
     if (!form.name || !form.email) { toast.error("Nome e email obrigatórios"); return; }
     if (!form.id && !form.senha) { toast.error("Senha obrigatória"); return; }
     
@@ -52,6 +57,8 @@ export default function Usuarios() {
       }
     }
 
+    const shouldLogout = changingOwnPassword;
+    setSaving(true);
     try {
       const payload = { 
         name: form.name, 
@@ -72,6 +79,14 @@ export default function Usuarios() {
       
       if (form.id) {
         await http.put(`/users/${form.id}`, payload);
+        if (shouldLogout) {
+          setOpen(false);
+          setForm(blank);
+          setConfirmarSenha("");
+          await logout();
+          navigate("/login", { replace: true, state: { passwordChanged: true } });
+          return;
+        }
         toast.success("Usuário atualizado");
       } else {
         await http.post("/users", { ...payload, senha: form.senha });
@@ -82,6 +97,8 @@ export default function Usuarios() {
       load();
     } catch (e) { 
       toast.error(e.response?.data?.detail || "Erro ao salvar"); 
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -144,6 +161,12 @@ export default function Usuarios() {
                   autoComplete="new-password"
                 />
               </div>
+              {changingOwnPassword && (
+                <div role="status" className="flex gap-2 rounded-lg border border-[#D4E3DF] bg-[#F8FBFB] p-3 text-sm text-[#3A4F4A] dark:border-[#2e3e3b] dark:bg-[#1a2322] dark:text-emerald-100">
+                  <Shield className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <p>Ao salvar sua nova senha, sua sessão será encerrada. Você precisará entrar novamente usando a nova senha.</p>
+                </div>
+              )}
               <div>
                 <Label>{form.id ? "Confirmar nova senha" : "Confirmar senha *"}</Label>
                 <Input 
@@ -203,7 +226,7 @@ export default function Usuarios() {
               </div>
             </div>
             <DialogFooter>
-              <Button data-testid="save-user-btn" onClick={save} className="bg-[#84A59D] hover:bg-[#6F9189]">Salvar</Button>
+              <Button data-testid="save-user-btn" onClick={save} disabled={saving} className="bg-[#84A59D] hover:bg-[#6F9189]">{saving ? "Salvando..." : changingOwnPassword ? "Salvar e sair" : "Salvar"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

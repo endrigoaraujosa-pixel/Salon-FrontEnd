@@ -81,7 +81,7 @@ export default function ConfiguracoesWhatsApp() {
           status: status[res.data?.instance?.state] || 'disconnected'
         })
       } catch (error) {
-        console.log("erro ", error);        
+        console.log("erro ", error);
       }
     }
   }
@@ -182,7 +182,6 @@ export default function ConfiguracoesWhatsApp() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      console.log(form)
       await http.post("/configuracoes/whatsapp", form);
       toast.success("Configurações do WhatsApp salvas com sucesso!");
       window.dispatchEvent(new Event("whatsapp_config_updated"));
@@ -721,4 +720,4 @@ export default function ConfiguracoesWhatsApp() {
     </div>
   );
 }
-
+
