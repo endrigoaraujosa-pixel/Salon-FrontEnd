@@ -1847,8 +1847,10 @@ export default function Comissoes() {
                         </span>
                       </div>
                       <div className={`flex flex-col justify-center items-center text-center p-1.5 sm:px-7 sm:py-3 rounded-lg sm:rounded-none bg-emerald-50/70 dark:bg-emerald-950/20 sm:bg-emerald-50/70 sm:dark:bg-emerald-950/20 sm:ml-auto border border-emerald-150 dark:border-emerald-900/30 sm:border-0 sm:border-l border-zinc-200 dark:border-zinc-800 min-w-0 sm:min-w-[160px] shadow-sm sm:shadow-none ${hasTaxa ? 'col-span-1' : 'col-span-2'}`}>
-                        <span className="text-[8px] sm:text-[10px] uppercase font-extrabold text-emerald-800 dark:text-emerald-400 tracking-wider whitespace-nowrap mb-0.5">Comissão Líquida</span>
-                        <span className="font-black text-xs sm:text-xl text-emerald-700 dark:text-emerald-400 leading-tight">{fmtBRL(filteredTotalComissaoSum)}</span>
+                        <div className="lg:bg-emerald-100 lg:dark:bg-emerald-900/40 lg:border lg:border-emerald-300 lg:dark:border-emerald-700 lg:rounded-xl lg:px-6 lg:py-3 lg:min-w-[220px]">
+                          <span className="block text-[8px] sm:text-[10px] lg:text-xs uppercase font-extrabold text-emerald-800 dark:text-emerald-400 tracking-wider whitespace-nowrap mb-0.5">Comissão Líquida</span>
+                          <span className="font-black text-xs sm:text-xl lg:text-3xl text-emerald-700 dark:text-emerald-400 leading-tight">{fmtBRL(filteredTotalComissaoSum)}</span>
+                        </div>
                       </div>
                     </div>
                   );
@@ -1858,29 +1860,28 @@ export default function Comissoes() {
                 {selectedColab && (
                   <div className="hidden lg:flex flex-col flex-1 min-h-0 overflow-hidden">
                     <div className="overflow-y-auto overflow-x-auto flex-1 overscroll-contain scroll-smooth">
-                      <table className="w-full text-[13px] min-w-[1300px]">
+                      <table data-testid="comissoes-desktop-table" className="w-full table-fixed text-xs min-w-[1300px] [&_th]:px-3 [&_th]:py-3 [&_td]:px-3 [&_td]:py-5 [&_td]:align-top">
                         <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-955 border-b border-zinc-200 dark:border-zinc-800 text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">
                           <tr>
-                            <th className="px-5 py-4 text-left font-bold">Data</th>
-                            <th className="px-5 py-4 text-left font-bold">Documento</th>
-                            <th className="px-5 py-4 text-center font-bold">Tipo</th>
-                            <th className="px-5 py-4 text-left font-bold">Papel</th>
-                            <th className="px-5 py-4 text-left font-bold">Descrição</th>
+                            <th className="w-[9%] text-left font-bold">Data e hora</th>
+                            <th className="w-[12%] text-left font-bold">Documento / Cliente</th>
+                            <th className="w-[17%] text-left font-bold">Serviço / Produto</th>
+                            <th className="w-[7%] text-left font-bold">Tipo</th>
+                            <th className="w-[10%] text-left font-bold">Papel</th>
                             <th className="px-5 py-4 text-right font-bold">Valor Item</th>
                             <th className="px-5 py-4 text-right font-bold">Custo Insumo</th>
                             {data?.descontar_taxa_cartao_comissao && (
                               <th className="px-5 py-4 text-right font-bold">Taxa Cartão</th>
                             )}
-                            <th className="px-5 py-4 text-right font-bold">Base Comis.</th>
-                            <th className="px-5 py-4 text-right font-bold">Percentual</th>
+                            <th className="w-[9%] text-right font-bold">Base / Percentual</th>
                             <th className="px-5 py-4 text-right font-bold">Comissão</th>
                             <th className="px-5 py-4 text-center font-bold">Status</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                        <tbody className="divide-y-2 divide-zinc-300 dark:divide-zinc-600">
                           {filteredDetalhes.length === 0 ? (
                             <tr>
-                              <td colSpan={data?.descontar_taxa_cartao_comissao ? "12" : "11"} className="px-5 py-16 text-center text-zinc-400 dark:text-zinc-550">
+                              <td colSpan={data?.descontar_taxa_cartao_comissao ? "11" : "10"} className="px-5 py-16 text-center text-zinc-400 dark:text-zinc-550">
                                 Sem movimentações correspondentes aos filtros.
                               </td>
                             </tr>
@@ -1890,14 +1891,14 @@ export default function Comissoes() {
                                 ? (item.base_comissao != null ? item.base_comissao : item.valor_movimentacao) 
                                 : item.valor_movimentacao;
                               return (
-                                <tr key={idx} className="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/20 transition-colors">
+                                <tr key={idx} className="odd:bg-white even:bg-zinc-100/70 dark:odd:bg-zinc-900 dark:even:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                                   {/* 1. Data */}
-                                  <td className="px-5 py-4.5 font-mono text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                                  <td className="tabular-nums leading-5 text-zinc-500 dark:text-zinc-400">
                                     {fmtDateTime(item.data)}
                                   </td>
                                   
                                   {/* 2. Documento */}
-                                  <td className="px-5 py-4.5 whitespace-nowrap">
+                                  <td className="break-words [overflow-wrap:anywhere]">
                                     <div className="flex flex-col gap-0.5">
                                       <span className="font-mono text-zinc-700 dark:text-zinc-300 font-bold">
                                         {item.numero != null 
@@ -1906,37 +1907,27 @@ export default function Comissoes() {
                                         }
                                       </span>
                                       {item.numero != null && (
-                                        <span className="text-[11px] text-zinc-600 dark:text-zinc-355 font-semibold">
+                                        <span className="text-[13px] leading-5 text-zinc-700 dark:text-zinc-300 font-medium">
                                           {item.cliente_nome || "Consumidor"}
                                         </span>
                                       )}
                                     </div>
                                   </td>
 
-                                  {/* 3. Tipo */}
-                                  <td className="px-5 py-4.5 text-center whitespace-nowrap">
+                                  {/* Serviço em destaque; tipo e papel em colunas próprias */}
+                                  <td className="break-words [overflow-wrap:anywhere]">
+                                    <div className="font-bold text-sm leading-6 text-zinc-900 dark:text-zinc-100">{item.descricao}</div>
+                                    {item.insumos_pendentes && <span className="inline-flex mt-2 rounded px-2 py-1 text-[10px] font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400">Insumos pendentes</span>}
+                                  </td>
+                                  <td>
                                     <span className={`inline-flex px-2 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider ${
                                       item.tipo === 'servico'
                                         ? 'bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/60'
                                         : 'bg-purple-50 text-purple-700 border border-purple-100 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-900/60'
                                     }`}>{item.tipo === 'servico' ? 'Serviço' : 'Produto'}</span>
                                   </td>
-
-                                  {/* 4. Papel */}
-                                  <td className="px-5 py-4.5 whitespace-nowrap text-zinc-600 dark:text-zinc-400 font-medium">
-                                    {item.papel}
-                                  </td>
-
-                                  {/* 5. Descrição */}
-                                  <td className="px-5 py-4.5 max-w-[240px] truncate font-semibold text-zinc-805 dark:text-zinc-150">
-                                    <span>{item.descricao}</span>
-                                    {item.insumos_pendentes && (
-                                      <div className="mt-1">
-                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-950/40 dark:text-rose-455 whitespace-nowrap">
-                                          <AlertTriangle className="w-2.5 h-2.5" /> Ins. Pend.
-                                        </span>
-                                      </div>
-                                    )}
+                                  <td className="break-words [overflow-wrap:anywhere]">
+                                    <span className="text-[13px] leading-5 font-semibold text-zinc-700 dark:text-zinc-200">{item.papel}</span>
                                   </td>
 
                                   {/* 6. Valor Item */}
@@ -1957,17 +1948,13 @@ export default function Comissoes() {
                                   )}
 
                                   {/* 9. Base Comis. */}
-                                  <td className="px-5 py-4.5 text-right font-mono text-zinc-805 dark:text-zinc-200 font-bold">
+                                  <td className="text-right tabular-nums text-zinc-700 dark:text-zinc-200 font-medium">
                                     {fmtBRL(baseCom)}
-                                  </td>
-
-                                  {/* 10. Percentual */}
-                                  <td className="px-5 py-4.5 text-right font-mono text-zinc-500 dark:text-zinc-400 font-bold">
-                                    {item.percentual_aplicado}%
+                                    <div className="mt-1.5 text-[11px] font-normal text-zinc-500 dark:text-zinc-400">{item.percentual_aplicado}%</div>
                                   </td>
 
                                   {/* 11. Comissão */}
-                                  <td className="px-5 py-4.5 text-right font-mono font-black text-emerald-600 dark:text-emerald-400 text-[14.5px]">
+                                  <td className="text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400 text-sm bg-emerald-50/40 dark:bg-emerald-950/20">
                                     {fmtBRL(item.valor_comissao)}
                                   </td>
 
