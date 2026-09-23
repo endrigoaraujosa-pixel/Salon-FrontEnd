@@ -8,7 +8,7 @@
  *
  * Campos gerados:
  *   - version: versão do package.json
- *   - build:   timestamp do build (YYYYMMDD-HHmm)
+ *   - build:   releaseBuild do package.json ou timestamp (YYYYMMDD-HHmm)
  *   - commit:  hash curto do commit git
  *   - date:    data/hora UTC do build (ISO 8601)
  */
@@ -43,7 +43,12 @@ async function main() {
     year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
   }).formatToParts(now).map(({ type, value }) => [type, value]));
-  const build = `${parts.year}${parts.month}${parts.day}-${parts.hour}${parts.minute}`;
+  // A release pode manter seu identificador mesmo quando publicada em outro horário.
+  // Ao criar uma nova release, atualizar releaseBuild junto com version.
+  if (pkg.releaseBuild != null && !/^\d{8}-\d{4}$/.test(pkg.releaseBuild)) {
+    throw new Error('releaseBuild deve estar no formato YYYYMMDD-HHmm');
+  }
+  const build = pkg.releaseBuild || `${parts.year}${parts.month}${parts.day}-${parts.hour}${parts.minute}`;
 
   // Data ISO UTC
   const date = now.toISOString();
