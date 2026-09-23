@@ -1165,11 +1165,11 @@ export default function VendasDiretas() {
       } />
 
       {/* Search and Filters Bar */}
-      <div className="bg-white border border-zinc-200 rounded-xl p-4 mb-6 shadow-sm space-y-4">
+      <div data-testid="vendas-filtros" className="min-w-0 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 mb-6 shadow-sm space-y-4">
         {/* Row 1: Date Filters */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center w-full lg:w-auto">
-            <div className="w-full sm:w-64">
+          <div className="grid grid-cols-2 sm:flex sm:flex-row gap-3 sm:gap-4 items-start sm:items-center min-w-0 w-full lg:w-auto">
+            <div className="col-span-2 min-w-0 w-full sm:w-64">
               <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold mb-1 block">Pesquisa</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400 w-4 h-4" />
@@ -1181,26 +1181,26 @@ export default function VendasDiretas() {
                 />
               </div>
             </div>
-            <div className="w-full sm:w-auto">
+            <div className="min-w-0 w-full sm:w-auto">
               <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold mb-1 block">Data Inicial</Label>
               <Input
                 type="date"
-                className="w-full sm:w-44 focus:ring-2 focus:ring-[#84A59D] transition-all bg-transparent text-foreground border-input"
+                className="min-w-0 max-w-full w-full sm:w-44 h-11 px-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#84A59D] transition-all bg-transparent text-foreground border-input"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
               />
             </div>
-            <div className="w-full sm:w-auto">
+            <div className="min-w-0 w-full sm:w-auto">
               <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold mb-1 block">Data Final</Label>
               <Input
                 type="date"
-                className="w-full sm:w-44 focus:ring-2 focus:ring-[#84A59D] transition-all bg-transparent text-foreground border-input"
+                className="min-w-0 max-w-full w-full sm:w-44 h-11 px-2 text-xs sm:text-sm focus:ring-2 focus:ring-[#84A59D] transition-all bg-transparent text-foreground border-input"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
               />
             </div>
           </div>
-          <div className="flex gap-2 w-full lg:w-auto justify-end">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full lg:w-auto sm:justify-end [&>button]:min-w-0 [&>button]:h-11 [&>button]:px-2 [&>button]:text-xs sm:[&>button]:text-sm">
             <Button
               variant="outline"
               className="border-zinc-200 text-[#3A4F4A] hover:bg-[#EAF0EE] dark:border-border dark:text-[#EAF0EE] dark:hover:bg-[#3A4F4A]"
@@ -1313,12 +1313,11 @@ export default function VendasDiretas() {
       ) : (
         <div className="space-y-4">
           {/* Mobile Card List (Visible only on mobile) */}
-          <div className="space-y-3 sm:hidden">
+          <div className="space-y-3 min-w-0 sm:hidden">
             {filteredList.map((v) => (
-              <div key={v.id} className="bg-white border border-zinc-200 rounded-xl p-4 shadow-sm hover:shadow transition-shadow cursor-pointer" onClick={() => openReceipt(v.id)}>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-zinc-400 font-medium">{fmtDT(v.data_venda)}</span>
+              <div key={v.id} data-testid={`venda-card-${v.id}`} className="min-w-0 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm cursor-pointer" onClick={() => openReceipt(v.id)}>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     {v.numero_venda && (
                       <span className="text-[10px] font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] px-1.5 py-0.5 rounded">
                         {String(v.numero_venda).padStart(6, "0")} | V
@@ -1329,22 +1328,23 @@ export default function VendasDiretas() {
                     {v.status === "pago" ? "Pago" : "Pendente"}
                   </span>
                 </div>
-                <h4 className="font-display font-bold text-zinc-800 text-sm leading-snug">{v.produto_nome}</h4>
-                <div className="text-xs text-zinc-500 mt-2 space-y-1">
+                <h4 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base leading-6 break-words [overflow-wrap:anywhere]">{v.produto_nome}</h4>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{fmtDT(v.data_venda)}</p>
+                <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-3 space-y-2 break-words [overflow-wrap:anywhere] [&_strong]:font-medium [&_strong]:text-zinc-700 dark:[&_strong]:text-zinc-200">
                   <div>Qtd: <strong>{v.quantidade}</strong></div>
                   <div>Vendedor: <strong>{v.colaborador_nome || "—"}</strong></div>
                   <div>Cliente: <strong>{v.cliente_nome || "—"}</strong></div>
                 </div>
-                <div className="flex items-center justify-between border-t border-zinc-100 pt-3 mt-3">
-                  <div>
+                <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3 mt-3 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#EAF0EE] dark:bg-emerald-950/30 px-3 py-3">
                     <span className="text-[10px] text-zinc-400 uppercase tracking-wider block">Total</span>
-                    <span className="font-display font-bold text-[#3A4F4A] text-base">{fmtBRL(v.valor_total)}</span>
+                    <span className="font-semibold text-[#3A4F4A] dark:text-emerald-400 text-lg break-words [overflow-wrap:anywhere] min-w-0">{fmtBRL(v.valor_total)}</span>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="grid grid-cols-[1fr_1fr_44px] gap-2">
                     <Button
                       size="default"
                       variant="outline"
-                      className="h-11 px-4 rounded-xl shadow-sm font-semibold border-zinc-200 text-[#3A4F4A] hover:bg-[#EAF0EE]"
+                      className="h-11 min-w-0 px-2 text-xs rounded-xl font-medium border-zinc-200 dark:border-zinc-700 text-[#3A4F4A] dark:text-zinc-200 hover:bg-[#EAF0EE]"
                       onClick={(e) => { e.stopPropagation(); openCarrinhoModal(v.id); }}
                       title="Ver/Editar Carrinho"
                     >
@@ -1353,7 +1353,7 @@ export default function VendasDiretas() {
                     <Button
                       size="default"
                       variant="outline"
-                      className="h-11 px-4 rounded-xl shadow-sm font-semibold border-zinc-200 text-[#3A4F4A] hover:bg-[#EAF0EE]"
+                      className="h-11 min-w-0 px-2 text-xs rounded-xl font-medium border-zinc-200 dark:border-zinc-700 text-[#3A4F4A] dark:text-zinc-200 hover:bg-[#EAF0EE]"
                       onClick={(e) => {
                         e.stopPropagation();
                         if (!canLancarPagamento) {
@@ -1366,7 +1366,7 @@ export default function VendasDiretas() {
                     >
                       <CreditCard className="w-5 h-5 mr-2" /> Pagar
                     </Button>
-                    <Button size="default" variant="ghost" className="h-11 w-11 rounded-xl shadow-sm border border-zinc-100 text-rose-500 hover:bg-rose-50 hover:border-rose-200 ml-4" onClick={(e) => { e.stopPropagation(); del(v.id); }}>
+                    <Button size="default" variant="ghost" aria-label="Excluir venda" className="h-11 w-11 p-0 rounded-xl border border-zinc-100 dark:border-zinc-800 text-rose-500 hover:bg-rose-50 hover:border-rose-200" onClick={(e) => { e.stopPropagation(); del(v.id); }}>
                       <Trash2 className="w-5 h-5" />
                     </Button>
                   </div>
