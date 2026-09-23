@@ -1671,7 +1671,7 @@ export default function Comissoes() {
 
       {/* Dialog Detalhado de Comissões */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="w-[96vw] max-w-7xl xl:max-w-[90vw] h-[92vh] p-0 overflow-hidden rounded-2xl dark:bg-zinc-900 dark:border-zinc-800 flex flex-col">
+        <DialogContent className="w-[96vw] max-w-7xl xl:max-w-[90vw] h-[92dvh] p-0 gap-0 overflow-y-auto lg:overflow-hidden overscroll-contain rounded-2xl dark:bg-zinc-900 dark:border-zinc-800 flex flex-col">
           {(() => {
             const filteredDetalhes = selectedColab?.detalhes ? selectedColab.detalhes.filter(item => {
               const term = modalSearch.toLowerCase();
@@ -1736,15 +1736,16 @@ export default function Comissoes() {
               <>
                 {/* Header fixo - Compacto e elegante */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 sm:px-8 sm:py-5 border-b border-zinc-150 dark:border-zinc-800 shrink-0 bg-white dark:bg-zinc-900">
-                  <div className="flex items-center gap-3">
+                  <div className="flex min-w-0 items-start sm:items-center gap-3">
                     {(() => {
                       const colabObj = colaboradores.find(col => col.id === selectedColab?.colaborador_id);
-                      if (colabObj?.foto) return <img src={colabObj.foto} alt={selectedColab?.colaborador_nome} className="w-10 h-10 sm:w-16 sm:h-16 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-700 shadow-sm" />;
-                      return <div className="w-10 h-10 sm:w-16 sm:h-16 rounded-full bg-[#EAF0EE] dark:bg-zinc-855 text-[#3A4F4A] dark:text-[#EAF0EE] font-bold text-sm sm:text-base shrink-0 flex items-center justify-center border border-[#D5E2DF] dark:border-zinc-700 select-none">{getInitials(selectedColab?.colaborador_nome)}</div>;
+                      if (colabObj?.foto) return <img src={colabObj.foto} alt={selectedColab?.colaborador_nome} className="w-16 h-16 rounded-2xl sm:rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-700 shadow-sm" />;
+                      return <div className="w-16 h-16 rounded-2xl sm:rounded-full bg-[#EAF0EE] dark:bg-zinc-855 text-[#3A4F4A] dark:text-[#EAF0EE] font-bold text-base shrink-0 flex items-center justify-center border border-[#D5E2DF] dark:border-zinc-700 select-none">{getInitials(selectedColab?.colaborador_nome)}</div>;
                     })()}
                     <div className="min-w-0 flex-1 pr-8 sm:pr-0">
-                      <DialogTitle className="font-display font-bold sm:font-black text-base sm:text-xl text-[#3A4F4A] dark:text-zinc-100 truncate leading-tight m-0 p-0">
-                        Detalhamento de Comissões: {selectedColab?.colaborador_nome}
+                      <DialogTitle className="font-display font-bold sm:font-black text-base sm:text-xl text-[#3A4F4A] dark:text-zinc-100 break-words [overflow-wrap:anywhere] leading-tight m-0 p-0">
+                        <span className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1 sm:inline sm:text-xl sm:font-black sm:text-inherit sm:mb-0">Detalhamento de Comissões<span className="hidden sm:inline">: </span></span>
+                        {selectedColab?.colaborador_nome}
                       </DialogTitle>
                       {selectedColab && (
                         <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[9px] sm:text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider">
@@ -1990,23 +1991,22 @@ export default function Comissoes() {
 
                 {/* Cards mobile com scroll interno (Mais compactos e legíveis) */}
                 {selectedColab && (
-                  <div className="block lg:hidden flex-1 overflow-y-auto overscroll-contain scroll-smooth p-4 space-y-3.5 min-h-0 bg-zinc-50/30 dark:bg-zinc-950/20">
+                  <div className="block lg:hidden shrink-0 min-w-0 p-3 sm:p-4 space-y-3 bg-zinc-50/30 dark:bg-zinc-950/20" data-testid="comissoes-mobile-cards">
                     {filteredDetalhes.length === 0 ? (
                       <div className="text-center py-12 text-zinc-400 dark:text-zinc-550 border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-white dark:bg-zinc-900">
                         Sem movimentações correspondentes aos filtros.
                       </div>
                     ) : (
                       filteredDetalhes.map((item, idx) => (
-                        <div key={idx} className="bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800/80 rounded-2xl p-4.5 space-y-3 shadow-sm hover:border-zinc-350 dark:hover:border-zinc-700 transition-colors duration-150">
+                        <div key={idx} className="min-w-0 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 rounded-2xl p-4 space-y-3 shadow-sm" data-testid={`comissao-item-${idx}`}>
                           {/* Top Header: Tipo, Data e Status */}
-                          <div className="flex items-center justify-between text-[11px] text-zinc-400 dark:text-zinc-500">
-                            <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-start justify-between gap-2 text-[11px] text-zinc-400 dark:text-zinc-500">
+                            <div className="flex flex-wrap items-center gap-2">
                               <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
                                 item.tipo === 'servico'
                                   ? 'bg-blue-50/80 text-blue-700 border border-blue-100/50 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/30'
                                   : 'bg-purple-50/80 text-purple-700 border border-purple-100/50 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-900/30'
                               }`}>{item.tipo === 'servico' ? 'Serviço' : 'Produto'}</span>
-                              <span className="text-[10.5px] font-medium text-zinc-500 dark:text-zinc-400">{fmtDateTime(item.data)}</span>
                             </div>
                             <div>
                               {item.pago ? (
@@ -2023,19 +2023,19 @@ export default function Comissoes() {
 
                           {/* Descrição e Info do Documento */}
                           <div className="space-y-1">
-                            <h4 className="font-bold text-sm text-zinc-800 dark:text-zinc-100 leading-snug">
+                            <h4 className="font-semibold text-base text-zinc-900 dark:text-zinc-100 leading-6 break-words [overflow-wrap:anywhere]">
                               {item.descricao}
                             </h4>
-                            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+                            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">{fmtDateTime(item.data)}</p>
+                            <div className="flex flex-wrap items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 break-words [overflow-wrap:anywhere]">
                               {item.numero != null && (
                                 <>
                                   <span className="font-mono font-semibold">#{String(item.numero).padStart(6, "0")}</span>
                                   <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700 shrink-0 self-center" />
-                                  <span className="truncate max-w-[150px] font-medium">{item.cliente_nome || "Consumidor"}</span>
-                                  <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700 shrink-0 self-center" />
+                                  <span className="min-w-0 font-medium">{item.cliente_nome || "Consumidor"}</span>
                                 </>
                               )}
-                              <span className="bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-[10px] font-medium text-zinc-650 dark:text-zinc-300">{item.papel}</span>
+                              <span className="w-full pt-1 text-[11px] font-normal text-zinc-500 dark:text-zinc-400">{item.papel}</span>
                             </div>
                             {item.insumos_pendentes && (
                               <div className="pt-0.5">
@@ -2047,14 +2047,14 @@ export default function Comissoes() {
                           </div>
 
                           {/* Caixa Financeira Unificada */}
-                          <div className="flex items-stretch justify-between bg-zinc-50/50 dark:bg-zinc-950/40 border border-zinc-100/80 dark:border-zinc-855 rounded-xl p-3 text-xs gap-3">
-                            <div className="flex flex-col justify-center space-y-2 text-[11px]">
+                          <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3 text-xs space-y-3">
+                            <div className="grid grid-cols-2 gap-3 text-xs break-words [overflow-wrap:anywhere]">
                               <div>
                                 <span className="text-zinc-400 dark:text-zinc-550 block text-[9px] uppercase font-bold tracking-wider mb-0.5">Valor do Item</span>
                                 <span className="font-mono font-semibold text-zinc-700 dark:text-zinc-200">{fmtBRL(item.valor_movimentacao)}</span>
                               </div>
                               {item.tipo === 'servico' && (item.custo_produtos > 0 || (item.descontou_taxa_cartao && item.taxa_cartao_descontada > 0)) && (
-                                <div>
+                                <div className="col-span-2 order-last">
                                   <span className="text-zinc-400 dark:text-zinc-550 block text-[9px] uppercase font-bold tracking-wider mb-0.5">Deduções</span>
                                   <span className="text-rose-500 dark:text-rose-400 font-medium block">
                                     {item.custo_produtos > 0 && `Insumo: -${fmtBRL(item.custo_produtos)}`}
@@ -2070,9 +2070,9 @@ export default function Comissoes() {
                               </div>
                             </div>
                             
-                            <div className="flex flex-col justify-center items-end bg-emerald-50/40 dark:bg-emerald-950/10 border border-emerald-100/50 dark:border-emerald-900/20 px-3.5 py-2 rounded-lg shrink-0">
+                            <div className="flex flex-wrap items-center justify-between gap-2 bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-100/50 dark:border-emerald-900/30 px-3 py-3 rounded-xl">
                               <span className="text-[9px] text-emerald-800 dark:text-emerald-400 uppercase font-extrabold tracking-wider block mb-0.5">Comissão</span>
-                              <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-sm">{fmtBRL(item.valor_comissao)}</span>
+                              <span className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-400 text-lg break-words [overflow-wrap:anywhere] min-w-0">{fmtBRL(item.valor_comissao)}</span>
                             </div>
                           </div>
                         </div>
@@ -2082,10 +2082,10 @@ export default function Comissoes() {
                 )}
 
                 {/* Footer fixo - Altura ajustada */}
-                <div className="border-t border-zinc-150 dark:border-zinc-800 px-4 py-3 sm:px-8 sm:py-4.5 shrink-0 flex justify-end bg-white dark:bg-zinc-900 select-none">
+                <div className="sticky bottom-0 lg:static mt-auto border-t border-zinc-150 dark:border-zinc-800 px-4 py-3 sm:px-8 sm:py-4.5 shrink-0 flex justify-end bg-white dark:bg-zinc-900 select-none">
                   <Button 
                     onClick={() => setDetailsOpen(false)} 
-                    className="w-full sm:w-auto h-10 px-6 text-xs sm:text-sm font-semibold border border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100/80 dark:hover:bg-zinc-800/80 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors duration-200"
+                    className="w-full sm:w-auto h-11 px-6 text-xs sm:text-sm font-semibold border border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100/80 dark:hover:bg-zinc-800/80 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors duration-200"
                   >
                     Fechar Extrato
                   </Button>
