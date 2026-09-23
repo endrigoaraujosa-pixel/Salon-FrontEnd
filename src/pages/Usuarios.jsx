@@ -13,6 +13,21 @@ import { toast } from "sonner";
 import { useAuth } from "../auth";
 import AuditModal from "../components/AuditModal";
 import { startVisiblePolling } from '../lib/visiblePolling';
+import { AGENDA_TIME_ZONE } from '../lib/date';
+
+const accessDateFormat = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: AGENDA_TIME_ZONE, day: '2-digit', month: '2-digit', year: 'numeric',
+  hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+});
+
+function LastAccess({ value }) {
+  const date = value ? new Date(value) : null;
+  const valid = date && Number.isFinite(date.getTime());
+  return <p className="mt-0.5 ml-4 text-[11px] leading-4 font-normal text-zinc-500 dark:text-zinc-400"
+    title="Última atividade registrada no sistema (horário de Brasília)">
+    Último acesso: {valid ? <time dateTime={date.toISOString()}>{accessDateFormat.format(date).replace(', ', ' às ')}</time> : 'sem registro'}
+  </p>;
+}
 
 function PresenceDot({ online }) {
   const label = online === true ? 'Online: atividade nos últimos 2 minutos'
@@ -33,7 +48,7 @@ export default function Usuarios() {
     if (!me?.id) return;
     return startVisiblePolling(async signal => {
       const response = await http.get('/users/presence', { signal, timeout: 10000 });
-      if (!signal.aborted) setPresence(Object.fromEntries(response.data.map(item => [item.id, item.online])));
+      if (!signal.aborted) setPresence(Object.fromEntries(response.data.map(item => [item.id, item])));
     }, () => setPresence({}));
   }, [me?.id]);
   const [perfis, setPerfis] = useState([]);
@@ -279,8 +294,9 @@ export default function Usuarios() {
                 {list.map((u) => (
                   <tr key={u.id} className="hover:bg-zinc-50/60 dark:hover:bg-zinc-900/20" data-testid={`user-row-${u.id}`}>
                     <td className="px-4 py-3.5 font-semibold text-zinc-900 dark:text-zinc-100">
-                      <PresenceDot online={u.ativo === false ? false : presence[u.id]} />
+                      <PresenceDot online={u.ativo === false ? false : presence[u.id]?.online} />
                       {u.name} {u.id === me?.id && <span className="text-xs text-zinc-400 dark:text-zinc-550 ml-1 font-normal">(você)</span>}
+                      <LastAccess value={presence[u.id]?.last_access_at ?? u.last_access_at} />
                     </td>
                     <td className="px-4 py-3.5 text-zinc-650 dark:text-zinc-400">{u.email}</td>
                     <td className="px-4 py-3.5 text-zinc-700 dark:text-zinc-300 font-semibold">
@@ -336,13 +352,14 @@ export default function Usuarios() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <h4 className="font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2 flex-wrap">
-                      <span className="text-[17px]"><PresenceDot online={u.ativo === false ? false : presence[u.id]} />{u.name}</span>
+                      <span className="text-[17px]"><PresenceDot online={u.ativo === false ? false : presence[u.id]?.online} />{u.name}</span>
                       {u.id === me?.id && (
                         <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-550 dark:text-zinc-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">
                           você
                         </span>
                       )}
                     </h4>
+                    <LastAccess value={presence[u.id]?.last_access_at ?? u.last_access_at} />
                     <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 break-all font-medium">{u.email}</p>
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-xs font-bold shrink-0 ${
