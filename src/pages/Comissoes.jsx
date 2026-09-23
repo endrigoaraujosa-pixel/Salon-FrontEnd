@@ -2026,13 +2026,13 @@ export default function Comissoes() {
                             <h4 className="font-semibold text-base text-zinc-900 dark:text-zinc-100 leading-6 break-words [overflow-wrap:anywhere]">
                               {item.descricao}
                             </h4>
-                            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">{fmtDateTime(item.data)}</p>
+                            <p className="text-xs leading-5 text-zinc-500 dark:text-zinc-400">{fmtDateTime(item.data)}</p>
                             <div className="flex flex-wrap items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 break-words [overflow-wrap:anywhere]">
                               {item.numero != null && (
                                 <>
                                   <span className="font-mono font-semibold">#{String(item.numero).padStart(6, "0")}</span>
                                   <span className="w-1 h-1 rounded-full bg-zinc-300 dark:bg-zinc-700 shrink-0 self-center" />
-                                  <span className="min-w-0 font-medium">{item.cliente_nome || "Consumidor"}</span>
+                                  <span className="min-w-0 text-[13px] leading-5 font-medium">{item.cliente_nome || "Consumidor"}</span>
                                 </>
                               )}
                               <span className="w-full pt-1 text-[11px] font-normal text-zinc-500 dark:text-zinc-400">{item.papel}</span>
