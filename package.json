@@ -1,7 +1,7 @@
 {
   "name": "frontend",
-  "version": "0.1.3",
-  "releaseBuild": "20260923-1534",
+  "version": "0.1.4",
+  "releaseBuild": "20260923-1609",
   "private": true,
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
