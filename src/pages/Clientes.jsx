@@ -596,7 +596,7 @@ export default function Clientes() {
 
   return (
     <TooltipProvider>
-      <div className="p-6 lg:p-8 fade-in">
+      <div className="min-w-0 p-4 sm:p-6 lg:p-8 fade-in">
       <PageHeader
         overline="Cadastro"
         title={
@@ -920,15 +920,15 @@ export default function Clientes() {
           </div>
 
           {/* Visualização em Lista de Cards para Mobile */}
-          <div className="block sm:hidden space-y-4">
+          <div className="block min-w-0 sm:hidden space-y-3">
             {paginatedItems.map((c) => (
               <div
                 key={c.id}
-                className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4.5 rounded-xl shadow-xs flex flex-col gap-3"
+                className="min-w-0 bg-white dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800 p-4 rounded-2xl shadow-sm flex flex-col gap-3"
                 data-testid={`cliente-card-${c.id}`}
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-20 h-20 rounded-full overflow-hidden bg-[#EAF0EE] dark:bg-zinc-850 text-[#3A4F4A] dark:text-[#EAF0EE] font-extrabold text-2xl flex items-center justify-center shrink-0 border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="w-20 h-20 rounded-2xl overflow-hidden bg-[#EAF0EE] dark:bg-zinc-800 text-[#3A4F4A] dark:text-[#EAF0EE] font-semibold text-2xl flex items-center justify-center shrink-0 border border-zinc-100 dark:border-zinc-800 shadow-sm">
                     {c.foto ? (
                       <img src={c.foto} alt={c.nome} className="w-full h-full object-cover" />
                     ) : (
@@ -936,31 +936,31 @@ export default function Clientes() {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h4 className="font-extrabold text-zinc-900 dark:text-zinc-50 text-[18px] sm:text-xl truncate tracking-tight leading-snug">{c.nome}</h4>
-                    <p className="text-xs text-zinc-400 dark:text-zinc-500 font-semibold mt-0.5">Cliente cadastrado(a)</p>
+                    <h4 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base break-words [overflow-wrap:anywhere] leading-6">{c.nome}</h4>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-normal mt-0.5">Cliente cadastrado(a)</p>
                   </div>
                 </div>
 
-                <div className="space-y-1.5 text-xs text-zinc-650 dark:text-zinc-400 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-zinc-400 dark:text-zinc-500 w-16 uppercase tracking-wider text-[9px]">Telefone:</span>
-                    <span className="font-mono text-zinc-800 dark:text-zinc-200">{c.telefone || "Não informado"}</span>
+                <div className="space-y-2 text-xs text-zinc-600 dark:text-zinc-400 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="shrink-0 font-normal text-zinc-500 dark:text-zinc-400 leading-5">Telefone:</span>
+                    <span className="min-w-0 break-words text-right font-medium leading-5 text-zinc-700 dark:text-zinc-300">{c.telefone || "Não informado"}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-zinc-400 dark:text-zinc-500 w-16 uppercase tracking-wider text-[9px]">Email:</span>
-                    <span className="truncate text-zinc-800 dark:text-zinc-200">{c.email || "Não informado"}</span>
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="shrink-0 font-normal text-zinc-500 dark:text-zinc-400 leading-5">Email:</span>
+                    <span className="min-w-0 break-words [overflow-wrap:anywhere] text-right leading-5 text-zinc-700 dark:text-zinc-300">{c.email || "Não informado"}</span>
                   </div>
                   {trabalharCredito && (
                     <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-zinc-400 dark:text-zinc-500 w-16 uppercase tracking-wider text-[9px]">Saldo:</span>
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="shrink-0 font-normal text-zinc-500 dark:text-zinc-400 leading-5">Saldo:</span>
                         <span className="font-semibold text-emerald-600 dark:text-emerald-450">
                           R$ {Number(c.saldo_credito || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                       {c.data_ultima_movimentacao_credito && (
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-zinc-400 dark:text-zinc-500 w-16 uppercase tracking-wider text-[9px]">Últ. Mov.:</span>
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="shrink-0 font-normal text-zinc-500 dark:text-zinc-400 leading-5">Últ. Mov.:</span>
                           <span className="text-zinc-700 dark:text-zinc-300 font-normal">
                             {new Date(c.data_ultima_movimentacao_credito).toLocaleDateString("pt-BR")}
                           </span>
@@ -971,13 +971,13 @@ export default function Clientes() {
                 </div>
 
                 {trabalharCredito && (podeVisualizarExtrato || podeAdicionarCredito || podeRemoverCredito) && (
-                  <div className="flex items-center gap-3 pt-2 border-t border-zinc-100 dark:border-zinc-800 mt-1">
+                  <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-800">
                     {podeVisualizarExtrato && (
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => nav(`/clientes/credito/extrato?clienteId=${c.id}`)}
-                        className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+                        className="flex-1 min-w-[76px] h-11 px-2 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
                       >
                         <TrendingUp className="w-3.5 h-3.5" /> Extrato
                       </Button>
@@ -987,7 +987,7 @@ export default function Clientes() {
                         size="sm"
                         variant="outline"
                         onClick={() => handleCreditoManual(c, 'adicionar')}
-                        className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-emerald-600 dark:text-emerald-450"
+                        className="flex-1 min-w-[76px] h-11 px-2 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-emerald-600 dark:text-emerald-450"
                       >
                         <Plus className="w-3.5 h-3.5" /> Crédito
                       </Button>
@@ -997,7 +997,7 @@ export default function Clientes() {
                         size="sm"
                         variant="outline"
                         onClick={() => handleCreditoManual(c, 'remover')}
-                        className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-rose-600 dark:text-rose-450"
+                        className="flex-1 min-w-[76px] h-11 px-2 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-rose-600 dark:text-rose-450"
                       >
                         <Plus className="w-3.5 h-3.5 rotate-45" /> Débito
                       </Button>
@@ -1005,12 +1005,12 @@ export default function Clientes() {
                   </div>
                 )}
 
-                <div className="flex items-center gap-3 pt-2 border-t border-zinc-100 dark:border-zinc-800 mt-1">
+                <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-800">
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => nav(`/clientes/${c.id}/historico`)}
-                    className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+                    className="flex-1 min-w-[76px] h-11 px-2 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
                   >
                     <History className="w-3.5 h-3.5" /> Histórico
                   </Button>
@@ -1020,7 +1020,7 @@ export default function Clientes() {
                       variant="outline"
                       onClick={async () => await edit(c)}
                       data-testid={`edit-cliente-card-${c.id}`}
-                      className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
+                      className="flex-1 min-w-[76px] h-11 px-2 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300"
                     >
                       <Edit2 className="w-3.5 h-3.5" /> Editar
                     </Button>
@@ -1031,7 +1031,7 @@ export default function Clientes() {
                       variant="outline"
                       onClick={() => del(c.id)}
                       data-testid={`delete-cliente-card-${c.id}`}
-                      className="flex-1 h-9 text-xs font-semibold flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                      className="flex-1 min-w-[76px] h-11 px-2 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 border-zinc-200 dark:border-zinc-700 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"
                     >
                       <Trash2 className="w-3.5 h-3.5" /> Excluir
                     </Button>
