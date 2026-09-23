@@ -12,6 +12,14 @@ import { UsersRound, Plus, Edit2, Trash2, Shield, History } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../auth";
 import AuditModal from "../components/AuditModal";
+import { startVisiblePolling } from '../lib/visiblePolling';
+
+function PresenceDot({ online }) {
+  const label = online === true ? 'Online: atividade nos últimos 2 minutos'
+    : online === false ? 'Sem atividade nos últimos 2 minutos' : 'Presença indisponível';
+  return <span role="img" aria-label={label} title={label}
+    className={`inline-block h-2 w-2 shrink-0 rounded-full mr-2 align-middle ${online === true ? 'bg-emerald-500' : online === false ? 'bg-zinc-400' : 'border border-zinc-400'}`} />;
+}
 
 const blank = { name: "", email: "", senha: "", role: "funcionario", perfil_acesso_id: "func-profile-uuid-000000000000000000", colaborador_id: "", ativo: true, pode_alterar_concluido: false, pode_excluir_agendamento: false, pode_excluir_pagamento: false };
 
@@ -20,6 +28,14 @@ export default function Usuarios() {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [list, setList] = useState([]);
+  const [presence, setPresence] = useState({});
+  useEffect(() => {
+    if (!me?.id) return;
+    return startVisiblePolling(async signal => {
+      const response = await http.get('/users/presence', { signal, timeout: 10000 });
+      if (!signal.aborted) setPresence(Object.fromEntries(response.data.map(item => [item.id, item.online])));
+    }, () => setPresence({}));
+  }, [me?.id]);
   const [perfis, setPerfis] = useState([]);
   const [colaboradores, setColaboradores] = useState([]);
   const [open, setOpen] = useState(false);
@@ -263,6 +279,7 @@ export default function Usuarios() {
                 {list.map((u) => (
                   <tr key={u.id} className="hover:bg-zinc-50/60 dark:hover:bg-zinc-900/20" data-testid={`user-row-${u.id}`}>
                     <td className="px-4 py-3.5 font-semibold text-zinc-900 dark:text-zinc-100">
+                      <PresenceDot online={u.ativo === false ? false : presence[u.id]} />
                       {u.name} {u.id === me?.id && <span className="text-xs text-zinc-400 dark:text-zinc-550 ml-1 font-normal">(você)</span>}
                     </td>
                     <td className="px-4 py-3.5 text-zinc-650 dark:text-zinc-400">{u.email}</td>
@@ -319,7 +336,7 @@ export default function Usuarios() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <h4 className="font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2 flex-wrap">
-                      <span className="text-[17px]">{u.name}</span>
+                      <span className="text-[17px]"><PresenceDot online={u.ativo === false ? false : presence[u.id]} />{u.name}</span>
                       {u.id === me?.id && (
                         <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-550 dark:text-zinc-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">
                           você

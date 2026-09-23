@@ -1,11 +1,17 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import api from "./api";
+import { startVisiblePolling } from './lib/visiblePolling';
 
 const AuthCtx = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    return startVisiblePolling(signal => api.post('/auth/presence', {}, { signal, timeout: 10000 }));
+  }, [user?.id]);
 
   useEffect(() => {
     const token = localStorage.getItem("salon_token");
