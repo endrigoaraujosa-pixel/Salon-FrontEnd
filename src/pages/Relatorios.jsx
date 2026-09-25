@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import SearchableSelect from "../components/SearchableSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
+import { Popover, PopoverTrigger, PopoverContent } from "../components/ui/popover";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "../components/ui/tooltip";
 import { FileText, Banknote, Package, TrendingUp, TrendingDown, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle, Filter, ArrowLeft, AlertTriangle, AlertCircle, Coins, Flame, Zap, Calendar, Sliders, ClipboardList, Eye, CreditCard, ChevronLeft, ChevronRight, Percent, PackagePlus, ChevronDown } from "lucide-react";
 
@@ -3240,7 +3241,56 @@ export default function Relatorios() {
                                   <th className="px-5 py-4">Data</th>
                                   <th className="px-5 py-4">Lançamento / Descrição</th>
                                   <th className="px-5 py-4">Categoria</th>
-                                  <th className="px-5 py-4 text-center">Status</th>
+                                  <th className="px-5 py-4 text-center">
+                                    <div className="inline-flex items-center justify-center gap-1">
+                                      <span>Status</span>
+                                      <Popover>
+                                        <PopoverTrigger asChild>
+                                          <button type="button" title="Clique para ver o significado dos status" className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-100 transition-colors p-0.5 rounded cursor-pointer">
+                                            <HelpCircle className="w-3.5 h-3.5" />
+                                          </button>
+                                        </PopoverTrigger>
+                                        <PopoverContent side="bottom" align="center" className="w-[360px] sm:w-[460px] p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl rounded-xl text-left z-50">
+                                          <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100 mb-2.5 border-b border-zinc-150 dark:border-zinc-800 pb-2">
+                                            Significado dos Status no DRE
+                                          </div>
+                                          <div className="overflow-x-auto">
+                                            <table className="w-full text-[11px] text-left border-collapse">
+                                              <thead>
+                                                <tr className="border-b border-zinc-150 dark:border-zinc-800 text-zinc-400 font-semibold uppercase text-[9px] tracking-wider">
+                                                  <th className="pb-2 pr-3">Status</th>
+                                                  <th className="pb-2 pr-3">Onde aparece</th>
+                                                  <th className="pb-2">O que significa</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60 leading-relaxed text-zinc-650 dark:text-zinc-300">
+                                                <tr>
+                                                  <td className="py-2 pr-3 font-semibold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">Concluído / Pago</td>
+                                                  <td className="py-2 pr-3 text-zinc-500 whitespace-nowrap">Atendimentos e Vendas</td>
+                                                  <td className="py-2">O cliente realizou o serviço e efetuou o pagamento.</td>
+                                                </tr>
+                                                <tr>
+                                                  <td className="py-2 pr-3 font-semibold text-amber-600 dark:text-amber-400 whitespace-nowrap">Provisionado</td>
+                                                  <td className="py-2 pr-3 text-zinc-500 whitespace-nowrap">Comissões</td>
+                                                  <td className="py-2">O colaborador tem direito ao valor, mas a comissão ainda não foi fechada/paga.</td>
+                                                </tr>
+                                                <tr>
+                                                  <td className="py-2 pr-3 font-semibold text-teal-600 dark:text-teal-400 whitespace-nowrap">Retido</td>
+                                                  <td className="py-2 pr-3 text-zinc-500 whitespace-nowrap">Taxas de Cartão</td>
+                                                  <td className="py-2">O custo da taxa já foi apropriado na transação (descontado pela maquininha).</td>
+                                                </tr>
+                                                <tr>
+                                                  <td className="py-2 pr-3 font-semibold text-zinc-700 dark:text-zinc-300 whitespace-nowrap">Pendente / Pago</td>
+                                                  <td className="py-2 pr-3 text-zinc-500 whitespace-nowrap">Despesas</td>
+                                                  <td className="py-2">Contas a pagar com boleto/PIX registradas no financeiro.</td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                        </PopoverContent>
+                                      </Popover>
+                                    </div>
+                                  </th>
                                   {isCardDrilldown && <th className="px-5 py-4 text-right">Base no cartão</th>}
                                   {isCardDrilldown && <th className="px-5 py-4 text-right">Taxa %</th>}
                                   <th className="px-5 py-4 text-right">{isCardDrilldown ? "Valor da taxa" : "Valor"}</th>
@@ -3304,7 +3354,7 @@ export default function Relatorios() {
                                 
                                 <div className="font-semibold text-xs text-zinc-800 dark:text-zinc-100">
                                   {item.descricao}
-                                  <DreDetailMetadata item={item} />
+                                  <DreDetailMetadata item={item} showCalculation={!isCardDrilldown} />
                                 </div>
                                 
                                 <div className="flex items-center justify-between pt-2 border-t border-zinc-150 dark:border-zinc-800 text-xs">
@@ -6391,12 +6441,12 @@ const renderHelpContent = (reportId) => {
 
 function DreDetailMetadata({ item, showCalculation = true }) {
   return <div className="mt-1 text-[11px] font-normal text-zinc-500 space-y-0.5">
+    {item.cliente_nome && <div>Cliente: <span className="font-semibold text-zinc-700 dark:text-zinc-300">{item.cliente_nome}</span></div>}
     {item.origem && <div>Origem: {item.origem}</div>}
     {item.fornecedor && <div>Fornecedor / cliente: {item.fornecedor}</div>}
     {item.documento && <div>Documento: {item.documento}</div>}
     {item.quantidade != null && <div>Quantidade: {item.quantidade} · Custo unitário: {Number(item.custo_unitario || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 4 })}</div>}
-    {showCalculation && item.base_calculo != null && <div>Base: {fmtBRL(item.base_calculo)}{item.percentual != null ? ` · Taxa: ${item.percentual}%` : ''}</div>}
-    {item.pagamento_id && <div>Pagamento: {item.pagamento_id}</div>}
+    {showCalculation && item.base_calculo != null && <div>Base: {fmtBRL(item.base_calculo)}{item.percentual != null ? ' · Taxa: ' + item.percentual + '%' : ''}</div>}
     {item.bandeira && <div>Bandeira: {item.bandeira}</div>}
     {item.parcelas != null && <div>Parcelas: {item.parcelas}x</div>}
     {item.valor_liquido != null && <div>Líquido após esta taxa: {fmtBRL(item.valor_liquido)}</div>}
