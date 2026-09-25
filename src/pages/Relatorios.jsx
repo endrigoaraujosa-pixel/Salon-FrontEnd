@@ -375,6 +375,7 @@ export default function Relatorios() {
   const [drilldownOpen, setDrilldownOpen] = useState(false);
   const [drilldownTitle, setDrilldownTitle] = useState("");
   const [drilldownData, setDrilldownData] = useState([]);
+  const isCardDrilldown = drilldownTitle.includes("Taxas de Cartão");
 
   // Rentabilidade individual detail states
   const [rentabilidadeDetailOpen, setRentabilidadeDetailOpen] = useState(false);
@@ -2484,9 +2485,9 @@ export default function Relatorios() {
                     </SelectTrigger>
                     <SelectContent className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-150">
                       <SelectItem value="todos">Todos os Status (Competência)</SelectItem>
-                      <SelectItem value="pago">Pago / Recebido (Caixa Realizado)</SelectItem>
-                      <SelectItem value="pendente">Pendente / Aberto (A Receber/Pagar)</SelectItem>
-                      <SelectItem value="vencido">Vencido (Em Atraso)</SelectItem>
+                      <SelectItem value="pago">Pago / Recebido (recorte da competência)</SelectItem>
+                      <SelectItem value="pendente">Contas pendentes (recorte)</SelectItem>
+                      <SelectItem value="vencido">Contas vencidas (recorte)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -2902,6 +2903,10 @@ export default function Relatorios() {
         <TabsContent value="dre">
           {!dre ? <div className="text-zinc-400 p-8 text-center">Carregando...</div> : (
             <div className="space-y-6 print-full-width">
+              {((dre.alertas || []).length > 0 || (dre.compras_estoque_excluidas || 0) > 0) && <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 text-sm space-y-2">
+                {(dre.alertas || []).map((alerta, index) => <p key={index} className="text-amber-700 dark:text-amber-400 text-xs">• {alerta}</p>)}
+                {(dre.compras_estoque_excluidas || 0) > 0 && <button type="button" className="text-xs underline" onClick={() => handleDrilldown("Compras de Estoque — fora das despesas do DRE", dre.detalhes?.compras_estoque)}>Conferir compras de estoque excluídas: {fmtBRL(dre.compras_estoque_excluidas)}</button>}
+              </div>}
               {/* Print Only Header */}
               <div className="hidden print:block mb-8 border-b-2 border-zinc-900 pb-4">
                 <div className="flex justify-between items-end">
@@ -2935,7 +2940,7 @@ export default function Relatorios() {
                     <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-rose-500" />
                   </div>
                   <div className="font-display text-xl sm:text-2xl lg:text-3xl font-bold mt-1.5 text-zinc-800 dark:text-zinc-100">
-                    {fmtBRL(dre.despesas_operacionais + (dre.custo_produtos || 0))}
+                    {fmtBRL(dre.total_custos_despesas ?? (dre.despesas_operacionais + (dre.custo_produtos || 0) + (dre.custo_insumos || 0)))}
                   </div>
                   <p className="text-[10px] text-zinc-500 mt-1">Operacionais, CMV e taxas de cartão</p>
                 </div>
@@ -2999,7 +3004,7 @@ export default function Relatorios() {
                         <div className="space-y-3 divide-y divide-zinc-100 dark:divide-zinc-800">
                           <div className="pt-2">
                             <span className="font-semibold text-zinc-800 dark:text-zinc-100 block">Receita de Serviços</span>
-                            <span className="text-xs text-zinc-500">Soma de todas as prestações de serviços concluídas e pagas/agendadas no período selecionado.</span>
+                            <span className="text-xs text-zinc-500">Serviços concluídos no período, após descontos. Agendamentos futuros e cancelados não compõem o resultado.</span>
                           </div>
 
                           <div className="pt-3">
@@ -3013,9 +3018,9 @@ export default function Relatorios() {
                           </div>
 
                           <div className="pt-3">
-                            <span className="font-semibold text-zinc-800 dark:text-zinc-100 block">Receita Bruta</span>
-                            <span className="text-xs font-mono text-[#84A59D] block">Fórmula: Receita de Serviços + Receita de Vendas Diretas + Outras Receitas</span>
-                            <span className="text-xs text-zinc-500">Representa a entrada financeira total bruta da empresa antes de qualquer dedução de custos ou impostos.</span>
+                            <span className="font-semibold text-zinc-800 dark:text-zinc-100 block">Receita Registrada</span>
+                            <span className="text-xs font-mono text-[#84A59D] block">Fórmula: Receita de Serviços + Receita de Vendas Diretas + Outras Receitas (após descontos)</span>
+                            <span className="text-xs text-zinc-500">Receita registrada após os descontos das operações, antes da dedução dos custos e despesas cadastrados.</span>
                           </div>
 
                           <div className="pt-3">
@@ -3025,13 +3030,13 @@ export default function Relatorios() {
 
                           <div className="pt-3">
                             <span className="font-semibold text-zinc-800 dark:text-zinc-100 block">Lucro Bruto</span>
-                            <span className="text-xs font-mono text-emerald-600 block">Fórmula: Receita Bruta - Custo dos Produtos Vendidos (CMV)</span>
+                            <span className="text-xs font-mono text-emerald-600 block">Fórmula: Receita Registrada - CMV - Insumos Consumidos</span>
                             <span className="text-xs text-zinc-500">O resultado operacional bruto da empresa após deduzir o custo direto de fabricação ou aquisição de produtos.</span>
                           </div>
 
                           <div className="pt-3">
                             <span className="font-semibold text-zinc-800 dark:text-zinc-100 block">Despesas Operacionais</span>
-                            <span className="text-xs text-zinc-500">Soma consolidada de todos os gastos fixos e variáveis indispensáveis para manter o estabelecimento aberto e operando.</span>
+                            <span className="text-xs text-zinc-500">Despesas cadastradas, inclusive sem classificação, somadas às comissões de serviços e produtos e às taxas de cartão.</span>
                           </div>
 
                           <div className="pt-3 pl-3 border-l-2 border-zinc-200 dark:border-zinc-700 space-y-2">
@@ -3041,7 +3046,7 @@ export default function Relatorios() {
                             </div>
                             <div>
                               <span className="font-medium text-zinc-700 dark:text-zinc-200 block">(-) Despesas Variáveis</span>
-                              <span className="text-xs text-zinc-500">Custos variáveis que oscilam de acordo com o volume de vendas/atividade (ex: impostos diretos, insumos).</span>
+                              <span className="text-xs text-zinc-500">Despesas variáveis cadastradas, como impostos diretos. Insumos consumidos e comissões são apresentados separadamente.</span>
                             </div>
                             <div>
                               <span className="font-medium text-zinc-700 dark:text-zinc-200 block">(-) Taxas de Cartão de Crédito / Débito</span>
@@ -3051,7 +3056,7 @@ export default function Relatorios() {
 
                           <div className="pt-3">
                             <span className="font-semibold text-zinc-800 dark:text-zinc-100 block">Total Despesas Operacionais</span>
-                            <span className="text-xs font-mono text-rose-500 block">Fórmula: Despesas Fixas + Despesas Variáveis + Taxas de Cartão</span>
+                            <span className="text-xs font-mono text-rose-500 block">Fórmula: Despesas Fixas + Variáveis + Não Classificadas + Comissões + Taxas de Cartão</span>
                             <span className="text-xs text-zinc-500">Gasto operacional consolidado total do estabelecimento no período selecionado.</span>
                           </div>
 
@@ -3109,16 +3114,18 @@ export default function Relatorios() {
                   )}
 
                   <div className="border-t border-zinc-200 dark:border-zinc-800 pt-3">
-                    <DRE_Row label="Receita Bruta" value={dre.receita_bruta} bold />
+                    <DRE_Row label="Receita Registrada (após descontos)" value={dre.receita_bruta} bold />
                   </div>
                   <div className="pt-2">
                     <DRE_Row 
                       label="(-) Custo dos Produtos Vendidos" 
                       value={-dre.custo_produtos} 
                       negative 
-                      onClick={() => handleDrilldown("Custo dos Produtos Vendidos (CMV)", dre.detalhes?.vendas.map(v => ({ ...v, descricao: `CMV: ${v.descricao}`, valor: v.valor })))}
+                      onClick={() => handleDrilldown("Custo dos Produtos Vendidos (CMV)", dre.detalhes?.cmv)}
                     />
                   </div>
+                  <DRE_Row label="(-) Insumos Consumidos nos Serviços" value={-(dre.custo_insumos || 0)} negative
+                    onClick={() => handleDrilldown("Insumos Consumidos", dre.detalhes?.insumos)} />
                   <div className="border-t border-zinc-200 dark:border-zinc-800 pt-3">
                     <DRE_Row label="Lucro Bruto" value={dre.lucro_bruto} bold highlight />
                   </div>
@@ -3139,15 +3146,23 @@ export default function Relatorios() {
                         negative 
                         onClick={() => handleDrilldown("Despesas Variáveis", dre.detalhes?.despesas.filter(d => d.tipo === 'variavel'))}
                       />
+                      <DRE_Row label="(-) Despesas Não Classificadas" value={-(dre.despesas.nao_classificadas || 0)} negative
+                        onClick={() => handleDrilldown("Despesas Não Classificadas", dre.detalhes?.despesas?.filter(d => d.tipo === 'nao_classificado'))} />
+                      <DRE_Row label="(-) Comissões de Colaboradores" value={-(dre.comissoes || 0)} negative
+                        onClick={() => handleDrilldown("Comissões de Colaboradores", dre.detalhes?.comissoes)} />
+                      <DRE_Row label="(-) Outras Taxas de Cartão" value={-(dre.taxas_cartao.outros || 0)} negative
+                        onClick={() => handleDrilldown("Outras Taxas de Cartão", dre.detalhes?.taxas_cartao?.filter(d => d.tipo === 'outros'))} />
                       <DRE_Row 
                         label="(-) Taxas de Cartão Crédito" 
                         value={-dre.taxas_cartao.credito} 
-                        negative 
+                        negative
+                        onClick={() => handleDrilldown("Taxas de Cartão Crédito", dre.detalhes?.taxas_cartao?.filter(d => d.tipo === "credito"))}
                       />
                       <DRE_Row 
                         label="(-) Taxas de Cartão Débito" 
                         value={-dre.taxas_cartao.debito} 
-                        negative 
+                        negative
+                        onClick={() => handleDrilldown("Taxas de Cartão Débito", dre.detalhes?.taxas_cartao?.filter(d => d.tipo === "debito"))}
                       />
                     </div>
 
@@ -3160,7 +3175,7 @@ export default function Relatorios() {
                         {Object.entries(dre.despesas_por_categoria).map(([cat, val]) => (
                           <div 
                             key={cat} 
-                            onClick={() => handleDrilldown(`Despesas: ${cat}`, dre.detalhes?.despesas.filter(d => d.categoria === cat))}
+                            onClick={() => handleDrilldown(`Despesas: ${cat}`, dre.detalhes?.despesas_operacionais?.filter(d => d.categoria === cat))}
                             className="flex items-center justify-between text-xs py-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 px-1.5 rounded cursor-pointer group"
                           >
                             <span className="text-zinc-500 dark:text-zinc-400 font-medium group-hover:text-[#3A4F4A] dark:group-hover:text-[#EAF0EE]">{cat}</span>
@@ -3171,10 +3186,13 @@ export default function Relatorios() {
                     )}
 
                     <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3 mt-2">
-                      <DRE_Row label="Total Despesas Operacionais" value={-dre.despesas_operacionais} bold negative />
+                      <DRE_Row label="Total Despesas Operacionais" value={-dre.despesas_operacionais} bold negative onClick={() => handleDrilldown("Despesas Operacionais", dre.detalhes?.despesas_operacionais)} />
                     </div>
                   </div>
                   
+                  <DRE_Row label="Total de Custos e Despesas" value={-(dre.total_custos_despesas || 0)} bold negative
+                    onClick={() => handleDrilldown("Todos os Custos e Despesas", dre.detalhes?.custos_despesas)} />
+                  <p className="text-sm text-zinc-500">Margem líquida: {Number(dre.margem_liquida || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%</p>
                   {/* Resultado Líquido em Destaque */}
                   <div className={`border-t-2 border-zinc-300 dark:border-zinc-700 pt-4 mt-4 p-3 rounded-lg flex items-center justify-between ${
                     dre.lucro_liquido >= 0 
@@ -3184,7 +3202,7 @@ export default function Relatorios() {
                     <div>
                       <span className="text-xs uppercase font-bold text-zinc-500 tracking-wider">Resultado Líquido do Exercício</span>
                       <h4 className={`text-base font-bold font-display mt-0.5 ${dre.lucro_liquido >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"}`}>
-                        {dre.lucro_liquido >= 0 ? "Lucro Líquido Realizado" : "Prejuízo Líquido Registrado"}
+                        {dre.lucro_liquido >= 0 ? "Lucro Líquido Apurado" : "Prejuízo Líquido Registrado"}
                       </h4>
                     </div>
                     <div className={`text-2xl font-black font-mono font-display ${dre.lucro_liquido >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
@@ -3202,7 +3220,7 @@ export default function Relatorios() {
                         <span>Detalhamento DRE: {drilldownTitle}</span>
                       </DialogTitle>
                       <p className="text-xs sm:text-sm text-zinc-500 mt-1">
-                        Detalhamento analítico de lançamentos que compõem o valor no período selecionado.
+                        {isCardDrilldown ? "Uma linha por pagamento em cartão. O total das taxas abaixo corresponde ao valor apresentado no DRE. Em filtros por categoria, a base e a taxa são proporcionais aos itens selecionados." : "Detalhamento analítico de lançamentos que compõem o valor no período selecionado."}
                       </p>
                     </DialogHeader>
 
@@ -3223,7 +3241,9 @@ export default function Relatorios() {
                                   <th className="px-5 py-4">Lançamento / Descrição</th>
                                   <th className="px-5 py-4">Categoria</th>
                                   <th className="px-5 py-4 text-center">Status</th>
-                                  <th className="px-5 py-4 text-right">Valor</th>
+                                  {isCardDrilldown && <th className="px-5 py-4 text-right">Base no cartão</th>}
+                                  {isCardDrilldown && <th className="px-5 py-4 text-right">Taxa %</th>}
+                                  <th className="px-5 py-4 text-right">{isCardDrilldown ? "Valor da taxa" : "Valor"}</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-medium">
@@ -3232,7 +3252,10 @@ export default function Relatorios() {
                                     <td className="px-5 py-4 whitespace-nowrap text-zinc-500 font-mono">
                                       {item.data ? formatAgendaDate(item.data) : '-'}
                                     </td>
-                                    <td className="px-5 py-4 font-semibold text-zinc-800 dark:text-zinc-100">{item.descricao}</td>
+                                    <td className="px-5 py-4 font-semibold text-zinc-800 dark:text-zinc-100">
+                                      {item.descricao}
+                                      <DreDetailMetadata item={item} showCalculation={!isCardDrilldown} />
+                                    </td>
                                     <td className="px-5 py-4">
                                       <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-[10px] text-zinc-600 dark:text-zinc-300">
                                         {item.categoria}
@@ -3249,6 +3272,8 @@ export default function Relatorios() {
                                         {item.status === 'concluido' ? 'Concluído' : item.status}
                                       </span>
                                     </td>
+                                    {isCardDrilldown && <td className="px-5 py-4 text-right font-mono whitespace-nowrap">{fmtBRL(item.base_calculo)}</td>}
+                                    {isCardDrilldown && <td className="px-5 py-4 text-right font-mono whitespace-nowrap">{item.percentual != null ? `${Number(item.percentual).toLocaleString('pt-BR')}%` : 'Não registrada'}</td>}
                                     <td className="px-5 py-4 text-right font-mono font-semibold text-zinc-900 dark:text-zinc-100">
                                       {fmtBRL(item.valor)}
                                     </td>
@@ -3277,8 +3302,9 @@ export default function Relatorios() {
                                   </span>
                                 </div>
                                 
-                                <div className="font-semibold text-xs text-zinc-800 dark:text-zinc-100 line-clamp-2">
+                                <div className="font-semibold text-xs text-zinc-800 dark:text-zinc-100">
                                   {item.descricao}
+                                  <DreDetailMetadata item={item} />
                                 </div>
                                 
                                 <div className="flex items-center justify-between pt-2 border-t border-zinc-150 dark:border-zinc-800 text-xs">
@@ -3299,7 +3325,7 @@ export default function Relatorios() {
                     <DialogFooter className="mt-4">
                       <div className="flex w-full items-center justify-between">
                         <div className="text-xs font-bold text-zinc-500">
-                          Total Acumulado:{" "}
+                          {isCardDrilldown ? "Total de Taxas:" : "Total Acumulado:"}{" "}
                           <span className="font-mono text-sm text-[#3A4F4A] dark:text-[#EAF0EE]">
                             {fmtBRL(Number(drilldownData.reduce((acc, x) => acc + (Number(x.valor) || 0), 0).toFixed(2)))}
                           </span>
@@ -5946,11 +5972,14 @@ const Row = ({ label, value, bold, negative, highlight }) => (
 const DRE_Row = ({ label, value, bold, negative, highlight, onClick }) => (
   <div 
     onClick={onClick}
+    role={onClick ? 'button' : undefined}
+    tabIndex={onClick ? 0 : undefined}
+    onKeyDown={onClick ? event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onClick(); } } : undefined}
     className={`flex items-center justify-between py-1.5 px-2 rounded-lg transition-all ${bold ? "text-base font-semibold" : "text-sm"} ${onClick ? "hover:bg-zinc-50 dark:hover:bg-zinc-900/50 cursor-pointer group" : ""} ${highlight ? "text-[#3A4F4A] dark:text-[#EAF0EE] bg-[#EAF0EE]/30 dark:bg-[#3A4F4A]/20 border border-[#EAF0EE]/60 dark:border-[#3A4F4A]/30 font-bold" : ""}`}
   >
     <span className={`text-zinc-600 dark:text-zinc-300 font-medium ${onClick ? "group-hover:text-[#3A4F4A] dark:group-hover:text-[#EAF0EE] group-hover:font-semibold" : ""}`}>
       {label}
-      {onClick && <span className="ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-normal text-[#84A59D]">(Ver Detalhes)</span>}
+      {onClick && <span className="ml-1.5 underline text-[10px] font-normal text-[#84A59D]">(Ver Detalhes)</span>}
     </span>
     <span className={`font-display ${bold ? "text-xl font-bold" : ""} ${negative ? "text-rose-600 dark:text-rose-400" : "text-zinc-800 dark:text-zinc-150"} ${highlight ? "text-2xl text-[#3A4F4A] dark:text-[#EAF0EE]" : ""}`}>{fmtBRL(value)}</span>
   </div>
@@ -5977,20 +6006,20 @@ const renderHelpContent = (reportId) => {
           <HelpSection title="Explicação dos Filtros">
             <p><strong>Período (De/Até):</strong> Seleciona os lançamentos efetuados dentro das datas especificadas.</p>
             <p><strong>Categoria:</strong> Filtra despesas operacionais específicas (ex: Água, Aluguel, Luz, etc.).</p>
-            <p><strong>Status Financeiro (Competência/Regime):</strong> Escolha entre analisar todas as contas lançadas (Competência), apenas o que já foi recebido/pago (Fluxo de Caixa Realizado), o que está pendente (A Receber/Pagar) ou contas em atraso (Vencido).</p>
+            <p><strong>Status Financeiro (Competência/Regime):</strong> O relatório usa competência. Pago, pendente e vencido são recortes por situação; não alteram a data de competência nem representam fluxo de caixa. Use Todos para apurar o resultado completo.</p>
           </HelpSection>
           <HelpSection title="Fórmulas Utilizadas">
             <div className="font-mono bg-zinc-50 dark:bg-zinc-950 p-2.5 rounded border border-zinc-150 dark:border-zinc-800 text-[11px] space-y-1">
-              <div>• Receita Bruta = Receita Serviços + Receita Vendas Diretas + Outras Receitas</div>
-              <div>• Lucro Bruto = Receita Bruta - Custo de Produtos (CMV)</div>
-              <div>• Lucro Líquido = Lucro Bruto - Despesas Operacionais (Fixas/Variáveis) - Taxas de Cartão</div>
+              <div>• Receita Registrada = Serviços + Vendas Diretas + Outras Receitas (após descontos)</div>
+              <div>• Lucro Bruto = Receita Registrada - CMV - Insumos Consumidos</div>
+              <div>• Lucro Líquido = Lucro Bruto - Despesas Cadastradas - Comissões - Taxas de Cartão</div>
             </div>
           </HelpSection>
           <HelpSection title="Regras de Negócio">
-            <p>As despesas e receitas são provisionadas no regime de competência por padrão, refletindo a data do fato gerador. O CMV (Custo de Mercadoria Vendida) é deduzido a partir da venda física dos itens cadastrados no estoque.</p>
+            <p>Serviços concluídos e vendas pagas usam a data da operação. Contas a pagar e outras receitas usam a data do documento, com vencimento como alternativa. CMV, insumos, comissões e taxas são reconhecidos uma vez; o pagamento da comissão não gera nova despesa. Compras vinculadas à entrada de estoque ficam fora das despesas. Valores sem histórico são sinalizados para conferência.</p>
           </HelpSection>
           <HelpSection title="Exemplo Prático">
-            <p>Se o salão faturou R$ 15.000 em serviços e R$ 5.000 em vendas de produtos (CMV de R$ 2.000), o Lucro Bruto é de R$ 18.000. Deduzindo R$ 6.000 de despesas operacionais e R$ 500 em taxas, o Lucro Líquido da DRE será de R$ 11.500.</p>
+            <p>Com R$ 20.000 de receita, R$ 2.000 de CMV e R$ 1.000 de insumos, o lucro bruto é R$ 17.000. Deduzindo R$ 6.000 de despesas cadastradas, R$ 3.000 de comissões e R$ 500 de taxas, o lucro líquido é R$ 7.500.</p>
           </HelpSection>
         </div>
       );
@@ -6359,3 +6388,20 @@ const renderHelpContent = (reportId) => {
       return <p className="text-xs text-zinc-500">Nenhuma documentação disponível para este relatório.</p>;
   }
 };
+
+function DreDetailMetadata({ item, showCalculation = true }) {
+  return <div className="mt-1 text-[11px] font-normal text-zinc-500 space-y-0.5">
+    {item.origem && <div>Origem: {item.origem}</div>}
+    {item.fornecedor && <div>Fornecedor / cliente: {item.fornecedor}</div>}
+    {item.documento && <div>Documento: {item.documento}</div>}
+    {item.quantidade != null && <div>Quantidade: {item.quantidade} · Custo unitário: {Number(item.custo_unitario || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 4 })}</div>}
+    {showCalculation && item.base_calculo != null && <div>Base: {fmtBRL(item.base_calculo)}{item.percentual != null ? ` · Taxa: ${item.percentual}%` : ''}</div>}
+    {item.pagamento_id && <div>Pagamento: {item.pagamento_id}</div>}
+    {item.bandeira && <div>Bandeira: {item.bandeira}</div>}
+    {item.parcelas != null && <div>Parcelas: {item.parcelas}x</div>}
+    {item.valor_liquido != null && <div>Líquido após esta taxa: {fmtBRL(item.valor_liquido)}</div>}
+    {item.data_recebimento_prevista && <div>Recebimento previsto: {formatAgendaDate(item.data_recebimento_prevista)}</div>}
+    {item.rateado && <div>Base e taxa proporcionais à categoria selecionada.</div>}
+    {item.data_pagamento && <div>Data do pagamento: {formatAgendaDate(item.data_pagamento)}</div>}
+  </div>;
+}
