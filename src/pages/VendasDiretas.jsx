@@ -737,69 +737,16 @@ export default function VendasDiretas() {
                     Adicionar Itens
                   </div>
 
-                  <div className="grid grid-cols-12 gap-3">
-                    {/* Categoria */}
-                    <div className="col-span-12 md:col-span-4 space-y-1">
-                      <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold">Categoria (Filtro)</Label>
-                      <SearchableSelect
-                        placeholder="Todas"
-                        searchPlaceholder="Pesquisar..."
-                        options={[
-                          { value: "all", label: "Todas" },
-                          { value: "none", label: "Sem categoria" },
-                          ...categorias
-                            .filter(c => c.tipo && (c.tipo.toLowerCase() === "produto" || c.tipo.toLowerCase() === "ambos"))
-                            .map(c => ({
-                              value: c.id,
-                              label: c.nome
-                            }))
-                        ]}
-                        value={selectedAddCategory}
-                        onValueChange={(val) => { setSelectedAddCategory(val); setForm({ ...form, produto_id: "" }); }}
-                      />
-                    </div>
-
-                    {/* Produto */}
-                    <div className="col-span-12 md:col-span-8 space-y-1">
-                      <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold">Pesquisar Produto (F2) *</Label>
-                      <SearchableSelect
-                        placeholder="Selecione o produto..."
-                        searchPlaceholder="Pesquisar produto pelo nome..."
-                        triggerTestId="venda-produto"
-                        options={produtos
-                          .filter(p => {
-                            if (p.uso_exclusivo_servicos) return false;
-                            const matchesCategory =
-                              selectedAddCategory === "all" ||
-                              (selectedAddCategory === "none" && !p.categoria_id) ||
-                              p.categoria_id === selectedAddCategory;
-                            return matchesCategory;
-                          })
-                          .map((p) => {
-                            const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
-                            const qtyStr = qtyPerUnit > 0 
-                              ? `${Number((p.quantidade_estoque / qtyPerUnit).toFixed(2))} ${p.unidade_medida || 'un'} (${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida_insumo || 'un'})`
-                              : `${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida || 'un'}`;
-                            return {
-                              value: p.id,
-                              label: `${p.nome} — ${fmtBRL(p.preco_venda)} (Estoque: ${qtyStr})`
-                            };
-                          })
-                        }
-                        value={form.produto_id}
-                        onValueChange={(val) => setForm({ ...form, produto_id: val })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-12 gap-3">
+                  <div className="grid grid-cols-12 gap-3 items-end">
                     {/* Qtd */}
                     <div className={cn(
                       configSistema?.permitir_alterar_preco_produto_venda
-                        ? "col-span-4 md:col-span-3 space-y-1"
-                        : "col-span-5 md:col-span-4 space-y-1"
+                        ? "col-span-6 md:col-span-3 space-y-1.5"
+                        : "col-span-12 md:col-span-4 space-y-1.5"
                     )}>
-                      <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold">Quantidade *</Label>
+                      <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold block whitespace-nowrap">
+                        Quantidade *
+                      </Label>
                       <Input
                         ref={quantityInputRef}
                         data-testid="venda-qtd"
@@ -814,14 +761,16 @@ export default function VendasDiretas() {
                             handleAddNovaVendaItem();
                           }
                         }}
-                        className="h-10 border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-xs font-semibold focus:ring-1 focus:ring-[#84A59D]"
+                        className="h-11 md:h-10 border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-sm md:text-xs font-semibold focus:ring-1 focus:ring-[#84A59D]"
                       />
                     </div>
 
-                    {/* Preço Unitário (apenas se a regra permitir_alterar_preco_produto_venda estiver ativa) */}
+                    {/* Preço Unitário */}
                     {configSistema?.permitir_alterar_preco_produto_venda && (
-                      <div className="col-span-4 md:col-span-4 space-y-1">
-                        <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold">Preço Unit. (R$) *</Label>
+                      <div className="col-span-6 md:col-span-4 space-y-1.5">
+                        <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold block whitespace-nowrap">
+                          Preço Unit. (R$) *
+                        </Label>
                         <Input
                           type="number"
                           min="0"
@@ -835,22 +784,21 @@ export default function VendasDiretas() {
                             }
                           }}
                           placeholder={produto ? String(produto.preco_venda) : "0.00"}
-                          className="h-10 border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-xs font-semibold focus:ring-1 focus:ring-[#84A59D]"
+                          className="h-11 md:h-10 border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-sm md:text-xs font-semibold focus:ring-1 focus:ring-[#84A59D]"
                         />
                       </div>
                     )}
 
                     {/* Botão */}
                     <div className={cn(
-                      "flex items-end",
                       configSistema?.permitir_alterar_preco_produto_venda
-                        ? "col-span-4 md:col-span-5"
-                        : "col-span-7 md:col-span-8"
+                        ? "col-span-12 md:col-span-5"
+                        : "col-span-12 md:col-span-8"
                     )}>
                       <Button
                         type="button"
                         onClick={handleAddNovaVendaItem}
-                        className="w-full bg-[#84A59D] hover:bg-[#6F9189] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white shadow-sm h-10 font-bold text-xs tracking-wide transition-all hover:scale-[1.01]"
+                        className="w-full bg-[#84A59D] hover:bg-[#6F9189] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white shadow-sm h-11 md:h-10 font-bold text-sm md:text-xs tracking-wide transition-all hover:scale-[1.01]"
                       >
                         <Plus className="w-4 h-4 mr-1.5" /> Adicionar (Enter)
                       </Button>
