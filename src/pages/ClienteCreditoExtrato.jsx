@@ -1,3 +1,4 @@
+import '../styles/mobile-records.css';
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import http from "../api";
@@ -156,7 +157,7 @@ export default function ClienteCreditoExtrato() {
   };
 
   return (
-    <div className="p-6 lg:p-8 fade-in min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200">
+    <div className="mobile-layout p-6 lg:p-8 fade-in min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200">
       
       {/* Back Button */}
       <Button 
@@ -300,7 +301,7 @@ export default function ClienteCreditoExtrato() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[800px]">
+            <table className="mobile-record-table w-full text-sm min-w-[800px]">
               <thead className="bg-zinc-50 dark:bg-zinc-900 text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
                 <tr>
                   <th className="px-4 py-3.5 text-left font-semibold">Data / Hora</th>
@@ -322,15 +323,15 @@ export default function ClienteCreditoExtrato() {
                       key={mov.id} 
                       className={`hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors ${mov.estornado ? "opacity-50 line-through bg-zinc-100/30 dark:bg-zinc-900/20" : ""}`}
                     >
-                      <td className="px-4 py-3.5 whitespace-nowrap text-xs font-mono">
+                      <td data-label="Data / Hora" className="px-4 py-3.5 whitespace-nowrap text-xs font-mono">
                         {new Date(mov.criado_em || mov.createdAt).toLocaleString("pt-BR")}
                       </td>
                       {!selectedClienteId && (
-                        <td className="px-4 py-3.5 font-semibold text-zinc-900 dark:text-zinc-100">
+                        <td data-label="Cliente" className="px-4 py-3.5 font-semibold text-zinc-900 dark:text-zinc-100">
                           {mov.cliente_nome || mov.Cliente?.nome || `ID: ${mov.cliente_id?.slice(0, 8)}`}
                         </td>
                       )}
-                      <td className="px-4 py-3.5 whitespace-nowrap">
+                      <td data-label="Operação" className="px-4 py-3.5 whitespace-nowrap">
                         <span className="font-bold text-[13px] block">{getTipoLabel(mov.tipo)}</span>
                         {mov.estornado && (
                           <span className="text-[10px] text-zinc-400 font-medium flex items-center gap-0.5 mt-0.5 uppercase tracking-wider">
@@ -343,15 +344,15 @@ export default function ClienteCreditoExtrato() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5 whitespace-nowrap">
+                      <td data-label="Valor" className="px-4 py-3.5 whitespace-nowrap">
                         <span className={`font-extrabold text-[14px] ${mov.estornado ? "text-zinc-400" : isCredit ? "text-emerald-600 dark:text-emerald-450" : "text-rose-600 dark:text-rose-450"}`}>
                           {isCredit ? "+" : "-"} R$ {Number(mov.valor || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 whitespace-nowrap font-semibold">
+                      <td data-label="Saldo Posterior" className="px-4 py-3.5 whitespace-nowrap font-semibold">
                         R$ {Number(mov.saldo_posterior || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="px-4 py-3.5 text-xs font-medium max-w-[160px]">
+                      <td data-label="Origem / Referência" className="px-4 py-3.5 text-xs font-medium max-w-[160px]">
                         {mov.origem_referencia ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#EAF0EE] dark:bg-[#1E2D2A] text-[#3A4F4A] dark:text-[#84A59D] font-mono font-bold text-[11px]">
                             {mov.origem_referencia}
@@ -368,16 +369,16 @@ export default function ClienteCreditoExtrato() {
                           <span className="truncate capitalize">{mov.origem || "Manual"}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5 text-xs">
+                      <td data-label="Operador" className="px-4 py-3.5 text-xs">
                         <div className="flex items-center gap-1">
                           <User className="w-3.5 h-3.5 text-zinc-400" />
                           <span>{mov.usuario_nome || "Sistema"}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3.5 text-xs max-w-[180px] truncate" title={mov.observacao}>
+                      <td data-label="Observações" className="px-4 py-3.5 text-xs max-w-[180px] truncate" title={mov.observacao}>
                         {mov.observacao || "-"}
                       </td>
-                      <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                      <td data-label="Ações" className="px-4 py-3.5 whitespace-nowrap text-right">
                         {!mov.estornado && mov.tipo !== "ESTORNO" && podeEstornar && (
                           mov.origem_pagamento ? (
                             <span 

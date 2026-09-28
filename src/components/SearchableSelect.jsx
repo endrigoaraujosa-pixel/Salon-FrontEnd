@@ -13,7 +13,9 @@ export default function SearchableSelect({
   searchPlaceholder = "Buscar...",
   emptyText = "Nenhum resultado encontrado.",
   className = "",
-  triggerTestId = ""
+  triggerTestId = "",
+  disabled = false,
+  contentClassName = ""
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -25,9 +27,15 @@ export default function SearchableSelect({
   );
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open && !disabled} onOpenChange={(nextOpen) => {
+      if (disabled) return;
+      setOpen(nextOpen);
+      if (!nextOpen) setSearch("");
+    }}>
       <PopoverTrigger asChild>
         <Button
+          type="button"
+          disabled={disabled}
           variant="outline"
           role="combobox"
           aria-expanded={open}
@@ -40,10 +48,11 @@ export default function SearchableSelect({
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-1 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-lg rounded-lg z-50">
+      <PopoverContent className={cn("w-[var(--radix-popover-trigger-width)] p-1 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-lg rounded-lg z-50", contentClassName)}>
         <div className="flex items-center border-b border-zinc-100 dark:border-zinc-850 px-3 py-1 bg-zinc-50/50 dark:bg-zinc-900/50 rounded-t-lg">
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-40" />
           <Input
+            aria-label={searchPlaceholder}
             placeholder={searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}

@@ -1,0 +1,54 @@
+@media screen and (max-width: 767px) {
+  .direct-sale-flow input:not([type="checkbox"]),
+  .direct-sale-flow button[role="combobox"] { min-height: 44px; font-size: 16px; }
+  .direct-sale-flow button { min-height: 44px; }
+  .direct-sale-flow .grid-cols-12 > .flex.items-end { grid-column: 1 / -1; }
+}
+
+@media screen and (max-width: 639px) {
+  .sale-cart-item {
+    padding: 16px;
+    border-radius: 16px;
+  }
+  .sale-cart-item p {
+    overflow-wrap: anywhere;
+  }
+  .sale-cart-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+  }
+  .sale-cart-quantity {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  .sale-cart-quantity::before {
+    content: "Quantidade";
+    font-size: 12px;
+    padding: 0 8px;
+  }
+  .sale-cart-subtotal {
+    grid-column: 1;
+    text-align: left;
+    min-width: 0;
+  }
+  .sale-cart-subtotal > div:last-child {
+    font-size: 18px;
+    overflow-wrap: anywhere;
+  }
+  .sale-cart-remove {
+    grid-column: 2;
+    justify-self: end;
+  }
+  .sale-cart-dialog button[role="combobox"] {
+    min-height: 48px;
+    height: auto;
+    white-space: normal;
+    text-align: left;
+  }
+  .sale-cart-dialog button[role="combobox"] > span {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
