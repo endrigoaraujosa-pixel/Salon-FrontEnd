@@ -2878,11 +2878,11 @@ export default function Agenda() {
 
       <Dialog open={openResumo} onOpenChange={setOpenResumo}>
         <DialogContent className="w-[calc(100%-1rem)] max-w-[1100px] h-[94dvh] sm:h-[90dvh] max-h-[94dvh] sm:max-h-[90dvh] flex flex-col gap-0 p-0 overflow-hidden rounded-2xl bg-white text-zinc-800 dark:text-zinc-100 dark:[color-scheme:dark] dark:[&_label]:text-zinc-200 dark:[&_input]:border-zinc-600 dark:[&_textarea]:border-zinc-600 dark:[&_button[role=combobox]]:border-zinc-600 dark:bg-zinc-900 dark:border-zinc-800 [&_button]:min-h-11 [&_textarea]:text-base sm:[&_textarea]:text-sm" aria-describedby="dialog-resumo">
-          <DialogHeader className="shrink-0 border-b border-zinc-100 dark:border-zinc-800 px-5 sm:px-8 py-5 text-left pr-10">
+          <DialogHeader className="shrink-0 border-b border-zinc-100 dark:border-zinc-800 px-4 sm:px-8 py-3 sm:py-5 text-left pr-12">
             <span className="text-[10px] uppercase tracking-[0.18em] font-semibold text-[#648775] dark:text-[#B8D6C7]">Agenda • Visão geral</span>
             <DialogTitle className="w-full">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-8">
-                <span className="flex items-center gap-2.5 text-xl sm:text-2xl font-semibold text-zinc-800 dark:text-zinc-100">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-3 sm:pr-8">
+                <span className="flex items-center gap-2 text-base sm:text-2xl font-semibold text-zinc-800 dark:text-zinc-100">
                   <CalendarDays className="w-5 h-5 text-[#84A59D] shrink-0" />
                   Resumo do Atendimento
                 </span>
@@ -2898,9 +2898,9 @@ export default function Agenda() {
           {resumoAgendamento && (
             <div className="min-h-0 flex-1 flex flex-col overflow-hidden">
 
-              <div className="min-h-0 flex-1 grid grid-cols-1 grid-rows-[auto_minmax(0,1fr)] lg:grid-rows-1 lg:grid-cols-[320px_minmax(0,1fr)]">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain lg:overflow-hidden lg:grid lg:grid-rows-1 lg:grid-cols-[320px_minmax(0,1fr)]">
               {/* Informações do atendimento */}
-              <div className="min-w-0 min-h-0 max-h-[34dvh] lg:max-h-none overflow-y-auto overscroll-contain space-y-4 px-5 sm:px-6 py-4 bg-[#F7F9F5] dark:bg-zinc-950 border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800">
+              <div className="min-w-0 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain space-y-3 sm:space-y-4 px-4 sm:px-6 py-3 sm:py-4 bg-[#F7F9F5] dark:bg-zinc-950 border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800">
                 {/* Cliente e Status */}
                 <div className="flex flex-col items-start gap-4">
                   <div className="flex items-center gap-4 min-w-0">
@@ -2912,13 +2912,13 @@ export default function Agenda() {
                             src={client.foto}
                             alt={resumoAgendamento.cliente_nome}
                             onClick={() => setPreviewPhoto(client.foto)}
-                            className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-800 shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                            className="w-12 h-12 sm:w-24 sm:h-24 rounded-full object-cover shrink-0 border border-zinc-200 dark:border-zinc-800 shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
                             title="Clique para ampliar"
                           />
                         );
                       }
                       return (
-                        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[#EAF0EE] dark:bg-zinc-800 flex items-center justify-center text-[#3A4F4A] dark:text-[#EAF0EE] font-semibold text-3xl shrink-0 border border-zinc-100 dark:border-zinc-800">
+                        <div className="w-12 h-12 sm:w-24 sm:h-24 rounded-full bg-[#EAF0EE] dark:bg-zinc-800 flex items-center justify-center text-[#3A4F4A] dark:text-[#EAF0EE] font-semibold text-3xl shrink-0 border border-zinc-100 dark:border-zinc-800">
                           {resumoAgendamento.cliente_nome?.charAt(0).toUpperCase()}
                         </div>
                       );
@@ -3001,7 +3001,7 @@ export default function Agenda() {
               </div>
 
               {/* Coluna Direita: Serviços, Produtos e Valores */}
-              <div className="min-w-0 min-h-0 overflow-y-auto overscroll-contain space-y-5 px-5 sm:px-8 py-6">
+              <div className="min-w-0 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain space-y-4 sm:space-y-5 px-4 sm:px-8 py-4 sm:py-6">
                 {/* Serviços e Profissionais */}
                 <div className="space-y-3">
                   <h4 className="text-xs sm:text-sm uppercase tracking-wider text-zinc-400 font-bold flex items-center gap-2">
@@ -3018,14 +3018,14 @@ export default function Agenda() {
                       const mainColab = colaboradores.find(c => c.id === item.colaborador_id)?.nome;
                       const auxColab = colaboradores.find(c => c.id === item.auxiliar_id)?.nome;
                       return (
-                        <div key={idx} className="bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] p-4 rounded-xl flex flex-col gap-3">
-                          <div className="flex items-start justify-between gap-3">
-                            <span className="font-bold text-base sm:text-lg text-zinc-800 dark:text-zinc-100 leading-tight min-w-0 break-words">{item.nome || s?.nome || "Serviço"}</span>
+                        <div key={idx} className="bg-[#F8FBFB] dark:bg-[#1a2322] border border-[#E8EFEF] dark:border-[#2e3e3b] p-3 sm:p-4 rounded-xl flex flex-col gap-2 sm:gap-3 min-w-0">
+                          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+                            <span className="font-bold text-base sm:text-lg text-zinc-800 dark:text-zinc-100 leading-snug min-w-0 [overflow-wrap:anywhere]">{item.nome || s?.nome || "Serviço"}</span>
                             <span className="text-base sm:text-lg font-extrabold text-[#3A4F4A] dark:text-[#EAF0EE] shrink-0">{fmtBRL(item.valor)}</span>
                           </div>
 
                           {/* Box de detalhamento de negociação do valor */}
-                          <details open className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-300"><summary className="cursor-pointer py-2">Detalhes do valor e negociação</summary><div className="bg-white/80 dark:bg-zinc-900/50 p-3.5 rounded-lg border border-zinc-200/50 dark:border-zinc-800/80 text-xs sm:text-sm space-y-1.5 mt-0.5">
+                          <details className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-300"><summary className="cursor-pointer min-h-11 py-3">Detalhes do valor e negociação</summary><div className="bg-white/80 dark:bg-zinc-900/50 p-3.5 rounded-lg border border-zinc-200/50 dark:border-zinc-800/80 text-xs sm:text-sm space-y-1.5 mt-0.5">
                             <div className="flex justify-between items-start gap-3 text-zinc-500 dark:text-zinc-300 dark:text-zinc-300">
                               <span title="Valor atual no cadastro do serviço">Valor de Tabela (Base):</span>
                               <span className="font-mono shrink-0">{valorTabela !== null ? fmtBRL(valorTabela) : "Não disponível"}</span>
@@ -3074,7 +3074,7 @@ export default function Agenda() {
                           </div>
 
                           {/* Utilized Products Section */}
-                          <div className="mt-3 pt-3 border-t border-dashed border-[#E8EFEF] dark:border-[#2e3e3b]">
+                          <div className="mt-1 pt-3 border-t border-dashed border-[#E8EFEF] dark:border-[#2e3e3b]">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                               <span className="text-xs sm:text-sm font-semibold text-zinc-500 dark:text-zinc-300 flex items-center gap-2">
                                 <Package className="w-4.5 h-4.5 text-[#84A59D]" /> Consumo de Produtos
@@ -3126,8 +3126,8 @@ export default function Agenda() {
               </div>
             </div>
           )}
-          <div className="shrink-0 grid grid-cols-2 sm:flex sm:justify-end items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 px-4 sm:px-8 py-3 bg-white dark:bg-zinc-900 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            {resumoAgendamento && <div className="col-span-2 flex justify-between items-center sm:mr-auto gap-3"><span className="text-xs text-zinc-500 dark:text-zinc-300">Total do atendimento</span><strong className="text-sm text-[#3A4F4A] dark:text-[#A8C3BC]">{fmtBRL(resumoAgendamento.valor_total)}</strong></div>}
+          <div className="shrink-0 flex flex-wrap sm:justify-end items-center gap-2 border-t border-zinc-200 dark:border-zinc-800 px-4 sm:px-8 py-3 bg-white dark:bg-zinc-900 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            {resumoAgendamento && <div className="w-full sm:w-auto flex justify-between items-center sm:mr-auto gap-3"><span className="text-xs text-zinc-500 dark:text-zinc-300">Total do atendimento</span><strong className="text-sm text-[#3A4F4A] dark:text-[#A8C3BC]">{fmtBRL(resumoAgendamento.valor_total)}</strong></div>}
             <Button
               variant="outline"
               onClick={() => setOpenResumo(false)}
@@ -3147,7 +3147,7 @@ export default function Agenda() {
             {canRegisterPayment && resumoAgendamento && resumoAgendamento.status !== "concluido" && (
               <Button
                 onClick={() => { setOpenResumo(false); nav(`/agendamentos/${resumoAgendamento.id}/pagamento`); }}
-                className="col-span-2 sm:col-auto flex-1 sm:flex-initial min-h-11 px-3 bg-[#456957] hover:bg-[#365443] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm"
+                className="flex-1 sm:flex-initial min-h-11 px-3 bg-[#456957] hover:bg-[#365443] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm"
               >
                 <CreditCard className="w-4 h-4" /> Pagamento
               </Button>
@@ -3487,7 +3487,7 @@ export default function Agenda() {
       </Dialog>
 
       <Dialog open={utilizedProductsOpen} onOpenChange={setUtilizedProductsOpen}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-4xl p-4 sm:p-7 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800 max-h-[90vh] overflow-y-auto flex flex-col justify-between" aria-describedby={undefined}>
+        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-4xl p-4 sm:p-7 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800 max-h-[90dvh] overflow-y-auto flex flex-col justify-between" aria-describedby={undefined}>
           <div>
             <DialogHeader className="pb-2 sm:pb-0">
               <DialogTitle className="font-display text-lg sm:text-xl font-bold flex items-center gap-2 text-zinc-800 dark:text-zinc-150">
@@ -3622,19 +3622,19 @@ export default function Agenda() {
                         </div>
 
                         {/* Visão Mobile (< 640px) em Cards */}
-                        <div className="block sm:hidden space-y-3">
+                        <div className="block sm:hidden space-y-3 min-w-0">
                           {tempUtilizedProducts.map((row, idx) => {
                             const custoProp = Number(row.custo_proporcional || row.custo_unitario || 0);
                             const totalCost = Number(row.quantidade || 0) * custoProp;
                             return (
                               <div 
                                 key={row.produto_id}
-                                className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 space-y-3 shadow-xs transition-colors"
+                                className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 space-y-4 shadow-sm min-w-0"
                               >
                                 {/* Topo do Card: Nome + Badge Extra + Lixeira */}
                                 <div className="flex items-start justify-between gap-2">
-                                  <div className="flex items-center gap-2 flex-wrap min-w-0">
-                                    <span className="font-bold text-zinc-800 dark:text-zinc-150 text-sm leading-tight break-words">
+                                  <div className="flex flex-1 flex-col items-start gap-2 min-w-0">
+                                    <span className="font-bold text-zinc-800 dark:text-zinc-100 text-base leading-snug [overflow-wrap:anywhere]">
                                       {row.nome}
                                     </span>
                                     {!row.isLinked && (
@@ -3647,8 +3647,8 @@ export default function Agenda() {
                                     <button
                                       type="button"
                                       onClick={() => handleRemoveTempProduct(idx)}
-                                      className="text-rose-500 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors shrink-0 -mr-1 -mt-1 active:scale-95"
-                                      title="Remover Produto Extra"
+                                      className="text-rose-600 dark:text-rose-400 h-11 w-11 flex items-center justify-center rounded-xl bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-950/50 transition-colors shrink-0 active:scale-95"
+                                      title="Remover Produto Extra" aria-label={`Remover ${row.nome}`}
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </button>
@@ -3656,14 +3656,14 @@ export default function Agenda() {
                                 </div>
 
                                 {/* Detalhes: Estoque & Custo Unitário */}
-                                <div className="grid grid-cols-2 gap-2 bg-zinc-50/80 dark:bg-zinc-900/60 p-2.5 rounded-lg text-[11px] text-zinc-600 dark:text-zinc-400 border border-zinc-150/60 dark:border-zinc-850">
+                                <div className="grid grid-cols-2 gap-3 bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl text-xs text-zinc-600 dark:text-zinc-400 border border-zinc-100 dark:border-zinc-800 [&>div]:min-w-0 [&>div]:[overflow-wrap:anywhere]">
                                   <div>
-                                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider block mb-0.5">Estoque</span>
+                                    <span className="text-xs text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider block mb-0.5">Estoque</span>
                                     <span className="font-mono text-zinc-700 dark:text-zinc-300 font-semibold block leading-tight">
                                       {Number(row.quantidade_por_unidade) > 0 ? (
                                         <>
                                           {Number((Number(row.quantidade_estoque || 0) / Number(row.quantidade_por_unidade)).toFixed(2))} {row.unidade || 'un'}
-                                          <span className="text-[10px] text-zinc-400 dark:text-zinc-500 block font-normal">({Number(row.quantidade_estoque || 0).toFixed(3)} {row.unidade_medida_insumo || 'un'})</span>
+                                          <span className="text-xs text-zinc-500 dark:text-zinc-400 block font-normal">({Number(row.quantidade_estoque || 0).toFixed(3)} {row.unidade_medida_insumo || 'un'})</span>
                                         </>
                                       ) : (
                                         <>{Number(row.quantidade_estoque || 0).toFixed(3)} {row.unidade}</>
@@ -3672,12 +3672,12 @@ export default function Agenda() {
                                   </div>
 
                                   <div>
-                                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider block mb-0.5">Custo Unit.</span>
+                                    <span className="text-xs text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider block mb-0.5">Custo Unitário</span>
                                     <span className="font-mono text-zinc-700 dark:text-zinc-300 font-semibold block leading-tight">
                                       {Number(row.quantidade_por_unidade) > 0 ? (
                                         <>
                                           {fmtBRL(row.custo_unitario)}
-                                          <span className="text-[10px] text-zinc-400 dark:text-zinc-500 block font-normal">/{Number(row.quantidade_por_unidade).toFixed(3)}{row.unidade_medida_insumo || row.unidade}</span>
+                                          <span className="text-xs text-zinc-500 dark:text-zinc-400 block font-normal">/{Number(row.quantidade_por_unidade).toFixed(3)}{row.unidade_medida_insumo || row.unidade}</span>
                                         </>
                                       ) : (
                                         <>{fmtBRL(row.custo_unitario)}/{row.unidade}</>
@@ -3687,13 +3687,13 @@ export default function Agenda() {
                                 </div>
 
                                 {/* Lançamento de Quantidade e Subtotal */}
-                                <div className="flex items-center justify-between gap-3 pt-1">
+                                <div className="space-y-3">
                                   <div className="flex-1 min-w-0">
-                                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider block mb-1">
-                                      Qtd. Utilizada ({row.unidade_medida_insumo || row.unidade})
-                                    </span>
-                                    <div className="relative flex items-center">
-                                      <Input 
+                                    <label htmlFor={`consumo-mobile-${row.produto_id}`} className="text-sm text-zinc-700 dark:text-zinc-200 font-semibold block mb-2">
+                                      Quantidade utilizada
+                                    </label>
+                                    <div className="flex items-center gap-3 rounded-xl border border-[#84A59D] bg-[#F8FBFB] dark:bg-[#1a2322] px-3 focus-within:ring-2 focus-within:ring-[#84A59D]/40">
+                                      <Input id={`consumo-mobile-${row.produto_id}`}
                                         type="text" 
                                         inputMode="decimal"
                                         placeholder="0.000"
@@ -3715,19 +3715,19 @@ export default function Agenda() {
                                             handleUpdateTempProductQty(idx, Number(val).toFixed(3));
                                           }
                                         }}
-                                        className="w-full h-10 text-left pl-3 pr-12 bg-zinc-50 dark:bg-zinc-900 font-bold border-zinc-200 dark:border-zinc-800 font-mono text-xs focus:ring-2 focus:ring-[#84A59D]/30"
+                                        className="min-w-0 flex-1 h-12 border-0 bg-transparent dark:bg-transparent px-0 text-left font-semibold font-mono text-base shadow-none focus-visible:ring-0"
                                       />
-                                      <span className="absolute right-3 text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase pointer-events-none select-none">
+                                      <span className="shrink-0 max-w-[35%] break-words text-sm font-semibold text-[#3A4F4A] dark:text-[#84A59D] pointer-events-none select-none">
                                         {row.unidade_medida_insumo || row.unidade}
                                       </span>
                                     </div>
                                   </div>
 
-                                  <div className="text-right shrink-0">
-                                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider block mb-1">
+                                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-zinc-100 dark:border-zinc-800 pt-3">
+                                    <span className="text-xs text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider block mb-1">
                                       Custo Total
                                     </span>
-                                    <span className="font-mono text-sm font-extrabold text-[#3A4F4A] dark:text-[#84A59D] block py-2">
+                                    <span className="font-mono text-base font-bold text-[#3A4F4A] dark:text-[#84A59D] break-all">
                                       {fmtBRL(totalCost)}
                                     </span>
                                   </div>
