@@ -1,6 +1,6 @@
 {
   "name": "frontend",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "releaseBuild": "20260923-1609",
   "private": true,
   "dependencies": {
