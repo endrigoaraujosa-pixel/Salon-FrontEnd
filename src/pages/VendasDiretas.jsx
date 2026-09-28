@@ -1,3 +1,4 @@
+import "../styles/direct-sale-flow.css";
 import usePageLoad from "../hooks/usePageLoad";
 import PageLoadState from "../components/PageLoadState";
 import React, { useEffect, useState, useRef } from "react";
@@ -11,7 +12,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from ".
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import VendaReceiptModal from "../components/VendaReceiptModal";
 import AuditModal from "../components/AuditModal";
-import { ShoppingBag, ShoppingCart, Plus, Minus, Trash2, CreditCard, Calendar, Lock, Search, History, ChevronLeft, ChevronRight } from "lucide-react";
+import { ShoppingBag, ShoppingCart, Plus, Minus, Trash2, CreditCard, Calendar, Lock, Search, History, ChevronLeft, ChevronRight, User, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth";
@@ -83,6 +84,8 @@ export default function VendasDiretas() {
   const [fromAgenda, setFromAgenda] = useState(false);
   const dialogOpenedOnce = useRef(false); // guard to skip reset-on-close at initial mount
   const [currentStep, setCurrentStep] = useState(1);
+  const [creatingSale, setCreatingSale] = useState(false);
+  const creatingSaleRef = useRef(false);
   const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 768 : false);
   const quantityInputRef = useRef(null);
   const handleCreateNovaVendaRef = useRef();
@@ -242,7 +245,8 @@ export default function VendasDiretas() {
   const produto = produtos.find((p) => p.id === form.produto_id);
   const valorPrev = produto ? produto.preco_venda * form.quantidade : 0;
 
-  const handleCreateNovaVenda = async (force = false) => {
+  const handleCreateNovaVenda = async (force = false, goToPayment = true) => {
+    if (creatingSaleRef.current && !force) return;
     if (novaVendaItens.length === 0) {
       toast.error("Adicione pelo menos um produto ao carrinho.");
       return;
@@ -258,6 +262,8 @@ export default function VendasDiretas() {
         return;
       }
     }
+    creatingSaleRef.current = true;
+    setCreatingSale(true);
     try {
       const payload = {
         colaborador_id: form.colaborador_id,
@@ -275,14 +281,14 @@ export default function VendasDiretas() {
       const { data } = await http.post("/vendas-diretas", payload);
       console.log("Resposta:", data);
 
-      if (canLancarPagamento) {
+      if (canLancarPagamento && goToPayment) {
         toast.success("Venda criada! Registre o pagamento.");
         const wasFromAgenda = fromAgenda;
         setOpen(false);
         load();
         nav(`/vendas-diretas/${data.id}/pagamento`, { state: { fromAgenda: wasFromAgenda } });
       } else {
-        toast.success("Venda criada com sucesso.");
+        toast.success("Venda salva como pendente.");
         setOpen(false);
         load();
       }
@@ -291,13 +297,16 @@ export default function VendasDiretas() {
       if (e.response?.data?.code === 'ESTOQUE_INSUFICIENTE') {
         if (configSistema?.permitir_estoque_negativo) {
           toast.warning("Estoque insuficiente. A operação será concluída e o produto ficará com saldo negativo.");
-          await handleCreateNovaVenda(true);
+          await handleCreateNovaVenda(true, goToPayment);
         } else {
           toast.error(e.response.data.detail || "Estoque insuficiente para concluir esta venda.");
         }
       } else {
         toast.error(e.response?.data?.detail || "Erro ao criar venda");
       }
+    } finally {
+      creatingSaleRef.current = false;
+      setCreatingSale(false);
     }
   };
 
@@ -599,9 +608,9 @@ export default function VendasDiretas() {
               <Plus className="w-4 h-4 mr-1" /> Nova venda
             </Button>
           )}
-          <DialogContent className="w-[95vw] max-w-[95vw] md:max-w-6xl w-full p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl border-0 md:h-[85vh] md:max-h-[90vh]" style={{ maxHeight: '90vh' }}>
+          <DialogContent className="direct-sale-flow w-[95vw] max-w-[95vw] md:max-w-6xl w-full p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl border-0 md:h-[85vh] md:max-h-[90vh]" style={{ maxHeight: '90dvh' }}>
             {/* fixed header */}
-            <div className="px-6 sm:px-8 pt-6 pb-5 border-b border-zinc-100 dark:border-zinc-800 shrink-0 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-md">
+            <div className="px-4 sm:px-8 pt-4 pb-3 sm:pt-6 sm:pb-5 pr-12 border-b border-zinc-100 dark:border-zinc-800 shrink-0 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-md">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-3 text-lg font-bold text-zinc-950 dark:text-zinc-50">
                   <div className="p-2 bg-[#EAF0EE] dark:bg-emerald-900/30 text-[#3A4F4A] dark:text-emerald-450 rounded-xl shadow-sm">
@@ -609,7 +618,7 @@ export default function VendasDiretas() {
                   </div>
                   <div>
                     <span className="block font-display text-xl font-extrabold text-zinc-950 dark:text-zinc-50 font-sans">Nova Venda Direta</span>
-                    <span className="text-xs text-zinc-705 dark:text-zinc-305 font-semibold mt-0.5">Preencha os dados e adicione os itens ao carrinho</span>
+                    <span className="text-xs text-zinc-705 dark:text-zinc-305 font-semibold mt-0.5">Adicione produtos, confira e conclua a venda</span>
                   </div>
                 </DialogTitle>
               </DialogHeader>
@@ -619,10 +628,9 @@ export default function VendasDiretas() {
             {isMobile && (
               <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 flex justify-between items-center text-xs font-semibold text-zinc-700 dark:text-zinc-300 select-none shrink-0">
                 {[
-                  { step: 1, label: "Dados" },
-                  { step: 2, label: "Produtos" },
-                  { step: 3, label: "Carrinho" },
-                  { step: 4, label: "Resumo" }
+                  { step: 1, label: "Produtos" },
+                  { step: 2, label: "Conferir" },
+                  { step: 3, label: "Concluir" }
                 ].map((s) => (
                   <div key={s.step} className="flex items-center gap-1.5">
                     <span className={cn(
@@ -636,7 +644,7 @@ export default function VendasDiretas() {
                       {s.step}
                     </span>
                     <span className={cn(
-                      "hidden sm:inline font-sans",
+                      "font-sans",
                       currentStep === s.step ? "text-[#3A4F4A] dark:text-emerald-400 font-bold" : ""
                     )}>
                       {s.label}
@@ -647,7 +655,7 @@ export default function VendasDiretas() {
             )}
 
             {/* Split layout: Two columns on desktop, active stepper panel on mobile */}
-            <div className="flex-1 overflow-y-auto md:overflow-hidden md:flex md:flex-row bg-zinc-50/30 dark:bg-zinc-950/50">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain md:overflow-hidden md:flex md:flex-row bg-zinc-50/30 dark:bg-zinc-950/50">
               
               {/* LEFT COLUMN (Form + selection) on Desktop / STEP 1 & 2 on Mobile */}
               <div className={cn(
@@ -658,7 +666,7 @@ export default function VendasDiretas() {
                 {/* 1. Dados gerais (Always block on desktop, only step 1 on mobile) */}
                 <div className={cn(
                   "bg-white dark:bg-zinc-900 p-4 border border-zinc-200 dark:border-zinc-800/80 rounded-xl shadow-xs space-y-3",
-                  isMobile ? (currentStep === 1 ? "block" : "hidden") : "block"
+                  isMobile ? (currentStep === 2 ? "block" : "hidden") : "block"
                 )}>
                   <div className="text-xs font-black text-zinc-650 dark:text-zinc-400 uppercase tracking-wider block">
                     Dados da Venda
@@ -694,14 +702,14 @@ export default function VendasDiretas() {
                         </div>
                       ) : (
                         <SearchableSelect
-                          placeholder="Consumidor Final"
+                          placeholder="Sem cliente — Consumidor final"
                           searchPlaceholder="Pesquisar cliente..."
-                          options={clientes.map((c) => ({
+                          options={[{ value: "none", label: "Sem cliente — Consumidor final" }, ...clientes.map((c) => ({
                             value: c.id,
                             label: c.telefone ? `${c.nome} — ${c.telefone}` : c.nome
-                          }))}
+                          }))]}
                           value={form.cliente_id || ""}
-                          onValueChange={(v) => setForm({ ...form, cliente_id: v })}
+                          onValueChange={(v) => setForm({ ...form, cliente_id: v === "none" ? "" : v })}
                         />
                       )}
                     </div>
@@ -723,7 +731,7 @@ export default function VendasDiretas() {
                 {/* 2. Inclusão de Produtos (Always block on desktop, only step 2 on mobile) */}
                 <div className={cn(
                   "bg-white dark:bg-zinc-900 p-4 border border-zinc-200 dark:border-zinc-800/80 rounded-xl shadow-xs space-y-3",
-                  isMobile ? (currentStep === 2 ? "block" : "hidden") : "block"
+                  isMobile ? (currentStep === 1 ? "block" : "hidden") : "block"
                 )}>
                   <div className="text-xs font-black text-zinc-650 dark:text-zinc-400 uppercase tracking-wider block">
                     Adicionar Itens
@@ -852,7 +860,7 @@ export default function VendasDiretas() {
 
                 {/* Selected Product Info Card (Always block on desktop, only step 2 on mobile) */}
                 <div className={cn(
-                  isMobile ? (currentStep === 2 ? "block" : "hidden") : "block"
+                  isMobile ? (currentStep === 1 ? "block" : "hidden") : "block"
                 )}>
                   {produto && (
                     <div className="bg-[#EAF0EE]/30 dark:bg-emerald-950/10 p-4 border border-zinc-200/80 dark:border-emerald-800/20 rounded-xl space-y-2.5">
@@ -912,7 +920,7 @@ export default function VendasDiretas() {
               {/* RIGHT COLUMN (Cart & Financial Summary) on Desktop / STEP 3 & 4 on Mobile */}
               <div className={cn(
                 "md:w-[45%] md:flex md:flex-col md:overflow-hidden md:bg-zinc-50/50 md:dark:bg-zinc-900/30",
-                isMobile ? ((currentStep === 3 || currentStep === 4) ? "block" : "hidden") : "flex"
+                isMobile ? ((currentStep === 2 || currentStep === 3) ? "block" : "hidden") : "flex"
               )}>
                 {/* Header or Cart Title (Desktop only) */}
                 {!isMobile && (
@@ -927,21 +935,13 @@ export default function VendasDiretas() {
                 {/* Cart list (Always visible on desktop, only Step 3 on mobile) */}
                 <div className={cn(
                   "md:flex-1 md:overflow-y-auto md:p-4 p-4 space-y-4",
-                  isMobile ? (currentStep === 3 ? "block" : "hidden") : "block"
+                  isMobile ? (currentStep === 2 ? "block" : "hidden") : "block"
                 )}>
                   {novaVendaItens.length > 0 ? (
                     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-xs">
-                      <table className="w-full text-xs">
-                        <thead className="bg-zinc-50 dark:bg-zinc-955 text-[10px] uppercase font-bold text-zinc-700 dark:text-zinc-300 border-b border-zinc-200 dark:border-zinc-800">
-                          <tr>
-                            <th className="px-3 py-2 text-left">Produto</th>
-                            <th className="px-2 py-2 text-right">Unit.</th>
-                            <th className="px-2 py-2 text-center w-28">Qtd</th>
-                            <th className="px-2 py-2 text-right">Total</th>
-                            <th className="px-2 py-2"></th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                      {isMobile ? (
+                        /* Mobile Card List */
+                        <div className="space-y-2.5 p-3 divide-y divide-zinc-100 dark:divide-zinc-800">
                           {novaVendaItens.map((item, idx) => {
                             const prodOrig = produtos.find(p => p.id === item.produto_id);
                             const origPrice = item.preco_cadastrado || (prodOrig ? prodOrig.preco_venda : item.preco_unitario);
@@ -950,51 +950,50 @@ export default function VendasDiretas() {
                             const eAcrescimo = diff > 0.001;
 
                             return (
-                              <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
-                                <td className="px-3 py-2.5 font-bold text-zinc-950 dark:text-zinc-100 max-w-[120px] truncate" title={item.produto_nome}>
-                                  <div>
-                                    <span className="block truncate">{item.produto_nome}</span>
-                                    {eDesconto && (
-                                      <span className="inline-block text-[9px] px-1 py-0.2 bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-extrabold rounded mt-0.5">
-                                        Desconto
+                              <div key={idx} className={cn("space-y-3", idx > 0 ? "pt-3" : "")}>
+                                {/* Top row: Name & Unit Price / Badges */}
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <h4 className="font-bold text-sm text-zinc-950 dark:text-zinc-50 leading-snug break-words">
+                                      {item.produto_nome}
+                                    </h4>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <span className="text-xs text-zinc-600 dark:text-zinc-400 font-medium font-mono">
+                                        {fmtBRL(item.preco_unitario)} / un
                                       </span>
-                                    )}
-                                    {eAcrescimo && (
-                                      <span className="inline-block text-[9px] px-1 py-0.2 bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 font-extrabold rounded mt-0.5">
-                                        Acréscimo
-                                      </span>
-                                    )}
+                                      {eDesconto && (
+                                        <span className="text-[10px] px-1.5 py-0.2 bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-bold rounded">
+                                          Desconto
+                                        </span>
+                                      )}
+                                      {eAcrescimo && (
+                                        <span className="text-[10px] px-1.5 py-0.2 bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 font-bold rounded">
+                                          Acréscimo
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
-                                </td>
-                                <td className="px-2 py-2.5 text-right font-mono text-zinc-700 dark:text-zinc-300 font-bold">
-                                  {configSistema?.permitir_alterar_preco_produto_venda ? (
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      step="0.01"
-                                      value={item.preco_unitario}
-                                      onChange={(e) => {
-                                        const val = Number(e.target.value);
-                                        if (!isNaN(val) && val >= 0) {
-                                          const copia = [...novaVendaItens];
-                                          copia[idx].preco_unitario = val;
-                                          setNovaVendaItens(copia);
-                                        }
-                                      }}
-                                      className="w-16 h-6 text-xs text-right font-bold border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 rounded px-1 font-mono focus:ring-1 focus:ring-[#84A59D]"
-                                    />
-                                  ) : (
-                                    fmtBRL(item.preco_unitario)
-                                  )}
-                                </td>
-                                <td className="px-2 py-2.5">
-                                  <div className="flex items-center gap-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850 p-0.5 rounded-lg w-full max-w-[90px] mx-auto">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveNovaVendaItem(idx)}
+                                    className="w-10 h-10 -mr-1 -mt-1 flex items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shrink-0"
+                                    title="Remover produto"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+
+                                {/* Bottom row: Stepper + Subtotal */}
+                                <div className="flex items-center justify-between gap-3 pt-1">
+                                  {/* Quantity Stepper */}
+                                  <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-0.5 rounded-lg shadow-xs">
                                     <button
                                       type="button"
                                       onClick={() => handleIncrementNovaVendaQtd(idx, -1)}
-                                      className="w-5 h-5 rounded bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                                      className="w-9 h-9 rounded-md bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-200 active:bg-zinc-200 dark:active:bg-zinc-700 shadow-xs"
+                                      aria-label="Diminuir quantidade"
                                     >
-                                      <Minus className="w-2.5 h-2.5" />
+                                      <Minus className="w-4 h-4" />
                                     </button>
                                     <input
                                       type="number"
@@ -1003,38 +1002,139 @@ export default function VendasDiretas() {
                                       value={item.quantidade}
                                       onChange={(e) => {
                                         const val = Number(e.target.value);
-                                        if (!isNaN(val)) {
-                                          handleSetNovaVendaQtd(idx, val);
-                                        }
+                                        if (!isNaN(val)) handleSetNovaVendaQtd(idx, val);
                                       }}
-                                      className="w-8 h-5 text-[10px] font-bold text-center border-none bg-transparent focus-visible:ring-0 p-0 text-zinc-950 dark:text-zinc-100 font-mono"
+                                      className="w-11 h-9 text-xs font-black text-center border-none bg-transparent focus-visible:ring-0 p-0 text-zinc-950 dark:text-zinc-100 font-mono"
                                     />
                                     <button
                                       type="button"
                                       onClick={() => handleIncrementNovaVendaQtd(idx, 1)}
-                                      className="w-5 h-5 rounded bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                                      className="w-9 h-9 rounded-md bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-200 active:bg-zinc-200 dark:active:bg-zinc-700 shadow-xs"
+                                      aria-label="Aumentar quantidade"
                                     >
-                                      <Plus className="w-2.5 h-2.5" />
+                                      <Plus className="w-4 h-4" />
                                     </button>
                                   </div>
-                                </td>
-                                <td className="px-2 py-2.5 text-right font-bold font-mono text-[#263532] dark:text-emerald-400">
-                                  {fmtBRL(item.preco_unitario * item.quantidade)}
-                                </td>
-                                <td className="px-2 py-2.5 text-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveNovaVendaItem(idx)}
-                                    className="p-1 rounded text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </td>
-                              </tr>
+
+                                  {/* Item Subtotal */}
+                                  <div className="text-right">
+                                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-bold tracking-wider block">Subtotal</span>
+                                    <span className="font-mono font-bold text-sm text-[#3A4F4A] dark:text-emerald-400">
+                                      {fmtBRL(item.preco_unitario * item.quantidade)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
                             );
                           })}
-                        </tbody>
-                      </table>
+                        </div>
+                      ) : (
+                        /* Desktop Table View */
+                        <table className="new-sale-cart w-full text-xs">
+                          <thead className="bg-zinc-50 dark:bg-zinc-955 text-[10px] uppercase font-bold text-zinc-700 dark:text-zinc-300 border-b border-zinc-200 dark:border-zinc-800">
+                            <tr>
+                              <th className="px-3 py-2 text-left">Produto</th>
+                              <th className="px-2 py-2 text-right">Unit.</th>
+                              <th className="px-2 py-2 text-center w-28">Qtd</th>
+                              <th className="px-2 py-2 text-right">Total</th>
+                              <th className="px-2 py-2"></th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            {novaVendaItens.map((item, idx) => {
+                              const prodOrig = produtos.find(p => p.id === item.produto_id);
+                              const origPrice = item.preco_cadastrado || (prodOrig ? prodOrig.preco_venda : item.preco_unitario);
+                              const diff = item.preco_unitario - origPrice;
+                              const eDesconto = diff < -0.001;
+                              const eAcrescimo = diff > 0.001;
+
+                              return (
+                                <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
+                                  <td className="px-3 py-2.5 font-bold text-zinc-950 dark:text-zinc-100 max-w-[120px] truncate" title={item.produto_nome}>
+                                    <div>
+                                      <span className="block truncate">{item.produto_nome}</span>
+                                      {eDesconto && (
+                                        <span className="inline-block text-[9px] px-1 py-0.2 bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-extrabold rounded mt-0.5">
+                                          Desconto
+                                        </span>
+                                      )}
+                                      {eAcrescimo && (
+                                        <span className="inline-block text-[9px] px-1 py-0.2 bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 font-extrabold rounded mt-0.5">
+                                          Acréscimo
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-2 py-2.5 text-right font-mono text-zinc-700 dark:text-zinc-300 font-bold">
+                                    {configSistema?.permitir_alterar_preco_produto_venda ? (
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={item.preco_unitario}
+                                        onChange={(e) => {
+                                          const val = Number(e.target.value);
+                                          if (!isNaN(val) && val >= 0) {
+                                            const copia = [...novaVendaItens];
+                                            copia[idx].preco_unitario = val;
+                                            setNovaVendaItens(copia);
+                                          }
+                                        }}
+                                        className="w-16 h-6 text-xs text-right font-bold border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 rounded px-1 font-mono focus:ring-1 focus:ring-[#84A59D]"
+                                      />
+                                    ) : (
+                                      fmtBRL(item.preco_unitario)
+                                    )}
+                                  </td>
+                                  <td className="px-2 py-2.5">
+                                    <div className="flex items-center gap-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850 p-0.5 rounded-lg w-full max-w-[90px] mx-auto">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleIncrementNovaVendaQtd(idx, -1)}
+                                        className="w-5 h-5 rounded bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                                      >
+                                        <Minus className="w-2.5 h-2.5" />
+                                      </button>
+                                      <input
+                                        type="number"
+                                        min="0.01"
+                                        step="0.01"
+                                        value={item.quantidade}
+                                        onChange={(e) => {
+                                          const val = Number(e.target.value);
+                                          if (!isNaN(val)) {
+                                            handleSetNovaVendaQtd(idx, val);
+                                          }
+                                        }}
+                                        className="w-8 h-5 text-[10px] font-bold text-center border-none bg-transparent focus-visible:ring-0 p-0 text-zinc-950 dark:text-zinc-100 font-mono"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => handleIncrementNovaVendaQtd(idx, 1)}
+                                        className="w-5 h-5 rounded bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                                      >
+                                        <Plus className="w-2.5 h-2.5" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                  <td className="px-2 py-2.5 text-right font-bold font-mono text-[#263532] dark:text-emerald-400">
+                                    {fmtBRL(item.preco_unitario * item.quantidade)}
+                                  </td>
+                                  <td className="px-2 py-2.5 text-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveNovaVendaItem(idx)}
+                                      className="p-1 rounded text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      )}
                     </div>
                   ) : (
                     <div className="border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl p-8 flex flex-col items-center justify-center text-center bg-white dark:bg-zinc-900/50 shadow-sm min-h-[220px]">
@@ -1050,8 +1150,15 @@ export default function VendasDiretas() {
                 {/* Sticky Summary & Action Buttons (Always visible on desktop, only Step 4 on mobile) */}
                 <div className={cn(
                   "md:shrink-0 md:border-t md:border-zinc-200 md:dark:border-zinc-800 md:bg-white md:dark:bg-zinc-900/50 p-4 space-y-4",
-                  isMobile ? (currentStep === 4 ? "block" : "hidden") : "block"
+                  isMobile ? (currentStep === 3 ? "block" : "hidden") : "block"
                 )}>
+                  {isMobile && (
+                    <div className="text-sm space-y-2 break-words">
+                      <h3 className="font-semibold text-base">Como deseja concluir?</h3>
+                      <p>Cliente: <strong>{clientes.find(c => c.id === form.cliente_id)?.nome || "Sem cliente — Consumidor final"}</strong></p>
+                      <p>Responsável: <strong>{colaboradores.find(c => c.id === form.colaborador_id)?.nome}</strong></p>
+                    </div>
+                  )}
                   {/* Financial Summary */}
                   <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 space-y-2 shadow-xs">
                     <div className="flex justify-between items-center text-xs font-bold text-zinc-700 dark:text-zinc-300">
@@ -1082,6 +1189,19 @@ export default function VendasDiretas() {
                     </div>
                   </div>
 
+                  {isMobile && (
+                    <div className="space-y-3">
+                      <Button type="button" variant="outline" className="w-full min-h-12" disabled={creatingSale || !novaVendaItens.length}
+                        onClick={() => handleCreateNovaVenda(false, false)}>
+                        {creatingSale ? "Salvando..." : "Salvar como pendente"}
+                      </Button>
+                      {canLancarPagamento && <Button type="button" className="w-full min-h-12 bg-[#456957] hover:bg-[#365443] text-white"
+                        disabled={creatingSale || !novaVendaItens.length} onClick={() => handleCreateNovaVenda()}>
+                        {creatingSale ? "Salvando..." : "Ir para pagamento"}
+                      </Button>}
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">Salvar como pendente registra a venda sem receber o pagamento agora.</p>
+                    </div>
+                  )}
                   {/* Desktop Action Buttons */}
                   {!isMobile && (
                     <div className="flex gap-2">
@@ -1096,7 +1216,7 @@ export default function VendasDiretas() {
                       <Button
                         data-testid="save-venda-btn"
                         onClick={() => handleCreateNovaVenda()}
-                        disabled={novaVendaItens.length === 0}
+                        disabled={creatingSale || novaVendaItens.length === 0}
                         className="w-2/3 h-11 bg-[#84A59D] hover:bg-[#6F9189] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-transform hover:scale-[1.01]"
                       >
                         <CreditCard className="w-4 h-4 mr-1.5" /> Ir para pagamento (F4)
@@ -1108,56 +1228,31 @@ export default function VendasDiretas() {
 
             </div>
 
-            {/* Mobile Navigation Footer (Visible only on mobile) */}
+            {/* Mobile navigation and persistent cart total */}
             {isMobile && (
-              <div className="px-4 py-3 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-between gap-3 shrink-0">
-                {currentStep > 1 ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setCurrentStep(currentStep - 1)}
-                    className="w-1/2 h-11 border-zinc-200 text-zinc-700 dark:text-zinc-300 font-bold text-xs"
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
+              <div className="shrink-0 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 space-y-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                <div className="flex flex-wrap justify-between gap-2 text-sm" aria-live="polite">
+                  <span>{novaVendaItens.length} produtos no carrinho</span>
+                  <strong>{fmtBRL(novaVendaItens.reduce((sum, item) => sum + item.preco_unitario * item.quantidade, 0))}</strong>
+                </div>
+                <div className="flex gap-3">
+                  <Button type="button" variant="outline" disabled={creatingSale}
+                    onClick={() => currentStep > 1 ? setCurrentStep(currentStep - 1) : setOpen(false)}
+                    className="min-h-12 flex-1">
+                    {currentStep > 1 ? "Voltar" : "Cancelar"}
                   </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setOpen(false)}
-                    className="w-1/2 h-11 border-zinc-200 text-zinc-750 font-bold text-xs"
-                  >
-                    Cancelar
-                  </Button>
-                )}
-
-                {currentStep < 4 ? (
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      if (currentStep === 1 && !form.colaborador_id) {
-                        toast.error("Selecione o profissional responsável.");
-                        return;
-                      }
-                      if (currentStep === 2 && novaVendaItens.length === 0) {
-                        toast.error("Adicione pelo menos um produto ao carrinho.");
-                        return;
-                      }
-                      setCurrentStep(currentStep + 1);
-                    }}
-                    className="w-1/2 h-11 bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold text-xs"
-                  >
-                    Avançar <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => handleCreateNovaVenda()}
-                    disabled={novaVendaItens.length === 0}
-                    className="w-1/2 h-11 bg-[#84A59D] hover:bg-[#6F9189] text-white font-bold text-xs"
-                  >
-                    <CreditCard className="w-4 h-4 mr-1" /> Pagar (F4)
-                  </Button>
-                )}
+                  {currentStep < 3 ? (
+                    <Button type="button" className="min-h-12 flex-1 bg-[#456957] hover:bg-[#365443] text-white"
+                      onClick={() => {
+                        if (!novaVendaItens.length) { toast.error("Adicione pelo menos um produto ao carrinho."); return; }
+                        if (currentStep === 2 && !form.colaborador_id) { toast.error("Selecione o profissional responsável."); return; }
+                        if (currentStep === 2 && (!form.data_venda || form.data_venda > getTodayStr())) { toast.error("Informe uma data válida, até hoje."); return; }
+                        setCurrentStep(currentStep + 1);
+                      }}>
+                      {currentStep === 1 ? "Conferir venda" : "Continuar"}
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             )}
           </DialogContent>
@@ -1315,61 +1410,137 @@ export default function VendasDiretas() {
           {/* Mobile Card List (Visible only on mobile) */}
           <div className="space-y-3 min-w-0 sm:hidden">
             {filteredList.map((v) => (
-              <div key={v.id} data-testid={`venda-card-${v.id}`} className="min-w-0 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm cursor-pointer" onClick={() => openReceipt(v.id)}>
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {v.numero_venda && (
-                      <span className="text-[10px] font-mono font-bold bg-[#EAF0EE] text-[#3A4F4A] px-1.5 py-0.5 rounded">
-                        {String(v.numero_venda).padStart(6, "0")} | V
+              <div
+                key={v.id}
+                data-testid={`venda-card-${v.id}`}
+                className="min-w-0 bg-white dark:bg-zinc-900 border border-zinc-200/90 dark:border-zinc-800 rounded-2xl p-4 shadow-xs space-y-3.5 hover:shadow-md transition-shadow"
+              >
+                {/* Header: Código + Data + Status + Delete */}
+                <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-zinc-100 dark:border-zinc-800">
+                  <div className="flex items-center gap-2">
+                    {v.numero_venda ? (
+                      <span className="text-[11px] font-mono font-bold bg-[#EAF0EE] dark:bg-emerald-950/40 text-[#263532] dark:text-emerald-400 px-2 py-0.5 rounded-md">
+                        #{String(v.numero_venda).padStart(6, '0')}
                       </span>
+                    ) : (
+                      <span className="text-[11px] font-mono font-bold text-zinc-400">Venda</span>
                     )}
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-1 font-medium">
+                      <Calendar className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                      {fmtDT(v.data_venda)}
+                    </span>
                   </div>
-                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[v.status]}`}>
-                    {v.status === "pago" ? "Pago" : "Pendente"}
+                  <div className="flex items-center gap-1.5">
+                    <span className={cn(
+                      "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold capitalize",
+                      v.status === 'pago'
+                        ? "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300"
+                        : "bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300"
+                    )}>
+                      {v.status === 'pago' ? 'Pago' : 'Pendente'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); del(v.id); }}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors ml-1 shrink-0"
+                      title="Excluir venda"
+                      aria-label="Excluir venda"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Body: Cliente & Produto */}
+                <div className="space-y-2.5 text-xs">
+                  {/* Cliente */}
+                  <div className="flex items-start gap-2.5">
+                    <div className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 shrink-0 mt-0.5">
+                      <User className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider block">Cliente</span>
+                      <h4 className="font-bold text-sm text-zinc-950 dark:text-zinc-50 leading-snug break-words">
+                        {v.cliente_nome || 'Sem cliente (Consumidor final)'}
+                      </h4>
+                    </div>
+                  </div>
+
+                  {/* Produto & Qtd */}
+                  <div className="flex items-start gap-2.5">
+                    <div className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 shrink-0 mt-0.5">
+                      <ShoppingBag className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 tracking-wider block">Produto(s)</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold text-xs text-zinc-800 dark:text-zinc-200 break-words">
+                          {v.produto_nome}
+                        </span>
+                        <span className="text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 px-1.5 py-0.2 rounded font-mono shrink-0">
+                          {v.quantidade} un
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Vendedor */}
+                  {v.colaborador_nome && (
+                    <div className="text-[11px] text-zinc-500 dark:text-zinc-400 pl-8">
+                      Vendedor: <strong className="text-zinc-700 dark:text-zinc-300 font-semibold">{v.colaborador_nome}</strong>
+                    </div>
+                  )}
+                </div>
+
+                {/* Total Box */}
+                <div className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-150 dark:border-zinc-800 rounded-xl px-3.5 py-2.5">
+                  <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Total</span>
+                  <span className="font-extrabold text-base text-[#1e2a27] dark:text-emerald-400 font-mono">
+                    {fmtBRL(v.valor_total)}
                   </span>
                 </div>
-                <h4 className="font-semibold text-zinc-900 dark:text-zinc-100 text-base leading-6 break-words [overflow-wrap:anywhere]">{v.produto_nome}</h4>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{fmtDT(v.data_venda)}</p>
-                <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-3 space-y-2 break-words [overflow-wrap:anywhere] [&_strong]:font-medium [&_strong]:text-zinc-700 dark:[&_strong]:text-zinc-200">
-                  <div>Qtd: <strong>{v.quantidade}</strong></div>
-                  <div>Vendedor: <strong>{v.colaborador_nome || "—"}</strong></div>
-                  <div>Cliente: <strong>{v.cliente_nome || "—"}</strong></div>
-                </div>
-                <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3 mt-3 space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#EAF0EE] dark:bg-emerald-950/30 px-3 py-3">
-                    <span className="text-[10px] text-zinc-400 uppercase tracking-wider block">Total</span>
-                    <span className="font-semibold text-[#3A4F4A] dark:text-emerald-400 text-lg break-words [overflow-wrap:anywhere] min-w-0">{fmtBRL(v.valor_total)}</span>
-                  </div>
-                  <div className="grid grid-cols-[1fr_1fr_44px] gap-2">
-                    <Button
-                      size="default"
-                      variant="outline"
-                      className="h-11 min-w-0 px-2 text-xs rounded-xl font-medium border-zinc-200 dark:border-zinc-700 text-[#3A4F4A] dark:text-zinc-200 hover:bg-[#EAF0EE]"
-                      onClick={(e) => { e.stopPropagation(); openCarrinhoModal(v.id); }}
-                      title="Ver/Editar Carrinho"
-                    >
-                      <ShoppingCart className="w-5 h-5 mr-2 text-zinc-500" /> Carrinho
-                    </Button>
-                    <Button
-                      size="default"
-                      variant="outline"
-                      className="h-11 min-w-0 px-2 text-xs rounded-xl font-medium border-zinc-200 dark:border-zinc-700 text-[#3A4F4A] dark:text-zinc-200 hover:bg-[#EAF0EE]"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!canLancarPagamento) {
-                          toast.error("Você não tem permissão para lançar pagamentos.");
-                          return;
-                        }
-                        nav(`/vendas-diretas/${v.id}/pagamento`);
-                      }}
-                      data-testid={`pay-venda-mob-${v.id}`}
-                    >
-                      <CreditCard className="w-5 h-5 mr-2" /> Pagar
-                    </Button>
-                    <Button size="default" variant="ghost" aria-label="Excluir venda" className="h-11 w-11 p-0 rounded-xl border border-zinc-100 dark:border-zinc-800 text-rose-500 hover:bg-rose-50 hover:border-rose-200" onClick={(e) => { e.stopPropagation(); del(v.id); }}>
-                      <Trash2 className="w-5 h-5" />
-                    </Button>
-                  </div>
+
+                {/* Action Buttons Grid */}
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="default"
+                    className="h-11 min-h-[44px] text-xs font-semibold rounded-xl border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 px-2 flex items-center justify-center gap-1.5"
+                    onClick={(e) => { e.stopPropagation(); openReceipt(v.id); }}
+                    title="Ver Comprovante"
+                  >
+                    <FileText className="w-4 h-4 text-zinc-500" />
+                    <span>Recibo</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="default"
+                    className="h-11 min-h-[44px] text-xs font-semibold rounded-xl border-zinc-200 dark:border-zinc-700 text-[#3A4F4A] dark:text-zinc-200 hover:bg-[#EAF0EE] dark:hover:bg-emerald-950/30 px-2 flex items-center justify-center gap-1.5"
+                    onClick={(e) => { e.stopPropagation(); openCarrinhoModal(v.id); }}
+                    title="Ver/Editar Carrinho"
+                  >
+                    <ShoppingCart className="w-4 h-4 text-[#3A4F4A] dark:text-emerald-400" />
+                    <span>Itens</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    size="default"
+                    className="h-11 min-h-[44px] text-xs font-bold rounded-xl bg-[#456957] hover:bg-[#365443] text-white px-2 flex items-center justify-center gap-1.5 shadow-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!canLancarPagamento) {
+                        toast.error("Você não tem permissão para lançar pagamentos.");
+                        return;
+                      }
+                      nav(`/vendas-diretas/${v.id}/pagamento`);
+                    }}
+                    data-testid={`pay-venda-mob-${v.id}`}
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    <span>{v.status === 'pago' ? 'Pagos' : 'Pagar'}</span>
+                  </Button>
                 </div>
               </div>
             ))}
@@ -1524,10 +1695,10 @@ export default function VendasDiretas() {
 
       {/* Dialog do Carrinho de Compras */}
       <Dialog open={carrinhoOpen} onOpenChange={(o) => { if (!o) { setCarrinhoOpen(false); setConfirmRemoveIdx(null); setEditingQtdIdx(null); } }}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-4xl w-full p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl border-0" style={{ maxHeight: '85vh' }}>
+        <DialogContent className="sale-cart-dialog w-[95vw] max-w-[95vw] sm:max-w-4xl w-full p-0 gap-0 flex flex-col overflow-hidden bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl border-0" style={{ maxHeight: '90dvh' }}>
 
           {/* Cabeçalho */}
-          <div className="px-6 sm:px-8 pt-6 pb-5 border-b border-zinc-100 dark:border-zinc-800 shrink-0 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-md">
+          <div className="px-4 sm:px-8 pt-4 pb-3 sm:pt-6 sm:pb-5 pr-12 border-b border-zinc-100 dark:border-zinc-800 shrink-0 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-3 text-lg font-bold text-zinc-800 dark:text-zinc-100">
                 <div className="p-2 bg-[#EAF0EE] dark:bg-emerald-900/30 text-[#3A4F4A] dark:text-emerald-400 rounded-xl shadow-sm">
@@ -1557,7 +1728,7 @@ export default function VendasDiretas() {
           </div>
 
           {/* Corpo rolável */}
-          <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-6 space-y-6 bg-zinc-50/30 dark:bg-zinc-950/50">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 sm:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 bg-zinc-50/30 dark:bg-zinc-950/50">
             {carrinhoLoading ? (
               <div className="flex flex-col items-center justify-center py-20 gap-3">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#84A59D] dark:border-emerald-500" />
@@ -1566,7 +1737,7 @@ export default function VendasDiretas() {
             ) : carrinhoData ? (
               <>
                 {/* Informar ou Trocar Cliente da Venda */}
-                <div className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm space-y-3">
+                <div className="p-3 sm:p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm space-y-3">
                   <div className="flex items-center justify-between">
                     <Label className="text-sm font-extrabold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">
                       Cliente da Venda
@@ -1595,7 +1766,7 @@ export default function VendasDiretas() {
 
                 {/* Busca rápida de produtos para adicionar ao carrinho */}
                 {!carrinhoData.bloqueado && (
-                  <div className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm space-y-3">
+                  <div className="p-3 sm:p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm space-y-3">
                     <Label className="text-sm font-extrabold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest block">Adicionar Produto ao Carrinho</Label>
                     <div className="relative">
                       <SearchableSelect
@@ -1654,11 +1825,11 @@ export default function VendasDiretas() {
                 )}
 
                 {/* Lista de itens */}
-                <div className="space-y-1.5">
+                <div className="space-y-3">
                   {(carrinhoData.itens || []).map((item, idx) => (
                     <div
                       key={idx}
-                      className={`rounded-xl border px-4 py-3 transition-all duration-200 ${confirmRemoveIdx === idx
+                      className={`sale-cart-item rounded-xl border px-4 py-3 transition-all duration-200 ${confirmRemoveIdx === idx
                           ? 'border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/20'
                           : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-sm'
                         }`}
@@ -1668,7 +1839,7 @@ export default function VendasDiretas() {
 
                         {/* Info Produto */}
                         <div className="min-w-0 flex-1">
-                          <p className="font-bold text-sm text-zinc-900 dark:text-zinc-100 leading-tight truncate">{item.produto_nome}</p>
+                          <p className="font-bold text-sm text-zinc-900 dark:text-zinc-100 leading-snug break-words">{item.produto_nome}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             {configSistema?.permitir_alterar_preco_produto_venda && !carrinhoData.bloqueado ? (
                               <div className="flex items-center gap-1">
@@ -1677,7 +1848,7 @@ export default function VendasDiretas() {
                                   type="number"
                                   min="0"
                                   step="0.01"
-                                  defaultValue={item.preco_unitario}
+                                  aria-label={`Preço unitário de ${item.produto_nome}`} inputMode="decimal" disabled={carrinhoSaving} defaultValue={item.preco_unitario}
                                   onBlur={async (e) => {
                                     const val = Number(e.target.value);
                                     if (!isNaN(val) && val >= 0 && val !== item.preco_unitario) {
@@ -1696,7 +1867,7 @@ export default function VendasDiretas() {
                                       }
                                     }
                                   }}
-                                  className="w-20 h-6 text-xs font-bold border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 rounded px-1 text-right font-mono"
+                                  className="w-24 h-11 text-base sm:w-20 sm:h-6 sm:text-xs font-bold border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 rounded px-1 text-right font-mono"
                                 />
                                 <span className="text-xs text-zinc-500 font-semibold">/ un</span>
                               </div>
@@ -1709,17 +1880,17 @@ export default function VendasDiretas() {
                         </div>
 
                         {/* Controles do carrinho (Qtd + Subtotal + Excluir) */}
-                        <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 pt-2.5 sm:pt-0 border-zinc-100 dark:border-zinc-800">
+                        <div className="sale-cart-controls flex flex-wrap items-center justify-between sm:justify-end gap-3 border-t sm:border-t-0 pt-2.5 sm:pt-0 border-zinc-100 dark:border-zinc-800">
 
                           {/* Botões táteis de incrementar / decrementar quantidade */}
                           {!carrinhoData.bloqueado ? (
-                            <div className="flex items-center gap-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-0.5 rounded-lg shadow-xs">
+                            <div aria-label="Quantidade do produto" className="sale-cart-quantity flex items-center gap-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-0.5 rounded-lg shadow-xs">
                               {/* Botão Menos */}
                               <button
                                 disabled={carrinhoSaving}
                                 onClick={() => handleIncrementQtd(idx, -1)}
-                                className="w-7 h-7 rounded-md bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-white disabled:opacity-50 transition-colors"
-                                title="Diminuir"
+                                className="w-11 h-11 sm:w-7 sm:h-7 rounded-md bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-white disabled:opacity-50 transition-colors"
+                                title="Diminuir" aria-label={`Diminuir quantidade de ${item.produto_nome}`}
                               >
                                 <Minus className="w-3.5 h-3.5" />
                               </button>
@@ -1727,10 +1898,10 @@ export default function VendasDiretas() {
                               {/* Visualização de quantidade (clicável para edição manual) */}
                               {editingQtdIdx === idx ? (
                                 <Input
-                                  type="number" min="0.01" step="0.01"
+                                  type="number" inputMode="decimal" aria-label={`Quantidade de ${item.produto_nome}`} min="0.01" step="0.01"
                                   value={editingQtdVal}
                                   onChange={e => setEditingQtdVal(e.target.value)}
-                                  className="w-12 h-7 text-xs font-black text-center border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus:ring-[#84A59D] p-0"
+                                  className="w-16 h-11 text-base sm:w-12 sm:h-7 sm:text-xs font-black text-center border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 focus-visible:ring-2 focus:ring-[#84A59D] p-0"
                                   autoFocus
                                   onBlur={() => handleSaveQtd(idx)}
                                   onKeyDown={e => {
@@ -1739,21 +1910,21 @@ export default function VendasDiretas() {
                                   }}
                                 />
                               ) : (
-                                <span
+                                <button type="button" disabled={carrinhoSaving}
                                   onClick={() => { setEditingQtdIdx(idx); setEditingQtdVal(String(item.quantidade)); }}
-                                  className="w-10 text-center text-xs font-black text-zinc-800 dark:text-zinc-200 cursor-pointer hover:bg-white dark:hover:bg-zinc-800 hover:rounded-md py-1 transition-all"
-                                  title="Clique para digitar quantidade"
+                                  className="inline-flex items-center justify-center min-h-11 w-12 sm:min-h-0 sm:w-10 text-center text-base sm:text-xs font-black text-zinc-800 dark:text-zinc-200 cursor-pointer hover:bg-white dark:hover:bg-zinc-800 hover:rounded-md py-1 transition-all"
+                                  title="Clique para digitar quantidade" aria-label={`Editar quantidade de ${item.produto_nome}`}
                                 >
                                   {item.quantidade}
-                                </span>
+                                </button>
                               )}
 
                               {/* Botão Mais */}
                               <button
                                 disabled={carrinhoSaving}
                                 onClick={() => handleIncrementQtd(idx, 1)}
-                                className="w-7 h-7 rounded-md bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-white disabled:opacity-50 transition-colors"
-                                title="Aumentar"
+                                className="w-11 h-11 sm:w-7 sm:h-7 rounded-md bg-white dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-white disabled:opacity-50 transition-colors"
+                                title="Aumentar" aria-label={`Aumentar quantidade de ${item.produto_nome}`}
                               >
                                 <Plus className="w-3.5 h-3.5" />
                               </button>
@@ -1766,7 +1937,7 @@ export default function VendasDiretas() {
                           )}
 
                           {/* Subtotal */}
-                          <div className="text-right min-w-[80px]">
+                          <div className="sale-cart-subtotal text-right min-w-[80px]">
                             <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-widest">Subtotal</div>
                             <div className="font-bold text-sm text-[#3A4F4A] dark:text-emerald-400 font-mono leading-tight mt-0.5">{fmtBRL(item.subtotal)}</div>
                           </div>
@@ -1774,27 +1945,27 @@ export default function VendasDiretas() {
                           {/* Botão de Excluir */}
                           {!carrinhoData.bloqueado && (
                             confirmRemoveIdx === idx ? (
-                              <div className="flex items-center gap-1.5 shrink-0">
+                              <div className="sale-cart-remove flex items-center gap-1.5 shrink-0">
                                 <button
                                   disabled={carrinhoSaving}
                                   onClick={() => handleRemoveCartItem(idx)}
-                                  className="text-[10px] font-bold px-2 py-1.5 rounded-lg bg-rose-500 text-white hover:bg-rose-600 transition-colors disabled:opacity-50 shrink-0"
+                                  className="min-h-11 sm:min-h-0 text-xs sm:text-[10px] font-bold px-3 sm:px-2 py-1.5 rounded-lg bg-rose-500 text-white hover:bg-rose-600 transition-colors disabled:opacity-50 shrink-0"
                                 >
                                   {carrinhoSaving ? '...' : 'Remover'}
                                 </button>
                                 <button
                                   onClick={() => setConfirmRemoveIdx(null)}
-                                  className="text-[10px] font-bold px-2 py-1.5 rounded-lg bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors shrink-0"
+                                  className="min-h-11 sm:min-h-0 text-xs sm:text-[10px] font-bold px-3 sm:px-2 py-1.5 rounded-lg bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors shrink-0"
                                 >
                                   Não
                                 </button>
                               </div>
                             ) : (
                               <button
-                                disabled={(carrinhoData.itens || []).length <= 1}
+                                disabled={carrinhoSaving || (carrinhoData.itens || []).length <= 1}
                                 onClick={() => setConfirmRemoveIdx(idx)}
-                                className="p-1.5 rounded-lg text-rose-500 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-900/50 dark:hover:text-rose-300 transition-colors shrink-0 disabled:opacity-20 disabled:cursor-not-allowed"
-                                title="Remover item"
+                                className="sale-cart-remove min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 flex items-center justify-center p-1.5 rounded-lg text-rose-500 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-900/50 dark:hover:text-rose-300 transition-colors shrink-0 disabled:opacity-20 disabled:cursor-not-allowed"
+                                title="Remover item" aria-label={`Remover ${item.produto_nome}`}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>

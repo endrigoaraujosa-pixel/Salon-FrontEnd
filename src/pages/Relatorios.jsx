@@ -1,3 +1,4 @@
+import '../styles/mobile-records.css';
 import PageLoadState from "../components/PageLoadState";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -2158,7 +2159,7 @@ export default function Relatorios() {
         {/* Tabela de Resultados */}
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm print-full-width">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs min-w-[850px]">
+            <table className="mobile-record-table w-full text-left border-collapse text-xs min-w-[850px]">
               <thead>
                 <tr className="bg-zinc-50/50 dark:bg-zinc-800/40 text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800">
                   <th className="px-4 py-3">Data/Hora Agendado</th>
@@ -2191,13 +2192,13 @@ export default function Relatorios() {
 
                     return (
                       <tr key={item.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20">
-                        <td className="px-4 py-3 whitespace-nowrap">{formatAgendaDateTime(item.data_hora)}</td>
-                        <td className="px-4 py-3 font-semibold text-zinc-850 dark:text-zinc-200">{item.cliente_nome || "Consumidor"}</td>
-                        <td className="px-4 py-3">{profsStr}</td>
-                        <td className="px-4 py-3">{servsStr}</td>
-                        <td className="px-4 py-3 max-w-xs break-words italic text-zinc-600 dark:text-zinc-400">"{item.cancelado_motivo || "—"}"</td>
-                        <td className="px-4 py-3 whitespace-nowrap font-medium">{item.cancelado_por_nome || "—"}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{formatAgendaDateTime(item.cancelado_em)}</td>
+                        <td data-label="Data/Hora Agendado" className="px-4 py-3 whitespace-nowrap">{formatAgendaDateTime(item.data_hora)}</td>
+                        <td data-label="Cliente" className="px-4 py-3 font-semibold text-zinc-850 dark:text-zinc-200">{item.cliente_nome || "Consumidor"}</td>
+                        <td data-label="Profissional" className="px-4 py-3">{profsStr}</td>
+                        <td data-label="Serviço(s)" className="px-4 py-3">{servsStr}</td>
+                        <td data-label="Motivo do Cancelamento" className="px-4 py-3 max-w-xs break-words italic text-zinc-600 dark:text-zinc-400">"{item.cancelado_motivo || "—"}"</td>
+                        <td data-label="Responsável" className="px-4 py-3 whitespace-nowrap font-medium">{item.cancelado_por_nome || "—"}</td>
+                        <td data-label="Data/Hora Cancelado" className="px-4 py-3 whitespace-nowrap">{formatAgendaDateTime(item.cancelado_em)}</td>
                       </tr>
                     );
                   })
@@ -2213,7 +2214,7 @@ export default function Relatorios() {
   if (loadingFilters) return <div className="p-6"><PageLoadState loading /></div>;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 fade-in max-w-[1600px] mx-auto w-full overflow-x-hidden">
+    <div className="mobile-layout p-4 sm:p-6 lg:p-8 fade-in max-w-[1600px] mx-auto w-full overflow-x-hidden">
       <PageHeader overline="Análise" title="Relatórios" />
 
       <style>{`
@@ -3255,7 +3256,7 @@ export default function Relatorios() {
                                             Significado dos Status no DRE
                                           </div>
                                           <div className="overflow-x-auto">
-                                            <table className="w-full text-[11px] text-left border-collapse">
+                                            <table className="mobile-record-table w-full text-[11px] text-left border-collapse">
                                               <thead>
                                                 <tr className="border-b border-zinc-150 dark:border-zinc-800 text-zinc-400 font-semibold uppercase text-[9px] tracking-wider">
                                                   <th className="pb-2 pr-3">Status</th>
@@ -3265,24 +3266,24 @@ export default function Relatorios() {
                                               </thead>
                                               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60 leading-relaxed text-zinc-650 dark:text-zinc-300">
                                                 <tr>
-                                                  <td className="py-2 pr-3 font-semibold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">Concluído / Pago</td>
-                                                  <td className="py-2 pr-3 text-zinc-500 whitespace-nowrap">Atendimentos e Vendas</td>
-                                                  <td className="py-2">O cliente realizou o serviço e efetuou o pagamento.</td>
+                                                  <td data-label="Status" className="py-2 pr-3 font-semibold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">Concluído / Pago</td>
+                                                  <td data-label="Onde aparece" className="py-2 pr-3 text-zinc-500 whitespace-nowrap">Atendimentos e Vendas</td>
+                                                  <td data-label="O que significa" className="py-2">O cliente realizou o serviço e efetuou o pagamento.</td>
                                                 </tr>
                                                 <tr>
-                                                  <td className="py-2 pr-3 font-semibold text-amber-600 dark:text-amber-400 whitespace-nowrap">Provisionado</td>
-                                                  <td className="py-2 pr-3 text-zinc-500 whitespace-nowrap">Comissões</td>
-                                                  <td className="py-2">O colaborador tem direito ao valor, mas a comissão ainda não foi fechada/paga.</td>
+                                                  <td data-label="Status" className="py-2 pr-3 font-semibold text-amber-600 dark:text-amber-400 whitespace-nowrap">Provisionado</td>
+                                                  <td data-label="Onde aparece" className="py-2 pr-3 text-zinc-500 whitespace-nowrap">Comissões</td>
+                                                  <td data-label="O que significa" className="py-2">O colaborador tem direito ao valor, mas a comissão ainda não foi fechada/paga.</td>
                                                 </tr>
                                                 <tr>
-                                                  <td className="py-2 pr-3 font-semibold text-teal-600 dark:text-teal-400 whitespace-nowrap">Retido</td>
-                                                  <td className="py-2 pr-3 text-zinc-500 whitespace-nowrap">Taxas de Cartão</td>
-                                                  <td className="py-2">O custo da taxa já foi apropriado na transação (descontado pela maquininha).</td>
+                                                  <td data-label="Status" className="py-2 pr-3 font-semibold text-teal-600 dark:text-teal-400 whitespace-nowrap">Retido</td>
+                                                  <td data-label="Onde aparece" className="py-2 pr-3 text-zinc-500 whitespace-nowrap">Taxas de Cartão</td>
+                                                  <td data-label="O que significa" className="py-2">O custo da taxa já foi apropriado na transação (descontado pela maquininha).</td>
                                                 </tr>
                                                 <tr>
-                                                  <td className="py-2 pr-3 font-semibold text-zinc-700 dark:text-zinc-300 whitespace-nowrap">Pendente / Pago</td>
-                                                  <td className="py-2 pr-3 text-zinc-500 whitespace-nowrap">Despesas</td>
-                                                  <td className="py-2">Contas a pagar com boleto/PIX registradas no financeiro.</td>
+                                                  <td data-label="Status" className="py-2 pr-3 font-semibold text-zinc-700 dark:text-zinc-300 whitespace-nowrap">Pendente / Pago</td>
+                                                  <td data-label="Onde aparece" className="py-2 pr-3 text-zinc-500 whitespace-nowrap">Despesas</td>
+                                                  <td data-label="O que significa" className="py-2">Contas a pagar com boleto/PIX registradas no financeiro.</td>
                                                 </tr>
                                               </tbody>
                                             </table>
@@ -3573,7 +3574,7 @@ export default function Relatorios() {
                       }
 
                       return (
-                        <table className="w-full text-xs text-left min-w-[1250px] border-collapse">
+                        <table className="mobile-record-table w-full text-xs text-left min-w-[1250px] border-collapse">
                           <thead className="bg-zinc-50 dark:bg-zinc-850 text-zinc-550 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 font-semibold uppercase tracking-wider text-[10px] sticky top-0 z-10">
                             <tr>
                               <th className="px-4 py-3">Data/Hora</th>
@@ -3594,10 +3595,10 @@ export default function Relatorios() {
                           <tbody className="divide-y divide-zinc-150 dark:divide-zinc-800 text-zinc-650 dark:text-zinc-300 font-medium">
                             {filtered.map((p) => (
                               <tr key={p.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors">
-                                <td className="px-4 py-3 whitespace-nowrap text-zinc-500 dark:text-zinc-450">
+                                <td data-label="Data/Hora" className="px-4 py-3 whitespace-nowrap text-zinc-500 dark:text-zinc-450">
                                   {formatAgendaDateTime(p.data_hora)}
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
+                                <td data-label="Tipo" className="px-4 py-3 whitespace-nowrap">
                                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                                     p.tipo === 'servico' 
                                       ? 'bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-800/30' 
@@ -3606,39 +3607,39 @@ export default function Relatorios() {
                                     {p.tipo === 'servico' ? 'Serviço' : 'Venda'}
                                   </span>
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap font-bold text-zinc-800 dark:text-zinc-100">
+                                <td data-label="Identificação" className="px-4 py-3 whitespace-nowrap font-bold text-zinc-800 dark:text-zinc-100">
                                   {p.numero}
                                 </td>
-                                <td className="px-4 py-3 max-w-[180px] truncate text-zinc-700 dark:text-zinc-350" title={p.cliente}>
+                                <td data-label="Cliente" className="px-4 py-3 max-w-[180px] truncate text-zinc-700 dark:text-zinc-350" title={p.cliente}>
                                   {p.cliente}
                                 </td>
-                                <td className="px-4 py-3 max-w-[200px] truncate text-zinc-600 dark:text-zinc-400" title={p.itens}>
+                                <td data-label="Item (Serviço/Produto)" className="px-4 py-3 max-w-[200px] truncate text-zinc-600 dark:text-zinc-400" title={p.itens}>
                                   {p.itens}
                                 </td>
-                                <td className="px-4 py-3 max-w-[200px] truncate text-zinc-750 dark:text-zinc-300" title={p.profissional}>
+                                <td data-label="Profissional" className="px-4 py-3 max-w-[200px] truncate text-zinc-750 dark:text-zinc-300" title={p.profissional}>
                                   {p.profissional || '-'}
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-zinc-500 dark:text-zinc-450">
+                                <td data-label="Recebido Por" className="px-4 py-3 whitespace-nowrap text-zinc-500 dark:text-zinc-450">
                                   {p.usuario_recebimento || '-'}
                                 </td>
-                                <td className="px-4 py-3 text-center whitespace-nowrap">
+                                <td data-label="Forma" className="px-4 py-3 text-center whitespace-nowrap">
                                   <span className="px-2 py-0.5 bg-zinc-100 border border-zinc-200 text-zinc-600 rounded text-[9px] uppercase font-bold dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300">
                                     {getFormaLabel(p.forma_pagamento)}
                                   </span>
                                 </td>
-                                <td className="px-4 py-3 text-right font-mono text-zinc-700 dark:text-zinc-350 whitespace-nowrap">
+                                <td data-label="Vl. Pago (Bruto)" className="px-4 py-3 text-right font-mono text-zinc-700 dark:text-zinc-350 whitespace-nowrap">
                                   {fmtBRL(p.valor_recebido || p.valor)}
                                 </td>
-                                <td className="px-4 py-3 text-right font-mono text-amber-600 dark:text-amber-500 whitespace-nowrap">
+                                <td data-label="Troco" className="px-4 py-3 text-right font-mono text-amber-600 dark:text-amber-500 whitespace-nowrap">
                                   {Number(p.troco) > 0 ? fmtBRL(p.troco) : "—"}
                                 </td>
-                                <td className="px-4 py-3 text-right font-mono font-bold text-[#3A4F4A] dark:text-[#EAF0EE] whitespace-nowrap">
+                                <td data-label="Vl. Líquido" className="px-4 py-3 text-right font-mono font-bold text-[#3A4F4A] dark:text-[#EAF0EE] whitespace-nowrap">
                                   {fmtBRL(p.valor)}
                                 </td>
-                                <td className="px-4 py-3 text-right font-mono text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                                <td data-label="Total Op." className="px-4 py-3 text-right font-mono text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
                                   {fmtBRL(p.valor_total_operacao || 0)}
                                 </td>
-                                <td className="px-4 py-3 text-center whitespace-nowrap">
+                                <td data-label="Status" className="px-4 py-3 text-center whitespace-nowrap">
                                   <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
                                     p.status_operacao === 'concluido' || p.status_operacao === 'pago'
                                       ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800/30'
@@ -3724,7 +3725,7 @@ export default function Relatorios() {
                   📊 Comparativo de Custos por Adquirente (Maquineta)
                 </h4>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left min-w-[550px]">
+                  <table className="mobile-record-table w-full text-xs text-left min-w-[550px]">
                     <thead>
                       <tr className="border-b border-zinc-100 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider">
                         <th className="pb-3 font-semibold">Adquirente</th>
@@ -3739,11 +3740,11 @@ export default function Relatorios() {
                         const custoMedio = adq.bruto > 0 ? ((adq.taxas / adq.bruto) * 100).toFixed(2) : "0.00";
                         return (
                           <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20 transition-colors">
-                            <td className="py-3.5 font-medium text-zinc-800 dark:text-zinc-200">{adq.adquirente}</td>
-                            <td className="py-3.5 text-right font-mono text-zinc-700 dark:text-zinc-300">{fmtBRL(adq.bruto)}</td>
-                            <td className="py-3.5 text-right font-mono text-rose-500 font-medium">-{fmtBRL(adq.taxas)}</td>
-                            <td className="py-3.5 text-right font-mono text-emerald-600 dark:text-emerald-400 font-semibold">{fmtBRL(adq.liquido)}</td>
-                            <td className="py-3.5 text-right font-mono font-medium text-zinc-500">{custoMedio}%</td>
+                            <td data-label="Adquirente" className="py-3.5 font-medium text-zinc-800 dark:text-zinc-200">{adq.adquirente}</td>
+                            <td data-label="Faturamento Bruto" className="py-3.5 text-right font-mono text-zinc-700 dark:text-zinc-300">{fmtBRL(adq.bruto)}</td>
+                            <td data-label="Taxas Pagas" className="py-3.5 text-right font-mono text-rose-500 font-medium">-{fmtBRL(adq.taxas)}</td>
+                            <td data-label="Recebimento Líquido" className="py-3.5 text-right font-mono text-emerald-600 dark:text-emerald-400 font-semibold">{fmtBRL(adq.liquido)}</td>
+                            <td data-label="Custo Médio %" className="py-3.5 text-right font-mono font-medium text-zinc-500">{custoMedio}%</td>
                           </tr>
                         );
                       })}
@@ -3763,7 +3764,7 @@ export default function Relatorios() {
                   💳 Extrato Analítico de Transações
                 </h4>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left min-w-[950px]">
+                  <table className="mobile-record-table w-full text-xs text-left min-w-[950px]">
                     <thead>
                       <tr className="border-b border-zinc-100 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider">
                         <th className="px-3 pb-3 font-semibold w-[140px]">Data / Hora</th>
@@ -3785,9 +3786,9 @@ export default function Relatorios() {
                         const dataPrev = t.data_recebimento_prevista ? formatAgendaDate(t.data_recebimento_prevista) : "-";
                         return (
                           <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-950/20 transition-colors">
-                            <td className="px-3 py-4 text-zinc-500 dark:text-zinc-400 font-mono whitespace-nowrap">{fmtDT(t.data_venda)}</td>
-                            <td className="px-3 py-4 text-zinc-500 dark:text-zinc-400 font-mono whitespace-nowrap">{t.origem_identificador || "—"}</td>
-                            <td className="px-3 py-4">
+                            <td data-label="Data / Hora" className="px-3 py-4 text-zinc-500 dark:text-zinc-400 font-mono whitespace-nowrap">{fmtDT(t.data_venda)}</td>
+                            <td data-label="Origem" className="px-3 py-4 text-zinc-500 dark:text-zinc-400 font-mono whitespace-nowrap">{t.origem_identificador || "—"}</td>
+                            <td data-label="Tipo" className="px-3 py-4">
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                                 t.tipo_cartao === 'credito' 
                                   ? 'bg-indigo-55 bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/20 dark:text-indigo-400' 
@@ -3796,7 +3797,7 @@ export default function Relatorios() {
                                 {t.tipo_cartao === 'credito' ? 'Crédito' : 'Débito'}
                               </span>
                             </td>
-                            <td className="px-3 py-4">
+                            <td data-label="Bandeira" className="px-3 py-4">
                               {t.bandeira ? (
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200">
                                   {t.bandeira}
@@ -3805,14 +3806,14 @@ export default function Relatorios() {
                                 <span className="text-zinc-400">—</span>
                               )}
                             </td>
-                            <td className="px-3 py-4 text-zinc-600 dark:text-zinc-300 font-medium whitespace-nowrap">{t.adquirente_nome}</td>
-                            <td className="px-3 py-4 font-medium text-zinc-850 dark:text-zinc-150 whitespace-nowrap">{t.forma_pagamento_label}</td>
-                            <td className="px-3 py-4 text-center font-mono text-zinc-650 dark:text-zinc-400">{t.parcelas ? `${t.parcelas}x` : "-"}</td>
-                            <td className="px-3 py-4 text-right font-mono text-zinc-500">{t.taxa_percentual !== null ? `${t.taxa_percentual}%` : "-"}</td>
-                            <td className="px-3 py-4 text-right font-mono font-semibold text-zinc-750 dark:text-zinc-200">{fmtBRL(t.valor_bruto)}</td>
-                            <td className="px-3 py-4 text-right font-mono text-rose-500 font-medium">-{fmtBRL(t.taxa_valor)}</td>
-                            <td className="px-3 py-4 text-right font-mono text-emerald-600 dark:text-emerald-400 font-bold">{fmtBRL(t.valor_liquido)}</td>
-                            <td className="px-3 py-4 text-right font-mono text-zinc-500">{dataPrev}</td>
+                            <td data-label="Adquirente" className="px-3 py-4 text-zinc-600 dark:text-zinc-300 font-medium whitespace-nowrap">{t.adquirente_nome}</td>
+                            <td data-label="Forma de Pagamento" className="px-3 py-4 font-medium text-zinc-850 dark:text-zinc-150 whitespace-nowrap">{t.forma_pagamento_label}</td>
+                            <td data-label="Parcelas" className="px-3 py-4 text-center font-mono text-zinc-650 dark:text-zinc-400">{t.parcelas ? `${t.parcelas}x` : "-"}</td>
+                            <td data-label="Taxa %" className="px-3 py-4 text-right font-mono text-zinc-500">{t.taxa_percentual !== null ? `${t.taxa_percentual}%` : "-"}</td>
+                            <td data-label="Valor Bruto" className="px-3 py-4 text-right font-mono font-semibold text-zinc-750 dark:text-zinc-200">{fmtBRL(t.valor_bruto)}</td>
+                            <td data-label="Taxa Cobrada" className="px-3 py-4 text-right font-mono text-rose-500 font-medium">-{fmtBRL(t.taxa_valor)}</td>
+                            <td data-label="Valor Líquido" className="px-3 py-4 text-right font-mono text-emerald-600 dark:text-emerald-400 font-bold">{fmtBRL(t.valor_liquido)}</td>
+                            <td data-label="Previsão Recebimento" className="px-3 py-4 text-right font-mono text-zinc-500">{dataPrev}</td>
                           </tr>
                         );
                       })}
@@ -5833,7 +5834,7 @@ export default function Relatorios() {
 
                     {/* Desktop View: Launch Table */}
                     <div className="hidden md:block overflow-x-auto border border-zinc-200 dark:border-zinc-800 rounded-xl max-h-[45vh] overflow-y-auto shadow-sm">
-                      <table className="w-full text-xs text-left border-collapse min-w-[850px]">
+                      <table className="mobile-record-table w-full text-xs text-left border-collapse min-w-[850px]">
                         <thead className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-[10px] uppercase font-bold text-zinc-500 tracking-wider">
                           <tr>
                             <th className="px-4 py-3">Data</th>
@@ -5854,39 +5855,39 @@ export default function Relatorios() {
                             const l_margem = launch.faturamento > 0 ? ((launch.resultado_operacional / launch.faturamento) * 100) : 0;
                             return (
                               <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
-                                <td className="px-4 py-3 whitespace-nowrap text-zinc-500 font-mono">
+                                <td data-label="Data" className="px-4 py-3 whitespace-nowrap text-zinc-500 font-mono">
                                   {launch.data ? formatAgendaDate(launch.data) : '-'}
                                 </td>
-                                <td className="px-4 py-3 font-semibold text-zinc-800 dark:text-zinc-150">
+                                <td data-label="Nº Venda/Agendamento" className="px-4 py-3 font-semibold text-zinc-800 dark:text-zinc-150">
                                   {launch.numero || '-'}
                                 </td>
-                                <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300 truncate max-w-[120px]" title={launch.cliente}>
+                                <td data-label="Cliente" className="px-4 py-3 text-zinc-700 dark:text-zinc-300 truncate max-w-[120px]" title={launch.cliente}>
                                   {launch.cliente}
                                 </td>
-                                <td className="px-4 py-3 text-zinc-650 dark:text-zinc-350 truncate max-w-[120px]" title={launch.profissional}>
+                                <td data-label="Profissional" className="px-4 py-3 text-zinc-650 dark:text-zinc-350 truncate max-w-[120px]" title={launch.profissional}>
                                   {launch.profissional}
                                 </td>
                                 {detailType === 'produto' && (
-                                  <td className="px-4 py-3 text-center font-mono font-semibold text-zinc-700 dark:text-zinc-300">
+                                  <td data-label="Qtd" className="px-4 py-3 text-center font-mono font-semibold text-zinc-700 dark:text-zinc-300">
                                     {(launch.quantidade || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 })}
                                   </td>
                                 )}
-                                <td className="px-4 py-3 text-right font-mono font-semibold text-zinc-800 dark:text-zinc-100">
+                                <td data-label="Faturamento" className="px-4 py-3 text-right font-mono font-semibold text-zinc-800 dark:text-zinc-100">
                                   {fmtBRL(launch.faturamento)}
                                 </td>
-                                <td className="px-4 py-3 text-right font-mono text-rose-500">
+                                <td data-label="Ações" className="px-4 py-3 text-right font-mono text-rose-500">
                                   {fmtBRL(detailType === 'servico' ? launch.insumos : launch.cmv)}
                                 </td>
-                                <td className="px-4 py-3 text-right font-mono text-amber-600">
+                                <td data-label="Comissão" className="px-4 py-3 text-right font-mono text-amber-600">
                                   {fmtBRL(launch.comissao)}
                                 </td>
-                                <td className="px-4 py-3 text-right font-mono text-amber-700">
+                                <td data-label="Taxas" className="px-4 py-3 text-right font-mono text-amber-700">
                                   {fmtBRL(launch.taxas)}
                                 </td>
-                                <td className={`px-4 py-3 text-right font-mono font-bold ${launch.resultado_operacional >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                <td data-label="Resultado" className={`px-4 py-3 text-right font-mono font-bold ${launch.resultado_operacional >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                   {fmtBRL(launch.resultado_operacional)}
                                 </td>
-                                <td className="px-4 py-3 text-center font-mono">
+                                <td data-label="Margem" className="px-4 py-3 text-center font-mono">
                                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                     l_margem >= (detailType === 'servico' ? 50 : 40)
                                       ? 'bg-emerald-50 text-emerald-600'
@@ -5957,7 +5958,7 @@ export default function Relatorios() {
                   </div>
                 ) : (
                   <div className="overflow-x-auto border border-zinc-200 dark:border-zinc-800 rounded-xl max-h-[45vh] overflow-y-auto shadow-sm">
-                    <table className="w-full text-xs text-left border-collapse min-w-[750px]">
+                    <table className="mobile-record-table w-full text-xs text-left border-collapse min-w-[750px]">
                       <thead className="bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-[10px] uppercase font-bold text-zinc-500 tracking-wider">
                         <tr>
                           <th className="px-4 py-3">Data</th>
@@ -5971,22 +5972,22 @@ export default function Relatorios() {
                       <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 font-medium">
                         {(selectedConsumoItem.launches || []).map((launch, idx) => (
                           <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30">
-                            <td className="px-4 py-3 whitespace-nowrap text-zinc-500 font-mono">
+                            <td data-label="Data" className="px-4 py-3 whitespace-nowrap text-zinc-500 font-mono">
                               {launch.data ? formatAgendaDateTime(launch.data) : '-'}
                             </td>
-                            <td className="px-4 py-3 text-zinc-800 dark:text-zinc-150 font-mono">
+                            <td data-label="Atendimento" className="px-4 py-3 text-zinc-800 dark:text-zinc-150 font-mono">
                               {launch.agendamento_numero ? String(launch.agendamento_numero).padStart(6, '0') + ' | S' : '-'}
                             </td>
-                            <td className="px-4 py-3 text-zinc-800 dark:text-zinc-150 font-semibold">
+                            <td data-label="Serviço" className="px-4 py-3 text-zinc-800 dark:text-zinc-150 font-semibold">
                               {launch.servico_nome || '-'}
                             </td>
-                            <td className="px-4 py-3 text-center font-mono text-zinc-700 dark:text-zinc-300">
+                            <td data-label="Quantidade Consumida" className="px-4 py-3 text-center font-mono text-zinc-700 dark:text-zinc-300">
                               {formatReportQuantidade(launch.quantidade, launch)}
                             </td>
-                            <td className="px-4 py-3 text-right font-mono text-zinc-650 dark:text-zinc-350">
+                            <td data-label="Valor Unitário" className="px-4 py-3 text-right font-mono text-zinc-650 dark:text-zinc-350">
                               {fmtBRL(launch.custo_unitario)}
                             </td>
-                            <td className="px-4 py-3 text-right font-mono font-bold text-zinc-800 dark:text-zinc-100">
+                            <td data-label="Valor Total" className="px-4 py-3 text-right font-mono font-bold text-zinc-800 dark:text-zinc-100">
                               {fmtBRL(launch.custo_total || launch.valor_total_custo)}
                             </td>
                           </tr>

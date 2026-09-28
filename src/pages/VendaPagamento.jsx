@@ -1,3 +1,4 @@
+import SearchableSelect from "../components/SearchableSelect";
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import http from "../api";
@@ -863,16 +864,21 @@ export default function VendaPagamento() {
                     </div>
                     <div className={formaSpan}>
                       <Label className="text-xs sm:text-sm text-zinc-650 dark:text-zinc-400 font-medium">Forma *</Label>
-                      <Select value={p.forma_pagamento} onValueChange={(val) => {
-                        updateLine(i, "forma_pagamento", val);
-                      }} disabled={!temPermissaoPagamento}>
-                        <SelectTrigger data-testid={`vpay-forma-${i}`} className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1.5 h-9 text-xs" disabled={!temPermissaoPagamento}><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {(trabalharCredito && v?.cliente_id 
-                            ? [...getFormasDisponiveis(), { v: "credito_cliente", l: `Crédito do Cliente (Saldo: ${fmtBRL(clienteSaldo)})` }]
-                            : getFormasDisponiveis()).map((f) => <SelectItem key={f.v} value={f.v} className="text-xs">{f.l}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                      value={p.forma_pagamento}
+                      onValueChange={(val) => {
+                      updateLine(i, "forma_pagamento", val);
+                      }}
+                      disabled={!temPermissaoPagamento}
+                      triggerTestId={`vpay-forma-${i}`}
+                      className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1.5 h-9 text-xs"
+                      searchPlaceholder="Pesquisar forma de pagamento..."
+                      emptyText="Nenhuma forma de pagamento encontrada."
+                      contentClassName="max-sm:[&_input]:text-base max-sm:[&_input]:min-h-11 max-sm:[&_button]:min-h-11 max-sm:[&_button>span]:whitespace-normal"
+                      options={(trabalharCredito && v?.cliente_id
+                      ? [...getFormasDisponiveis(), { v: "credito_cliente", l: `Crédito do Cliente (Saldo: ${fmtBRL(clienteSaldo)})` }]
+                      : getFormasDisponiveis()).map((f) => ({ value: f.v, label: f.l }))}
+                      />
                     </div>
 
 
@@ -1154,22 +1160,25 @@ export default function VendaPagamento() {
               </div>
               <div>
                 <Label>Forma de pagamento</Label>
-                <Select value={editingPayment.forma_pagamento} onValueChange={(v) => {
-                  const newEditPay = { ...editingPayment, forma_pagamento: v };
-                  if (!isCredito(v)) {
-                    newEditPay.parcelas = 1;
-                  } else if (!hasAdquirenteRates()) {
-                    newEditPay.parcelas = 1;
-                  }
-                  setEditingPayment(newEditPay);
-                }}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {(trabalharCredito && v?.cliente_id 
+                <SearchableSelect
+                      value={editingPayment.forma_pagamento}
+                      onValueChange={(v) => {
+                      const newEditPay = { ...editingPayment, forma_pagamento: v };
+                      if (!isCredito(v)) {
+                      newEditPay.parcelas = 1;
+                      } else if (!hasAdquirenteRates()) {
+                      newEditPay.parcelas = 1;
+                      }
+                      setEditingPayment(newEditPay);
+                      }}
+
+                      searchPlaceholder="Pesquisar forma de pagamento..."
+                      emptyText="Nenhuma forma de pagamento encontrada."
+                      contentClassName="max-sm:[&_input]:text-base max-sm:[&_input]:min-h-11 max-sm:[&_button]:min-h-11 max-sm:[&_button>span]:whitespace-normal"
+                      options={(trabalharCredito && v?.cliente_id
                       ? [...getFormasDisponiveis(), { v: "credito_cliente", l: `Crédito do Cliente (Saldo: ${fmtBRL(clienteSaldo)})` }]
-                      : getFormasDisponiveis()).map((f) => <SelectItem key={f.v} value={f.v}>{f.l}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                      : getFormasDisponiveis()).map((f) => ({ value: f.v, label: f.l }))}
+                      />
               </div>
               {isCredito(editingPayment.forma_pagamento) && (
                 <div>

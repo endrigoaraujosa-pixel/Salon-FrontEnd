@@ -1,3 +1,4 @@
+import '../styles/mobile-records.css';
 import React, { useEffect, useState } from "react";
 import { FotosAtendimento, AlbumCliente } from '../components/AtendimentoFotos';
 import { useParams, useNavigate } from "react-router-dom";
@@ -218,7 +219,7 @@ export default function ClienteHistorico() {
   };
 
   return (
-    <div className="p-3 sm:p-6 lg:p-8 fade-in max-w-5xl mx-auto w-full">
+    <div className="mobile-layout p-3 sm:p-6 lg:p-8 fade-in max-w-5xl mx-auto w-full">
       <Button variant="ghost" onClick={() => nav(-1)} className="mb-6 hover:bg-zinc-100 dark:hover:bg-zinc-900/60 dark:text-zinc-300">
         <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
       </Button>
@@ -357,8 +358,17 @@ export default function ClienteHistorico() {
                 <div key={day.date} className="transition-all duration-200">
                   {/* Linha do Dia Clicável */}
                   <div 
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={isExpanded}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        toggleDay(day.date);
+                      }
+                    }}
                     onClick={() => toggleDay(day.date)}
-                    className="px-4 sm:px-6 py-4 flex items-center justify-between gap-4 cursor-pointer select-none hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40 transition-colors"
+                    className="px-3 sm:px-6 py-3 sm:py-4 flex flex-wrap items-center justify-between gap-3 cursor-pointer select-none hover:bg-zinc-50/50 dark:hover:bg-zinc-900/40 transition-colors"
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="bg-[#84A59D]/10 dark:bg-[#84A59D]/5 p-2 rounded-xl text-[#84A59D] shrink-0">
@@ -414,7 +424,7 @@ export default function ClienteHistorico() {
 
                   {/* Detalhes Expandidos do Dia */}
                   {isExpanded && (
-                    <div className="px-4 sm:px-6 py-5 bg-zinc-50/30 dark:bg-zinc-900/10 border-t border-zinc-100 dark:border-zinc-800 space-y-6">
+                    <div className="px-3 sm:px-6 py-3 sm:py-5 bg-zinc-50/30 dark:bg-zinc-900/10 border-t border-zinc-100 dark:border-zinc-800 space-y-6">
                       {/* Tabela de Serviços */}
                       {day.agendamentos.length > 0 && (
                         <div className="space-y-2">
@@ -527,7 +537,7 @@ export default function ClienteHistorico() {
                                   setSelectedAgendamento(a);
                                   setDetailModalOpen(true);
                                 }}
-                                className="p-4 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl space-y-3 cursor-pointer active:bg-zinc-50 dark:active:bg-zinc-900 transition-colors shadow-sm"
+                                className="p-3 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl space-y-2 cursor-pointer active:bg-zinc-50 dark:active:bg-zinc-900 transition-colors shadow-sm"
                               >
                                 <div className="flex items-center justify-between text-xs text-zinc-400 dark:text-zinc-500 font-mono">
                                   <span>{a.numero ? `#${String(a.numero).padStart(6, '0')} | S` : "-"}</span>
@@ -535,7 +545,7 @@ export default function ClienteHistorico() {
                                 </div>
                                 
                                 <div className="space-y-1">
-                                  <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 leading-tight">
+                                  <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 leading-snug line-clamp-2">
                                     {a.itens?.map((i) => i.nome).join(", ")}
                                   </div>
                                   <div className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -724,7 +734,7 @@ export default function ClienteHistorico() {
                                   </div>
 
                                   <div className="space-y-1">
-                                    <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 leading-tight">
+                                    <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-100 leading-snug line-clamp-2">
                                       {item.produto_nome}
                                     </div>
                                     <div className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
