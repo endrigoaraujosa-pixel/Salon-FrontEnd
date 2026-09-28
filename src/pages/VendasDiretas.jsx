@@ -737,6 +737,58 @@ export default function VendasDiretas() {
                     Adicionar Itens
                   </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                    <div className="min-w-0 space-y-1.5 md:col-span-4">
+                      <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold">Categoria (Filtro)</Label>
+                      <SearchableSelect
+                        placeholder="Todas"
+                        searchPlaceholder="Pesquisar categoria..."
+                        options={[
+                          { value: "all", label: "Todas" },
+                          { value: "none", label: "Sem categoria" },
+                          ...categorias
+                            .filter(c => c.tipo && ["produto", "ambos"].includes(c.tipo.toLowerCase()))
+                            .map(c => ({ value: c.id, label: c.nome }))
+                        ]}
+                        value={selectedAddCategory}
+                        onValueChange={(val) => {
+                          setSelectedAddCategory(val);
+                          setForm({ ...form, produto_id: "" });
+                        }}
+                      />
+                    </div>
+
+                    <div className="min-w-0 space-y-1.5 md:col-span-8">
+                      <Label className="text-xs text-zinc-700 dark:text-zinc-300 font-bold">Pesquisar Produto (F2) *</Label>
+                      <SearchableSelect
+                        placeholder="Selecione o produto..."
+                        searchPlaceholder="Pesquisar produto pelo nome..."
+                        triggerTestId="venda-produto"
+                        options={produtos
+                          .filter(p => {
+                            if (p.uso_exclusivo_servicos) return false;
+                            const matchesCategory =
+                              selectedAddCategory === "all" ||
+                              (selectedAddCategory === "none" && !p.categoria_id) ||
+                              p.categoria_id === selectedAddCategory;
+                            return matchesCategory;
+                          })
+                          .map(p => {
+                            const qtyPerUnit = Number(p.quantidade_por_unidade || 0);
+                            const qtyStr = qtyPerUnit > 0
+                              ? `${Number((p.quantidade_estoque / qtyPerUnit).toFixed(2))} ${p.unidade_medida || "un"} (${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida_insumo || "un"})`
+                              : `${Number(p.quantidade_estoque.toFixed(3))} ${p.unidade_medida || "un"}`;
+                            return {
+                              value: p.id,
+                              label: `${p.nome} — ${fmtBRL(p.preco_venda)} (Estoque: ${qtyStr})`
+                            };
+                          })}
+                        value={form.produto_id}
+                        onValueChange={(val) => setForm({ ...form, produto_id: val })}
+                      />
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-12 gap-3 items-end">
                     {/* Qtd */}
                     <div className={cn(
