@@ -117,6 +117,15 @@ const REPORTS_LIST = [
     iconColor: "text-amber-500"
   },
   {
+    id: "faturamento_diario",
+    title: "Faturamento Diário",
+    description: "Resumo por dia da agenda com clientes atendidos, valores de serviços e produtos e ticket médio.",
+    icon: Calendar,
+    category: "Vendas",
+    badgeColor: "bg-amber-50 text-amber-700 border-amber-250 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/40",
+    iconColor: "text-amber-500"
+  },
+  {
     id: "agendamentos_cancelados",
     title: "Agendamentos Cancelados",
     description: "Consulta detalhada dos agendamentos cancelados, incluindo motivo do cancelamento, usuário responsável e data/hora do cancelamento.",
@@ -290,6 +299,7 @@ const getReportPermKey = (tab) => {
   if (tab === "caixa") return "relatorios.caixa";
   if (tab === "cartoes") return "relatorios.cartoes";
   if (tab === "produtos" || tab === "servicos") return "relatorios.vendas";
+  if (tab === "faturamento_diario") return "relatorios.vendas";
   if (tab === "agendamentos_cancelados") return "relatorios.cancelados";
   if (["resultado_consolidado", "rentabilidade_servicos", "rentabilidade_produtos", "analitico_vendas"].includes(tab)) return "relatorios.operacional";
   if (tab.startsWith("estoque")) return "relatorios.estoque";
@@ -308,6 +318,7 @@ export default function Relatorios() {
   const [servicos, setServicos] = useState(null);
   const [cartoes, setCartoes] = useState(null);
   const [cancelados, setCancelados] = useState(null);
+  const [faturamentoDiario, setFaturamentoDiario] = useState(null);
   
   const [adquirentesList, setAdquirentesList] = useState([]);
   const [formasCartaoList, setFormasCartaoList] = useState([]);
@@ -670,6 +681,17 @@ export default function Relatorios() {
             toast.error("Erro ao carregar o relatório de agendamentos cancelados.");
           }
           setCancelados([]);
+        });
+    }
+    if (tab === "faturamento_diario") {
+      promise = http.get("/relatorios/faturamento-diario", { params })
+        .then((r) => setFaturamentoDiario(r.data))
+        .catch((err) => {
+          setReportError("Não foi possível carregar o relatório. Tente novamente.");
+          console.error("Faturamento diário error:", err);
+          if (err.response?.status === 403) toast.error("Acesso negado: Você não tem permissão para visualizar o relatório de faturamento diário.");
+          else toast.error("Erro ao carregar o relatório de faturamento diário.");
+          setFaturamentoDiario({ dias: [], totais: { frequencia: 0, valor_servicos: 0, valor_produtos: 0, total: 0, media: 0 } });
         });
     }
     if (["resultado_consolidado", "rentabilidade_servicos", "rentabilidade_produtos", "analitico_vendas"].includes(tab)) {
@@ -3418,6 +3440,58 @@ export default function Relatorios() {
           )}
         </TabsContent>
 
+        <TabsContent value="faturamento_diario">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm overflow-hidden print-full-width">
+            <div className="flex items-center justify-between gap-3 p-4 sm:p-5 border-b border-zinc-100 dark:border-zinc-800">
+              <div>
+                <h2 className="font-semibold text-zinc-800 dark:text-zinc-100">Resumo por dia</h2>
+                <p className="text-xs text-zinc-500 mt-1">Frequência conta clientes distintos com atendimento concluído no dia.</p>
+              </div>
+              <Button onClick={() => window.print()} variant="outline" size="sm" className="h-8 text-xs no-print"><Printer className="w-4 h-4 mr-1.5" /> Exportar PDF</Button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-[#DCE8EB] dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-semibold">Data</th>
+                    <th className="px-4 py-3 text-left font-semibold">Dia</th>
+                    <th className="px-4 py-3 text-right font-semibold">Frequência</th>
+                    <th className="px-4 py-3 text-right font-semibold">Serviços</th>
+                    <th className="px-4 py-3 text-right font-semibold">Produtos</th>
+                    <th className="px-4 py-3 text-right font-semibold">Total</th>
+                    <th className="px-4 py-3 text-right font-semibold">Média</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                  {(faturamentoDiario?.dias || []).map((dia) => {
+                    const date = new Date(`${dia.data}T12:00:00Z`);
+                    const weekday = new Intl.DateTimeFormat("pt-BR", { weekday: "long", timeZone: "America/Recife" }).format(date);
+                    return <tr key={dia.data} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                      <td className="px-4 py-2.5 whitespace-nowrap">{formatAgendaDate(dia.data)}</td>
+                      <td className="px-4 py-2.5 capitalize">{weekday}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">{dia.frequencia}</td>
+                      <td className="px-4 py-2.5 text-right font-mono whitespace-nowrap">{fmtBRL(dia.valor_servicos)}</td>
+                      <td className="px-4 py-2.5 text-right font-mono whitespace-nowrap">{fmtBRL(dia.valor_produtos)}</td>
+                      <td className="px-4 py-2.5 text-right font-mono font-semibold whitespace-nowrap">{fmtBRL(dia.total)}</td>
+                      <td className="px-4 py-2.5 text-right font-mono whitespace-nowrap">{fmtBRL(dia.media)}</td>
+                    </tr>;
+                  })}
+                </tbody>
+                <tfoot className="bg-[#DCE8EB] dark:bg-zinc-800 font-semibold">
+                  <tr>
+                    <td className="px-4 py-3" colSpan={2}>Total do período</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{faturamentoDiario?.totais?.frequencia || 0}</td>
+                    <td className="px-4 py-3 text-right font-mono whitespace-nowrap">{fmtBRL(faturamentoDiario?.totais?.valor_servicos)}</td>
+                    <td className="px-4 py-3 text-right font-mono whitespace-nowrap">{fmtBRL(faturamentoDiario?.totais?.valor_produtos)}</td>
+                    <td className="px-4 py-3 text-right font-mono whitespace-nowrap">{fmtBRL(faturamentoDiario?.totais?.total)}</td>
+                    <td className="px-4 py-3 text-right font-mono whitespace-nowrap">{fmtBRL(faturamentoDiario?.totais?.media)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </TabsContent>
+
         <TabsContent value="caixa">
           {!caixa ? <div className="text-zinc-400 p-8 text-center">Carregando...</div> : (
             <div className="space-y-4 sm:space-y-6">
@@ -6045,6 +6119,19 @@ const HelpSection = ({ title, children }) => (
 
 const renderHelpContent = (reportId) => {
   switch (reportId) {
+    case "faturamento_diario":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Apresenta o movimento por dia da agenda, com quantidade de clientes atendidos, valores de serviços e produtos e ticket médio.</p>
+          </HelpSection>
+          <HelpSection title="Como é calculado">
+            <p><strong>Frequência:</strong> clientes distintos com atendimento concluído no dia. Um mesmo cliente com mais de um atendimento no dia conta uma vez.</p>
+            <p><strong>Total:</strong> valor registrado em serviços concluídos somado às vendas de produtos realizadas no dia.</p>
+            <p><strong>Média:</strong> total do dia dividido pela frequência. O total do período soma as frequências diárias; a média do período é o total do período dividido por essa soma.</p>
+          </HelpSection>
+        </div>
+      );
     case "dre":
       return (
         <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
