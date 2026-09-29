@@ -83,7 +83,7 @@ const REPORTS_LIST = [
   {
     id: "caixa",
     title: "Caixa",
-    description: "Detalhamento de fluxo de caixa por profissional, com visualização por forma de pagamento recebida no período.",
+    description: "Conferência dos pagamentos por forma, período da operação, usuário que recebeu e profissional associado.",
     icon: Banknote,
     category: "Financeiro",
     badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-250 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/40",
@@ -390,6 +390,23 @@ export default function Relatorios() {
   const [drilldownData, setDrilldownData] = useState([]);
   const isCardDrilldown = drilldownTitle.includes("Taxas de Cartão");
 
+  const getCaixaDetailsFiltered = () => (caixa?.pagamentos || [])
+    .filter(p => {
+      if (detailsForma === 'cartao_credito') return p.forma_pagamento === 'cartao_credito' || p.cartao_tipo === 'credito';
+      if (detailsForma === 'cartao_debito') return p.forma_pagamento === 'cartao_debito' || p.cartao_tipo === 'debito';
+      return p.forma_pagamento === detailsForma;
+    })
+    .filter(p => {
+      if (!detailsSearchQuery) return true;
+      const q = detailsSearchQuery.toLocaleLowerCase('pt-BR');
+      const searchable = [
+        p.numero, p.cliente, p.itens, p.profissional, p.usuario_recebimento,
+        p.tipo === 'servico' ? 'serviço servico' : p.tipo === 'venda' ? 'venda produto' : 'outro',
+        p.status_operacao === 'concluido' ? 'concluido concluído' : p.status_operacao === 'pago' ? 'pago concluido concluído' : p.status_operacao
+      ].filter(Boolean).join(' ').toLocaleLowerCase('pt-BR');
+      return searchable.includes(q);
+    });
+
   // Rentabilidade individual detail states
   const [rentabilidadeDetailOpen, setRentabilidadeDetailOpen] = useState(false);
   const [selectedDetailItem, setSelectedDetailItem] = useState(null);
@@ -447,6 +464,11 @@ export default function Relatorios() {
   const [filterClienteServico, setFilterClienteServico] = useState("todos");
   const [filterStatusServico, setFilterStatusServico] = useState("todos");
   const [filterClienteCancelados, setFilterClienteCancelados] = useState("todos");
+  const [filterCaixaRecebedor, setFilterCaixaRecebedor] = useState("todos");
+  const [filterCaixaForma, setFilterCaixaForma] = useState("todos");
+  const [filterCaixaOrigem, setFilterCaixaOrigem] = useState("todos");
+  const [filterCaixaCliente, setFilterCaixaCliente] = useState("todos");
+  const [filterCaixaStatus, setFilterCaixaStatus] = useState("todos");
 
   // Busca e Ordenação
   const [searchQuery, setSearchQuery] = useState("");
@@ -564,7 +586,15 @@ export default function Relatorios() {
         });
     }
     if (tab === "caixa") {
-      const caixaParams = { ...params, colaborador_id: colaboradorId };
+      const caixaParams = {
+        ...params,
+        colaborador_id: colaboradorId,
+        recebido_por_id: filterCaixaRecebedor,
+        forma_pagamento: filterCaixaForma,
+        origem: filterCaixaOrigem,
+        cliente_id: filterCaixaCliente,
+        status: filterCaixaStatus
+      };
       promise = http.get("/relatorios/caixa", { params: caixaParams })
         .then((r) => setCaixa(r.data))
         .catch((err) => {
@@ -943,7 +973,7 @@ export default function Relatorios() {
     setMobileFiltersOpen(false);
     setEstoquePage(1);
     setGeneratedFilters({
-      from, to, colaboradorId,
+      from, to, colaboradorId, filterCaixaRecebedor, filterCaixaForma, filterCaixaOrigem, filterCaixaCliente, filterCaixaStatus,
       filterColaborador, filterProduto, filterCategoria, filterFormaPagamento, filterCliente, filterStatus,
       filterColaboradorServico, filterServico, filterFormaPagamentoServico, filterClienteServico, filterStatusServico,
       filterDreCategory, filterDreStatus,
@@ -962,7 +992,14 @@ export default function Relatorios() {
   const hasChanges = generatedFilters && (
     generatedFilters.from !== from ||
     generatedFilters.to !== to ||
-    (tab === "caixa" && generatedFilters.colaboradorId !== colaboradorId) ||
+    (tab === "caixa" && (
+      generatedFilters.colaboradorId !== colaboradorId ||
+      generatedFilters.filterCaixaRecebedor !== filterCaixaRecebedor ||
+      generatedFilters.filterCaixaForma !== filterCaixaForma ||
+      generatedFilters.filterCaixaOrigem !== filterCaixaOrigem ||
+      generatedFilters.filterCaixaCliente !== filterCaixaCliente ||
+      generatedFilters.filterCaixaStatus !== filterCaixaStatus
+    )) ||
     (tab === "dre" && (generatedFilters.filterDreCategory !== filterDreCategory || generatedFilters.filterDreStatus !== filterDreStatus)) ||
     (tab === "produtos" && (
       generatedFilters.filterColaborador !== filterColaborador ||
@@ -2416,18 +2453,84 @@ export default function Relatorios() {
 
             {/* Specific Filters Row */}
             {tab === "caixa" && (
-              <div className="w-full md:max-w-xs mt-4">
-                <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Profissional</Label>
-                <SearchableSelect
-                  placeholder="Todos os usuários"
-                  searchPlaceholder="Pesquisar profissional..."
-                  options={[
-                    { value: "todos", label: "Todos os usuários" },
-                    ...colaboradores.map((c) => ({ value: c.id, label: c.nome }))
-                  ]}
-                  value={colaboradorId}
-                  onValueChange={setColaboradorId}
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4 border-t border-zinc-100 dark:border-zinc-800 pt-4">
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Recebido por</Label>
+                  <SearchableSelect
+                    placeholder="Todos os usuários"
+                    searchPlaceholder="Pesquisar usuário..."
+                    options={[
+                      { value: "todos", label: "Todos os usuários" },
+                      ...(caixa?.usuarios_recebimento || []).map((u) => ({ value: u.id, label: u.nome }))
+                    ]}
+                    value={filterCaixaRecebedor}
+                    onValueChange={setFilterCaixaRecebedor}
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Profissional</Label>
+                  <SearchableSelect
+                    placeholder="Todos os profissionais"
+                    searchPlaceholder="Pesquisar profissional..."
+                    options={[
+                      { value: "todos", label: "Todos os profissionais" },
+                      ...colaboradores.map((c) => ({ value: c.id, label: c.nome }))
+                    ]}
+                    value={colaboradorId}
+                    onValueChange={setColaboradorId}
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Forma de pagamento</Label>
+                  <SearchableSelect
+                    placeholder="Todas as formas"
+                    searchPlaceholder="Pesquisar forma de pagamento..."
+                    options={[
+                      { value: "todos", label: "Todas as formas" },
+                      ...getFilterPaymentOptions().map((option) => ({ value: option.v, label: option.l }))
+                    ]}
+                    value={filterCaixaForma}
+                    onValueChange={setFilterCaixaForma}
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Origem</Label>
+                  <Select value={filterCaixaOrigem} onValueChange={setFilterCaixaOrigem}>
+                    <SelectTrigger className="bg-white dark:bg-zinc-900 h-9 text-xs"><SelectValue placeholder="Todas" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todas as origens</SelectItem>
+                      <SelectItem value="servico">Serviços</SelectItem>
+                      <SelectItem value="venda">Vendas de produtos</SelectItem>
+                      <SelectItem value="outro">Sem vínculo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Cliente</Label>
+                  <SearchableSelect
+                    placeholder="Todos os clientes"
+                    searchPlaceholder="Pesquisar cliente..."
+                    options={[{ value: "todos", label: "Todos os clientes" }, ...clientesList.map((c) => ({ value: c.id, label: c.nome }))]}
+                    value={filterCaixaCliente}
+                    onValueChange={setFilterCaixaCliente}
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase font-bold text-zinc-450 tracking-wider">Status da operação</Label>
+                  <Select value={filterCaixaStatus} onValueChange={setFilterCaixaStatus}>
+                    <SelectTrigger className="bg-white dark:bg-zinc-900 h-9 text-xs"><SelectValue placeholder="Todos" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os status</SelectItem>
+                      <SelectItem value="concluido">Concluído</SelectItem>
+                      <SelectItem value="agendado">Agendado</SelectItem>
+                      <SelectItem value="pendente">Pendente</SelectItem>
+                      <SelectItem value="cancelado">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="sm:col-span-2 lg:col-span-3 text-[11px] text-zinc-500 dark:text-zinc-400">
+                  O período usa a data do agendamento para serviços e a data da venda para produtos. A data do lançamento do pagamento aparece separadamente nos detalhes.
+                </p>
               </div>
             )}
 
@@ -3498,9 +3601,9 @@ export default function Relatorios() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 sm:p-5 shadow-sm flex items-center justify-between">
                   <div>
-                    <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 font-bold">Total Pago (Bruto)</div>
+                    <div className="text-[10px] sm:text-xs uppercase tracking-wider text-zinc-400 font-bold">Total recebido</div>
                     <div className="font-display text-xl sm:text-2xl lg:text-3xl font-black mt-1 text-zinc-800 dark:text-zinc-100">{fmtBRL(caixa.totais.bruto || (caixa.totais.geral + (caixa.totais.troco || 0)))}</div>
-                    <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">{caixa.total_pagamentos} pagamentos registrados</div>
+                    <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">Valor informado nos {caixa.total_pagamentos} pagamentos, antes do troco</div>
                   </div>
                   <div className="bg-zinc-50 dark:bg-zinc-800 p-2.5 sm:p-3 rounded-full">
                     <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-zinc-500 dark:text-zinc-400" />
@@ -3520,9 +3623,9 @@ export default function Relatorios() {
 
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 sm:p-5 shadow-sm flex items-center justify-between border-l-4 border-l-[#84A59D]">
                   <div>
-                    <div className="text-[10px] sm:text-xs uppercase tracking-wider text-[#84A59D] font-bold">Total Líquido (No Caixa)</div>
+                    <div className="text-[10px] sm:text-xs uppercase tracking-wider text-[#84A59D] font-bold">Valor considerado no caixa</div>
                     <div className="font-display text-xl sm:text-2xl lg:text-3xl font-black mt-1 text-[#3A4F4A] dark:text-[#EAF0EE]">{fmtBRL(caixa.totais.geral)}</div>
-                    <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">Saldo real líquido</div>
+                    <div className="text-[10px] sm:text-xs text-zinc-500 mt-1">Após troco e crédito gerado; sem descontar taxas de cartão</div>
                   </div>
                   <div className="bg-[#84A59D]/10 p-2.5 sm:p-3 rounded-full">
                     <Coins className="w-5 h-5 sm:w-6 sm:h-6 text-[#84A59D]" />
@@ -3548,57 +3651,38 @@ export default function Relatorios() {
 
               {/* Modal de Detalhes do Caixa */}
               <Dialog open={!!detailsForma} onOpenChange={(open) => { if (!open) setDetailsForma(null); }}>
-                <DialogContent className="w-[95vw] sm:w-[92vw] md:w-[90vw] lg:w-[85vw] xl:w-[80vw] max-w-[1400px] h-[90vh] max-h-[90vh] flex flex-col p-4 sm:p-6 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
-                  <DialogHeader className="pb-4 border-b border-zinc-150 dark:border-zinc-800">
-                    <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl font-semibold text-[#3A4F4A] dark:text-[#EAF0EE]">
+                <DialogContent className="w-[calc(100vw-1rem)] sm:w-[92vw] xl:w-[94vw] max-w-[1500px] h-[92dvh] max-h-[92dvh] flex flex-col gap-0 overflow-hidden p-0 sm:p-5 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+                  <DialogHeader className="shrink-0 p-4 pb-3 sm:p-0 sm:pb-4 border-b border-zinc-150 dark:border-zinc-800">
+                    <DialogTitle className="flex items-center gap-2 text-xl sm:text-2xl font-semibold text-[#3A4F4A] dark:text-[#EAF0EE]">
                       <Banknote className="w-5 h-5 text-[#84A59D]" />
                       <span>Detalhamento de Caixa - {FORMA_LABELS[detailsForma]}</span>
                     </DialogTitle>
-                    <div className="text-xs text-zinc-400 dark:text-zinc-500 mt-1 font-medium flex flex-wrap gap-x-4 gap-y-1">
-                      <span>Período: <b className="text-zinc-750 dark:text-zinc-300">{formatAgendaDate(from)}</b> a <b className="text-zinc-750 dark:text-zinc-300">{formatAgendaDate(to)}</b></span>
-                      <span>Profissional: <b className="text-zinc-750 dark:text-zinc-300">{colaboradorId === 'todos' ? 'Todos os usuários' : colaboradores.find(c => c.id === colaboradorId)?.nome}</b></span>
+                    <div className="text-sm text-zinc-500 dark:text-zinc-400 mt-2 font-medium flex flex-wrap gap-x-4 gap-y-1.5">
+                      <span>Data do agendamento/venda: <b className="text-zinc-750 dark:text-zinc-300">{formatAgendaDate(from)}</b> a <b className="text-zinc-750 dark:text-zinc-300">{formatAgendaDate(to)}</b></span>
+                      <span>Recebido por: <b className="text-zinc-750 dark:text-zinc-300">{filterCaixaRecebedor === 'todos' ? 'Todos' : caixa.usuarios_recebimento?.find(u => u.id === filterCaixaRecebedor)?.nome || 'Não identificado (histórico)'}</b></span>
+                      <span>Profissional: <b className="text-zinc-750 dark:text-zinc-300">{colaboradorId === 'todos' ? 'Todos' : colaboradores.find(c => c.id === colaboradorId)?.nome}</b></span>
+                      {filterCaixaForma !== 'todos' && <span>Forma: <b className="text-zinc-750 dark:text-zinc-300">{getFormaLabel(filterCaixaForma)}</b></span>}
+                      {filterCaixaOrigem !== 'todos' && <span>Origem: <b className="text-zinc-750 dark:text-zinc-300">{{ servico: 'Serviços', venda: 'Vendas de produtos', outro: 'Sem vínculo' }[filterCaixaOrigem]}</b></span>}
+                      {filterCaixaCliente !== 'todos' && <span>Cliente: <b className="text-zinc-750 dark:text-zinc-300">{clientesList.find(c => c.id === filterCaixaCliente)?.nome}</b></span>}
+                      {filterCaixaStatus !== 'todos' && <span>Status: <b className="text-zinc-750 dark:text-zinc-300">{filterCaixaStatus}</b></span>}
                     </div>
                   </DialogHeader>
 
                   {/* Search bar and Summary */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 border-b border-zinc-150 dark:border-zinc-800">
+                  <div className="shrink-0 flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-4 sm:px-0 sm:py-3 border-b border-zinc-150 dark:border-zinc-800">
                     <div className="flex items-center gap-2 w-full sm:max-w-xs md:max-w-sm bg-zinc-50 dark:bg-zinc-850 rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-1.5">
                       <Search className="w-4 h-4 text-zinc-400 shrink-0" />
                       <input
                         placeholder="Buscar por número, cliente, serviço/produto..."
                         value={detailsSearchQuery}
                         onChange={(e) => setDetailsSearchQuery(e.target.value)}
-                        className="bg-transparent border-none outline-none text-xs w-full text-zinc-700 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-500"
+                        className="bg-transparent border-none outline-none text-sm w-full text-zinc-700 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-500"
                       />
                     </div>
                     
-                    <div className="flex items-center justify-between sm:justify-start gap-4 text-xs font-semibold bg-[#EAF0EE] dark:bg-[#1E2E2A] text-[#3A4F4A] dark:text-[#EAF0EE] px-3.5 py-2 rounded-lg w-full sm:w-auto">
+                    <div className="flex items-center justify-between sm:justify-start gap-4 text-sm font-semibold bg-[#EAF0EE] dark:bg-[#1E2E2A] text-[#3A4F4A] dark:text-[#EAF0EE] px-3.5 py-2.5 rounded-lg w-full lg:w-auto">
                       {(() => {
-                        const filtered = (caixa?.pagamentos || [])
-                          .filter(p => {
-                            if (detailsForma === 'cartao_credito') {
-                              return p.forma_pagamento === 'cartao_credito' || p.cartao_tipo === 'credito';
-                            }
-                            if (detailsForma === 'cartao_debito') {
-                              return p.forma_pagamento === 'cartao_debito' || p.cartao_tipo === 'debito';
-                            }
-                            return p.forma_pagamento === detailsForma;
-                          })
-                          .filter(p => {
-                            if (!detailsSearchQuery) return true;
-                            const q = detailsSearchQuery.toLowerCase();
-                            const tipoStr = p.tipo === 'servico' ? 'serviço servico' : (p.tipo === 'venda' ? 'venda' : '');
-                            const statusStr = p.status_operacao === 'concluido' ? 'concluido concluído' : (p.status_operacao === 'pago' ? 'pago' : p.status_operacao || '');
-                            return (
-                              (p.numero || '').toLowerCase().includes(q) ||
-                              (p.cliente || '').toLowerCase().includes(q) ||
-                              (p.itens || '').toLowerCase().includes(q) ||
-                              (p.profissional || '').toLowerCase().includes(q) ||
-                              (p.usuario_recebimento || '').toLowerCase().includes(q) ||
-                              tipoStr.includes(q) ||
-                              statusStr.toLowerCase().includes(q)
-                            );
-                          });
+                        const filtered = getCaixaDetailsFiltered();
                         return (
                           <>
                             <span>Total: <b>{filtered.length}</b> pagamentos</span>
@@ -3610,129 +3694,120 @@ export default function Relatorios() {
                     </div>
                   </div>
 
-                  {/* Table Container */}
-                  <div className="flex-1 overflow-auto my-4 min-h-[300px] border border-zinc-200 dark:border-zinc-800 rounded-lg custom-scrollbar">
+                  {/* Payment details: compact table on desktop and readable cards on phones. */}
+                  <div className="flex-1 min-h-0 overflow-y-auto my-0 sm:my-3 border-x-0 sm:border-x border-zinc-200 dark:border-zinc-800 sm:rounded-lg custom-scrollbar">
                     {(() => {
-                      const filtered = (caixa?.pagamentos || [])
-                        .filter(p => {
-                          if (detailsForma === 'cartao_credito') {
-                            return p.forma_pagamento === 'cartao_credito' || p.cartao_tipo === 'credito';
-                          }
-                          if (detailsForma === 'cartao_debito') {
-                            return p.forma_pagamento === 'cartao_debito' || p.cartao_tipo === 'debito';
-                          }
-                          return p.forma_pagamento === detailsForma;
-                        })
-                        .filter(p => {
-                          if (!detailsSearchQuery) return true;
-                          const q = detailsSearchQuery.toLowerCase();
-                          const tipoStr = p.tipo === 'servico' ? 'serviço servico' : (p.tipo === 'venda' ? 'venda' : '');
-                          const statusStr = p.status_operacao === 'concluido' ? 'concluido concluído' : (p.status_operacao === 'pago' ? 'pago' : p.status_operacao || '');
-                          return (
-                            (p.numero || '').toLowerCase().includes(q) ||
-                            (p.cliente || '').toLowerCase().includes(q) ||
-                            (p.itens || '').toLowerCase().includes(q) ||
-                            (p.profissional || '').toLowerCase().includes(q) ||
-                            (p.usuario_recebimento || '').toLowerCase().includes(q) ||
-                            tipoStr.includes(q) ||
-                            statusStr.toLowerCase().includes(q)
-                          );
-                        });
-
+                      const filtered = getCaixaDetailsFiltered();
                       if (filtered.length === 0) {
-                        return (
-                          <div className="text-zinc-400 p-12 text-center text-xs">
-                            Nenhum pagamento encontrado com os filtros aplicados.
-                          </div>
-                        );
+                        return <div className="text-zinc-400 p-8 sm:p-12 text-center text-sm">Nenhum pagamento encontrado com os filtros aplicados.</div>;
                       }
 
                       return (
-                        <table className="mobile-record-table w-full text-xs text-left min-w-[1250px] border-collapse">
-                          <thead className="bg-zinc-50 dark:bg-zinc-850 text-zinc-550 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800 font-semibold uppercase tracking-wider text-[10px] sticky top-0 z-10">
-                            <tr>
-                              <th className="px-4 py-3">Data/Hora</th>
-                              <th className="px-4 py-3">Tipo</th>
-                              <th className="px-4 py-3">Identificação</th>
-                              <th className="px-4 py-3">Cliente</th>
-                              <th className="px-4 py-3">Item (Serviço/Produto)</th>
-                              <th className="px-4 py-3">Profissional</th>
-                              <th className="px-4 py-3">Recebido Por</th>
-                              <th className="px-4 py-3 text-center">Forma</th>
-                              <th className="px-4 py-3 text-right">Vl. Pago (Bruto)</th>
-                              <th className="px-4 py-3 text-right">Troco</th>
-                              <th className="px-4 py-3 text-right">Vl. Líquido</th>
-                              <th className="px-4 py-3 text-right">Total Op.</th>
-                              <th className="px-4 py-3 text-center">Status</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-zinc-150 dark:divide-zinc-800 text-zinc-650 dark:text-zinc-300 font-medium">
+                        <>
+                          <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full min-w-[1120px] text-sm text-left border-collapse">
+                              <thead className="sticky top-0 z-10 bg-zinc-50 dark:bg-zinc-850 text-zinc-600 dark:text-zinc-300 border-b border-zinc-200 dark:border-zinc-800 font-semibold uppercase tracking-wider text-xs">
+                                <tr>
+                                  <th className="px-4 py-3">Data da operação</th>
+                                  <th className="px-4 py-3">Operação</th>
+                                  <th className="px-4 py-3">Cliente</th>
+                                  <th className="px-4 py-3">Item / profissional</th>
+                                  <th className="px-4 py-3">Recebido por</th>
+                                  <th className="px-4 py-3">Forma</th>
+                                  <th className="px-4 py-3 text-right">Valores</th>
+                                  <th className="px-4 py-3 text-center">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-zinc-150 dark:divide-zinc-800 text-zinc-650 dark:text-zinc-300">
+                                {filtered.map((p) => (
+                                  <tr key={p.id} className="align-top hover:bg-zinc-50/70 dark:hover:bg-zinc-800/30 transition-colors">
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                      <div className="font-medium text-zinc-750 dark:text-zinc-200">{formatAgendaDateTime(p.data_hora)}</div>
+                                      <div className="mt-1 text-xs text-zinc-500">Pagamento lançado {formatAgendaDateTime(p.data_pagamento)}</div>
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                      <span className={`inline-flex px-2 py-1 rounded text-xs font-bold uppercase ${p.tipo === 'servico' ? 'bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-800/30' : p.tipo === 'venda' ? 'bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-800/30' : 'bg-zinc-100 text-zinc-600 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700'}`}>
+                                        {p.tipo === 'servico' ? 'Serviço' : p.tipo === 'venda' ? 'Venda' : 'Outro'}
+                                      </span>
+                                      <div className="mt-1.5 font-bold text-zinc-800 dark:text-zinc-100 text-sm">{p.numero}</div>
+                                    </td>
+                                    <td className="px-4 py-3 max-w-[180px] font-medium text-zinc-800 dark:text-zinc-200">{p.cliente || 'Consumidor'}</td>
+                                    <td className="px-4 py-3 max-w-[240px]">
+                                      <div className="font-medium text-zinc-750 dark:text-zinc-200 break-words">{p.itens || '—'}</div>
+                                      <div className="mt-1 text-xs text-zinc-500">Profissional: {p.profissional || '—'}</div>
+                                    </td>
+                                    <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{p.usuario_recebimento || 'Não identificado'}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                      <span className="inline-flex px-2.5 py-1.5 bg-zinc-100 border border-zinc-200 text-zinc-700 rounded-md text-xs uppercase font-bold dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-200">{getFormaLabel(p.forma_pagamento)}</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                                      <div className="grid grid-cols-[auto_auto] gap-x-3 gap-y-1.5 justify-end text-xs text-zinc-600 dark:text-zinc-400">
+                                        <span>Recebido</span><span className="font-mono text-zinc-700 dark:text-zinc-300">{fmtBRL(p.valor_recebido || p.valor)}</span>
+                                        <span>Troco</span><span className="font-mono text-amber-600">{Number(p.troco) > 0 ? fmtBRL(p.troco) : '—'}</span>
+                                        <span>No caixa</span><span className="font-mono font-bold text-[#3A4F4A] dark:text-[#A8C3BC]">{fmtBRL(p.valor)}</span>
+                                        <span>Operação</span><span className="font-mono text-zinc-500">{fmtBRL(p.valor_total_operacao || 0)}</span>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${p.status_operacao === 'concluido' || p.status_operacao === 'pago' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800/30' : p.status_operacao === 'cancelado' ? 'bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-800/30' : 'bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-800/30'}`}>
+                                        {p.status_operacao === 'concluido' ? 'Concluído' : p.status_operacao === 'pago' ? 'Pago' : p.status_operacao || '—'}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          <div className="md:hidden space-y-3 p-3">
                             {filtered.map((p) => (
-                              <tr key={p.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors">
-                                <td data-label="Data/Hora" className="px-4 py-3 whitespace-nowrap text-zinc-500 dark:text-zinc-450">
-                                  {formatAgendaDateTime(p.data_hora)}
-                                </td>
-                                <td data-label="Tipo" className="px-4 py-3 whitespace-nowrap">
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                                    p.tipo === 'servico' 
-                                      ? 'bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-800/30' 
-                                      : 'bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-800/30'
-                                  }`}>
-                                    {p.tipo === 'servico' ? 'Serviço' : 'Venda'}
-                                  </span>
-                                </td>
-                                <td data-label="Identificação" className="px-4 py-3 whitespace-nowrap font-bold text-zinc-800 dark:text-zinc-100">
-                                  {p.numero}
-                                </td>
-                                <td data-label="Cliente" className="px-4 py-3 max-w-[180px] truncate text-zinc-700 dark:text-zinc-350" title={p.cliente}>
-                                  {p.cliente}
-                                </td>
-                                <td data-label="Item (Serviço/Produto)" className="px-4 py-3 max-w-[200px] truncate text-zinc-600 dark:text-zinc-400" title={p.itens}>
-                                  {p.itens}
-                                </td>
-                                <td data-label="Profissional" className="px-4 py-3 max-w-[200px] truncate text-zinc-750 dark:text-zinc-300" title={p.profissional}>
-                                  {p.profissional || '-'}
-                                </td>
-                                <td data-label="Recebido Por" className="px-4 py-3 whitespace-nowrap text-zinc-500 dark:text-zinc-450">
-                                  {p.usuario_recebimento || '-'}
-                                </td>
-                                <td data-label="Forma" className="px-4 py-3 text-center whitespace-nowrap">
-                                  <span className="px-2 py-0.5 bg-zinc-100 border border-zinc-200 text-zinc-600 rounded text-[9px] uppercase font-bold dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300">
-                                    {getFormaLabel(p.forma_pagamento)}
-                                  </span>
-                                </td>
-                                <td data-label="Vl. Pago (Bruto)" className="px-4 py-3 text-right font-mono text-zinc-700 dark:text-zinc-350 whitespace-nowrap">
-                                  {fmtBRL(p.valor_recebido || p.valor)}
-                                </td>
-                                <td data-label="Troco" className="px-4 py-3 text-right font-mono text-amber-600 dark:text-amber-500 whitespace-nowrap">
-                                  {Number(p.troco) > 0 ? fmtBRL(p.troco) : "—"}
-                                </td>
-                                <td data-label="Vl. Líquido" className="px-4 py-3 text-right font-mono font-bold text-[#3A4F4A] dark:text-[#EAF0EE] whitespace-nowrap">
-                                  {fmtBRL(p.valor)}
-                                </td>
-                                <td data-label="Total Op." className="px-4 py-3 text-right font-mono text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
-                                  {fmtBRL(p.valor_total_operacao || 0)}
-                                </td>
-                                <td data-label="Status" className="px-4 py-3 text-center whitespace-nowrap">
-                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                                    p.status_operacao === 'concluido' || p.status_operacao === 'pago'
-                                      ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800/30'
-                                      : p.status_operacao === 'cancelado'
-                                      ? 'bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-800/30'
-                                      : 'bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-800/30'
-                                  }`}>
-                                    {p.status_operacao === 'concluido' ? 'Concluído' : p.status_operacao === 'pago' ? 'Pago' : p.status_operacao}
-                                  </span>
-                                </td>
-                              </tr>
+                              <article key={p.id} className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3.5 shadow-sm">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <div className="font-semibold text-sm text-zinc-800 dark:text-zinc-100">{formatAgendaDateTime(p.data_hora)}</div>
+                                    <div className="mt-1 text-xs text-zinc-500">Pagamento lançado {formatAgendaDateTime(p.data_pagamento)}</div>
+                                  </div>
+                                  <div className="shrink-0 text-right">
+                                    <div className="text-xs uppercase tracking-wide text-zinc-500">No caixa</div>
+                                    <div className="font-mono text-lg font-bold text-[#3A4F4A] dark:text-[#A8C3BC]">{fmtBRL(p.valor)}</div>
+                                  </div>
+                                </div>
+                                <div className="mt-3 flex items-center justify-between gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
+                                  <div className="min-w-0">
+                                    <div className="font-semibold text-zinc-800 dark:text-zinc-100 truncate">{p.cliente || 'Consumidor'}</div>
+                                    <div className="text-xs text-zinc-500">{p.numero}</div>
+                                  </div>
+                                  <div className="flex shrink-0 items-center gap-1.5">
+                                    <span className={`px-2 py-1 rounded-md text-[11px] font-bold uppercase ${p.tipo === 'servico' ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400' : p.tipo === 'venda' ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'}`}>{p.tipo === 'servico' ? 'Serviço' : p.tipo === 'venda' ? 'Venda' : 'Outro'}</span>
+                                    <span className={`px-2 py-1 rounded-md text-[9px] font-bold ${p.status_operacao === 'concluido' || p.status_operacao === 'pago' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400' : p.status_operacao === 'cancelado' ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400' : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'}`}>{p.status_operacao === 'concluido' ? 'Concluído' : p.status_operacao === 'pago' ? 'Pago' : p.status_operacao || '—'}</span>
+                                  </div>
+                                </div>
+                                <div className="mt-3 text-sm text-zinc-700 dark:text-zinc-300 break-words">{p.itens || '—'}</div>
+                                <div className="mt-1 text-xs text-zinc-500">Profissional: {p.profissional || '—'}</div>
+                                <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                                  <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/70 p-2.5">
+                                    <div className="text-xs text-zinc-500">Recebido por</div>
+                                    <div className="mt-0.5 font-medium text-zinc-800 dark:text-zinc-200 break-words">{p.usuario_recebimento || 'Não identificado'}</div>
+                                  </div>
+                                  <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/70 p-2.5">
+                                    <div className="text-xs text-zinc-500">Forma de pagamento</div>
+                                    <div className="mt-0.5 font-medium text-zinc-800 dark:text-zinc-200 break-words">{getFormaLabel(p.forma_pagamento)}</div>
+                                  </div>
+                                </div>
+                                <div className="mt-3 grid grid-cols-3 gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-3 text-right">
+                                  <div><div className="text-xs text-zinc-500">Recebido</div><div className="mt-1 font-mono text-xs text-zinc-700 dark:text-zinc-300">{fmtBRL(p.valor_recebido || p.valor)}</div></div>
+                                  <div><div className="text-xs text-zinc-500">Troco</div><div className="mt-1 font-mono text-xs text-amber-600">{Number(p.troco) > 0 ? fmtBRL(p.troco) : '—'}</div></div>
+                                  <div><div className="text-xs text-zinc-500">Total operação</div><div className="mt-1 font-mono text-xs text-zinc-700 dark:text-zinc-300">{fmtBRL(p.valor_total_operacao || 0)}</div></div>
+                                </div>
+                              </article>
                             ))}
-                          </tbody>
-                        </table>
+                          </div>
+                        </>
                       );
                     })()}
                   </div>
 
-                  <DialogFooter className="pt-3 border-t border-zinc-150 dark:border-zinc-800 flex items-center justify-end">
+                  <DialogFooter className="shrink-0 p-3 sm:p-0 sm:pt-3 border-t border-zinc-150 dark:border-zinc-800 flex items-center justify-end">
                     <Button variant="outline" onClick={() => setDetailsForma(null)} className="h-9 text-xs font-semibold">
                       Fechar
                     </Button>
@@ -6171,13 +6246,17 @@ const renderHelpContent = (reportId) => {
             <p>Essencial para a conciliação diária de valores em caixa (fechamento de caixa) e conferência de repasses financeiros recebidos por meios digitais (PIX, Cartão de Crédito/Débito).</p>
           </HelpSection>
           <HelpSection title="Explicação dos Filtros">
-            <p><strong>Período (De/Até):</strong> Data exata da baixa/pagamento.</p>
-            <p><strong>Profissional:</strong> Filtra as formas de recebimento e montantes associados aos atendimentos executados por um profissional específico.</p>
+            <p><strong>Período (De/Até):</strong> Usa a data do agendamento para serviços e a data da venda para produtos. A data/hora em que o pagamento foi lançado aparece nos detalhes.</p>
+            <p><strong>Recebido por:</strong> Filtra pelo usuário que lançou o pagamento. Registros antigos sem essa informação aparecem como Não identificado.</p>
+            <p><strong>Profissional:</strong> Filtra por quem executou o serviço ou está associado à venda.</p>
+            <p><strong>Forma, origem, cliente e status:</strong> Refinam os lançamentos e atualizam os totais exibidos.</p>
           </HelpSection>
           <HelpSection title="Colunas e Campos Exibidos">
             <p><strong>Forma de Pagamento:</strong> Modalidade do recebimento (Dinheiro, PIX, Cartão de Crédito/Débito).</p>
-            <p><strong>Total Recebido:</strong> Montante bruto recebido por aquela modalidade.</p>
-            <p><strong>Quantidade de Lançamentos:</strong> Número de comandas/transações pagas usando essa forma.</p>
+            <p><strong>Data/Hora:</strong> Data da operação de origem. O campo Pagamento lançado em mostra quando o recebimento foi registrado.</p>
+            <p><strong>Total recebido:</strong> Valor informado no pagamento antes do troco.</p>
+            <p><strong>Valor considerado no caixa:</strong> Valor do pagamento após troco e crédito gerado; taxas de cartão não são descontadas aqui.</p>
+            <p><strong>Quantidade de lançamentos:</strong> Número de pagamentos registrados. Operações divididas entre formas de pagamento geram mais de um lançamento.</p>
           </HelpSection>
           <HelpSection title="Regras de Negócio">
             <p>Exibe exclusivamente pagamentos efetivados e conciliados. Caso uma comanda possua múltiplas formas de pagamento, o valor é fracionado e contabilizado respectivamente em cada categoria.</p>
