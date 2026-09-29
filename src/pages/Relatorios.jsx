@@ -3450,7 +3450,7 @@ export default function Relatorios() {
               <Button onClick={() => window.print()} variant="outline" size="sm" className="h-8 text-xs no-print"><Printer className="w-4 h-4 mr-1.5" /> Exportar PDF</Button>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="mobile-record-table w-full text-sm">
                 <thead className="bg-[#DCE8EB] dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200">
                   <tr>
                     <th className="px-4 py-3 text-left font-semibold">Data</th>
@@ -3467,24 +3467,24 @@ export default function Relatorios() {
                     const date = new Date(`${dia.data}T12:00:00Z`);
                     const weekday = new Intl.DateTimeFormat("pt-BR", { weekday: "long", timeZone: "America/Recife" }).format(date);
                     return <tr key={dia.data} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                      <td className="px-4 py-2.5 whitespace-nowrap">{formatAgendaDate(dia.data)}</td>
-                      <td className="px-4 py-2.5 capitalize">{weekday}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">{dia.frequencia}</td>
-                      <td className="px-4 py-2.5 text-right font-mono whitespace-nowrap">{fmtBRL(dia.valor_servicos)}</td>
-                      <td className="px-4 py-2.5 text-right font-mono whitespace-nowrap">{fmtBRL(dia.valor_produtos)}</td>
-                      <td className="px-4 py-2.5 text-right font-mono font-semibold whitespace-nowrap">{fmtBRL(dia.total)}</td>
-                      <td className="px-4 py-2.5 text-right font-mono whitespace-nowrap">{fmtBRL(dia.media)}</td>
+                      <td data-label="Data" className="px-4 py-2.5 whitespace-nowrap">{formatAgendaDate(dia.data)}</td>
+                      <td data-label="Dia" className="px-4 py-2.5 capitalize">{weekday}</td>
+                      <td data-label="Frequência" className="px-4 py-2.5 text-right tabular-nums">{dia.frequencia}</td>
+                      <td data-label="Serviços" className="px-4 py-2.5 text-right font-mono whitespace-nowrap">{fmtBRL(dia.valor_servicos)}</td>
+                      <td data-label="Produtos" className="px-4 py-2.5 text-right font-mono whitespace-nowrap">{fmtBRL(dia.valor_produtos)}</td>
+                      <td data-label="Total" className="px-4 py-2.5 text-right font-mono font-semibold whitespace-nowrap">{fmtBRL(dia.total)}</td>
+                      <td data-label="Média" className="px-4 py-2.5 text-right font-mono whitespace-nowrap">{fmtBRL(dia.media)}</td>
                     </tr>;
                   })}
                 </tbody>
                 <tfoot className="bg-[#DCE8EB] dark:bg-zinc-800 font-semibold">
                   <tr>
                     <td className="px-4 py-3" colSpan={2}>Total do período</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{faturamentoDiario?.totais?.frequencia || 0}</td>
-                    <td className="px-4 py-3 text-right font-mono whitespace-nowrap">{fmtBRL(faturamentoDiario?.totais?.valor_servicos)}</td>
-                    <td className="px-4 py-3 text-right font-mono whitespace-nowrap">{fmtBRL(faturamentoDiario?.totais?.valor_produtos)}</td>
-                    <td className="px-4 py-3 text-right font-mono whitespace-nowrap">{fmtBRL(faturamentoDiario?.totais?.total)}</td>
-                    <td className="px-4 py-3 text-right font-mono whitespace-nowrap">{fmtBRL(faturamentoDiario?.totais?.media)}</td>
+                    <td data-label="Frequência" className="px-4 py-3 text-right tabular-nums">{faturamentoDiario?.totais?.frequencia || 0}</td>
+                    <td data-label="Serviços" className="px-4 py-3 text-right font-mono whitespace-nowrap">{fmtBRL(faturamentoDiario?.totais?.valor_servicos)}</td>
+                    <td data-label="Produtos" className="px-4 py-3 text-right font-mono whitespace-nowrap">{fmtBRL(faturamentoDiario?.totais?.valor_produtos)}</td>
+                    <td data-label="Total" className="px-4 py-3 text-right font-mono whitespace-nowrap">{fmtBRL(faturamentoDiario?.totais?.total)}</td>
+                    <td data-label="Média" className="px-4 py-3 text-right font-mono whitespace-nowrap">{fmtBRL(faturamentoDiario?.totais?.media)}</td>
                   </tr>
                 </tfoot>
               </table>
