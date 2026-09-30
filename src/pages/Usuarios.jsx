@@ -20,6 +20,10 @@ const accessDateFormat = new Intl.DateTimeFormat('pt-BR', {
   hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
 });
 
+const isAdminUser = (user, profiles) => user.role === 'admin'
+  || user.perfil_acesso_id === 'admin-profile-uuid-00000000000000000'
+  || profiles.some(profile => profile.id === user.perfil_acesso_id && profile.nome?.trim() === 'Administrador');
+
 function LastAccess({ value }) {
   const date = value ? new Date(value) : null;
   const valid = date && Number.isFinite(date.getTime());
@@ -296,7 +300,7 @@ export default function Usuarios() {
                     <td className="px-4 py-3.5 font-semibold text-zinc-900 dark:text-zinc-100">
                       <PresenceDot online={u.ativo === false ? false : presence[u.id]?.online} />
                       {u.name} {u.id === me?.id && <span className="text-xs text-zinc-400 dark:text-zinc-550 ml-1 font-normal">(você)</span>}
-                      <LastAccess value={presence[u.id]?.last_access_at ?? u.last_access_at} />
+                      {!isAdminUser(u, perfis) && <LastAccess value={presence[u.id]?.last_access_at ?? u.last_access_at} />}
                     </td>
                     <td className="px-4 py-3.5 text-zinc-650 dark:text-zinc-400">{u.email}</td>
                     <td className="px-4 py-3.5 text-zinc-700 dark:text-zinc-300 font-semibold">
@@ -360,7 +364,7 @@ export default function Usuarios() {
                       <PresenceDot online={u.ativo === false ? false : presence[u.id]?.online} />
                       <span className="min-w-0 break-words [overflow-wrap:anywhere]">{u.name}</span>
                     </h4>
-                    <LastAccess value={presence[u.id]?.last_access_at ?? u.last_access_at} />
+                    {!isAdminUser(u, perfis) && <LastAccess value={presence[u.id]?.last_access_at ?? u.last_access_at} />}
                     <p className="mt-2 break-words text-xs leading-5 text-zinc-500 [overflow-wrap:anywhere] dark:text-zinc-400">{u.email}</p>
                     <dl className="mt-3 space-y-2 border-t border-zinc-100 pt-3 text-xs dark:border-zinc-800">
                       <div className="flex items-start justify-between gap-4">
