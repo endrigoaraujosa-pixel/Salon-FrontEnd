@@ -9,6 +9,9 @@ import { Textarea } from "../components/ui/textarea";
 import { Checkbox } from "../components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
+import { Calendar as CalendarPicker } from "../components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
+import { ptBR } from "date-fns/locale";
 import StatusBadge, { STATUS_LABELS } from "../components/StatusBadge";
 import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle, ShoppingCart, Loader2, Printer, AlertTriangle, AlertCircle, CalendarOff, Globe, Check, XCircle, RefreshCw, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
@@ -75,6 +78,151 @@ const toDatetimeLocalInput = (dtStr) => {
   let hour = getValue("hour");
   if (hour === "24") hour = "00";
   return `${getValue("year")}-${getValue("month")}-${getValue("day")}T${hour}:${getValue("minute")}`;
+};
+
+const TimeWheel = ({ label, value, values, onChange }) => {
+  const listRef = useRef(null);
+  const scrollTimerRef = useRef(null);
+
+  const centerValue = (nextValue, behavior = "auto") => {
+    const list = listRef.current;
+    const option = list?.querySelector(`[data-time-value="${nextValue}"]`);
+    if (list && option) {
+      list.scrollTo({
+        top: option.offsetTop - (list.clientHeight - option.offsetHeight) / 2,
+        behavior,
+      });
+    }
+  };
+
+  useEffect(() => {
+    centerValue(value);
+    return () => clearTimeout(scrollTimerRef.current);
+  }, [value]);
+
+  const handleScroll = () => {
+    clearTimeout(scrollTimerRef.current);
+    scrollTimerRef.current = setTimeout(() => {
+      const list = listRef.current;
+      if (!list) return;
+      const center = list.scrollTop + list.clientHeight / 2;
+      const options = Array.from(list.querySelectorAll("[data-time-value]"));
+      const nearest = options.reduce((current, option) => {
+        const distance = Math.abs(option.offsetTop + option.offsetHeight / 2 - center);
+        return !current || distance < current.distance
+          ? { value: option.dataset.timeValue, distance }
+          : current;
+      }, null);
+      if (nearest?.value && nearest.value !== value) onChange(nearest.value);
+    }, 120);
+  };
+
+  const handleWheel = (event) => {
+    event.preventDefault();
+    const currentIndex = values.indexOf(value);
+    const wheelSteps = Math.max(1, Math.round(Math.abs(event.deltaY) / 100));
+    const direction = event.deltaY > 0 ? 1 : -1;
+    const nextIndex = Math.min(values.length - 1, Math.max(0, currentIndex + direction * wheelSteps));
+    const nextValue = values[nextIndex];
+    if (nextValue && nextValue !== value) {
+      onChange(nextValue);
+      centerValue(nextValue, "smooth");
+    }
+  };
+
+  return (
+    <div className="min-w-0 flex-1 text-center">
+      <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500">{label}</span>
+      <div className="relative">
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 h-10 -translate-y-1/2 rounded-lg border border-[#84A59D]/50 bg-[#EAF0EE]/75 dark:bg-zinc-800/75" />
+        <div
+          ref={listRef}
+          role="listbox"
+          aria-label={label}
+          onScroll={handleScroll}
+          onWheel={handleWheel}
+          className="h-[200px] touch-pan-y snap-y snap-mandatory overflow-y-auto overscroll-contain px-1 [scrollbar-width:thin]"
+        >
+          <div aria-hidden="true" className="h-[80px]" />
+          {values.map((item) => (
+            <button
+              type="button"
+              role="option"
+              aria-selected={item === value}
+              data-time-value={item}
+              key={item}
+              onClick={() => { onChange(item); centerValue(item, "smooth"); }}
+              className={`flex h-10 w-full snap-center items-center justify-center rounded-lg text-base tabular-nums transition-colors ${item === value ? "font-bold text-[#3A4F4A] dark:text-[#C6E0D4]" : "text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"}`}
+            >
+              {item}
+            </button>
+          ))}
+          <div aria-hidden="true" className="h-[80px]" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const DateTimePicker = ({ value, onChange, ariaLabel }) => {
+  const [datePart = "", timePart = "00:00"] = (value || "").split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const selectedDate = year && month && day ? new Date(year, month - 1, day) : undefined;
+  const [hour = "00", minute = "00"] = timePart.split(":");
+  const displayDate = selectedDate
+    ? selectedDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })
+    : "Selecione uma data";
+
+  const updateDate = (date) => {
+    if (!date) return;
+    const nextDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    onChange(`${nextDate}T${timePart || "00:00"}`);
+  };
+  const updateTime = (nextHour, nextMinute) => onChange(`${datePart || toDateInput(new Date())}T${nextHour}:${nextMinute}`);
+
+  return (
+    <div className="w-full" aria-label={ariaLabel}>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button type="button" variant="outline" className="h-11 w-full justify-start gap-2 font-normal">
+            <CalIcon className="h-4 w-4 text-[#648775]" />
+            <span className="truncate">{displayDate}</span>
+            <span className="ml-auto flex shrink-0 items-center gap-1 text-zinc-600 dark:text-zinc-300">
+              <Clock className="h-4 w-4 text-[#648775]" />{hour}:{minute}
+            </span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-auto max-w-[calc(100vw-1rem)] p-3">
+          <div className="grid grid-cols-1 items-center sm:grid-cols-[auto_176px]">
+            <CalendarPicker
+              mode="single"
+              locale={ptBR}
+              selected={selectedDate}
+              onSelect={updateDate}
+              initialFocus
+              className="p-2 sm:p-3"
+              classNames={{
+                day: "h-9 w-9 sm:h-10 sm:w-10 p-0 font-normal aria-selected:opacity-100",
+                head_cell: "text-muted-foreground rounded-md w-9 sm:w-10 font-normal text-xs",
+                caption_label: "text-base font-semibold",
+              }}
+            />
+            <div className="border-t border-zinc-200 pt-3 dark:border-zinc-800 sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0">
+              <div className="mb-2 flex items-center justify-center gap-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+                <Clock className="h-4 w-4 text-[#648775]" /> {hour}:{minute}
+              </div>
+              <div className="flex items-start gap-2">
+                <TimeWheel label="Hora" value={hour} values={Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"))} onChange={(nextHour) => updateTime(nextHour, minute)} />
+                <span className="mt-[102px] text-lg text-zinc-400">:</span>
+                <TimeWheel label="Minuto" value={minute} values={Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0"))} onChange={(nextMinute) => updateTime(hour, nextMinute)} />
+              </div>
+              <div className="mt-1 text-center text-[11px] text-zinc-500">Deslize, role ou toque para ajustar</div>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
 };
 
 const AgendaCardSkeleton = () => (
@@ -2382,7 +2530,7 @@ export default function Agenda() {
 
                   <div className="form-group mt-4">
                     <Label className="form-label">Data e horário de início *</Label>
-                    <Input type="datetime-local" aria-label="Data e horário de início" value={form.data_hora} onChange={(e) => setForm({ ...form, data_hora: e.target.value })} className="h-11 w-full" />
+                    <DateTimePicker ariaLabel="Data e horário de início" value={form.data_hora} onChange={(value) => setForm({ ...form, data_hora: value })} />
                   </div>
                   </section>
                   <section className="py-5 border-b border-zinc-100 dark:border-zinc-800">
