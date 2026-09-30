@@ -10,7 +10,6 @@ import { Checkbox } from "../components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
 import { Calendar as CalendarPicker } from "../components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
 import { ptBR } from "date-fns/locale";
 import StatusBadge, { STATUS_LABELS } from "../components/StatusBadge";
 import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle, ShoppingCart, Loader2, Printer, AlertTriangle, AlertCircle, CalendarOff, Globe, Check, XCircle, RefreshCw, MessageSquare } from "lucide-react";
@@ -134,16 +133,16 @@ const TimeWheel = ({ label, value, values, onChange }) => {
     <div className="min-w-0 flex-1 text-center">
       <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500">{label}</span>
       <div className="relative">
-        <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 h-10 -translate-y-1/2 rounded-lg border border-[#84A59D]/50 bg-[#EAF0EE]/75 dark:bg-zinc-800/75" />
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 h-8 -translate-y-1/2 rounded-lg border border-[#84A59D]/50 bg-[#EAF0EE]/75 dark:bg-zinc-800/75 sm:h-10" />
         <div
           ref={listRef}
           role="listbox"
           aria-label={label}
           onScroll={handleScroll}
           onWheel={handleWheel}
-          className="h-[200px] touch-pan-y snap-y snap-mandatory overflow-y-auto overscroll-contain px-1 [scrollbar-width:thin]"
+          className="h-[160px] touch-pan-y snap-y snap-mandatory overflow-y-auto overscroll-contain px-1 [scrollbar-width:thin] sm:h-[200px]"
         >
-          <div aria-hidden="true" className="h-[80px]" />
+          <div aria-hidden="true" className="h-16 sm:h-20" />
           {values.map((item) => (
             <button
               type="button"
@@ -152,12 +151,12 @@ const TimeWheel = ({ label, value, values, onChange }) => {
               data-time-value={item}
               key={item}
               onClick={() => { onChange(item); centerValue(item, "smooth"); }}
-              className={`flex h-10 w-full snap-center items-center justify-center rounded-lg text-base tabular-nums transition-colors ${item === value ? "font-bold text-[#3A4F4A] dark:text-[#C6E0D4]" : "text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"}`}
+              className={`flex h-8 w-full snap-center items-center justify-center rounded-lg text-sm tabular-nums transition-colors sm:h-10 sm:text-base ${item === value ? "font-bold text-[#3A4F4A] dark:text-[#C6E0D4]" : "text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"}`}
             >
               {item}
             </button>
           ))}
-          <div aria-hidden="true" className="h-[80px]" />
+          <div aria-hidden="true" className="h-16 sm:h-20" />
         </div>
       </div>
     </div>
@@ -169,21 +168,43 @@ const DateTimePicker = ({ value, onChange, ariaLabel }) => {
   const [year, month, day] = datePart.split("-").map(Number);
   const selectedDate = year && month && day ? new Date(year, month - 1, day) : undefined;
   const [hour = "00", minute = "00"] = timePart.split(":");
+  const [open, setOpen] = useState(false);
+  const [draftDate, setDraftDate] = useState(datePart);
+  const [draftHour, setDraftHour] = useState(hour);
+  const [draftMinute, setDraftMinute] = useState(minute);
+  const [draftYear, draftMonth, draftDay] = draftDate.split("-").map(Number);
+  const draftSelectedDate = draftYear && draftMonth && draftDay
+    ? new Date(draftYear, draftMonth - 1, draftDay)
+    : undefined;
   const displayDate = selectedDate
     ? selectedDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })
     : "Selecione uma data";
 
-  const updateDate = (date) => {
+  const handleOpenChange = (nextOpen) => {
+    if (nextOpen) {
+      const [currentDate = "", currentTime = "00:00"] = (value || "").split("T");
+      const [currentHour = "00", currentMinute = "00"] = currentTime.split(":");
+      setDraftDate(currentDate || toDateInput(new Date()));
+      setDraftHour(currentHour);
+      setDraftMinute(currentMinute);
+    }
+    setOpen(nextOpen);
+  };
+
+  const updateDraftDate = (date) => {
     if (!date) return;
     const nextDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    onChange(`${nextDate}T${timePart || "00:00"}`);
+    setDraftDate(nextDate);
   };
-  const updateTime = (nextHour, nextMinute) => onChange(`${datePart || toDateInput(new Date())}T${nextHour}:${nextMinute}`);
+  const confirmDateTime = () => {
+    onChange(`${draftDate || toDateInput(new Date())}T${draftHour}:${draftMinute}`);
+    setOpen(false);
+  };
 
   return (
     <div className="w-full" aria-label={ariaLabel}>
-      <Popover>
-        <PopoverTrigger asChild>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogTrigger asChild>
           <Button type="button" variant="outline" className="h-11 w-full justify-start gap-2 font-normal">
             <CalIcon className="h-4 w-4 text-[#648775]" />
             <span className="truncate">{displayDate}</span>
@@ -191,36 +212,44 @@ const DateTimePicker = ({ value, onChange, ariaLabel }) => {
               <Clock className="h-4 w-4 text-[#648775]" />{hour}:{minute}
             </span>
           </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-auto max-w-[calc(100vw-1rem)] p-3">
-          <div className="grid grid-cols-1 items-center sm:grid-cols-[auto_176px]">
+        </DialogTrigger>
+        <DialogContent className="max-h-[88dvh] w-[min(94vw,560px)] max-w-[560px] overflow-y-auto p-0">
+          <DialogHeader className="px-4 pt-5 text-left sm:px-6">
+            <DialogTitle>Definir data e hora</DialogTitle>
+            <DialogDescription>Escolha a data e deslize as colunas para ajustar o horário.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-[minmax(0,1fr)_112px] items-center px-2 pb-4 sm:grid-cols-[minmax(0,1fr)_176px] sm:px-5">
             <CalendarPicker
               mode="single"
               locale={ptBR}
-              selected={selectedDate}
-              onSelect={updateDate}
+              selected={draftSelectedDate}
+              onSelect={updateDraftDate}
               initialFocus
-              className="p-2 sm:p-3"
+              className="p-1 sm:p-3"
               classNames={{
-                day: "h-9 w-9 sm:h-10 sm:w-10 p-0 font-normal aria-selected:opacity-100",
-                head_cell: "text-muted-foreground rounded-md w-9 sm:w-10 font-normal text-xs",
-                caption_label: "text-base font-semibold",
+                day: "h-7 w-7 p-0 font-normal text-xs aria-selected:opacity-100 sm:h-10 sm:w-10 sm:text-sm",
+                head_cell: "text-muted-foreground rounded-md w-7 font-normal text-[10px] sm:w-10 sm:text-xs",
+                caption_label: "text-xs font-semibold sm:text-base",
               }}
             />
-            <div className="border-t border-zinc-200 pt-3 dark:border-zinc-800 sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0">
-              <div className="mb-2 flex items-center justify-center gap-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">
-                <Clock className="h-4 w-4 text-[#648775]" /> {hour}:{minute}
+            <div className="border-l border-zinc-200 pl-2 dark:border-zinc-800 sm:pl-3">
+              <div className="mb-2 flex items-center justify-center gap-1 text-xs font-semibold text-zinc-700 dark:text-zinc-200 sm:text-sm">
+                <Clock className="h-3.5 w-3.5 text-[#648775] sm:h-4 sm:w-4" /> {draftHour}:{draftMinute}
               </div>
               <div className="flex items-start gap-2">
-                <TimeWheel label="Hora" value={hour} values={Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"))} onChange={(nextHour) => updateTime(nextHour, minute)} />
-                <span className="mt-[102px] text-lg text-zinc-400">:</span>
-                <TimeWheel label="Minuto" value={minute} values={Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0"))} onChange={(nextMinute) => updateTime(hour, nextMinute)} />
+                <TimeWheel label="Hora" value={draftHour} values={Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0"))} onChange={setDraftHour} />
+                <span className="mt-[82px] text-sm text-zinc-400 sm:mt-[102px] sm:text-lg">:</span>
+                <TimeWheel label="Minuto" value={draftMinute} values={Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0"))} onChange={setDraftMinute} />
               </div>
-              <div className="mt-1 text-center text-[11px] text-zinc-500">Deslize, role ou toque para ajustar</div>
+              <div className="mt-1 text-center text-[9px] leading-tight text-zinc-500 sm:text-[11px]">Deslize, role ou toque</div>
             </div>
           </div>
-        </PopoverContent>
-      </Popover>
+          <div className="flex justify-end gap-2 border-t border-zinc-100 px-4 py-3 dark:border-zinc-800 sm:px-6">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button type="button" className="bg-[#3A4F4A] text-white hover:bg-[#30413D]" onClick={confirmDateTime}>Definir</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
