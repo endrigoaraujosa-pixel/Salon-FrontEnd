@@ -9,6 +9,8 @@ import { Textarea } from "../components/ui/textarea";
 import { Checkbox } from "../components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "../components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
+import { Calendar as CalendarPicker } from "../components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
 import StatusBadge, { STATUS_LABELS } from "../components/StatusBadge";
 import { Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, Trash2, Edit2, CreditCard, CalendarDays, X, User, Users, Clock, FileText, Scissors, CheckCircle2, History, Package, PlusCircle, ShoppingCart, Loader2, Printer, AlertTriangle, AlertCircle, CalendarOff, Globe, Check, XCircle, RefreshCw, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
@@ -75,6 +77,49 @@ const toDatetimeLocalInput = (dtStr) => {
   let hour = getValue("hour");
   if (hour === "24") hour = "00";
   return `${getValue("year")}-${getValue("month")}-${getValue("day")}T${hour}:${getValue("minute")}`;
+};
+
+const DateTimePicker = ({ value, onChange, ariaLabel }) => {
+  const [datePart = "", timePart = "00:00"] = (value || "").split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const selectedDate = year && month && day ? new Date(year, month - 1, day) : undefined;
+  const [hour = "00", minute = "00"] = timePart.split(":");
+  const displayDate = selectedDate
+    ? selectedDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })
+    : "Selecione uma data";
+
+  const updateDate = (date) => {
+    if (!date) return;
+    const nextDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    onChange(`${nextDate}T${timePart || "00:00"}`);
+  };
+  const updateTime = (nextHour, nextMinute) => onChange(`${datePart || toDateInput(new Date())}T${nextHour}:${nextMinute}`);
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-3" aria-label={ariaLabel}>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button type="button" variant="outline" className="h-11 w-full justify-start gap-2 font-normal">
+            <CalIcon className="h-4 w-4 text-[#648775]" />
+            <span className="truncate">{displayDate}</span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-auto p-0">
+          <CalendarPicker mode="single" selected={selectedDate} onSelect={updateDate} initialFocus />
+        </PopoverContent>
+      </Popover>
+      <div className="flex h-11 items-center gap-2 rounded-md border border-input bg-background px-3">
+        <Clock className="h-4 w-4 text-[#648775]" />
+        <select aria-label="Hora" value={hour} onChange={(event) => updateTime(event.target.value, minute)} className="h-full bg-transparent text-sm outline-none">
+          {Array.from({ length: 24 }, (_, index) => String(index).padStart(2, "0")).map((item) => <option key={item} value={item}>{item}</option>)}
+        </select>
+        <span>:</span>
+        <select aria-label="Minutos" value={minute} onChange={(event) => updateTime(hour, event.target.value)} className="h-full bg-transparent text-sm outline-none">
+          {Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0")).map((item) => <option key={item} value={item}>{item}</option>)}
+        </select>
+      </div>
+    </div>
+  );
 };
 
 const AgendaCardSkeleton = () => (
@@ -2382,7 +2427,7 @@ export default function Agenda() {
 
                   <div className="form-group mt-4">
                     <Label className="form-label">Data e horário de início *</Label>
-                    <Input type="datetime-local" aria-label="Data e horário de início" value={form.data_hora} onChange={(e) => setForm({ ...form, data_hora: e.target.value })} className="h-11 w-full" />
+                    <DateTimePicker ariaLabel="Data e horário de início" value={form.data_hora} onChange={(value) => setForm({ ...form, data_hora: value })} />
                   </div>
                   </section>
                   <section className="py-5 border-b border-zinc-100 dark:border-zinc-800">
