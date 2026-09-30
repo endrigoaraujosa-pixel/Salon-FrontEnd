@@ -215,7 +215,12 @@ const DateTimePicker = ({ value, onChange, ariaLabel }) => {
         </DialogTrigger>
         <DialogContent className="max-h-[88dvh] w-[min(94vw,560px)] max-w-[560px] overflow-y-auto p-0">
           <DialogHeader className="px-4 pt-5 text-left sm:px-6">
-            <DialogTitle>Definir data e hora</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#EAF0EE] text-[#648775] dark:bg-zinc-800 dark:text-[#B8D6C7]">
+                <CalIcon className="h-4 w-4" aria-hidden="true" />
+              </span>
+              Definir data e hora
+            </DialogTitle>
             <DialogDescription>Escolha a data e deslize as colunas para ajustar o horário.</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-[minmax(0,1fr)_112px] items-center px-2 pb-4 sm:grid-cols-[minmax(0,1fr)_176px] sm:px-5">
