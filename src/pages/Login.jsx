@@ -40,8 +40,11 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(user.email, user.password);
-      toast.success("Bem-vinda!");
+      const loggedInUser = await login(user.email, user.password);
+      const welcomeMessage = loggedInUser.sexo === "masculino" ? "Bem-vindo!"
+        : loggedInUser.sexo === "feminino" ? "Bem-vinda!"
+          : "Boas-vindas!";
+      toast.success(welcomeMessage);
       nav("/");
     } catch (err) {
       toast.error(err.response?.data?.detail || "Erro ao entrar");
