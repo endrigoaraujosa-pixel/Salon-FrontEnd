@@ -40,7 +40,7 @@ function PresenceDot({ online }) {
     className={`inline-block h-2 w-2 shrink-0 rounded-full mr-2 align-middle ${online === true ? 'bg-emerald-500' : online === false ? 'bg-zinc-400' : 'border border-zinc-400'}`} />;
 }
 
-const blank = { name: "", email: "", senha: "", role: "funcionario", perfil_acesso_id: "func-profile-uuid-000000000000000000", colaborador_id: "", ativo: true, pode_alterar_concluido: false, pode_excluir_agendamento: false, pode_excluir_pagamento: false };
+const blank = { name: "", email: "", senha: "", sexo: "", role: "funcionario", perfil_acesso_id: "func-profile-uuid-000000000000000000", colaborador_id: "", ativo: true, pode_alterar_concluido: false, pode_excluir_agendamento: false, pode_excluir_pagamento: false };
 
 export default function Usuarios() {
   const { user: me, logout } = useAuth();
@@ -76,6 +76,7 @@ export default function Usuarios() {
   const save = async () => {
     if (saving) return;
     if (!form.name || !form.email) { toast.error("Nome e email obrigatórios"); return; }
+    if (!['masculino', 'feminino'].includes(form.sexo)) { toast.error("Selecione o sexo do usuário"); return; }
     if (!form.id && !form.senha) { toast.error("Senha obrigatória"); return; }
     
     const emailLower = form.email.toLowerCase().trim();
@@ -98,6 +99,7 @@ export default function Usuarios() {
       const payload = { 
         name: form.name, 
         email: form.email, 
+        sexo: form.sexo,
         role: form.role, 
         perfil_acesso_id: form.perfil_acesso_id || "func-profile-uuid-000000000000000000",
         colaborador_id: form.colaborador_id || null,
@@ -185,6 +187,16 @@ export default function Usuarios() {
             <div className="space-y-3">
               <div><Label>Nome *</Label><Input data-testid="user-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} disabled={!canModifyFields} /></div>
               <div><Label>Email *</Label><Input data-testid="user-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} autoComplete="off" disabled={!canModifyFields} /></div>
+              <div>
+                <Label>Sexo *</Label>
+                <Select value={form.sexo || ""} onValueChange={(v) => setForm({ ...form, sexo: v })} disabled={!canModifyFields}>
+                  <SelectTrigger data-testid="user-sex"><SelectValue placeholder="Selecione o sexo" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="masculino">Masculino</SelectItem>
+                    <SelectItem value="feminino">Feminino</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <Label>{form.id ? "Nova senha (deixe vazio para manter)" : "Senha *"}</Label>
                 <Input 
