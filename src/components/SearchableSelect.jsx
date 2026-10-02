@@ -15,7 +15,9 @@ export default function SearchableSelect({
   className = "",
   triggerTestId = "",
   disabled = false,
-  contentClassName = ""
+  contentClassName = "",
+  wrapSelectedLabel = false,
+  wrapOptionLabels = false
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -40,9 +42,9 @@ export default function SearchableSelect({
           role="combobox"
           aria-expanded={open}
           data-testid={triggerTestId}
-          className={cn("w-full justify-between bg-white dark:bg-zinc-950 text-left font-normal border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 h-10 px-3 text-zinc-900 dark:text-zinc-100", className)}
+          className={cn("w-full justify-between bg-white dark:bg-zinc-950 text-left font-normal border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 h-10 px-3 text-zinc-900 dark:text-zinc-100", className, wrapSelectedLabel && "h-auto min-h-9 py-1.5")}
         >
-          <span className="truncate">
+          <span className={cn(wrapSelectedLabel ? "min-w-0 flex-1 whitespace-normal break-words text-left" : "truncate")}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -83,7 +85,7 @@ export default function SearchableSelect({
                       : "text-zinc-700 dark:text-zinc-300"
                   )}
                 >
-                  <span className="truncate">{opt.label}</span>
+                  <span className={cn(wrapOptionLabels ? "min-w-0 flex-1 whitespace-normal break-words [overflow-wrap:anywhere]" : "truncate")}>{opt.label}</span>
                   {isSelected && <Check className="h-4 w-4 text-[#3A4F4A] dark:text-[#84A59D] shrink-0" />}
                 </button>
               );

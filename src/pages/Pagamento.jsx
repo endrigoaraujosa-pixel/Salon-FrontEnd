@@ -1220,7 +1220,9 @@ export default function Pagamento() {
                       className="bg-white dark:bg-zinc-900 sm:bg-transparent mt-1 h-9 text-xs"
                       searchPlaceholder="Pesquisar forma de pagamento..."
                       emptyText="Nenhuma forma de pagamento encontrada."
-                      contentClassName="max-sm:[&_input]:text-base max-sm:[&_input]:min-h-11 max-sm:[&_button]:min-h-11 max-sm:[&_button>span]:whitespace-normal"
+                      wrapSelectedLabel
+                      wrapOptionLabels
+                      contentClassName="w-[min(90vw,26rem)] max-sm:[&_input]:text-base max-sm:[&_input]:min-h-11 max-sm:[&_button]:min-h-11 max-sm:[&_button>span]:whitespace-normal"
                       options={(trabalharCredito && ag?.cliente_id
                       ? [...getFormasDisponiveis(), { v: "credito_cliente", l: `Crédito do Cliente (Saldo: ${fmtBRL(clienteSaldo)})` }]
                       : getFormasDisponiveis()).map((f) => ({ value: f.v, label: f.l }))}
@@ -1513,7 +1515,9 @@ export default function Pagamento() {
 
                       searchPlaceholder="Pesquisar forma de pagamento..."
                       emptyText="Nenhuma forma de pagamento encontrada."
-                      contentClassName="max-sm:[&_input]:text-base max-sm:[&_input]:min-h-11 max-sm:[&_button]:min-h-11 max-sm:[&_button>span]:whitespace-normal"
+                      wrapSelectedLabel
+                      wrapOptionLabels
+                      contentClassName="w-[min(90vw,26rem)] max-sm:[&_input]:text-base max-sm:[&_input]:min-h-11 max-sm:[&_button]:min-h-11 max-sm:[&_button>span]:whitespace-normal"
                       options={(trabalharCredito && ag?.cliente_id
                       ? [...getFormasDisponiveis(), { v: "credito_cliente", l: `Crédito do Cliente (Saldo: ${fmtBRL(clienteSaldo)})` }]
                       : getFormasDisponiveis()).map((f) => ({ value: f.v, label: f.l }))}
