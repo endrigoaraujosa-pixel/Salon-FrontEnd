@@ -22,6 +22,14 @@ const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", curr
 const fmtDT = (s) => s ? formatAgendaDateTime(s) : "—";
 
 const REPORT_PAGE_SIZE = 50;
+const splitRowsForPrint = (rows, firstPageSize = 27, followingPageSize = 42) => {
+  if (!rows?.length) return [];
+  const pages = [rows.slice(0, firstPageSize)];
+  for (let index = firstPageSize; index < rows.length; index += followingPageSize) {
+    pages.push(rows.slice(index, index + followingPageSize));
+  }
+  return pages;
+};
 
 const formatReportQuantidade = (qtd, item) => {
   const qty = Number(Number(qtd || 0).toFixed(3));
@@ -47,10 +55,17 @@ const FORMA_LABELS = {
 };
 
 const PresetButtons = ({ onPick }) => {
+  const today = todayStr();
+  const [currentYear, currentMonth] = today.slice(0, 7).split("-").map(Number);
+  const previousMonth = new Date(Date.UTC(currentYear, currentMonth - 2, 1));
+  const previousMonthStart = previousMonth.toISOString().slice(0, 10);
+  const previousMonthEnd = new Date(Date.UTC(previousMonth.getUTCFullYear(), previousMonth.getUTCMonth() + 1, 0))
+    .toISOString().slice(0, 10);
   const presets = [
     { l: "Hoje", from: todayStr(), to: todayStr() },
     { l: "Esta semana", from: getStartOfWeekStr(), to: todayStr() },
     { l: "Este mês", from: firstDayMonth(), to: todayStr() },
+    { l: "Mês anterior", from: previousMonthStart, to: previousMonthEnd },
     { l: "Últimos 30 dias", from: getDaysAgoStr(30), to: todayStr() },
   ];
   return (
@@ -803,7 +818,7 @@ export default function Relatorios() {
       <button 
         type="button" 
         onClick={() => onSort(field)}
-        className="inline-flex items-center gap-1 hover:text-[#3A4F4A] transition-colors font-semibold"
+        className="report-sort-header inline-flex items-center gap-1 hover:text-[#3A4F4A] transition-colors font-semibold"
       >
         <span>{label}</span>
         <ArrowUpDown className={`w-3.5 h-3.5 ${active ? 'text-[#84A59D]' : 'text-zinc-300'}`} />
@@ -2162,7 +2177,7 @@ export default function Relatorios() {
         `}} />
 
         {/* Header de Impressão (visível apenas na impressão) */}
-        <div className="hidden print:block border-b border-zinc-300 pb-4 mb-4">
+        <div className="hidden print:block legacy-print-header border-b border-zinc-300 pb-4 mb-4">
           <div className="flex justify-between items-end">
             <div>
               {empresa?.nome_fantasia && (
@@ -2273,26 +2288,150 @@ export default function Relatorios() {
   if (loadingFilters) return <div className="p-6"><PageLoadState loading /></div>;
 
   return (
-    <div className="mobile-layout p-4 sm:p-6 lg:p-8 fade-in max-w-[1600px] mx-auto w-full overflow-x-hidden">
-      <PageHeader overline="Análise" title="Relatórios" />
+    <div className="reports-print-root mobile-layout p-4 sm:p-6 lg:p-8 fade-in max-w-[1600px] mx-auto w-full overflow-x-hidden">
+      <div className="no-print"><PageHeader overline="Análise" title="Relatórios" /></div>
 
       <style>{`
+        .report-print-header { display: none; }
+        .analitico-vendas-print-pages { display: none; }
+        .cartoes-transactions-print-table { display: none; }
         @media print {
-          body {
-            background: white !important;
-            color: black !important;
-          }
-          .no-print {
-            display: none !important;
-          }
-          .print-full-width {
-            width: 100% !important;
-            max-width: 100% !important;
-            border: none !important;
-            box-shadow: none !important;
-          }
+          @page { size: A4 portrait; margin: 12mm 12mm 14mm; }
+          html, body, #root { width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; overflow: visible !important; background: #fff !important; }
+          body { color: #18181b !important; font: 8pt/1.35 Arial, sans-serif !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body * { visibility: hidden !important; }
+          .reports-print-root, .reports-print-root * { visibility: visible !important; }
+          #root main, #root main > div, .reports-print-root { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; }
+          .reports-print-root { position: absolute !important; inset: 0 auto auto 0 !important; width: 100% !important; max-width: none !important; margin: 0 !important; padding: 0 !important; background: #fff !important; animation: none !important; }
+          .reports-print-root .no-print, .reports-print-root button, .reports-print-root input, .reports-print-root select, .reports-print-root textarea { display: none !important; }
+          .reports-print-root button.report-sort-header { display: inline-flex !important; visibility: visible !important; color: inherit !important; cursor: default !important; pointer-events: none !important; }
+          .reports-print-root th.text-right button.report-sort-header { margin-left: auto !important; }
+          .reports-print-root th.text-center button.report-sort-header { margin-right: auto !important; margin-left: auto !important; }
+          .reports-print-root .report-print-header { display: flex !important; }
+          .reports-print-root .legacy-print-header { display: none !important; }
+          .reports-print-root .print-area, .reports-print-root .print-full-width { position: static !important; inset: auto !important; width: 100% !important; max-width: none !important; margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+          .reports-print-root [class*="overflow-x-auto"], .reports-print-root [class*="overflow-y-auto"], .reports-print-root [class*="overflow-hidden"] { overflow: visible !important; max-height: none !important; }
+          .reports-print-root svg { display: none !important; }
+          .reports-print-root [class*="bg-white"] { background: #fff !important; }
+          .reports-print-root [class*="dark:bg-"] { background-color: transparent !important; }
+          .reports-print-root [class*="border-zinc-"] { border-color: #d4d4d8 !important; }
+          .reports-print-root [class*="text-zinc-"] { color: #3f3f46 !important; }
+          .reports-print-root [class*="text-[9px]"], .reports-print-root [class*="text-[10px]"], .reports-print-root [class*="text-[11px]"] { font-size: 7pt !important; line-height: 1.25 !important; }
+          .reports-print-root .text-xs { font-size: 7.5pt !important; }
+          .reports-print-root .text-sm { font-size: 8pt !important; }
+          .reports-print-root h2, .reports-print-root h3, .reports-print-root h4 { color: #263b35 !important; break-after: avoid !important; page-break-after: avoid !important; }
+          .reports-print-root [class*="bg-white"].rounded-xl, .reports-print-root [class*="bg-white"].rounded-2xl { border: 1px solid #e4e4e7 !important; border-radius: 2mm !important; box-shadow: none !important; }
+          .reports-print-root a { color: inherit !important; text-decoration: none !important; }
+          .reports-print-root table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: auto !important; border-collapse: collapse !important; font-size: 7.5pt !important; break-inside: auto !important; page-break-inside: auto !important; }
+          .reports-print-root table > thead { display: table-header-group !important; position: static !important; break-inside: avoid !important; page-break-inside: avoid !important; }
+          .reports-print-root table > thead > tr { display: table-row !important; break-inside: avoid !important; page-break-inside: avoid !important; }
+          .reports-print-root table > thead > tr > th { display: table-cell !important; position: static !important; visibility: visible !important; }
+          .reports-print-root table > tbody { display: table-row-group !important; }
+          .reports-print-root tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+          .reports-print-root th, .reports-print-root td { padding: 4px 5px !important; border-color: #d4d4d8 !important; color: #27272a !important; white-space: normal !important; overflow-wrap: anywhere !important; }
+          .reports-print-root th { background: #eef2f1 !important; color: #33413d !important; font-size: 7pt !important; }
+          .reports-print-root button.report-sort-header { display: block !important; width: 100% !important; padding: 0 !important; text-align: inherit !important; white-space: normal !important; line-height: 1.15 !important; }
+          .reports-print-root th.text-right button.report-sort-header { margin-left: 0 !important; text-align: right !important; }
+          .reports-print-root th.text-center button.report-sort-header { margin-right: 0 !important; margin-left: 0 !important; text-align: center !important; }
+          .reports-print-root tbody tr:nth-child(even) td { background-color: #fafafa !important; }
+          .reports-print-root .grid[class*="grid-cols-"]:not(.dre-print-layout):not(.dre-overview) { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 2mm !important; }
+          .reports-print-root .grid[class*="grid-cols-"]:not(.dre-print-layout):not(.dre-overview) > [class*="rounded"] { padding: 2.5mm !important; border-radius: 1.5mm !important; box-shadow: none !important; }
+          .reports-print-root .grid[class*="grid-cols-"]:not(.dre-print-layout):not(.dre-overview) [class*="text-2xl"],
+          .reports-print-root .grid[class*="grid-cols-"]:not(.dre-print-layout):not(.dre-overview) [class*="text-3xl"] { font-size: 9pt !important; line-height: 1.15 !important; }
+          .reports-print-root .grid[class*="grid-cols-"]:not(.dre-print-layout):not(.dre-overview) [class*="text-xl"] { font-size: 8.5pt !important; line-height: 1.15 !important; }
+          .reports-print-root .grid[class*="grid-cols-"]:not(.dre-print-layout):not(.dre-overview) .font-display { margin-top: 1mm !important; }
+          .reports-print-root .hidden.md\\:block { display: block !important; }
+          .reports-print-root .md\\:hidden { display: none !important; }
+          .reports-print-root .analitico-vendas-report table { table-layout: fixed !important; font-size: 5.8pt !important; }
+          .reports-print-root .analitico-vendas-report .analitico-vendas-screen-table { display: none !important; }
+          .reports-print-root .analitico-vendas-print-pages { display: block !important; }
+          .reports-print-root .analitico-venda-print-page { break-inside: avoid !important; page-break-inside: avoid !important; }
+          .reports-print-root .analitico-venda-print-page + .analitico-venda-print-page { break-before: page !important; page-break-before: always !important; }
+          .reports-print-root .analitico-venda-print-page table { break-inside: auto !important; page-break-inside: auto !important; }
+          .reports-print-root .analitico-vendas-report th, .reports-print-root .analitico-vendas-report td { padding: 2.2px 2px !important; vertical-align: middle !important; line-height: 1.15 !important; }
+          .reports-print-root .analitico-vendas-report th:nth-child(1), .reports-print-root .analitico-vendas-report td:nth-child(1) { width: 5% !important; }
+          .reports-print-root .analitico-vendas-report th:nth-child(2), .reports-print-root .analitico-vendas-report td:nth-child(2) { width: 8% !important; }
+          .reports-print-root .analitico-vendas-report th:nth-child(3), .reports-print-root .analitico-vendas-report td:nth-child(3) { width: 12% !important; }
+          .reports-print-root .analitico-vendas-report th:nth-child(4), .reports-print-root .analitico-vendas-report td:nth-child(4) { width: 11% !important; }
+          .reports-print-root .analitico-vendas-report th:nth-child(5), .reports-print-root .analitico-vendas-report td:nth-child(5),
+          .reports-print-root .analitico-vendas-report th:nth-child(6), .reports-print-root .analitico-vendas-report td:nth-child(6) { width: 8% !important; }
+          .reports-print-root .analitico-vendas-report th:nth-child(7), .reports-print-root .analitico-vendas-report td:nth-child(7) { width: 9% !important; }
+          .reports-print-root .analitico-vendas-report th:nth-child(8), .reports-print-root .analitico-vendas-report td:nth-child(8) { width: 7% !important; }
+          .reports-print-root .analitico-vendas-report th:nth-child(9), .reports-print-root .analitico-vendas-report td:nth-child(9) { width: 8% !important; }
+          .reports-print-root .analitico-vendas-report th:nth-child(10), .reports-print-root .analitico-vendas-report td:nth-child(10) { width: 7% !important; }
+          .reports-print-root .analitico-vendas-report th:nth-child(11), .reports-print-root .analitico-vendas-report td:nth-child(11) { width: 11% !important; }
+          .reports-print-root .analitico-vendas-report th:nth-child(12), .reports-print-root .analitico-vendas-report td:nth-child(12) { width: 6% !important; }
+          .reports-print-root .analitico-vendas-report td:nth-child(n+5) { text-align: right !important; white-space: nowrap !important; overflow-wrap: normal !important; }
+          .reports-print-root .analitico-vendas-report th:nth-child(n+5) { text-align: right !important; }
+          .reports-print-root .analitico-vendas-report th:nth-child(12), .reports-print-root .analitico-vendas-report td:nth-child(12) { text-align: center !important; }
+          .reports-print-root .analitico-vendas-report td.truncate { max-width: none !important; overflow: visible !important; text-overflow: clip !important; white-space: normal !important; }
+          .reports-print-root .cartoes-transactions-screen-table { display: none !important; }
+          .reports-print-root .cartoes-transactions-print-table { display: block !important; }
+          .reports-print-root .cartoes-transactions-print-table table { table-layout: fixed !important; font-size: 6pt !important; }
+          .reports-print-root .cartoes-transactions-print-table th,
+          .reports-print-root .cartoes-transactions-print-table td { padding: 2.5px 2px !important; vertical-align: middle !important; line-height: 1.15 !important; }
+          .reports-print-root .cartoes-transactions-print-table th:nth-child(1), .reports-print-root .cartoes-transactions-print-table td:nth-child(1) { width: 10% !important; }
+          .reports-print-root .cartoes-transactions-print-table th:nth-child(2), .reports-print-root .cartoes-transactions-print-table td:nth-child(2) { width: 8% !important; }
+          .reports-print-root .cartoes-transactions-print-table th:nth-child(3), .reports-print-root .cartoes-transactions-print-table td:nth-child(3) { width: 8% !important; }
+          .reports-print-root .cartoes-transactions-print-table th:nth-child(4), .reports-print-root .cartoes-transactions-print-table td:nth-child(4) { width: 10% !important; }
+          .reports-print-root .cartoes-transactions-print-table th:nth-child(5), .reports-print-root .cartoes-transactions-print-table td:nth-child(5) { width: 13% !important; }
+          .reports-print-root .cartoes-transactions-print-table th:nth-child(6), .reports-print-root .cartoes-transactions-print-table td:nth-child(6) { width: 8% !important; }
+          .reports-print-root .cartoes-transactions-print-table th:nth-child(7), .reports-print-root .cartoes-transactions-print-table td:nth-child(7) { width: 9% !important; }
+          .reports-print-root .cartoes-transactions-print-table th:nth-child(8), .reports-print-root .cartoes-transactions-print-table td:nth-child(8) { width: 8% !important; }
+          .reports-print-root .cartoes-transactions-print-table th:nth-child(9), .reports-print-root .cartoes-transactions-print-table td:nth-child(9) { width: 9% !important; }
+          .reports-print-root .cartoes-transactions-print-table th:nth-child(10), .reports-print-root .cartoes-transactions-print-table td:nth-child(10) { width: 17% !important; }
+          .reports-print-root .cartoes-transactions-print-table td:nth-child(n+7):nth-child(-n+9),
+          .reports-print-root .cartoes-transactions-print-table th:nth-child(n+7):nth-child(-n+9) { text-align: right !important; white-space: nowrap !important; overflow-wrap: normal !important; }
+          .reports-print-root .rentabilidade-servicos-report table { table-layout: fixed !important; font-size: 7pt !important; }
+          .reports-print-root .rentabilidade-servicos-report th, .reports-print-root .rentabilidade-servicos-report td { padding: 3px 4px !important; vertical-align: middle !important; line-height: 1.2 !important; }
+          .reports-print-root .rentabilidade-servicos-report th:nth-child(1), .reports-print-root .rentabilidade-servicos-report td:nth-child(1) { width: 20% !important; }
+          .reports-print-root .rentabilidade-servicos-report th:nth-child(2), .reports-print-root .rentabilidade-servicos-report td:nth-child(2) { width: 8% !important; }
+          .reports-print-root .rentabilidade-servicos-report th:nth-child(n+3):nth-child(-n+6), .reports-print-root .rentabilidade-servicos-report td:nth-child(n+3):nth-child(-n+6) { width: 12% !important; }
+          .reports-print-root .rentabilidade-servicos-report th:nth-child(7), .reports-print-root .rentabilidade-servicos-report td:nth-child(7) { width: 14% !important; }
+          .reports-print-root .rentabilidade-servicos-report th:nth-child(8), .reports-print-root .rentabilidade-servicos-report td:nth-child(8) { width: 10% !important; }
+          .reports-print-root .rentabilidade-servicos-report td:nth-child(n+3):nth-child(-n+7) { text-align: right !important; white-space: nowrap !important; overflow-wrap: normal !important; }
+          .reports-print-root .rentabilidade-servicos-report th:nth-child(n+3):nth-child(-n+7) { text-align: right !important; }
+          .reports-print-root .rentabilidade-servicos-report td:nth-child(1) { overflow-wrap: anywhere !important; }
+          .reports-print-root .print-compact-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 6px !important; }
+          .reports-print-root .dre-overview { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 3mm !important; margin-bottom: 4mm !important; }
+          .reports-print-root .dre-overview > div { padding: 3mm !important; border: 1px solid #d4d4d8 !important; border-radius: 2mm !important; box-shadow: none !important; }
+          .reports-print-root .dre-overview [class*="text-xl"], .reports-print-root .dre-overview [class*="text-2xl"], .reports-print-root .dre-overview [class*="text-3xl"] { font-size: 12pt !important; line-height: 1.2 !important; }
+          .reports-print-root .dre-print-layout { display: block !important; }
+          .reports-print-root .dre-print-layout > * { width: 100% !important; max-width: none !important; margin: 0 0 4mm !important; padding: 4mm !important; }
+          .reports-print-root .dre-print-layout h3 { font-size: 12pt !important; }
+          .reports-print-root .dre-print-layout [class*="text-2xl"] { font-size: 11pt !important; }
+          .reports-print-root .dre-print-layout [class*="text-xl"] { font-size: 9pt !important; }
+          .reports-print-root .dre-print-layout .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 1mm !important; }
+          .reports-print-root .report-print-header { align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 7mm !important; padding: 0 0 4mm !important; border-bottom: 1.5px solid #84a59d; color: #18181b !important; }
+          .reports-print-root .report-print-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+          .reports-print-root .report-print-logo { max-width: 38mm; max-height: 16mm; object-fit: contain; }
+          .reports-print-root .report-print-title { margin: 0; font-size: 18pt; line-height: 1.15; font-weight: 700; color: #263b35 !important; }
+          .reports-print-root .report-print-company { margin-bottom: 2mm; color: #53756b !important; font-size: 8pt; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+          .reports-print-root .report-print-meta { flex: 0 0 auto; text-align: right; color: #52525b !important; font-size: 7.5pt; }
+          .reports-print-root .report-print-meta p { margin: 1mm 0; }
+          .reports-print-root .rounded-xl, .reports-print-root .rounded-2xl { border-radius: 2mm !important; }
+          .reports-print-root .shadow-sm, .reports-print-root .shadow, .reports-print-root .shadow-md { box-shadow: none !important; }
+          .reports-print-root .sticky { position: static !important; }
+          .reports-print-root .break-inside-avoid { break-inside: avoid !important; page-break-inside: avoid !important; }
         }
       `}</style>
+
+      {selectedReport && isGenerated && (
+        <div className="report-print-header">
+          <div className="report-print-brand">
+            {empresa?.logomarca && <img className="report-print-logo" src={empresa.logomarca} alt="" />}
+            <div>
+              {empresa?.nome_fantasia && <p className="report-print-company">{empresa.nome_fantasia}</p>}
+              <h1 className="report-print-title">{REPORTS_LIST.find(report => report.id === selectedReport)?.title || "Relatório"}</h1>
+            </div>
+          </div>
+          <div className="report-print-meta">
+            <p><strong>Período:</strong> {formatAgendaDate(generatedFilters?.from || from)} a {formatAgendaDate(generatedFilters?.to || to)}</p>
+            <p><strong>Emitido:</strong> {formatAgendaDateTime(new Date())}</p>
+            {user?.name && <p><strong>Responsável:</strong> {user.name}</p>}
+          </div>
+        </div>
+      )}
 
       {!selectedReport ? (
         <div className="space-y-6">
@@ -3035,7 +3174,7 @@ export default function Relatorios() {
                 {(dre.compras_estoque_excluidas || 0) > 0 && <button type="button" className="text-xs underline" onClick={() => handleDrilldown("Compras de Estoque — fora das despesas do DRE", dre.detalhes?.compras_estoque)}>Conferir compras de estoque excluídas: {fmtBRL(dre.compras_estoque_excluidas)}</button>}
               </div>}
               {/* Print Only Header */}
-              <div className="hidden print:block mb-8 border-b-2 border-zinc-900 pb-4">
+              <div className="hidden print:block legacy-print-header mb-8 border-b-2 border-zinc-900 pb-4">
                 <div className="flex justify-between items-end">
                   <div>
                     <h1 className="text-2xl font-bold tracking-tight text-zinc-900">{empresa?.nome_fantasia || "STUDIO APP"}</h1>
@@ -3049,7 +3188,7 @@ export default function Relatorios() {
               </div>
 
               {/* Overview Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 no-print">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 dre-overview">
                 {/* Total Receitas */}
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-sm hover:shadow-md transition-all">
                   <div className="flex items-center justify-between">
@@ -3097,7 +3236,7 @@ export default function Relatorios() {
                 </div>
               </div>
 
-              <div className="grid lg:grid-cols-3 gap-6">
+              <div className="grid lg:grid-cols-3 gap-6 dre-print-layout">
                 <div className="lg:col-span-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 sm:p-6 space-y-4 shadow-sm print-full-width">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800 gap-3">
                     <h3 className="font-display text-lg font-medium text-zinc-800 dark:text-zinc-100">Demonstração de Resultado</h3>
@@ -3598,6 +3737,12 @@ export default function Relatorios() {
         <TabsContent value="caixa">
           {!caixa ? <div className="text-zinc-400 p-8 text-center">Carregando...</div> : (
             <div className="space-y-4 sm:space-y-6">
+              <div className="flex items-center justify-between gap-3 no-print">
+                <h2 className="text-base sm:text-lg font-semibold text-zinc-800 dark:text-zinc-100">Resumo de Caixa</h2>
+                <Button onClick={() => window.print()} variant="outline" size="sm" className="h-9 shrink-0">
+                  <Printer className="w-4 h-4 mr-1.5" /> Imprimir / Salvar PDF
+                </Button>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 sm:p-5 shadow-sm flex items-center justify-between">
                   <div>
@@ -3822,7 +3967,12 @@ export default function Relatorios() {
           {!cartoes ? (
             <div className="text-zinc-400 p-8 text-center font-medium">Carregando...</div>
           ) : (
-            <div className="space-y-4 sm:space-y-6">
+            <div className="space-y-4 sm:space-y-6 cartoes-report">
+              <div className="flex justify-end no-print">
+                <Button onClick={() => window.print()} variant="outline" size="sm" className="h-9">
+                  <Printer className="w-4 h-4 mr-1.5" /> Imprimir / Salvar PDF
+                </Button>
+              </div>
               {/* Cards de Resumo */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div className="p-3.5 sm:p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl shadow-sm">
@@ -3912,7 +4062,7 @@ export default function Relatorios() {
                 <h4 className="font-display text-xs sm:text-sm font-bold text-zinc-800 dark:text-zinc-100 mb-3 sm:mb-4 flex items-center gap-1.5">
                   💳 Extrato Analítico de Transações
                 </h4>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto cartoes-transactions-screen-table">
                   <table className="mobile-record-table w-full text-xs text-left min-w-[950px]">
                     <thead>
                       <tr className="border-b border-zinc-100 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider">
@@ -3970,6 +4120,43 @@ export default function Relatorios() {
                         <tr>
                           <td colSpan={12} className="py-8 text-center text-zinc-400">Nenhuma transação encontrada no período.</td>
                         </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="cartoes-transactions-print-table">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr>
+                        <th>Data / hora</th>
+                        <th>Origem</th>
+                        <th>Tipo / bandeira</th>
+                        <th>Adquirente</th>
+                        <th>Forma de pagamento</th>
+                        <th>Parcelas / taxa</th>
+                        <th>Valor bruto</th>
+                        <th>Taxa cobrada</th>
+                        <th>Valor líquido</th>
+                        <th>Previsão de recebimento</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(cartoes.transacoes || []).map((t, idx) => (
+                        <tr key={idx}>
+                          <td>{fmtDT(t.data_venda)}</td>
+                          <td>{t.origem_identificador || "—"}</td>
+                          <td>{t.tipo_cartao === "credito" ? "Crédito" : "Débito"}<br />{t.bandeira || "—"}</td>
+                          <td>{t.adquirente_nome || "—"}</td>
+                          <td>{t.forma_pagamento_label || "—"}</td>
+                          <td>{t.parcelas ? `${t.parcelas}x` : "—"}<br />{t.taxa_percentual !== null && t.taxa_percentual !== undefined ? `${t.taxa_percentual}%` : "—"}</td>
+                          <td>{fmtBRL(t.valor_bruto)}</td>
+                          <td>-{fmtBRL(t.taxa_valor)}</td>
+                          <td>{fmtBRL(t.valor_liquido)}</td>
+                          <td>{t.data_recebimento_prevista ? formatAgendaDate(t.data_recebimento_prevista) : "—"}</td>
+                        </tr>
+                      ))}
+                      {(cartoes.transacoes || []).length === 0 && (
+                        <tr><td colSpan={10} className="py-3 text-center">Nenhuma transação encontrada no período.</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -4050,43 +4237,8 @@ export default function Relatorios() {
 
               return (
                 <div className="space-y-6 print-area">
-                  {/* CSS de impressão self-contained premium */}
-                  <style dangerouslySetInnerHTML={{__html: `
-                    @media print {
-                      body {
-                        background-color: white !important;
-                        color: black !important;
-                        font-size: 11px !important;
-                      }
-                      .no-print {
-                        display: none !important;
-                      }
-                      .print-full-width {
-                        width: 100% !important;
-                        max-width: 100% !important;
-                        padding: 0 !important;
-                        margin: 0 !important;
-                        border: none !important;
-                        box-shadow: none !important;
-                      }
-                      .print-compact-grid {
-                        grid-template-columns: 1fr !important;
-                        gap: 12px !important;
-                      }
-                      .print-area {
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                        width: 100%;
-                      }
-                      th, td {
-                        padding: 6px 8px !important;
-                      }
-                    }
-                  `}} />
-
                   {/* Header de Impressão (visível apenas na impressão) */}
-                  <div className="hidden print:block border-b border-zinc-300 pb-4 mb-4">
+                  <div className="hidden print:block legacy-print-header border-b border-zinc-300 pb-4 mb-4">
                     <div className="flex justify-between items-end">
                       <div>
                         {empresa?.nome_fantasia && (
@@ -4395,43 +4547,8 @@ export default function Relatorios() {
 
               return (
                 <div className="space-y-6 print-area">
-                  {/* CSS de impressão self-contained premium */}
-                  <style dangerouslySetInnerHTML={{__html: `
-                    @media print {
-                      body {
-                        background-color: white !important;
-                        color: black !important;
-                        font-size: 11px !important;
-                      }
-                      .no-print {
-                        display: none !important;
-                      }
-                      .print-full-width {
-                        width: 100% !important;
-                        max-width: 100% !important;
-                        padding: 0 !important;
-                        margin: 0 !important;
-                        border: none !important;
-                        box-shadow: none !important;
-                      }
-                      .print-compact-grid {
-                        grid-template-columns: 1fr !important;
-                        gap: 12px !important;
-                      }
-                      .print-area {
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                        width: 100%;
-                      }
-                      th, td {
-                        padding: 6px 8px !important;
-                      }
-                    }
-                  `}} />
-
                   {/* Header de Impressão (visível apenas na impressão) */}
-                  <div className="hidden print:block border-b border-zinc-300 pb-4 mb-4">
+                  <div className="hidden print:block legacy-print-header border-b border-zinc-300 pb-4 mb-4">
                     <div className="flex justify-between items-end">
                       <div>
                         {empresa?.nome_fantasia && (
@@ -4679,7 +4796,7 @@ export default function Relatorios() {
           ) : (
             <div className="space-y-6 print-full-width">
               {/* Print Only Header */}
-              <div className="hidden print:block mb-8 border-b-2 border-zinc-900 pb-4">
+              <div className="hidden print:block legacy-print-header mb-8 border-b-2 border-zinc-900 pb-4">
                 <div className="flex justify-between items-end">
                   <div>
                     <h1 className="text-2xl font-bold tracking-tight text-zinc-900">{empresa?.nome_fantasia || "STUDIO APP"}</h1>
@@ -4817,7 +4934,7 @@ export default function Relatorios() {
           {!resultadoOperacional ? (
             <div className="text-zinc-400 p-8 text-center bg-white border border-zinc-200 rounded-xl">Carregando dados...</div>
           ) : (
-            <div className="space-y-6 print-full-width">
+            <div className="space-y-6 print-full-width rentabilidade-servicos-report">
               {/* Cards de Totalizadores */}
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-3">
                 {/* Card Qtd */}
@@ -5133,6 +5250,7 @@ export default function Relatorios() {
                   </table>
                 </div>
               </div>
+
             </div>
           )}
         </TabsContent>
@@ -5441,7 +5559,7 @@ export default function Relatorios() {
           {!resultadoOperacional ? (
             <div className="text-zinc-400 p-8 text-center bg-white border border-zinc-200 rounded-xl">Carregando dados...</div>
           ) : (
-            <div className="space-y-6 print-full-width">
+            <div className="space-y-6 print-full-width analitico-vendas-report">
               {/* Cards de Totalizadores */}
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
                 {/* Card Produtos */}
@@ -5698,7 +5816,7 @@ export default function Relatorios() {
               </div>
 
               {/* Desktop View: Table */}
-              <div className="hidden md:block bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
+              <div className="hidden md:block bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm analitico-vendas-screen-table">
                 <div className="overflow-x-auto">
                   <table className="w-full text-[11px] text-left border-collapse min-w-[1000px]">
                     <thead>
@@ -5728,19 +5846,19 @@ export default function Relatorios() {
                           }} />
                         </th>
                         <th className="px-3 py-3 text-right">
-                          <SortHeader label="Prod" field="valor_produtos" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
+                          <SortHeader label="Produtos" field="valor_produtos" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
                             if (sortVendaField === f) setSortVendaDirection(d => d === 'asc' ? 'desc' : 'asc');
                             else { setSortVendaField(f); setSortVendaDirection('desc'); }
                           }} />
                         </th>
                         <th className="px-3 py-3 text-right">
-                          <SortHeader label="Serv" field="valor_servicos" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
+                          <SortHeader label="Serviços" field="valor_servicos" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
                             if (sortVendaField === f) setSortVendaDirection(d => d === 'asc' ? 'desc' : 'asc');
                             else { setSortVendaField(f); setSortVendaDirection('desc'); }
                           }} />
                         </th>
                         <th className="px-3 py-3 text-right">
-                          <SortHeader label="Total" field="faturamento_total" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
+                          <SortHeader label="Faturamento total" field="faturamento_total" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
                             if (sortVendaField === f) setSortVendaDirection(d => d === 'asc' ? 'desc' : 'asc');
                             else { setSortVendaField(f); setSortVendaDirection('desc'); }
                           }} />
@@ -5752,7 +5870,7 @@ export default function Relatorios() {
                           }} />
                         </th>
                         <th className="px-3 py-3 text-right">
-                          <SortHeader label="Comiss." field="comissao" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
+                          <SortHeader label="Comissão" field="comissao" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
                             if (sortVendaField === f) setSortVendaDirection(d => d === 'asc' ? 'desc' : 'asc');
                             else { setSortVendaField(f); setSortVendaDirection('desc'); }
                           }} />
@@ -5764,7 +5882,7 @@ export default function Relatorios() {
                           }} />
                         </th>
                         <th className="px-3 py-3 text-right">
-                          <SortHeader label="Resultado" field="resultado_operacional" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
+                          <SortHeader label="Resultado operacional" field="resultado_operacional" currentField={sortVendaField} direction={sortVendaDirection} onSort={(f) => {
                             if (sortVendaField === f) setSortVendaDirection(d => d === 'asc' ? 'desc' : 'asc');
                             else { setSortVendaField(f); setSortVendaDirection('desc'); }
                           }} />
@@ -5812,6 +5930,35 @@ export default function Relatorios() {
                   </table>
                 </div>
               </div>
+
+              <div className="analitico-vendas-print-pages" aria-hidden="true">
+                {splitRowsForPrint(sortedAndFilteredVendas).map((pageRows, pageIndex) => (
+                  <div className="analitico-venda-print-page" key={`print-page-${pageIndex}`}>
+                    <table className="w-full border-collapse text-left">
+                      <thead>
+                        <tr>
+                          <th>Venda</th><th>Data</th><th>Cliente</th><th>Profissional</th>
+                          <th>Produtos</th><th>Serviços</th><th>Faturamento total</th><th>CMV</th>
+                          <th>Comissão</th><th>Taxas</th><th>Resultado operacional</th><th>Margem</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pageRows.map((v, index) => (
+                          <tr key={`${v.numero}-${index}`}>
+                            <td>{v.numero}</td><td>{formatAgendaDate(v.data)}</td>
+                            <td>{v.cliente || "—"}</td><td>{v.profissional || "—"}</td>
+                            <td>{fmtBRL(v.valor_produtos)}</td><td>{fmtBRL(v.valor_servicos)}</td>
+                            <td>{fmtBRL(v.faturamento_total)}</td><td>{fmtBRL(v.cmv)}</td>
+                            <td>{fmtBRL(v.comissao)}</td><td>{fmtBRL(v.taxas)}</td>
+                            <td>{fmtBRL(v.resultado_operacional)}</td><td>{(v.margem || 0).toFixed(1)}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+
             </div>
           )}
         </TabsContent>
@@ -6056,6 +6203,7 @@ export default function Relatorios() {
                   </>
                 )}
               </div>
+
             </div>
           )}
 
