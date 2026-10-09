@@ -41,6 +41,7 @@ const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", curr
 const fmtDate = (s) => s ? new Date(s).toLocaleDateString("pt-BR") : "—";
 const fmtDateTime = (s) => s ? new Date(s).toLocaleString("pt-BR") : "—";
 const fmtTime = (s) => s ? new Date(s).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' }) : "—";
+const CLIENTS_PER_PAGE = 50;
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -69,6 +70,7 @@ export default function Dashboard() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedServiceName, setSelectedServiceName] = useState("");
+  const [detailPage, setDetailPage] = useState(1);
 
 
   const loadDashboard = () => {
@@ -105,6 +107,7 @@ export default function Dashboard() {
   const handleOpenDetail = (metric, serviceName = "") => {
     setSelectedMetric(metric);
     setSelectedServiceName(serviceName);
+    setDetailPage(1);
     setLoadingDetail(true);
     setDetailsOpen(true);
     setDetailData([]);
@@ -160,6 +163,11 @@ export default function Dashboard() {
     }
     return '—';
   };
+
+  const clientPageCount = Math.max(1, Math.ceil(detailData.length / CLIENTS_PER_PAGE));
+  const paginatedClients = detailData.slice((detailPage - 1) * CLIENTS_PER_PAGE, detailPage * CLIENTS_PER_PAGE);
+  const firstClientOnPage = detailData.length === 0 ? 0 : (detailPage - 1) * CLIENTS_PER_PAGE + 1;
+  const lastClientOnPage = Math.min(detailPage * CLIENTS_PER_PAGE, detailData.length);
   
   if (!d) return <div className="p-8 text-zinc-400 dark:text-zinc-500 font-semibold text-center">Carregando dashboard...</div>;
   
@@ -514,7 +522,7 @@ export default function Dashboard() {
                     </div>
                   ))}
 
-                  {selectedMetric === "clientes" && detailData.map((item, idx) => (
+                  {selectedMetric === "clientes" && paginatedClients.map((item, idx) => (
                     <div key={idx} className="bg-white dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-800/80 rounded-xl p-4 space-y-2 shadow-sm">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200 truncate">{item.nome}</span>
@@ -760,7 +768,7 @@ export default function Dashboard() {
                           </tr>
                         ))}
 
-                        {selectedMetric === "clientes" && detailData.map((item, idx) => (
+                        {selectedMetric === "clientes" && paginatedClients.map((item, idx) => (
                           <tr key={idx} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-800/30 transition-colors">
                             <td className="px-4 py-3 text-zinc-800 dark:text-zinc-200 font-semibold">{item.nome}</td>
                             <td className="px-4 py-3 text-zinc-650 dark:text-zinc-455 font-mono text-xs">{item.telefone || '—'}</td>
@@ -843,6 +851,37 @@ export default function Dashboard() {
                     </table>
                   </div>
                 </div>
+
+                {selectedMetric === "clientes" && clientPageCount > 1 && (
+                  <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Exibindo {firstClientOnPage}–{lastClientOnPage} de {detailData.length} clientes
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDetailPage(page => Math.max(1, page - 1))}
+                        disabled={detailPage === 1}
+                        aria-label="Página anterior de clientes"
+                      >
+                        Anterior
+                      </Button>
+                      <span className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 px-1">
+                        Página {detailPage} de {clientPageCount}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDetailPage(page => Math.min(clientPageCount, page + 1))}
+                        disabled={detailPage === clientPageCount}
+                        aria-label="Próxima página de clientes"
+                      >
+                        Próxima
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>
