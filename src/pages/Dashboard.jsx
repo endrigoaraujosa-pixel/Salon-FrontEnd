@@ -475,7 +475,7 @@ export default function Dashboard() {
                         <span className="font-semibold text-zinc-400 dark:text-zinc-500">Itens:</span> {item.itens}
                       </div>
                       <div className="flex items-center justify-between text-[11px] text-zinc-400 dark:text-zinc-550 uppercase font-mono">
-                        <span>Forma: {item.forma_pagamento?.replace('_', ' ')}</span>
+                        <span>Forma: {item.forma_pagamento || 'N/A'}</span>
                       </div>
                     </div>
                   ))}
@@ -725,7 +725,7 @@ export default function Dashboard() {
                             </td>
                             <td className="px-4 py-3 text-zinc-750 dark:text-zinc-200 font-semibold">{item.cliente}</td>
                             <td className="px-4 py-3 text-zinc-600 dark:text-zinc-350 max-w-[250px] truncate" title={item.itens}>{item.itens}</td>
-                            <td className="px-4 py-3 text-zinc-500 dark:text-zinc-450 uppercase text-xs font-mono">{item.forma_pagamento?.replace('_', ' ')}</td>
+                            <td className="px-4 py-3 text-zinc-500 dark:text-zinc-450 text-xs">{item.forma_pagamento || 'N/A'}</td>
                             <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-450">{fmtBRL(item.valor)}</td>
                           </tr>
                         ))}
