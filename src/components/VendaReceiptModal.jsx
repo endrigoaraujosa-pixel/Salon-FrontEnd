@@ -10,7 +10,9 @@ const getFriendlyPaymentLabel = (method, taxasCartao = []) => {
   if (!method) return "-";
 
   const normalizedMethod = method.toLowerCase();
-  const foundTaxa = taxasCartao.find((taxa) => taxa.forma_pagamento === method);
+  const foundTaxa = taxasCartao.find(
+    (taxa) => taxa.forma_pagamento?.toLowerCase() === normalizedMethod
+  );
   if (foundTaxa) {
     if (foundTaxa.descricao) return foundTaxa.descricao;
     const typeName = foundTaxa.tipo_cartao === "credito" ? "Crédito" : "Débito";
