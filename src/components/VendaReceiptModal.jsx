@@ -6,6 +6,36 @@ import { useTheme } from "../ThemeProvider";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtDT = (s) => new Date(s).toLocaleString("pt-BR");
+const getFriendlyPaymentLabel = (method, taxasCartao = []) => {
+  if (!method) return "-";
+
+  const normalizedMethod = method.toLowerCase();
+  const foundTaxa = taxasCartao.find((taxa) => taxa.forma_pagamento === method);
+  if (foundTaxa) {
+    if (foundTaxa.descricao) return foundTaxa.descricao;
+    const typeName = foundTaxa.tipo_cartao === "credito" ? "Crédito" : "Débito";
+    return `${typeName} ${foundTaxa.bandeira?.trim() || ""}`.trim();
+  }
+
+  const standardLabels = {
+    dinheiro: "Dinheiro",
+    pix: "Pix",
+    cartao_credito: "Cartão de Crédito",
+    credito: "Cartão de Crédito",
+    cartao_debito: "Cartão de Débito",
+    debito: "Cartão de Débito",
+    credito_cliente: "Crédito do Cliente",
+    vale: "Vale-alimentação",
+    transferencia: "Transferência Bancária",
+    outros: "Outros",
+  };
+
+  if (standardLabels[normalizedMethod]) return standardLabels[normalizedMethod];
+  if (normalizedMethod.startsWith("credito_")) return "Cartão de Crédito";
+  if (normalizedMethod.startsWith("debito_")) return "Cartão de Débito";
+  return method.replace(/_/g, " ").replace(/\b\p{L}/gu, (letter) => letter.toUpperCase());
+};
+
 import { toast } from "sonner";
 
 export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
@@ -13,6 +43,7 @@ export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [empresa, setEmpresa] = useState(null);
+  const [taxasCartao, setTaxasCartao] = useState([]);
 
   useEffect(() => {
     if (open && vendaId) {
@@ -25,6 +56,7 @@ export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
   useEffect(() => {
     if (open) {
       http.get("/configuracoes/empresa").then((r) => setEmpresa(r.data)).catch(() => {});
+      http.get("/configuracoes/taxas-cartao").then((r) => setTaxasCartao(r.data || [])).catch(() => setTaxasCartao([]));
     }
   }, [open]);
 
@@ -268,7 +300,7 @@ export default function VendaReceiptModal({ open, onOpenChange, vendaId }) {
                         <div className="flex justify-between items-center w-full">
                           <span className="font-bold text-zinc-700 dark:text-zinc-300 capitalize flex items-center gap-1.5 print:text-black">
                             <CreditCard className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 print:hidden" />
-                            {p.forma_pagamento}
+                            {getFriendlyPaymentLabel(p.forma_pagamento, taxasCartao)}
                           </span>
                           <span className="font-mono font-bold text-zinc-800 dark:text-zinc-200 print:text-black">{fmtBRL(p.valor)}</span>
                         </div>
