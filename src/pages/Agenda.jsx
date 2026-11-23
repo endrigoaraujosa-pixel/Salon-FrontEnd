@@ -2391,7 +2391,7 @@ export default function Agenda() {
                                   : "Nova venda direta para este cliente"
                             }
                             disabled={a.status === "concluido" || !canCriarVenda}
-                            onClick={() => nav(`/vendas-diretas?cliente_id=${a.cliente_id}&from=agenda`)}
+                            onClick={() => nav(`/vendas-diretas?cliente_id=${a.cliente_id}&agendamento_id=${a.id}&from=agenda`)}
                             className={`text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30 ${
                               a.status === "concluido" || !canCriarVenda ? "opacity-50 cursor-not-allowed text-zinc-400 hover:text-zinc-400 hover:bg-transparent" : ""
                             }`}

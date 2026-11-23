@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Popover, PopoverTrigger, PopoverContent } from "../components/ui/popover";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "../components/ui/tooltip";
 import { FileText, Banknote, Package, TrendingUp, TrendingDown, User, Printer, Search, ArrowUpDown, Tag, Scissors, Clock, HelpCircle, Filter, ArrowLeft, AlertTriangle, AlertCircle, Coins, Flame, Zap, Calendar, Sliders, ClipboardList, Eye, CreditCard, ChevronLeft, ChevronRight, Percent, PackagePlus, ChevronDown } from "lucide-react";
+import { ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip as ChartTooltip, Legend, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 
 const fmtBRL = (n) => (n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmtDT = (s) => s ? formatAgendaDateTime(s) : "—";
@@ -47,6 +48,12 @@ const todayStr = getAgendaTodayDate;
 const firstDayMonth = getAgendaMonthStart;
 const getDaysAgoStr = getAgendaDaysAgo;
 const getStartOfWeekStr = getAgendaWeekStart;
+const shiftDateByMonths = (value, months) => {
+  const [year, month, day] = value.split("-").map(Number);
+  const target = new Date(Date.UTC(year, month - 1 + months, 1));
+  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  return `${target.getUTCFullYear()}-${String(target.getUTCMonth() + 1).padStart(2, "0")}-${String(Math.min(day, lastDay)).padStart(2, "0")}`;
+};
 
 const FORMA_LABELS = {
   dinheiro: "Dinheiro", pix: "PIX",
@@ -136,6 +143,15 @@ const REPORTS_LIST = [
     title: "Faturamento Diário",
     description: "Resumo por dia da agenda com clientes atendidos, valores de serviços e produtos e ticket médio.",
     icon: Calendar,
+    category: "Vendas",
+    badgeColor: "bg-amber-50 text-amber-700 border-amber-250 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/40",
+    iconColor: "text-amber-500"
+  },
+  {
+    id: "comparativo_desempenho",
+    title: "Comparativo de Desempenho",
+    description: "Dashboard interativo e análise horizontal de serviços e produtos entre dois períodos, com evolução, mix de receita, equipe e exportação.",
+    icon: TrendingUp,
     category: "Vendas",
     badgeColor: "bg-amber-50 text-amber-700 border-amber-250 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/40",
     iconColor: "text-amber-500"
@@ -314,7 +330,7 @@ const getReportPermKey = (tab) => {
   if (tab === "caixa") return "relatorios.caixa";
   if (tab === "cartoes") return "relatorios.cartoes";
   if (tab === "produtos" || tab === "servicos") return "relatorios.vendas";
-  if (tab === "faturamento_diario") return "relatorios.vendas";
+  if (tab === "faturamento_diario" || tab === "comparativo_desempenho") return "relatorios.vendas";
   if (tab === "agendamentos_cancelados") return "relatorios.cancelados";
   if (["resultado_consolidado", "rentabilidade_servicos", "rentabilidade_produtos", "analitico_vendas"].includes(tab)) return "relatorios.operacional";
   if (tab.startsWith("estoque")) return "relatorios.estoque";
@@ -334,6 +350,15 @@ export default function Relatorios() {
   const [cartoes, setCartoes] = useState(null);
   const [cancelados, setCancelados] = useState(null);
   const [faturamentoDiario, setFaturamentoDiario] = useState(null);
+  const [comparativoDesempenho, setComparativoDesempenho] = useState(null);
+  const [comparativoAtualInicio, setComparativoAtualInicio] = useState(firstDayMonth);
+  const [comparativoAtualFim, setComparativoAtualFim] = useState(todayStr);
+  const [comparativoAnteriorInicio, setComparativoAnteriorInicio] = useState(() => shiftDateByMonths(firstDayMonth(), -1));
+  const [comparativoAnteriorFim, setComparativoAnteriorFim] = useState(() => shiftDateByMonths(todayStr(), -1));
+  const [comparativoTipo, setComparativoTipo] = useState("todos");
+  const [comparativoColaborador, setComparativoColaborador] = useState("todos");
+  const [comparativoDrilldown, setComparativoDrilldown] = useState({ tipo: "", id: "", label: "" });
+  const [comparativoMetric, setComparativoMetric] = useState("faturamento");
   
   const [adquirentesList, setAdquirentesList] = useState([]);
   const [formasCartaoList, setFormasCartaoList] = useState([]);
@@ -739,6 +764,27 @@ export default function Relatorios() {
           setFaturamentoDiario({ dias: [], totais: { frequencia: 0, valor_servicos: 0, valor_produtos: 0, total: 0, media: 0 } });
         });
     }
+    if (tab === "comparativo_desempenho") {
+      const compareParams = {
+        atual_inicio: comparativoAtualInicio,
+        atual_fim: comparativoAtualFim,
+        anterior_inicio: comparativoAnteriorInicio,
+        anterior_fim: comparativoAnteriorFim,
+        tipo: comparativoTipo,
+        colaborador_id: comparativoColaborador,
+        drilldown_tipo: comparativoDrilldown.tipo || undefined,
+        drilldown_id: comparativoDrilldown.id || undefined
+      };
+      promise = http.get("/relatorios/comparativo-desempenho", { params: compareParams })
+        .then((r) => setComparativoDesempenho(r.data))
+        .catch((err) => {
+          setReportError("Não foi possível carregar o comparativo. Tente novamente.");
+          console.error("Comparativo de desempenho error:", err);
+          if (err.response?.status === 403) toast.error("Acesso negado: Você não tem permissão para visualizar o comparativo de desempenho.");
+          else toast.error("Erro ao carregar o comparativo de desempenho.");
+          setComparativoDesempenho(null);
+        });
+    }
     if (["resultado_consolidado", "rentabilidade_servicos", "rentabilidade_produtos", "analitico_vendas"].includes(tab)) {
       const operParams = {
         data_inicio: from,
@@ -826,7 +872,9 @@ export default function Relatorios() {
     );
   };
 
-  const handleExport = (format, title, headers, keys, rows) => {
+  const handleExport = (format, title, headers, keys, rows, periodLabel = null) => {
+    const exportPeriodLabel = periodLabel || `${from} a ${to}`;
+    const exportDateSuffix = periodLabel ? periodLabel.replace(/[^0-9A-Za-z_-]+/g, "_") : `${from}_to_${to}`;
     if (format === 'csv') {
       const csvHeaders = headers.join(";");
       const csvRows = rows.map(row => 
@@ -847,7 +895,7 @@ export default function Relatorios() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `${title}_${from}_to_${to}.csv`);
+      link.setAttribute("download", `${title}_${exportDateSuffix}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -855,7 +903,7 @@ export default function Relatorios() {
       let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">`;
       html += `<head><meta charset="utf-8" /><style>table { border-collapse: collapse; } th { background-color: #f4f4f5; font-weight: bold; border: 1px solid #d4d4d8; } td { border: 1px solid #e4e4e7; }</style></head><body>`;
       html += `<h2>${title}</h2>`;
-      html += `<p>Período: ${from} a ${to}</p>`;
+      html += `<p>Período: ${exportPeriodLabel}</p>`;
       html += `<table><thead><tr>`;
       headers.forEach(h => {
         html += `<th>${h}</th>`;
@@ -878,11 +926,303 @@ export default function Relatorios() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `${title}_${from}_to_${to}.xls`);
+      link.setAttribute("download", `${title}_${exportDateSuffix}.xls`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     }
+  };
+
+  const applyComparativoFilter = (drilldown) => {
+    setComparativoDrilldown(drilldown);
+    setGeneratedFilters((previous) => previous ? {
+      ...previous,
+      comparativoDrilldown: drilldown,
+      comparativoTipo,
+      comparativoColaborador
+    } : previous);
+    setIsGenerated(true);
+    setLoadingReport(true);
+    setReportError("");
+    http.get("/relatorios/comparativo-desempenho", { params: {
+      atual_inicio: comparativoAtualInicio,
+      atual_fim: comparativoAtualFim,
+      anterior_inicio: comparativoAnteriorInicio,
+      anterior_fim: comparativoAnteriorFim,
+      tipo: comparativoTipo,
+      colaborador_id: comparativoColaborador,
+      drilldown_tipo: drilldown.tipo || undefined,
+      drilldown_id: drilldown.id || undefined
+    } })
+      .then((response) => setComparativoDesempenho(response.data))
+      .catch((error) => {
+        console.error("Comparativo de desempenho drill-down error:", error);
+        setComparativoDesempenho(null);
+        setReportError("Não foi possível aplicar este filtro ao comparativo.");
+        toast.error("Erro ao atualizar o comparativo de desempenho.");
+      })
+      .finally(() => setLoadingReport(false));
+  };
+
+  const renderComparativoReport = () => {
+    const data = comparativoDesempenho;
+    if (!data) return <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">Nenhum dado disponível para os períodos selecionados.</div>;
+
+    const prev = data.anterior || {};
+    const current = data.atual || {};
+    const pctLabel = (metric) => {
+      if (metric.anterior === 0 && metric.atual > 0) return "+100%";
+      const value = Number(metric.variacao || 0);
+      return `${value > 0 ? "+" : ""}${value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
+    };
+    const changeClass = (value) => value >= 0
+      ? "text-emerald-700 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/40"
+      : "text-rose-700 bg-rose-50 dark:text-rose-400 dark:bg-rose-950/40";
+    const kpis = [
+      { key: "faturamento_total", label: "Faturamento Total", description: "Soma da receita de serviços concluídos e produtos pagos no período.", icon: Banknote, money: true },
+      { key: "receita_servicos", label: "Receita de Serviços", description: "Valor dos atendimentos concluídos, considerando a data do atendimento.", icon: Scissors, money: true },
+      { key: "receita_produtos", label: "Receita de Produtos", description: "Valor das vendas pagas de produtos, considerando a data da venda.", icon: Package, money: true },
+      { key: "quantidade_total", label: "Atendimentos / Vendas", description: "Total de atendimentos concluídos e vendas pagas. Um atendimento com serviço e produto é contado uma única vez.", icon: ClipboardList, money: false },
+      { key: "ticket_medio", label: "Ticket Médio", description: "Faturamento total dividido pela quantidade de atendimentos e vendas contabilizados.", icon: TrendingUp, money: true },
+      { key: "taxa_conversao", label: "Taxa de Conversão", description: "Percentual de operações concluídas ou pagas em relação às operações não canceladas registradas. É um indicador operacional, não uma conversão de leads.", icon: Percent, money: false, suffix: "%" }
+    ];
+    const dateRangeLabel = (range) => `${formatAgendaDate(range?.inicio)} a ${formatAgendaDate(range?.fim)}`;
+    const metricKey = comparativoMetric === "quantidade" ? "quantidade" : "faturamento";
+    const metricLabel = comparativoMetric === "quantidade" ? "Quantidade" : "Faturamento";
+    const currentMix = [
+      { name: "Serviços", tipo: "servicos", valor: Number(current.receita_servicos || 0) },
+      { name: "Produtos", tipo: "produtos", valor: Number(current.receita_produtos || 0) }
+    ].filter(item => item.valor > 0);
+    const topServices = (data.itens || []).filter(row => row.entidade_tipo === "servico").sort((a, b) => b[`${metricKey}_atual`] - a[`${metricKey}_atual`]).slice(0, 10);
+    const topProducts = (data.itens || []).filter(row => row.entidade_tipo === "produto").sort((a, b) => b[`${metricKey}_atual`] - a[`${metricKey}_atual`]).slice(0, 10);
+    const topCategories = (data.categorias || []).sort((a, b) => b.faturamento_atual - a.faturamento_atual).slice(0, 10);
+    const topTeam = (data.equipe || []).sort((a, b) => b.faturamento_atual - a.faturamento_atual).slice(0, 10);
+    const formatMetric = (value) => comparativoMetric === "quantidade"
+      ? Number(value || 0).toLocaleString("pt-BR", { maximumFractionDigits: 3 })
+      : fmtBRL(value);
+    const rankingChart = (title, type, rows) => (
+      <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+          <div><h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">{title}</h3><p className="mt-1 text-[11px] text-zinc-500">{comparativoMetric === "quantidade" ? "Mais serviços realizados ou unidades vendidas no período atual" : "Maiores valores faturados em reais no período atual"}</p></div>
+          <span className="rounded-full bg-[#EAF0EE] px-2.5 py-1 text-[10px] font-semibold text-[#49675B] dark:bg-zinc-800 dark:text-[#B8D6C7]">Clique em uma barra para detalhar</span>
+        </div>
+        {rows.length ? (
+          <div className="h-[250px] w-full sm:h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 18, bottom: 4, left: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e4e4e7" />
+                <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={comparativoMetric === "faturamento" ? (value) => `R$${Number(value).toLocaleString("pt-BR")}` : undefined} />
+                <YAxis type="category" dataKey="nome" width={118} tick={{ fontSize: 10 }} />
+                <ChartTooltip formatter={(value) => [formatMetric(value), metricLabel]} />
+                <Bar dataKey={`${metricKey}_atual`} fill={type === "servico" ? "#84A59D" : "#D5A866"} radius={[0, 5, 5, 0]} cursor="pointer" onClick={(entry) => { const row = entry?.payload || entry; if (row?.entidade_id) applyComparativoFilter({ tipo: type, id: row.entidade_id, label: row.nome }); }} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : <p className="flex h-[250px] items-center justify-center text-xs text-zinc-400 sm:h-[300px]">Sem dados neste período.</p>}
+      </section>
+    );
+    const exportRows = (data.itens || []).map(row => ({
+      tipo: row.tipo,
+      nome: row.nome,
+      quantidade_anterior: row.quantidade_anterior,
+      quantidade_atual: row.quantidade_atual,
+      variacao_quantidade: row.variacao_quantidade,
+      faturamento_anterior: row.faturamento_anterior,
+      faturamento_atual: row.faturamento_atual,
+      diferenca: row.diferenca,
+      variacao_faturamento: row.variacao_faturamento,
+      participacao_anterior: row.participacao_anterior,
+      participacao_atual: row.participacao_atual
+    }));
+    return (
+      <div className="comparativo-desempenho-report space-y-5 print-full-width">
+        <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">Atual: {dateRangeLabel(data.periodos?.atual)}</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">Anterior: {dateRangeLabel(data.periodos?.anterior)}</p>
+            <p className="max-w-3xl text-[10px] leading-relaxed text-zinc-400">Receitas incluem atendimentos concluídos e vendas pagas. A conversão é operacional e considera operações concluídas/pagas sobre operações não canceladas registradas; não mede leads ou visitantes.</p>
+            {(comparativoDrilldown.id || comparativoColaborador !== "todos" || comparativoTipo !== "todos") && (
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="rounded-full bg-[#EAF0EE] px-2.5 py-1 text-[10px] font-semibold text-[#49675B] dark:bg-zinc-800 dark:text-[#B8D6C7]">
+                  {comparativoDrilldown.label || (comparativoTipo === "servicos" ? "Apenas serviços" : comparativoTipo === "produtos" ? "Apenas produtos" : "Filtro aplicado")}
+                </span>
+                {comparativoDrilldown.id && <Button size="sm" variant="outline" className="h-9 border-[#648775] px-3 text-xs font-semibold text-[#3A4F4A] hover:bg-[#EAF0EE] dark:text-[#D7E7DF] dark:hover:bg-zinc-800" onClick={() => applyComparativoFilter({ tipo: "", id: "", label: "" })}>Voltar à visão geral</Button>}
+              </div>
+            )}
+          </div>
+          <div className="no-print flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" className="h-9" onClick={() => handleExport("xlsx", "Comparativo_Desempenho", ["Tipo", "Serviço/Produto", "Qtd. anterior", "Qtd. atual", "Variação qtd. (%)", "Faturamento anterior (R$)", "Faturamento atual (R$)", "Diferença (R$)", "Variação faturamento (%)", "Participação anterior (%)", "Participação atual (%)"], ["tipo", "nome", "quantidade_anterior", "quantidade_atual", "variacao_quantidade", "faturamento_anterior", "faturamento_atual", "diferenca", "variacao_faturamento", "participacao_anterior", "participacao_atual"], exportRows, `Atual ${dateRangeLabel(data.periodos?.atual)} | Anterior ${dateRangeLabel(data.periodos?.anterior)}`)}><FileText className="mr-1.5 h-4 w-4" />Excel</Button>
+            <Button variant="outline" size="sm" className="h-9" onClick={() => window.print()}><Printer className="mr-1.5 h-4 w-4" />PDF</Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-3">
+          {kpis.map((metric) => {
+            const values = data.resumo?.[metric.key] || { anterior: 0, atual: 0, variacao: 0 };
+            const Icon = metric.icon;
+            const format = (value) => metric.money ? fmtBRL(value) : `${Number(value || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}${metric.suffix || ""}`;
+            return (
+              <div key={metric.key} className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5">
+                <div className="mb-3 flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-zinc-700 dark:text-zinc-200 sm:text-xs">{metric.label}</span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button type="button" aria-label={`Ajuda: ${metric.label}`} className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#648775] dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-white">
+                          <HelpCircle className="h-4 w-4" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent side="top" align="start" className="max-w-[280px] border-zinc-200 bg-white text-sm leading-relaxed text-zinc-800 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100">
+                        <p className="mb-1 font-semibold">{metric.label}</p>
+                        <p>{metric.description}</p>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <Icon className="h-4 w-4 text-[#84A59D]" />
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-zinc-500">Anterior</span><span className="whitespace-nowrap text-[13px] font-semibold text-zinc-600 dark:text-zinc-300 sm:text-sm">{format(values.anterior)}</span>
+                </div>
+                <div className="mt-1 flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">Atual</span><span className="whitespace-nowrap text-base font-bold text-zinc-900 dark:text-zinc-100 sm:text-lg">{format(values.atual)}</span>
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                  <span className="text-[11px] text-zinc-500">Variação</span>
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${changeClass(values.diferenca || 0)}`}>{pctLabel(values)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5">
+            <div className="mb-4"><h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Evolução do faturamento</h3><p className="mt-1 text-[11px] text-zinc-500">Comparação por {current.granularidade === "mês" ? "mês do período" : "dia do período"}.</p></div>
+            <div className="h-[250px] w-full sm:h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data.serie || []} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
+                  <XAxis dataKey="rotulo" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(value) => `R$${Number(value).toLocaleString("pt-BR")}`} />
+                  <ChartTooltip formatter={(value) => fmtBRL(value)} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Line type="monotone" dataKey="atual" name="Atual" stroke="#648775" strokeWidth={3} dot={false} />
+                  <Line type="monotone" dataKey="anterior" name="Anterior" stroke="#D5A866" strokeWidth={2} strokeDasharray="5 4" dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5">
+            <div className="mb-2"><h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Mix de receita atual</h3><p className="mt-1 text-[11px] text-zinc-500">Clique em uma fatia para filtrar todos os indicadores.</p></div>
+            {currentMix.length ? (
+              <div className="h-[250px] w-full sm:h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={currentMix} dataKey="valor" nameKey="name" cx="50%" cy="50%" outerRadius={78} innerRadius={46} paddingAngle={3} onClick={(entry) => { const tipoReceita = (entry?.payload || entry)?.tipo; if (tipoReceita) applyComparativoFilter({ tipo: "tipo_receita", id: tipoReceita, label: tipoReceita === "servicos" ? "Receita de serviços" : "Receita de produtos" }); }} cursor="pointer">
+                      {currentMix.map((entry) => <Cell key={entry.tipo} fill={entry.tipo === "servicos" ? "#84A59D" : "#D5A866"} />)}
+                    </Pie>
+                    <ChartTooltip formatter={(value) => fmtBRL(value)} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : <p className="flex h-[250px] items-center justify-center text-xs text-zinc-400 sm:h-[300px]">Sem faturamento no período atual.</p>}
+          </section>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="max-w-2xl"><h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Ranking de serviços e produtos</h3><p className="mt-1 text-xs text-zinc-600">Faturamento ordena pelo valor em reais. Quantidade ordena pelo número de serviços realizados ou unidades de produtos vendidas. Essa escolha afeta somente os dois rankings abaixo.</p></div>
+          <div className="flex gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800">
+            {[{ value: "faturamento", label: "Valor faturado (R$)" }, { value: "quantidade", label: "Qtd. realizada/vendida" }].map(option => (
+              <Button key={option.value} size="sm" variant={comparativoMetric === option.value ? "default" : "ghost"} className={`h-8 px-3 text-[11px] ${comparativoMetric === option.value ? "bg-[#648775] text-white hover:bg-[#527163]" : ""}`} onClick={() => setComparativoMetric(option.value)}>{option.label}</Button>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          {rankingChart("Serviços mais realizados", "servico", topServices)}
+          {rankingChart("Produtos mais vendidos", "produto", topProducts)}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5">
+            <div className="mb-3"><h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Receita atribuída por profissional/vendedor</h3></div>
+            <div className="mb-4 rounded-xl border border-[#D5A866]/50 bg-[#FBF7EF] p-3.5 text-sm leading-relaxed text-zinc-800 dark:border-[#D5A866]/40 dark:bg-zinc-800 dark:text-zinc-100">
+              <p><strong>Como este valor é calculado:</strong> o gráfico soma os serviços vinculados a cada profissional e os produtos vendidos por cada pessoa.</p>
+              <p className="mt-2 border-t border-[#D5A866]/30 pt-2">O <strong>Faturamento Diário</strong> soma o valor pago de cada atendimento completo, sem separar por profissional. Por isso, os valores podem ser diferentes. Este gráfico mostra receita atribuída, não comissão.</p>
+            </div>
+            <p className="mb-2 text-xs text-zinc-600">Clique em uma barra para filtrar os indicadores.</p>
+            {topTeam.length ? <div className="h-[250px] w-full sm:h-[300px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={topTeam} layout="vertical" margin={{ top: 4, right: 18, bottom: 4, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e4e4e7" /><XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={(value) => `R$${Number(value).toLocaleString("pt-BR")}`} /><YAxis type="category" dataKey="nome" width={118} tick={{ fontSize: 10 }} /><ChartTooltip formatter={(value) => fmtBRL(value)} /><Bar dataKey="faturamento_atual" name="Receita atribuída" fill="#648775" radius={[0, 5, 5, 0]} cursor="pointer" onClick={(entry) => { const row = entry?.payload || entry; if (row?.colaborador_id && row.colaborador_id !== "sem_profissional") applyComparativoFilter({ tipo: "profissional", id: row.colaborador_id, label: row.nome }); }} />
+            </BarChart></ResponsiveContainer></div> : <p className="flex h-[250px] items-center justify-center text-xs text-zinc-400 sm:h-[300px]">Sem dados neste período.</p>}
+          </section>
+          <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-5">
+            <div className="mb-3"><h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Faturamento por categoria</h3><p className="mt-1 text-[11px] text-zinc-500">Clique em uma barra para filtrar serviços ou produtos da categoria.</p></div>
+            {topCategories.length ? <div className="h-[250px] w-full sm:h-[300px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={topCategories} layout="vertical" margin={{ top: 4, right: 18, bottom: 4, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e4e4e7" /><XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={(value) => `R$${Number(value).toLocaleString("pt-BR")}`} /><YAxis type="category" dataKey="categoria" width={118} tick={{ fontSize: 10 }} /><ChartTooltip formatter={(value) => fmtBRL(value)} /><Bar dataKey="faturamento_atual" name="Faturamento" fill="#D5A866" radius={[0, 5, 5, 0]} cursor="pointer" onClick={(entry) => { const row = entry?.payload || entry; if (row?.categoria_id) applyComparativoFilter({ tipo: `categoria_${row.entidade_tipo}`, id: row.categoria_id, label: `${row.tipo}: ${row.categoria}` }); }} />
+            </BarChart></ResponsiveContainer></div> : <p className="flex h-[250px] items-center justify-center text-xs text-zinc-400 sm:h-[300px]">Sem dados neste período.</p>}
+          </section>
+        </div>
+
+        <section className="rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex flex-wrap items-end justify-between gap-3 border-b border-zinc-100 px-4 py-4 dark:border-zinc-800 sm:px-5">
+            <div><h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Análise horizontal por serviço e produto</h3><p className="mt-1 text-[11px] text-zinc-500">Variações usam (atual − anterior) ÷ anterior. Itens novos aparecem como “Novo”.</p></div>
+            <span className="text-[10px] text-zinc-500">Participação exibida sobre o faturamento total de cada período.</span>
+          </div>
+          {(data.itens || []).length ? (
+            <>
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="min-w-[1100px] w-full text-left text-xs">
+                <thead className="bg-zinc-50 text-[10px] uppercase tracking-wider text-zinc-500 dark:bg-zinc-950/40">
+                  <tr><th className="px-4 py-3">Serviço / Produto</th><th className="px-3 py-3 text-right">Qtd. anterior</th><th className="px-3 py-3 text-right">Qtd. atual</th><th className="px-3 py-3 text-right">Var. qtd.</th><th className="px-3 py-3 text-right">Anterior</th><th className="px-3 py-3 text-right">Atual</th><th className="px-3 py-3 text-right">Diferença</th><th className="px-3 py-3 text-right">Var. fat.</th><th className="px-3 py-3 text-right">Part. ant.</th><th className="px-4 py-3 text-right">Part. atual</th></tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                  {data.itens.map(row => {
+                    const isNew = row.faturamento_anterior === 0 && row.faturamento_atual > 0;
+                    return <tr key={row.chave} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40">
+                      <td className="px-4 py-3"><button className="block text-left font-semibold text-zinc-800 hover:text-[#648775] dark:text-zinc-100" onClick={() => applyComparativoFilter({ tipo: row.entidade_tipo, id: row.entidade_id, label: row.nome })}>{row.nome}</button><span className="mt-0.5 block text-[10px] text-zinc-500">{row.tipo} · {row.categoria}</span></td>
+                      <td className="px-3 py-3 text-right text-zinc-600 dark:text-zinc-300">{Number(row.quantidade_anterior || 0).toLocaleString("pt-BR", { maximumFractionDigits: 3 })}</td>
+                      <td className="px-3 py-3 text-right font-semibold text-zinc-800 dark:text-zinc-100">{Number(row.quantidade_atual || 0).toLocaleString("pt-BR", { maximumFractionDigits: 3 })}</td>
+                      <td className={`px-3 py-3 text-right font-semibold ${row.variacao_quantidade >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"}`}>{row.quantidade_anterior === 0 && row.quantidade_atual > 0 ? "Novo" : `${row.variacao_quantidade > 0 ? "+" : ""}${Number(row.variacao_quantidade || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`}</td>
+                      <td className="px-3 py-3 text-right text-zinc-600 dark:text-zinc-300">{fmtBRL(row.faturamento_anterior)}</td>
+                      <td className="px-3 py-3 text-right font-semibold text-zinc-800 dark:text-zinc-100">{fmtBRL(row.faturamento_atual)}</td>
+                      <td className={`px-3 py-3 text-right font-semibold ${row.diferenca >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"}`}>{row.diferenca > 0 ? "+" : ""}{fmtBRL(row.diferenca)}</td>
+                      <td className={`px-3 py-3 text-right font-semibold ${row.variacao_faturamento >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"}`}>{isNew ? "Novo" : `${row.variacao_faturamento > 0 ? "+" : ""}${Number(row.variacao_faturamento || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`}</td>
+                      <td className="px-3 py-3 text-right text-zinc-500">{Number(row.participacao_anterior || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</td>
+                      <td className="px-4 py-3 text-right text-zinc-700 dark:text-zinc-300">{Number(row.participacao_atual || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</td>
+                    </tr>;
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="space-y-3 p-3 sm:hidden">
+              {data.itens.map(row => {
+                const isNew = row.faturamento_anterior === 0 && row.faturamento_atual > 0;
+                const changeColor = (value) => value >= 0 ? "text-emerald-800 dark:text-emerald-300" : "text-rose-800 dark:text-rose-300";
+                return (
+                  <article key={`${row.chave}-mobile`} className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <button className="text-left text-sm font-semibold leading-snug text-zinc-900 dark:text-zinc-100" onClick={() => applyComparativoFilter({ tipo: row.entidade_tipo, id: row.entidade_id, label: row.nome })}>{row.nome}</button>
+                        <p className="mt-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">{row.tipo} · {row.categoria}</p>
+                      </div>
+                      <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${changeColor(row.variacao_faturamento)}`}>{isNew ? "Novo" : `${row.variacao_faturamento > 0 ? "+" : ""}${Number(row.variacao_faturamento || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`}</span>
+                    </div>
+                    <dl className="mt-3 space-y-2 border-t border-zinc-100 pt-3 text-xs dark:border-zinc-800">
+                      <div className="flex items-baseline justify-between gap-2"><dt className="text-zinc-700 dark:text-zinc-300">Quantidade</dt><dd className="text-right font-semibold text-zinc-900 dark:text-zinc-100">{Number(row.quantidade_anterior || 0).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} <span className="font-normal text-zinc-600 dark:text-zinc-300">→</span> {Number(row.quantidade_atual || 0).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} <span className={`ml-1 font-bold ${changeColor(row.variacao_quantidade)}`}>{row.quantidade_anterior === 0 && row.quantidade_atual > 0 ? "Novo" : `${row.variacao_quantidade > 0 ? "+" : ""}${Number(row.variacao_quantidade || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`}</span></dd></div>
+                      <div className="flex items-baseline justify-between gap-2"><dt className="text-zinc-700 dark:text-zinc-300">Faturamento</dt><dd className="text-right font-semibold text-zinc-900 dark:text-zinc-100">{fmtBRL(row.faturamento_anterior)} <span className="font-normal text-zinc-600 dark:text-zinc-300">→</span> {fmtBRL(row.faturamento_atual)}</dd></div>
+                      <div className="flex items-baseline justify-between gap-2"><dt className="text-zinc-700 dark:text-zinc-300">Diferença</dt><dd className={`text-right font-semibold ${changeColor(row.diferenca)}`}>{row.diferenca > 0 ? "+" : ""}{fmtBRL(row.diferenca)}</dd></div>
+                      <div className="flex items-baseline justify-between gap-2"><dt className="text-zinc-700 dark:text-zinc-300">Participação ant. / atual</dt><dd className="text-right font-semibold text-zinc-800 dark:text-zinc-200">{Number(row.participacao_anterior || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% / {Number(row.participacao_atual || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</dd></div>
+                    </dl>
+                  </article>
+                );
+              })}
+            </div>
+            </>
+          ) : <p className="p-8 text-center text-xs text-zinc-400">Nenhum serviço ou produto faturado nos períodos selecionados.</p>}
+        </section>
+      </div>
+    );
   };
 
   const sortedAndFilteredServicos = (resultadoOperacional?.servicos || [])
@@ -994,7 +1334,9 @@ export default function Relatorios() {
       filterDreCategory, filterDreStatus,
       filterOperacionalColab, filterOperacionalCatServico, filterOperacionalCatProduto,
       filterEstoqueCategorias, filterEstoqueProduto,
-      filterClienteCancelados
+      filterClienteCancelados,
+      comparativoAtualInicio, comparativoAtualFim, comparativoAnteriorInicio, comparativoAnteriorFim,
+      comparativoTipo, comparativoColaborador, comparativoDrilldown
     });
     reload({ produtosPage: nextProdutosPage });
   };
@@ -1038,6 +1380,15 @@ export default function Relatorios() {
     )) ||
     (tab === "agendamentos_cancelados" && (
       generatedFilters.filterClienteCancelados !== filterClienteCancelados
+    )) ||
+    (tab === "comparativo_desempenho" && (
+      generatedFilters.comparativoAtualInicio !== comparativoAtualInicio ||
+      generatedFilters.comparativoAtualFim !== comparativoAtualFim ||
+      generatedFilters.comparativoAnteriorInicio !== comparativoAnteriorInicio ||
+      generatedFilters.comparativoAnteriorFim !== comparativoAnteriorFim ||
+      generatedFilters.comparativoTipo !== comparativoTipo ||
+      generatedFilters.comparativoColaborador !== comparativoColaborador ||
+      JSON.stringify(generatedFilters.comparativoDrilldown) !== JSON.stringify(comparativoDrilldown)
     )) ||
     (tab && tab.startsWith("estoque") && (
       JSON.stringify(generatedFilters.filterEstoqueCategorias) !== JSON.stringify(filterEstoqueCategorias) ||
@@ -2295,6 +2646,26 @@ export default function Relatorios() {
         .report-print-header { display: none; }
         .analitico-vendas-print-pages { display: none; }
         .cartoes-transactions-print-table { display: none; }
+        .comparativo-desempenho-report .text-zinc-400,
+        .comparativo-desempenho-report .text-zinc-500,
+        .comparativo-desempenho-report .text-zinc-600,
+        .comparativo-filter-panel .text-zinc-400,
+        .comparativo-filter-panel .text-zinc-500,
+        .comparativo-filter-panel .text-zinc-600 { color: #3f3f46 !important; }
+        .comparativo-desempenho-report [class~="text-[10px]"],
+        .comparativo-desempenho-report [class~="text-[11px]"],
+        .comparativo-filter-panel [class~="text-[10px]"],
+        .comparativo-filter-panel [class~="text-[11px]"] { font-size: 12px !important; line-height: 1.4 !important; }
+        .comparativo-desempenho-report .recharts-cartesian-axis-tick-value,
+        .comparativo-desempenho-report .recharts-legend-item-text { fill: #3f3f46 !important; color: #3f3f46 !important; font-size: 12px !important; font-weight: 500 !important; }
+        .dark .comparativo-desempenho-report .text-zinc-400,
+        .dark .comparativo-desempenho-report .text-zinc-500,
+        .dark .comparativo-desempenho-report .text-zinc-600,
+        .dark .comparativo-filter-panel .text-zinc-400,
+        .dark .comparativo-filter-panel .text-zinc-500,
+        .dark .comparativo-filter-panel .text-zinc-600 { color: #d4d4d8 !important; }
+        .dark .comparativo-desempenho-report .recharts-cartesian-axis-tick-value,
+        .dark .comparativo-desempenho-report .recharts-legend-item-text { fill: #e4e4e7 !important; color: #e4e4e7 !important; }
         @media print {
           @page { size: A4 portrait; margin: 12mm 12mm 14mm; }
           html, body, #root { width: auto !important; height: auto !important; min-height: 0 !important; margin: 0 !important; overflow: visible !important; background: #fff !important; }
@@ -2426,7 +2797,14 @@ export default function Relatorios() {
             </div>
           </div>
           <div className="report-print-meta">
-            <p><strong>Período:</strong> {formatAgendaDate(generatedFilters?.from || from)} a {formatAgendaDate(generatedFilters?.to || to)}</p>
+            {selectedReport === "comparativo_desempenho" ? (
+              <>
+                <p><strong>Período atual:</strong> {formatAgendaDate(generatedFilters?.comparativoAtualInicio || comparativoAtualInicio)} a {formatAgendaDate(generatedFilters?.comparativoAtualFim || comparativoAtualFim)}</p>
+                <p><strong>Período anterior:</strong> {formatAgendaDate(generatedFilters?.comparativoAnteriorInicio || comparativoAnteriorInicio)} a {formatAgendaDate(generatedFilters?.comparativoAnteriorFim || comparativoAnteriorFim)}</p>
+              </>
+            ) : (
+              <p><strong>Período:</strong> {formatAgendaDate(generatedFilters?.from || from)} a {formatAgendaDate(generatedFilters?.to || to)}</p>
+            )}
             <p><strong>Emitido:</strong> {formatAgendaDateTime(new Date())}</p>
             {user?.name && <p><strong>Responsável:</strong> {user.name}</p>}
           </div>
@@ -2552,7 +2930,7 @@ export default function Relatorios() {
           </div>
 
           {/* Filters Card */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 sm:p-5 mb-4 sm:mb-6 shadow-sm no-print">
+          <div className={`bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 sm:p-5 mb-4 sm:mb-6 shadow-sm no-print ${selectedReport === "comparativo_desempenho" ? "comparativo-filter-panel" : ""}`}>
             <div 
               onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
               className="flex items-center justify-between cursor-pointer md:cursor-default"
@@ -2562,7 +2940,9 @@ export default function Relatorios() {
                 <span>Filtros do Relatório</span>
                 {isGenerated && !mobileFiltersOpen && (
                   <span className="text-[11px] font-normal text-zinc-500 dark:text-zinc-400 ml-1.5 truncate max-w-[160px] sm:max-w-none">
-                    ({from ? formatAgendaDate(from) : "-"} a {to ? formatAgendaDate(to) : "-"})
+                    {tab === "comparativo_desempenho"
+                      ? `(${formatAgendaDate(comparativoAtualInicio)}–${formatAgendaDate(comparativoAtualFim)} vs ${formatAgendaDate(comparativoAnteriorInicio)}–${formatAgendaDate(comparativoAnteriorFim)})`
+                      : `(${from ? formatAgendaDate(from) : "-"} a ${to ? formatAgendaDate(to) : "-"})`}
                   </span>
                 )}
               </div>
@@ -2575,20 +2955,68 @@ export default function Relatorios() {
             </div>
 
             <div className={`${mobileFiltersOpen ? "block" : "hidden md:block"} mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800`}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                <div>
-                  <Label className="text-[10px] sm:text-xs uppercase font-bold text-zinc-450 tracking-wider">De</Label>
-                  <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-full h-9 text-xs" data-testid="rep-from" />
+              {tab === "comparativo_desempenho" ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <div className="rounded-xl border border-[#D8E5DF] bg-[#F8FBF9] p-3.5 dark:border-zinc-800 dark:bg-zinc-950/40 sm:p-4">
+                      <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#49675B] dark:text-[#B8D6C7]">Período atual</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><Label className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Data inicial</Label><Input type="date" value={comparativoAtualInicio} onChange={(e) => setComparativoAtualInicio(e.target.value)} className="mt-1 h-10 w-full text-xs" /></div>
+                        <div><Label className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Data final</Label><Input type="date" value={comparativoAtualFim} onChange={(e) => setComparativoAtualFim(e.target.value)} className="mt-1 h-10 w-full text-xs" /></div>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-3.5 dark:border-zinc-800 dark:bg-zinc-950/40 sm:p-4">
+                      <p className="mb-3 text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">Período anterior</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><Label className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Data inicial</Label><Input type="date" value={comparativoAnteriorInicio} onChange={(e) => setComparativoAnteriorInicio(e.target.value)} className="mt-1 h-10 w-full text-xs" /></div>
+                        <div><Label className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Data final</Label><Input type="date" value={comparativoAnteriorFim} onChange={(e) => setComparativoAnteriorFim(e.target.value)} className="mt-1 h-10 w-full text-xs" /></div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button type="button" variant="outline" size="sm" className="h-8 text-[11px]" onClick={() => { setComparativoAnteriorInicio(shiftDateByMonths(comparativoAtualInicio, -1)); setComparativoAnteriorFim(shiftDateByMonths(comparativoAtualFim, -1)); }}>Mesmo intervalo do mês anterior</Button>
+                        <Button type="button" variant="outline" size="sm" className="h-8 text-[11px]" onClick={() => { setComparativoAnteriorInicio(shiftDateByMonths(comparativoAtualInicio, -12)); setComparativoAnteriorFim(shiftDateByMonths(comparativoAtualFim, -12)); }}>Mesmo intervalo do ano anterior</Button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <Label className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Tipo de receita</Label>
+                      <Select value={comparativoTipo} onValueChange={(value) => { setComparativoTipo(value); setComparativoDrilldown({ tipo: "", id: "", label: "" }); }}>
+                        <SelectTrigger className="mt-1 h-10 bg-white text-xs dark:bg-zinc-900"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todos">Todos</SelectItem>
+                          <SelectItem value="servicos">Apenas serviços</SelectItem>
+                          <SelectItem value="produtos">Apenas produtos</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Profissional / vendedor</Label>
+                      <SearchableSelect
+                        placeholder="Todos os profissionais"
+                        searchPlaceholder="Pesquisar colaborador..."
+                        options={[{ value: "todos", label: "Todos os profissionais" }, ...colaboradores.map((item) => ({ value: item.id, label: item.nome }))]}
+                        value={comparativoColaborador}
+                        onValueChange={setComparativoColaborador}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <Label className="text-[10px] sm:text-xs uppercase font-bold text-zinc-450 tracking-wider">Até</Label>
-                  <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-full h-9 text-xs" data-testid="rep-to" />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                  <div>
+                    <Label className="text-[10px] sm:text-xs uppercase font-bold text-zinc-450 tracking-wider">De</Label>
+                    <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-full h-9 text-xs" data-testid="rep-from" />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] sm:text-xs uppercase font-bold text-zinc-450 tracking-wider">Até</Label>
+                    <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-full h-9 text-xs" data-testid="rep-to" />
+                  </div>
+                  <div className="sm:col-span-2 md:col-span-1">
+                    <Label className="text-[10px] sm:text-xs uppercase font-bold text-zinc-450 tracking-wider">Atalhos de Período</Label>
+                    <PresetButtons onPick={(a, b) => { setFrom(a); setTo(b); }} />
+                  </div>
                 </div>
-                <div className="sm:col-span-2 md:col-span-1">
-                  <Label className="text-[10px] sm:text-xs uppercase font-bold text-zinc-450 tracking-wider">Atalhos de Período</Label>
-                  <PresetButtons onPick={(a, b) => { setFrom(a); setTo(b); }} />
-                </div>
-              </div>
+              )}
 
             {/* Specific Filters Row */}
             {tab === "caixa" && (
@@ -3680,6 +4108,10 @@ export default function Relatorios() {
             </div>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="comparativo_desempenho">
+          {renderComparativoReport()}
         </TabsContent>
 
         <TabsContent value="faturamento_diario">
@@ -6342,6 +6774,25 @@ const HelpSection = ({ title, children }) => (
 
 const renderHelpContent = (reportId) => {
   switch (reportId) {
+    case "comparativo_desempenho":
+      return (
+        <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
+          <HelpSection title="Objetivo do Relatório">
+            <p>Compara o desempenho de serviços e produtos em dois intervalos, com indicadores, gráficos interativos e análise detalhada por item.</p>
+          </HelpSection>
+          <HelpSection title="Critérios e filtros">
+            <p>Serviços usam a data do atendimento e consideram registros concluídos. Produtos usam a data da venda e consideram vendas pagas. O filtro profissional inclui o profissional/auxiliar do serviço e o vendedor do produto.</p>
+            <p>O faturamento é separado por item. Quando a venda de produto foi criada a partir de um atendimento, o vínculo permite contar a operação uma vez no ticket e nos totais de quantidade.</p>
+          </HelpSection>
+          <HelpSection title="Interatividade e exportação">
+            <p>Clique nas fatias ou barras de mix, categorias, ranking e equipe para detalhar os indicadores e a tabela. Use “Voltar à visão geral” para remover o detalhamento imediatamente, mantendo os períodos e filtros escolhidos.</p>
+            <p>O Excel exporta a tabela detalhada. A opção PDF abre a impressão do navegador para salvar ou imprimir o relatório.</p>
+          </HelpSection>
+          <HelpSection title="Taxa de conversão">
+            <p>É uma taxa operacional calculada como operações concluídas/pagas dividido por operações não canceladas registradas. O sistema não possui dados de leads ou visitantes, portanto ela não representa conversão comercial de marketing.</p>
+          </HelpSection>
+        </div>
+      );
     case "faturamento_diario":
       return (
         <div className="space-y-4 py-2 text-zinc-700 dark:text-zinc-300">
