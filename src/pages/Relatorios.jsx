@@ -1034,6 +1034,132 @@ export default function Relatorios() {
       participacao_anterior: row.participacao_anterior,
       participacao_atual: row.participacao_atual
     }));
+    const selectedStaff = colaboradores.find(person => String(person.id) === String(comparativoColaborador));
+    const exportFilters = [
+      ["Tipo", comparativoTipo === "servicos" ? "Apenas serviços" : comparativoTipo === "produtos" ? "Apenas produtos" : "Todos"],
+      ["Profissional/Vendedor", selectedStaff?.nome || "Todos"],
+      ["Detalhamento", comparativoDrilldown.label || "Visão geral"]
+    ];
+    const exportVariation = (currentValue, previousValue) => previousValue === 0
+      ? (currentValue > 0 ? "Novo" : "0%")
+      : `${currentValue > previousValue ? "+" : ""}${(((currentValue - previousValue) / previousValue) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
+    const exportTeamRows = (data.equipe || []).map(row => ({
+      nome: row.nome,
+      servicos_anterior: row.receita_servicos_anterior,
+      servicos_atual: row.receita_servicos_atual,
+      produtos_anterior: row.receita_produtos_anterior,
+      produtos_atual: row.receita_produtos_atual,
+      total_anterior: row.faturamento_anterior,
+      total_atual: row.faturamento_atual,
+      diferenca: Number(row.faturamento_atual || 0) - Number(row.faturamento_anterior || 0)
+    }));
+    const exportCategoryRows = (data.categorias || []).map(row => ({
+      tipo: row.tipo,
+      categoria: row.categoria,
+      quantidade_anterior: row.quantidade_anterior,
+      quantidade_atual: row.quantidade_atual,
+      faturamento_anterior: row.faturamento_anterior,
+      faturamento_atual: row.faturamento_atual,
+      diferenca: Number(row.faturamento_atual || 0) - Number(row.faturamento_anterior || 0)
+    }));
+    const exportRankingRows = [
+      ...topServices.map((row, index) => ({ ...row, posicao: index + 1, tipo: "Serviço" })),
+      ...topProducts.map((row, index) => ({ ...row, posicao: index + 1, tipo: "Produto" }))
+    ].map(row => ({
+      posicao: row.posicao,
+      tipo: row.tipo,
+      nome: row.nome,
+      quantidade_atual: row.quantidade_atual,
+      faturamento_atual: row.faturamento_atual
+    }));
+    const exportComparativoExcel = () => {
+      const xmlEscape = value => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+      const cell = (value, style = "") => ({ value, style });
+      const excelCell = item => {
+        const value = item?.value ?? item ?? "";
+        const style = item?.style ? ` ss:StyleID="${item.style}"` : "";
+        if (typeof value === "number" && Number.isFinite(value)) return `<Cell${style}><Data ss:Type="Number">${value}</Data></Cell>`;
+        return `<Cell${style}><Data ss:Type="String">${xmlEscape(value)}</Data></Cell>`;
+      };
+      const row = (...cells) => cells.map(excelCell);
+      const header = labels => row(...labels.map(label => cell(label, "Header")));
+      const makeSheet = (name, rows) => `<Worksheet ss:Name="${xmlEscape(name)}"><Table>${rows.map(cells => `<Row>${cells.join("")}</Row>`).join("")}</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><PageSetup><Layout x:Orientation="Landscape"/></PageSetup><Print><FitWidth>1</FitWidth><FitHeight>0</FitHeight></Print></WorksheetOptions></Worksheet>`;
+      const summaryRows = [
+        row(cell("Comparativo de Desempenho", "Title")),
+        row(cell(`Período atual: ${dateRangeLabel(data.periodos?.atual)}`, "Subtitle")),
+        row(cell(`Período anterior: ${dateRangeLabel(data.periodos?.anterior)}`, "Subtitle")),
+        ...exportFilters.map(([label, value]) => row(cell(label, "Header"), cell(value))),
+        row(),
+        header(["Indicador", "Anterior", "Atual", "Diferença", "Variação"]),
+        ...kpis.map(metric => {
+          const values = data.resumo?.[metric.key] || { anterior: 0, atual: 0, diferenca: 0, variacao: 0 };
+          const numericStyle = metric.money ? "Currency" : "Number";
+          const variationValue = values.anterior === 0 && values.atual > 0 ? "Novo" : Number(values.variacao || 0) / 100;
+          return row(cell(metric.label), cell(Number(values.anterior || 0), numericStyle), cell(Number(values.atual || 0), numericStyle), cell(Number(values.diferenca || 0), numericStyle), cell(metric.suffix === "%" ? `${Number(values.variacao || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%` : variationValue, metric.suffix === "%" || typeof variationValue === "string" ? "" : "Percent"));
+        }),
+        row(),
+        row(cell("Critério: atendimentos concluídos pela data do atendimento; produtos pagos pela data da venda.")),
+        row(cell(data.observacao_conversao || ""))
+      ];
+      const detailsRows = [header(["Tipo", "Serviço/Produto", "Qtd. anterior", "Qtd. atual", "Variação qtd.", "Valor anterior (R$)", "Valor atual (R$)", "Diferença (R$)", "Variação valor", "Participação anterior", "Participação atual"]), ...exportRows.map(item => row(
+        cell(item.tipo), cell(item.nome), cell(Number(item.quantidade_anterior || 0), "Number"), cell(Number(item.quantidade_atual || 0), "Number"),
+        cell(item.quantidade_anterior === 0 && item.quantidade_atual > 0 ? "Novo" : Number(item.variacao_quantidade || 0) / 100, item.quantidade_anterior === 0 && item.quantidade_atual > 0 ? "" : "Percent"),
+        cell(Number(item.faturamento_anterior || 0), "Currency"), cell(Number(item.faturamento_atual || 0), "Currency"), cell(Number(item.diferenca || 0), "Currency"),
+        cell(item.faturamento_anterior === 0 && item.faturamento_atual > 0 ? "Novo" : Number(item.variacao_faturamento || 0) / 100, item.faturamento_anterior === 0 && item.faturamento_atual > 0 ? "" : "Percent"),
+        cell(Number(item.participacao_anterior || 0) / 100, "Percent"), cell(Number(item.participacao_atual || 0) / 100, "Percent")
+      ))];
+      const teamRows = [header(["Profissional/Vendedor", "Serviços anterior (R$)", "Serviços atual (R$)", "Produtos anterior (R$)", "Produtos atual (R$)", "Total anterior (R$)", "Total atual (R$)", "Diferença (R$)"]), ...exportTeamRows.map(item => row(cell(item.nome), cell(Number(item.servicos_anterior || 0), "Currency"), cell(Number(item.servicos_atual || 0), "Currency"), cell(Number(item.produtos_anterior || 0), "Currency"), cell(Number(item.produtos_atual || 0), "Currency"), cell(Number(item.total_anterior || 0), "Currency"), cell(Number(item.total_atual || 0), "Currency"), cell(Number(item.diferenca || 0), "Currency")))];
+      const categoriesRows = [header(["Tipo", "Categoria", "Qtd. anterior", "Qtd. atual", "Valor anterior (R$)", "Valor atual (R$)", "Diferença (R$)" ]), ...exportCategoryRows.map(item => row(cell(item.tipo), cell(item.categoria), cell(Number(item.quantidade_anterior || 0), "Number"), cell(Number(item.quantidade_atual || 0), "Number"), cell(Number(item.faturamento_anterior || 0), "Currency"), cell(Number(item.faturamento_atual || 0), "Currency"), cell(Number(item.diferenca || 0), "Currency")))];
+      const rankingRows = [row(cell(`Ranking atual por ${comparativoMetric === "quantidade" ? "quantidade" : "faturamento"}`, "Subtitle")), header(["Posição", "Tipo", "Serviço/Produto", "Quantidade atual", "Faturamento atual (R$)" ]), ...exportRankingRows.map(item => row(cell(item.posicao, "Number"), cell(item.tipo), cell(item.nome), cell(Number(item.quantidade_atual || 0), "Number"), cell(Number(item.faturamento_atual || 0), "Currency")))];
+      const seriesRows = [header(["Faixa do período", "Faturamento anterior (R$)", "Faturamento atual (R$)", "Diferença (R$)" ]), ...(data.serie || []).map(point => row(cell(point.rotulo), cell(Number(point.anterior || 0), "Currency"), cell(Number(point.atual || 0), "Currency"), cell(Number(point.atual || 0) - Number(point.anterior || 0), "Currency")))];
+      const workbook = `<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Center"/><Font ss:FontName="Arial" ss:Size="10"/></Style><Style ss:ID="Title"><Font ss:FontName="Arial" ss:Size="16" ss:Bold="1" ss:Color="#36564B"/></Style><Style ss:ID="Subtitle"><Font ss:FontName="Arial" ss:Size="11" ss:Bold="1"/></Style><Style ss:ID="Header"><Font ss:FontName="Arial" ss:Size="10" ss:Bold="1" ss:Color="#263B33"/><Interior ss:Color="#EAF0EE" ss:Pattern="Solid"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#A8B8B1"/></Borders></Style><Style ss:ID="Currency"><NumberFormat ss:Format="&quot;R$&quot; #,##0.00;[Red]-&quot;R$&quot; #,##0.00"/></Style><Style ss:ID="Number"><NumberFormat ss:Format="#,##0.###"/></Style><Style ss:ID="Percent"><NumberFormat ss:Format="0.00%"/></Style></Styles>${makeSheet("Visão Geral", summaryRows)}${makeSheet("Itens detalhados", detailsRows)}${makeSheet("Equipe", teamRows)}${makeSheet("Categorias", categoriesRows)}${makeSheet("Ranking atual", rankingRows)}${makeSheet("Evolução", seriesRows)}</Workbook>`;
+      const url = URL.createObjectURL(new Blob([`\uFEFF${workbook}`], { type: "application/vnd.ms-excel;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Comparativo_Desempenho_Atual_${comparativoAtualInicio}_${comparativoAtualFim}_Anterior_${comparativoAnteriorInicio}_${comparativoAnteriorFim}.xls`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    };
+    const exportComparativoPdf = () => {
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        toast.error("Permita a abertura da janela para gerar o PDF.");
+        return;
+      }
+      const htmlEscape = value => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      const table = (headers, rows) => `<table><thead><tr>${headers.map(value => `<th>${htmlEscape(value)}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(value => `<td>${htmlEscape(value)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+      const summaryRows = kpis.map(metric => {
+        const values = data.resumo?.[metric.key] || { anterior: 0, atual: 0, diferenca: 0, variacao: 0 };
+        const format = value => metric.money ? fmtBRL(value) : `${Number(value || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}${metric.suffix || ""}`;
+        return [metric.label, format(values.anterior), format(values.atual), format(values.diferenca), exportVariation(Number(values.atual || 0), Number(values.anterior || 0))];
+      });
+      const detailPdfRows = exportRows.map(item => [item.tipo, item.nome, Number(item.quantidade_anterior || 0).toLocaleString("pt-BR"), Number(item.quantidade_atual || 0).toLocaleString("pt-BR"), exportVariation(Number(item.quantidade_atual || 0), Number(item.quantidade_anterior || 0)), fmtBRL(item.faturamento_anterior), fmtBRL(item.faturamento_atual), fmtBRL(item.diferenca), exportVariation(Number(item.faturamento_atual || 0), Number(item.faturamento_anterior || 0)), `${Number(item.participacao_atual || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`]);
+      const teamPdfRows = exportTeamRows.map(item => [item.nome, fmtBRL(item.servicos_anterior), fmtBRL(item.servicos_atual), fmtBRL(item.produtos_anterior), fmtBRL(item.produtos_atual), fmtBRL(item.total_anterior), fmtBRL(item.total_atual), fmtBRL(item.diferenca)]);
+      const categoryPdfRows = exportCategoryRows.map(item => [item.tipo, item.categoria, Number(item.quantidade_anterior || 0).toLocaleString("pt-BR"), Number(item.quantidade_atual || 0).toLocaleString("pt-BR"), fmtBRL(item.faturamento_anterior), fmtBRL(item.faturamento_atual), fmtBRL(item.diferenca)]);
+      const rankingPdfRows = exportRankingRows.map(item => [item.posicao, item.tipo, item.nome, Number(item.quantidade_atual || 0).toLocaleString("pt-BR"), fmtBRL(item.faturamento_atual)]);
+      const seriesPdfRows = (data.serie || []).map(point => [point.rotulo, fmtBRL(point.anterior), fmtBRL(point.atual), fmtBRL(Number(point.atual || 0) - Number(point.anterior || 0))]);
+      const currentService = Number(current.receita_servicos || 0);
+      const currentProduct = Number(current.receita_produtos || 0);
+      const totalCurrent = Number(current.faturamento_total || 0);
+      const mixPdfRows = [["Serviços", fmtBRL(prev.receita_servicos), fmtBRL(currentService), `${totalCurrent ? (currentService / totalCurrent * 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) : "0"}%`], ["Produtos", fmtBRL(prev.receita_produtos), fmtBRL(currentProduct), `${totalCurrent ? (currentProduct / totalCurrent * 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) : "0"}%`]];
+      const filtersHtml = exportFilters.map(([label, value]) => `<span><strong>${htmlEscape(label)}:</strong> ${htmlEscape(value)}</span>`).join("");
+      printWindow.document.open();
+      printWindow.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Comparativo de Desempenho</title><style>
+        @page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{font:10px/1.4 Arial,sans-serif;color:#27272a;margin:0}h1{font-size:20px;color:#36564b;margin:0 0 4px}h2{font-size:14px;color:#36564b;margin:18px 0 6px;break-after:avoid}p{margin:3px 0}.meta{display:flex;gap:20px;flex-wrap:wrap;margin:9px 0 12px}.filters{padding:8px 10px;background:#f4f7f5;border:1px solid #d4ded9;display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px}.note{color:#52525b;font-size:9px;margin:8px 0 14px}table{border-collapse:collapse;width:100%;margin:0 0 12px;table-layout:auto}thead{display:table-header-group}th,td{border:1px solid #d4d4d8;padding:5px 6px;text-align:left;vertical-align:top}th{background:#eaf0ee;color:#263b33;font-weight:700}td:nth-child(n+3){white-space:nowrap}tbody tr{break-inside:avoid}section{break-inside:auto}.detail{font-size:8px}.detail th,.detail td{padding:3px 4px}.page-break{break-before:page}.footer{margin-top:12px;border-top:1px solid #d4d4d8;padding-top:5px;color:#71717a;font-size:8px}
+        </style></head><body><h1>Comparativo de Desempenho</h1><div class="meta"><span><strong>Período atual:</strong> ${htmlEscape(dateRangeLabel(data.periodos?.atual))}</span><span><strong>Período anterior:</strong> ${htmlEscape(dateRangeLabel(data.periodos?.anterior))}</span></div><div class="filters">${filtersHtml}</div><p class="note">Receitas consideram atendimentos concluídos pela data do atendimento e vendas pagas pela data da venda. A variação compara o período atual com o anterior. “Novo” indica ausência de valor no período anterior. ${htmlEscape(data.observacao_conversao || "")}</p>
+        <h2>Resumo dos indicadores</h2>${table(["Indicador", "Anterior", "Atual", "Diferença", "Variação"], summaryRows)}
+        <h2>Composição da receita atual</h2>${table(["Tipo", "Receita anterior", "Receita atual", "Participação atual"], mixPdfRows)}
+        <h2>Evolução do faturamento</h2>${table(["Faixa do período", "Anterior", "Atual", "Diferença"], seriesPdfRows)}
+        <h2>Ranking atual: serviços e produtos</h2>${table(["Posição", "Tipo", "Serviço/Produto", "Quantidade", "Faturamento"], rankingPdfRows)}
+        <h2>Desempenho por equipe</h2>${table(["Profissional/Vendedor", "Serviços ant.", "Serviços atual", "Produtos ant.", "Produtos atual", "Total ant.", "Total atual", "Diferença"], teamPdfRows)}
+        <h2>Faturamento por categoria</h2>${table(["Tipo", "Categoria", "Qtd. ant.", "Qtd. atual", "Valor ant.", "Valor atual", "Diferença"], categoryPdfRows)}
+        <div class="page-break"></div><h2>Detalhamento por serviço e produto</h2>${table(["Tipo", "Serviço/Produto", "Qtd. ant.", "Qtd. atual", "Var. qtd.", "Valor ant.", "Valor atual", "Diferença", "Var. valor", "Part. atual"], detailPdfRows)}
+        <div class="footer">Relatório gerado em ${htmlEscape(new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Fortaleza" }).format(new Date()))}.</div>
+        <script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));</script></body></html>`);
+      printWindow.document.close();
+    };
     return (
       <div className="comparativo-desempenho-report space-y-5 print-full-width">
         <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between sm:p-5">
@@ -1051,8 +1177,8 @@ export default function Relatorios() {
             )}
           </div>
           <div className="no-print flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" className="h-9" onClick={() => handleExport("xlsx", "Comparativo_Desempenho", ["Tipo", "Serviço/Produto", "Qtd. anterior", "Qtd. atual", "Variação qtd. (%)", "Faturamento anterior (R$)", "Faturamento atual (R$)", "Diferença (R$)", "Variação faturamento (%)", "Participação anterior (%)", "Participação atual (%)"], ["tipo", "nome", "quantidade_anterior", "quantidade_atual", "variacao_quantidade", "faturamento_anterior", "faturamento_atual", "diferenca", "variacao_faturamento", "participacao_anterior", "participacao_atual"], exportRows, `Atual ${dateRangeLabel(data.periodos?.atual)} | Anterior ${dateRangeLabel(data.periodos?.anterior)}`)}><FileText className="mr-1.5 h-4 w-4" />Excel</Button>
-            <Button variant="outline" size="sm" className="h-9" onClick={() => window.print()}><Printer className="mr-1.5 h-4 w-4" />PDF</Button>
+            <Button variant="outline" size="sm" className="h-9" onClick={exportComparativoExcel}><FileText className="mr-1.5 h-4 w-4" />Excel</Button>
+            <Button variant="outline" size="sm" className="h-9" onClick={exportComparativoPdf}><Printer className="mr-1.5 h-4 w-4" />PDF</Button>
           </div>
         </div>
 
@@ -6786,7 +6912,7 @@ const renderHelpContent = (reportId) => {
           </HelpSection>
           <HelpSection title="Interatividade e exportação">
             <p>Clique nas fatias ou barras de mix, categorias, ranking e equipe para detalhar os indicadores e a tabela. Use “Voltar à visão geral” para remover o detalhamento imediatamente, mantendo os períodos e filtros escolhidos.</p>
-            <p>O Excel exporta a tabela detalhada. A opção PDF abre a impressão do navegador para salvar ou imprimir o relatório.</p>
+            <p>O Excel inclui abas de visão geral, itens detalhados, equipe, categorias, ranking e evolução. O PDF abre uma versão própria para impressão com os indicadores, filtros e tabelas do relatório.</p>
           </HelpSection>
           <HelpSection title="Taxa de conversão">
             <p>É uma taxa operacional calculada como operações concluídas/pagas dividido por operações não canceladas registradas. O sistema não possui dados de leads ou visitantes, portanto ela não representa conversão comercial de marketing.</p>
