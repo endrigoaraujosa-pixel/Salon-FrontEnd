@@ -73,7 +73,7 @@ export default function VendasDiretas() {
   const [confirmRemoveIdx, setConfirmRemoveIdx] = useState(null);
   const [editingQtdIdx, setEditingQtdIdx] = useState(null);
   const [editingQtdVal, setEditingQtdVal] = useState("");
-  const [form, setForm] = useState({ produto_id: "", quantidade: 1, preco_unitario: "", colaborador_id: "", cliente_id: "", data_venda: getTodayStr() });
+  const [form, setForm] = useState({ produto_id: "", quantidade: 1, preco_unitario: "", colaborador_id: "", cliente_id: "", agendamento_id: "", data_venda: getTodayStr() });
   const [startDate, setStartDate] = useState(getTodayStr());
   const [endDate, setEndDate] = useState(getTodayStr());
   const [filterProdutoId, setFilterProdutoId] = useState("all");
@@ -167,6 +167,7 @@ export default function VendasDiretas() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const clienteIdFromUrl = params.get("cliente_id");
+    const agendamentoIdFromUrl = params.get("agendamento_id");
     const fromAgendaParam = params.get("from") === "agenda";
     if (clienteIdFromUrl) {
       if (!canCriarVenda) {
@@ -174,7 +175,7 @@ export default function VendasDiretas() {
         nav("/vendas-diretas", { replace: true });
         return;
       }
-      setForm(f => ({ ...f, cliente_id: clienteIdFromUrl }));
+      setForm(f => ({ ...f, cliente_id: clienteIdFromUrl, agendamento_id: agendamentoIdFromUrl || "" }));
       setFromAgenda(fromAgendaParam);
       setOpen(true);
       // Remove the query param from the URL without re-navigation
@@ -192,7 +193,7 @@ export default function VendasDiretas() {
       setSelectedAddCategory("all");
       setFromAgenda(false);
       setCurrentStep(1);
-      setForm({ produto_id: "", quantidade: 1, colaborador_id: "", cliente_id: "", data_venda: getTodayStr() });
+      setForm({ produto_id: "", quantidade: 1, colaborador_id: "", cliente_id: "", agendamento_id: "", data_venda: getTodayStr() });
       // Se veio da agenda e fechou o modal sem salvar, volta para a agenda
       if (wasFromAgenda) {
         nav("/agenda");
@@ -276,6 +277,7 @@ export default function VendasDiretas() {
         forcar_venda: force
       };
       if (form.cliente_id) payload.cliente_id = form.cliente_id;
+      if (form.agendamento_id) payload.agendamento_id = form.agendamento_id;
 
       console.log("Enviando payload nova venda:", payload);
       const { data } = await http.post("/vendas-diretas", payload);
