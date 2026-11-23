@@ -2976,34 +2976,40 @@ export default function Agenda() {
 
       {/* Dialog para motivo do cancelamento */}
       <Dialog open={cancelModalOpen} onOpenChange={(v) => { if (!v) setCancelModalOpen(false); }}>
-        <DialogContent className="dialog-content w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800" aria-describedby="dialog-cancelar-motivo">
-          <DialogHeader className="dialog-header">
-            <DialogTitle className="dialog-title flex items-center gap-2 text-rose-600 dark:text-rose-400">
-              <CalendarOff className="w-5 h-5" />
+        <DialogContent className="w-[calc(100%-1.25rem)] max-w-xl max-h-[92dvh] overflow-y-auto gap-0 p-0 rounded-2xl border-zinc-200 bg-white shadow-2xl dark:bg-zinc-900 dark:border-zinc-800" aria-describedby="dialog-cancelar-motivo">
+          <DialogHeader className="border-b border-zinc-100 px-5 py-5 text-left dark:border-zinc-800 sm:px-7 sm:py-6">
+            <DialogTitle className="flex items-center gap-3 pr-8 text-lg font-semibold text-zinc-900 dark:text-zinc-50 sm:text-2xl">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 sm:h-12 sm:w-12">
+                <CalendarOff className="h-5 w-5 sm:h-6 sm:w-6" />
+              </span>
               <span>Motivo do Cancelamento</span>
             </DialogTitle>
           </DialogHeader>
-          <div id="dialog-cancelar-motivo" className="sr-only">Dialogo para inserir o motivo do cancelamento do agendamento</div>
-          <div className="dialog-body py-4">
-            <Label htmlFor="cancel-motive-input" className="form-label mb-2 block font-medium text-xs text-zinc-600 dark:text-zinc-400">
-              Por favor, informe o motivo do cancelamento (máximo 100 caracteres):
+          <div id="dialog-cancelar-motivo" className="sr-only">Informe o motivo do cancelamento do agendamento. O campo é obrigatório e aceita até 100 caracteres.</div>
+          <div className="px-5 py-5 sm:px-7 sm:py-6">
+            <Label htmlFor="cancel-motive-input" className="mb-2.5 block text-sm font-semibold text-zinc-700 dark:text-zinc-200 sm:text-base">
+              Por que este agendamento está sendo cancelado?
             </Label>
             <Textarea
               id="cancel-motive-input"
               value={cancelMotivo}
               onChange={(e) => setCancelMotivo(e.target.value)}
-              placeholder="Digite o motivo do cancelamento..."
+              placeholder="Descreva brevemente o motivo..."
               maxLength={100}
-              rows={3}
-              className="form-input text-xs w-full resize-none bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-2.5"
+              rows={5}
+              className="min-h-32 w-full resize-y rounded-xl border border-zinc-300 bg-white p-4 text-base leading-relaxed text-zinc-900 shadow-sm placeholder:text-zinc-400 focus-visible:ring-2 focus-visible:ring-rose-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 sm:min-h-36"
             />
-            <div className="text-[10px] text-zinc-450 dark:text-zinc-500 mt-1.5 text-right">
-              {cancelMotivo.length} / 100 caracteres
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">Esse motivo ficará registrado no histórico.</span>
+              <span className={`shrink-0 text-xs font-medium ${cancelMotivo.length >= 90 ? "text-rose-600 dark:text-rose-400" : "text-zinc-500 dark:text-zinc-400"}`} aria-live="polite">
+                {cancelMotivo.length}/100
+              </span>
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-2 border-t border-zinc-100 bg-zinc-50 px-5 py-4 dark:border-zinc-800 dark:bg-zinc-950/40 sm:px-7">
             <Button
               variant="outline"
+              className="min-h-11 rounded-xl px-5"
               onClick={() => {
                 setCancelModalOpen(false);
                 setCancelAgendamentoId(null);
@@ -3050,7 +3056,7 @@ export default function Agenda() {
                   }
                 }
               }}
-              className="bg-rose-600 hover:bg-rose-700 text-white font-bold"
+              className="min-h-11 rounded-xl bg-rose-600 px-5 font-semibold text-white hover:bg-rose-700"
             >
               Confirmar Cancelamento
             </Button>
