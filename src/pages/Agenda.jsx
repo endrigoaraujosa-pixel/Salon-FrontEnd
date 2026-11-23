@@ -3477,24 +3477,27 @@ export default function Agenda() {
 
       {/* Dialog para Cadastrar/Editar Indisponibilidade */}
       <Dialog open={openIndisponibilidade} onOpenChange={setOpenIndisponibilidade}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800" aria-describedby={undefined}>
-          <DialogHeader>
-            <DialogTitle className="font-display font-bold text-zinc-800 dark:text-zinc-150">
+        <DialogContent className="flex max-h-[92dvh] w-[calc(100%-1.25rem)] max-w-2xl flex-col gap-0 overflow-hidden rounded-2xl border-zinc-200 bg-white p-0 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900 max-sm:bottom-0 max-sm:left-0 max-sm:top-auto max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:pb-[env(safe-area-inset-bottom)] max-sm:max-h-[90dvh]">
+          <DialogHeader className="shrink-0 border-b border-zinc-100 px-5 py-5 text-left dark:border-zinc-800 sm:px-8 sm:py-6">
+            <DialogTitle className="flex items-center gap-3 pr-8 font-display text-lg font-semibold text-zinc-800 dark:text-zinc-100 sm:text-2xl">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EAF0EE] text-[#648775] dark:bg-zinc-800 dark:text-[#B8D6C7] sm:h-12 sm:w-12">
+                <CalendarOff className="h-5 w-5 sm:h-6 sm:w-6" />
+              </span>
               {formIndisponibilidade.id ? "Editar Indisponibilidade" : "Registrar Indisponibilidade"}
             </DialogTitle>
-            <DialogDescription className="text-xs text-zinc-500">
-              Defina o período e o motivo da indisponibilidade do colaborador.
+            <DialogDescription className="pl-14 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400 sm:pl-[3.75rem]">
+              Defina quem estará indisponível, o período e, se desejar, o motivo.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-1">
-              <Label htmlFor="indisp-colab" className="text-zinc-650 dark:text-zinc-400 text-xs font-semibold">Colaborador</Label>
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:space-y-6 sm:px-8 sm:py-6">
+            <div className="space-y-2">
+              <Label htmlFor="indisp-colab" className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Colaborador</Label>
               <Select 
                 value={formIndisponibilidade.colaborador_id} 
                 onValueChange={(val) => setFormIndisponibilidade(prev => ({ ...prev, colaborador_id: val }))}
                 disabled={(!isAdmin && !canManageIndisponibilidade) || !!formIndisponibilidade.id}
               >
-                <SelectTrigger id="indisp-colab" className="w-full h-10 text-xs">
+                <SelectTrigger id="indisp-colab" className="h-12 w-full rounded-xl border-zinc-300 bg-white px-4 text-base dark:border-zinc-700 dark:bg-zinc-950">
                   <SelectValue placeholder="Selecione um colaborador" />
                 </SelectTrigger>
                 <SelectContent>
@@ -3505,55 +3508,67 @@ export default function Agenda() {
               </Select>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="indisp-inicio" className="text-zinc-650 dark:text-zinc-400 text-xs font-semibold">Início</Label>
-                <Input 
-                  id="indisp-inicio"
-                  type="datetime-local" 
-                  value={formIndisponibilidade.data_hora_inicio} 
-                  onChange={(e) => handleStartDateChange(e.target.value)}
-                  className="w-full h-10 text-xs"
-                />
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/40 sm:p-5">
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Período</h3>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">Informe a data e o horário de início e término.</p>
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="indisp-fim" className="text-zinc-650 dark:text-zinc-400 text-xs font-semibold">Fim</Label>
-                <Input 
-                  id="indisp-fim"
-                  type="datetime-local" 
-                  value={formIndisponibilidade.data_hora_fim} 
-                  onChange={(e) => setFormIndisponibilidade(prev => ({ ...prev, data_hora_fim: e.target.value }))}
-                  className="w-full h-10 text-xs"
-                />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+                <div className="space-y-2">
+                  <Label htmlFor="indisp-inicio" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Início</Label>
+                  <Input
+                    id="indisp-inicio"
+                    type="datetime-local"
+                    value={formIndisponibilidade.data_hora_inicio}
+                    onChange={(e) => handleStartDateChange(e.target.value)}
+                    className="h-12 w-full min-w-0 rounded-xl border-zinc-300 bg-white px-3 text-base dark:border-zinc-700 dark:bg-zinc-950"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="indisp-fim" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Fim</Label>
+                  <Input
+                    id="indisp-fim"
+                    type="datetime-local"
+                    value={formIndisponibilidade.data_hora_fim}
+                    onChange={(e) => setFormIndisponibilidade(prev => ({ ...prev, data_hora_fim: e.target.value }))}
+                    className="h-12 w-full min-w-0 rounded-xl border-zinc-300 bg-white px-3 text-base dark:border-zinc-700 dark:bg-zinc-950"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="indisp-motivo" className="text-zinc-650 dark:text-zinc-400 text-xs font-semibold">Motivo (Opcional)</Label>
+            <div className="space-y-2">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <Label htmlFor="indisp-motivo" className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Motivo <span className="font-normal text-zinc-500">(opcional)</span></Label>
+                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Adicione uma observação para consulta futura.</p>
+                </div>
+                <span className="shrink-0 text-xs text-zinc-500 dark:text-zinc-400" aria-live="polite">
+                  {formIndisponibilidade.motivo?.length || 0}/200
+                </span>
+              </div>
               <Textarea 
                 id="indisp-motivo"
                 placeholder="Ex: Consulta médica, treinamento..." 
                 value={formIndisponibilidade.motivo} 
                 onChange={(e) => setFormIndisponibilidade(prev => ({ ...prev, motivo: e.target.value }))}
                 maxLength={200}
-                className="w-full min-h-[80px] text-xs"
+                rows={4}
+                className="min-h-28 w-full resize-y rounded-xl border-zinc-300 bg-white p-4 text-base leading-relaxed placeholder:text-zinc-400 focus-visible:ring-[#84A59D] dark:border-zinc-700 dark:bg-zinc-950 dark:placeholder:text-zinc-500"
               />
-              <span className="text-[10px] text-zinc-450 block text-right">
-                {formIndisponibilidade.motivo?.length || 0}/200 caracteres
-              </span>
             </div>
           </div>
-          <DialogFooter className="gap-2 flex flex-col sm:flex-row">
+          <DialogFooter className="shrink-0 flex-col gap-2 border-t border-zinc-100 bg-zinc-50 px-5 py-4 dark:border-zinc-800 dark:bg-zinc-950/40 max-sm:flex-row sm:flex-row sm:justify-end sm:px-8">
             <Button 
               variant="outline" 
-              className="w-full sm:w-auto" 
+              className="min-h-12 w-full flex-1 rounded-xl px-3 sm:min-h-11 sm:w-auto sm:flex-none sm:px-5"
               onClick={() => setOpenIndisponibilidade(false)}
               disabled={loadingIndisponibilidade}
             >
               Cancelar
             </Button>
             <Button 
-              className="bg-[#84A59D] hover:bg-[#6F9189] text-white w-full sm:w-auto" 
+              className="min-h-12 w-full flex-1 rounded-xl bg-[#84A59D] px-3 text-white hover:bg-[#6F9189] sm:min-h-11 sm:w-auto sm:flex-none sm:px-5"
               onClick={handleSaveIndisponibilidade}
               disabled={loadingIndisponibilidade}
             >
@@ -3565,71 +3580,76 @@ export default function Agenda() {
 
       {/* Dialog de Detalhes da Indisponibilidade */}
       <Dialog open={openIndispDetails} onOpenChange={setOpenIndispDetails}>
-        <DialogContent className="w-[95vw] max-w-[95vw] sm:max-w-md p-5 sm:p-6 rounded-2xl dark:bg-zinc-900 dark:border-zinc-800" aria-describedby={undefined}>
-          <DialogHeader>
-            <DialogTitle className="font-display font-bold text-zinc-800 dark:text-zinc-150 flex items-center gap-2">
-              <CalendarOff className="w-5 h-5 text-sky-600 dark:text-sky-400" />
+        <DialogContent className="flex max-h-[92dvh] w-[calc(100%-1.25rem)] max-w-2xl flex-col gap-0 overflow-hidden rounded-2xl border-zinc-200 bg-white p-0 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900 max-sm:bottom-0 max-sm:left-0 max-sm:top-auto max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:pb-[env(safe-area-inset-bottom)] max-sm:max-h-[90dvh]">
+          <DialogHeader className="shrink-0 border-b border-zinc-100 px-5 py-5 text-left dark:border-zinc-800 sm:px-8 sm:py-6">
+            <DialogTitle className="flex items-center gap-3 pr-8 font-display text-lg font-semibold text-zinc-800 dark:text-zinc-100 sm:text-2xl">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EAF0EE] text-[#648775] dark:bg-zinc-800 dark:text-[#B8D6C7] sm:h-12 sm:w-12">
+                <CalendarOff className="h-5 w-5 sm:h-6 sm:w-6" />
+              </span>
               <span>Período de Indisponibilidade</span>
             </DialogTitle>
           </DialogHeader>
           {selectedIndisp && (
-            <div className="space-y-4 py-4 text-sm text-zinc-650 dark:text-zinc-400">
-              <div>
-                <span className="font-bold block text-xs uppercase text-zinc-400">Colaborador</span>
-                <span className="text-zinc-800 dark:text-zinc-200 font-semibold">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 text-sm text-zinc-600 dark:text-zinc-400 sm:space-y-5 sm:px-8 sm:py-6">
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/40 sm:p-5">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Colaborador</span>
+                <span className="text-base font-semibold text-zinc-800 dark:text-zinc-100 sm:text-lg">
                   {colaboradores.find(c => c.id === selectedIndisp.colaborador_id)?.nome || "Colaborador"}
                 </span>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="font-bold block text-xs uppercase text-zinc-400">Início</span>
-                  <span className="text-zinc-850 dark:text-zinc-200">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                <div className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800 sm:p-5">
+                  <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Início</span>
+                  <span className="text-base font-medium text-zinc-800 dark:text-zinc-100">
                     {libFormatAgendaDateTime(selectedIndisp.data_hora_inicio)}
                   </span>
                 </div>
-                <div>
-                  <span className="font-bold block text-xs uppercase text-zinc-400">Fim</span>
-                  <span className="text-zinc-850 dark:text-zinc-200">
+                <div className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800 sm:p-5">
+                  <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Fim</span>
+                  <span className="text-base font-medium text-zinc-800 dark:text-zinc-100">
                     {libFormatAgendaDateTime(selectedIndisp.data_hora_fim)}
                   </span>
                 </div>
               </div>
 
-              <div>
-                <span className="font-bold block text-xs uppercase text-zinc-400">Motivo</span>
-                <span className="text-zinc-850 dark:text-zinc-200">
+              <div className="rounded-2xl border border-[#B8D6C7] border-l-4 border-l-[#84A59D] bg-[#F1F6F4] p-4 dark:border-[#425B50] dark:border-l-[#84A59D] dark:bg-[#1C2A25] sm:p-5">
+                <div className="mb-2 flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-[#648775] dark:text-[#B8D6C7]" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#49675B] dark:text-[#B8D6C7]">Motivo informado</span>
+                </div>
+                <p className="whitespace-pre-wrap break-words text-base font-medium leading-relaxed text-zinc-900 dark:text-zinc-100 sm:text-lg">
                   {selectedIndisp.motivo || <span className="italic text-zinc-400">Sem motivo específico</span>}
-                </span>
+                </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 pt-3 border-t border-zinc-150 dark:border-zinc-800 text-[11px] text-zinc-500 dark:text-zinc-500">
+              <div className="grid grid-cols-1 gap-3 border-t border-zinc-200 pt-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400 sm:grid-cols-2 sm:gap-4 sm:pt-5">
                 <div>
-                  <span className="font-bold block text-[10px] uppercase text-zinc-400">Registrado por</span>
-                  <span className="text-zinc-700 dark:text-zinc-300 font-semibold">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Registrado por</span>
+                  <span className="font-medium text-zinc-700 dark:text-zinc-300">
                     {selectedIndisp.criado_por_nome || "Não informado"}
                   </span>
                 </div>
                 <div>
-                  <span className="font-bold block text-[10px] uppercase text-zinc-400">Data do Registro</span>
-                  <span className="text-zinc-700 dark:text-zinc-300 font-semibold">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Data do Registro</span>
+                  <span className="font-medium text-zinc-700 dark:text-zinc-300">
                     {selectedIndisp.criado_em ? libFormatAgendaDateTime(selectedIndisp.criado_em) : "Não informada"}
                   </span>
                 </div>
               </div>
             </div>
           )}
-          <DialogFooter className="gap-2 flex flex-col sm:flex-row">
+          <DialogFooter className="shrink-0 flex-col gap-2 border-t border-zinc-100 bg-zinc-50 px-5 py-4 dark:border-zinc-800 dark:bg-zinc-950/40 sm:flex-row sm:justify-end sm:px-8">
             <Button 
               variant="outline" 
-              className="w-full sm:w-auto" 
+              className="min-h-11 w-full rounded-xl px-5 sm:w-auto"
               onClick={() => setOpenIndispDetails(false)}
             >
               Fechar
             </Button>
             {selectedIndisp && me && (
               <Button 
-                className="bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-200 w-full sm:w-auto flex items-center justify-center gap-1"
+                className="min-h-11 w-full rounded-xl bg-zinc-100 text-zinc-800 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700 sm:w-auto"
                 onClick={() => handleOpenEditIndisponibilidade(selectedIndisp)}
               >
                 <Edit2 className="w-3.5 h-3.5" /> Editar
@@ -3637,7 +3657,7 @@ export default function Agenda() {
             )}
             {selectedIndisp && me && (
               <Button 
-                className="bg-rose-500 hover:bg-rose-600 text-white w-full sm:w-auto flex items-center justify-center gap-1"
+                className="min-h-11 w-full rounded-xl bg-rose-500 text-white hover:bg-rose-600 sm:w-auto"
                 onClick={() => handleDeleteIndisponibilidade(selectedIndisp.id)}
               >
                 <Trash2 className="w-3.5 h-3.5" /> Excluir
